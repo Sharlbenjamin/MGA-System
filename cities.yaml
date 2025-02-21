@@ -1,0 +1,9 @@
+models:
+  Country:
+    name: string
+    hasMany: City
+
+  City:
+    name: string
+    country_id: foreign:Country
+    belongsTo: Country
