@@ -32,7 +32,10 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'team_id'
+        'team_id',
+        'smtp_username',
+        'smtp_password',
+        'signature_image', 
     ];
 
     /**

@@ -14,6 +14,9 @@ class ListLeads extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
+            Actions\Action::make('Send Email')
+            ->action(fn ($record) => $this->sendEmailToLead($record))
+            ->requiresConfirmation(),
         ];
     }
 }

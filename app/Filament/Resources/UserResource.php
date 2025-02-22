@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\MultiSelect;
 use Filament\Tables\Columns\TextColumn;
 
+use Filament\Forms\Components\FileUpload;
+
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
@@ -28,11 +30,29 @@ class UserResource extends Resource
     return $form
         ->schema([
             TextInput::make('name')->required(),
-            TextInput::make('email')->email()->required()->unique('users', 'email'),
+            Forms\Components\TextInput::make('email')
+                ->email()
+                ->required()
+                ->unique('users', 'email', ignoreRecord: true), // Ignore the current user's email
             TextInput::make('password')->password()->required()->minLength(8),
             MultiSelect::make('teams')
                 ->relationship('teams', 'name')
                 ->label('Assign Teams'),
+            
+                Forms\Components\TextInput::make('smtp_username')
+                ->label('SMTP Username')
+                ->helperText('Enter your email SMTP username.'),
+            
+            Forms\Components\TextInput::make('smtp_password')
+                ->label('SMTP Password')
+                ->password()
+                ->helperText('Enter your email SMTP password.'),
+            
+                FileUpload::make('signature_image')
+                ->label('Signature Image')
+                ->image()
+                ->directory('signatures')
+                ->nullable(),
         ]);
 }
 
