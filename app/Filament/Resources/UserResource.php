@@ -48,10 +48,11 @@ class UserResource extends Resource
                 ->password()
                 ->helperText('Enter your email SMTP password.'),
             
-            FileUpload::make('signature_image')
+                FileUpload::make('signature_image')
                 ->image()
-                ->directory('signatures') // ✅ Save to storage/app/public/signatures
-                ->disk('public') // ✅ Ensure it's using the correct disk
+                ->directory('signatures') // ✅ Saves in storage/app/public/signatures
+                ->disk('public') // ✅ Ensures the correct storage disk
+                ->visibility('public') // ✅ Makes the file accessible
                 ->preserveFilenames()
                 ->nullable()
         ]);
