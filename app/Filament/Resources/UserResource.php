@@ -48,11 +48,13 @@ class UserResource extends Resource
                 ->password()
                 ->helperText('Enter your email SMTP password.'),
             
-                FileUpload::make('signature_image')
-                ->label('Signature Image')
+            FileUpload::make('signature_image')
                 ->image()
-                ->directory('signatures')
-                ->nullable(),
+                ->directory('signatures') // ✅ Save to storage/app/public/signatures
+                ->storeFilesUsing(fn ($file) => $file->store('signatures', 'public')) // ✅ Use Laravel storage
+                ->preserveFilenames()
+                ->disk('public')
+                ->nullable()
         ]);
 }
 
