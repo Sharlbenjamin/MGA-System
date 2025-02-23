@@ -81,5 +81,8 @@ class ClientResource extends Resource
         ];
     }
 
-    
+    public static function getNavigationGroup(): ?string
+    {
+        return 'CRM';
+    }
 }

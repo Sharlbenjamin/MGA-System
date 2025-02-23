@@ -70,4 +70,9 @@ class TeamResource extends Resource
             'edit' => Pages\EditTeam::route('/{record}/edit'),
         ];
     }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'System Management';
+    }
 }

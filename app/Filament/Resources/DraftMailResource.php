@@ -47,7 +47,7 @@ class DraftMailResource extends Resource
                     Forms\Components\Textarea::make('body_mail')
                     ->required()
                     ->columnSpanFull()
-                    ->helperText('Use {first_name} and {email} as placeholders for lead data.'),
+                    ->helperText('Use {first_name} and {email} and {company} as placeholders for lead data.'),
                 Forms\Components\Select::make('status')
                     ->options($statusOptions)
                     ->required()
@@ -56,6 +56,13 @@ class DraftMailResource extends Resource
                     ->options($statusOptions)
                     ->required()
                     ->label('New Status After Sending'),
+
+                Forms\Components\Select::make('type')
+                    ->label('Type')
+                    ->options([
+                    'Provider' => 'Provider',
+                    'Client' => 'Client',])
+                    ->required(),
             ]);
     }
 
@@ -66,7 +73,7 @@ class DraftMailResource extends Resource
                 Tables\Columns\TextColumn::make('mail_name'),
                 Tables\Columns\TextColumn::make('status'),
                 Tables\Columns\TextColumn::make('new_status'),
-                Tables\Columns\TextColumn::make('created_at')->date(),
+                Tables\Columns\TextColumn::make('type'),
             ])
             ->filters([])
             ->actions([
@@ -92,5 +99,10 @@ class DraftMailResource extends Resource
             'create' => Pages\CreateDraftMail::route('/create'),
             'edit' => Pages\EditDraftMail::route('/{record}/edit'),
         ];
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'System Management';
     }
 }

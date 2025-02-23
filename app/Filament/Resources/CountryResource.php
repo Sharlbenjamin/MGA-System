@@ -85,4 +85,9 @@ class CountryResource extends Resource
             'edit' => Pages\EditCountry::route('/{record}/edit'),
         ];
     }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'System Management';
+    }
 }

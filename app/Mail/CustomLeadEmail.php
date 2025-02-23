@@ -25,9 +25,24 @@ class CustomLeadEmail extends Mailable
         Config::set('mail.mailers.smtp.password', $this->user->smtp_password);
 
         $body = str_replace(
-            ['{first_name}', '{email}'],
-            [$this->lead->first_name, $this->lead->email],
+            ['{first_name}', '{email}', '{company}'],
+            [
+                $this->lead->first_name, 
+                $this->lead->email,
+                optional($this->lead->client)->company_name ?? 'Your Company' 
+            ],
             $this->draftMail->body_mail
+        );
+
+        // Replace placeholders in the subject
+        $subject = str_replace(
+            ['{first_name}', '{email}', '{company}'],
+            [
+                $this->lead->first_name, 
+                $this->lead->email, 
+                optional($this->lead->client)->company_name ?? 'Your Company' 
+        ],
+            $this->draftMail->mail_name // The subject comes from the draft mail name
         );
 
         $subject = trim($this->draftMail->mail_name);

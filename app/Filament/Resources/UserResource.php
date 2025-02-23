@@ -101,4 +101,9 @@ public static function table(Table $table): Table
             'edit' => Pages\EditUser::route('/{record}/edit'),
         ];
     }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'System Management';
+    }
 }

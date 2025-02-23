@@ -139,4 +139,10 @@ class LeadResource extends Resource
             'edit' => Pages\EditLead::route('/{record}/edit'),
         ];
     }
+
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'CRM';
+    }
 }

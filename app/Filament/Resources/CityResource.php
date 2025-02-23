@@ -63,4 +63,10 @@ class CityResource extends Resource
             'edit' => Pages\EditCity::route('/{record}/edit'),
         ];
     }
+
+
+    public static function getNavigationGroup(): ?string
+    {
+        return 'System Management';
+    }
 }
