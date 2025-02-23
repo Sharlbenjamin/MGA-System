@@ -51,9 +51,8 @@ class UserResource extends Resource
             FileUpload::make('signature_image')
                 ->image()
                 ->directory('signatures') // ✅ Save to storage/app/public/signatures
-                ->storeFilesUsing(fn ($file) => $file->store('signatures', 'public')) // ✅ Use Laravel storage
+                ->disk('public') // ✅ Ensure it's using the correct disk
                 ->preserveFilenames()
-                ->disk('public')
                 ->nullable()
         ]);
 }
