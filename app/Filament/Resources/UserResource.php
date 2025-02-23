@@ -34,7 +34,13 @@ class UserResource extends Resource
                 ->email()
                 ->required()
                 ->unique('users', 'email', ignoreRecord: true), // Ignore the current user's email
-            TextInput::make('password')->password()->required()->minLength(8),
+                
+            TextInput::make('password')
+                ->password()
+                ->minLength(8)
+                ->dehydrated(fn ($state) => !empty($state)) // ✅ Only save if a new password is entered
+                ->nullable(),
+
             MultiSelect::make('teams')
                 ->relationship('teams', 'name')
                 ->label('Assign Teams'),
@@ -50,12 +56,13 @@ class UserResource extends Resource
             
             FileUpload::make('signature_image')
                 ->image()
+                ->acceptedFileTypes(['image/png', 'image/jpg', 'image/jpeg']) // ✅ Restrict file types
                 ->directory('signatures') // ✅ Saves in storage/app/public/signatures
-                ->disk('public') // ✅ Ensures the correct storage disk
-                ->visibility('public') // ✅ Makes the file accessible
+                ->disk('public') // ✅ Ensures correct storage disk
+                ->visibility('public') // ✅ Makes file accessible
                 ->preserveFilenames()
-                ->columnSpanFull() // ✅ Ensures it takes up full width
-                ->required() // ✅ Makes it mandatory
+                ->columnSpanFull()
+                ->nullable() // ✅ Makes it mandatory
         ]);
 }
 
