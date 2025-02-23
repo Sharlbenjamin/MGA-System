@@ -34,7 +34,7 @@ class UserResource extends Resource
                 ->email()
                 ->required()
                 ->unique('users', 'email', ignoreRecord: true), // Ignore the current user's email
-
+                
             TextInput::make('password')
                 ->password()
                 ->minLength(8)
@@ -54,9 +54,13 @@ class UserResource extends Resource
                 ->password()
                 ->helperText('Enter your email SMTP password.'),
             
-                TextInput::make('signature_image')
-                ->type('file') // ✅ Standard file input (browser-based)
-                ->label('Upload Signature')
+            FileUpload::make('signature_image')
+                ->image()
+                ->acceptedFileTypes(['image/png', 'image/jpg', 'image/jpeg']) // ✅ Restrict file types
+                ->directory('signatures') // ✅ Saves in storage/app/public/signatures
+                ->disk('public') // ✅ Ensures correct storage disk
+                ->visibility('public') // ✅ Makes file accessible
+                ->preserveFilenames()
                 ->columnSpanFull()
                 ->nullable() // ✅ Makes it mandatory
         ]);
