@@ -6,10 +6,9 @@
 <body>
     <p>{!! nl2br(e($body)) !!}</p>
 
-    @if(isset($message) && $message->embed(public_path('storage/' . auth()->user()->signature_image)))
-        <br>
-        <img src="{{ $message->embed(public_path('storage/' . auth()->user()->signature_image)) }}" 
-             alt="Signature" width="300">
+    @if(isset($signature))
+    <img src="{{ asset('storage/signatures/Charles.png') }}" 
+         alt="Signature" width="300" style="background: white; padding: 10px; border-radius: 5px;">
     @else
         <p>No signature available</p>
     @endif
