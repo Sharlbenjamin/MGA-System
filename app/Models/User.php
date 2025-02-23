@@ -11,6 +11,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Http\UploadedFile;
 
 class User extends Authenticatable
 {
@@ -77,6 +78,19 @@ class User extends Authenticatable
         return $this->belongsToMany(\App\Models\Team::class)
             ->withPivot('role')
             ->withTimestamps();
+    }
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($user) {
+            if (request()->hasFile('signature_image')) {
+                $file = request()->file('signature_image');
+                $path = $file->store('signatures', 'public'); // ✅ Store manually
+                $user->signature_image = $path;
+            }
+        });
     }
 
 }
