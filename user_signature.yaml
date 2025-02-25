@@ -1,0 +1,8 @@
+models:
+  UserSignature:
+    user_id: foreign:users
+    name: string
+    job_title: string
+    department: enum:Operation,Financial,Provider Network,Client Network
+    work_phone: string
+    timestamps: true

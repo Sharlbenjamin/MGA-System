@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Filament\Resources\UserResource\RelationManagers;
+use Filament\Resources\RelationManagers\HasManyRelationManager;
+use App\Filament\Resources\UserResource\RelationManagers\UserSignatureRelationManager;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use App\Models\User;
@@ -62,7 +64,34 @@ class UserResource extends Resource
                 ->visibility('public') // ✅ Makes file accessible
                 ->preserveFilenames()
                 ->columnSpanFull()
-                ->nullable() // ✅ Makes it mandatory
+                ->nullable(), // ✅ Makes it mandatory
+
+                // User Signature
+                Forms\Components\Section::make('Signature Details') // Add a section for the signature
+                ->relationship('signature')
+                ->schema([
+                    Forms\Components\TextInput::make('name')
+                        ->label('Name (in signature)')
+                        ->required(),
+
+                    Forms\Components\TextInput::make('job_title')
+                        ->label('Job Title (in signature)')
+                        ->required(),
+
+                    Forms\Components\Select::make('department')
+                        ->label('Department (in signature)')
+                        ->options([
+                            'Operation' => 'Operation',
+                            'Financial' => 'Financial',
+                            'Provider Network' => 'Provider Network',
+                            'Client Network' => 'Client Network',
+                        ])
+                        ->required(),
+
+                    Forms\Components\TextInput::make('work_phone')
+                        ->label('Work Phone (in signature)')
+                        ->required(),
+                ]),
         ]);
 }
 
@@ -99,10 +128,9 @@ public static function table(Table $table): Table
     public static function getRelations(): array
     {
         return [
-            //
+            UserSignatureRelationManager::class,
         ];
     }
-
     public static function getPages(): array
     {
         return [

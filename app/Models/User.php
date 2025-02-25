@@ -79,4 +79,8 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function signature()
+    {
+        return $this->hasOne(UserSignature::class);
+    }
 }

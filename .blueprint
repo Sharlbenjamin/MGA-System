@@ -1,12 +1,10 @@
 created:
-    - database/factories/CountryFactory.php
-    - database/factories/CityFactory.php
-    - database/migrations/2025_02_21_093713_create_countries_table.php
-    - database/migrations/2025_02_21_093714_create_cities_table.php
-    - app/Models/Country.php
-    - app/Models/City.php
+    - database/factories/UserSignatureFactory.php
+    - database/migrations/2025_02_24_170244_create_user_signatures_table.php
+    - app/Models/UserSignature.php
 models:
     Client: { company_name: string, type: 'enum:Assistance,Insurance,Agency', status: 'enum:Searching,Interested,Sent,Rejected,Active,On Hold', initials: 'string:10', number_requests: integer, relationships: { hasMany: Lead } }
     Lead: { client_id: 'id foreign:clients', email: 'string unique', first_name: string, status: 'enum:Introduction,Introduction Sent,Reminder,Reminder Sent,Presentation,Presentation Sent,Price List,Price List Sent,Contract,Contract Sent,Interested,Error,Partner,Rejected', last_contact_date: 'date nullable', relationships: { belongsTo: Client } }
     City: { name: string, country_id: 'foreign:Country', belongsTo: Country }
     Country: { name: string, hasMany: City }
+    UserSignature: { user_id: 'foreign:users', name: string, job_title: string, department: 'enum:Operation,Financial,Provider Network,Client Network', work_phone: string, timestamps: timestamps }

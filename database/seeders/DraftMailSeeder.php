@@ -55,7 +55,7 @@ class DraftMailSeeder extends Seeder
                                 &nbsp;&nbsp;&nbsp;&nbsp;•Inpatient / Multiple File Fees Cases: 90€</strong>
                                 
                                 <strong>Coverage area</strong> where our <strong>GOP</strong> is accepted:
-                                <strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Spain</strong>: <strong>Madrid, Barcelona</strong>, Valencia, Málaga, Zaragoza, Sevilla, Murcia, Marbella, Malaga <strong>Islas Baleares, Islas Canarias</strong>.
+                                <strong>&nbsp;&nbsp;&nbsp;&nbsp;Spain</strong>: <strong>Madrid, Barcelona</strong>, Valencia, Málaga, Zaragoza, Sevilla, Murcia, Marbella, Malaga <strong>Islas Baleares, Islas Canarias</strong>.
                                 <strong>&nbsp;&nbsp;&nbsp;&nbsp;The UK</strong>: <strong>Londong</strong>, Manchester, Liverpool, <strong>Dublin</strong>, Edinburgh, Birmingham.
                                 <strong>&nbsp;&nbsp;&nbsp;&nbsp;France</strong>: <strong>Paris</strong>, Lyonn, Nantes, Toulouse, Cannes, Nice, <strong>Alpes</strong>.
                                 
