@@ -62,7 +62,7 @@
     </div>
 
     <div class="signature-container">
-        <img src="{{ asset('storage/img/myimage.jpg') }}" alt="My Image">
+        <img src="{{ asset('storage/app/public/signatures/siglogo.png') }}" alt="MGA Logo">
         <div class="vertical-line"></div>
         <div class="signature-text">
             <span class="name">{{ $signature->name ?? '' }}</span><br><br>
