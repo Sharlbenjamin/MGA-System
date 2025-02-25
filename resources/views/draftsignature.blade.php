@@ -62,7 +62,7 @@
     </div>
 
     <div class="signature-container">
-        <img src="{{ asset('storage/app/public/siglogo.png') }}" alt="MGA Logo">
+        <img src="{{ $message->embed(storage_path('app/public/siglogo.png')) }}" alt="MedGuard Logo">
         <div class="vertical-line"></div>
         <div class="signature-text">
             <span class="name">{{ $signature->name ?? '' }}</span><br><br>
