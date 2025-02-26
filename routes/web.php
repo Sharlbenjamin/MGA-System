@@ -42,11 +42,3 @@ Route::middleware([\App\Http\Middleware\PasswordProtect::class, FilamentAuthenti
         });
     });
 });
-
-Route::resource('service-types', App\Http\Controllers\ServiceTypeController::class);
-
-Route::resource('providers', App\Http\Controllers\ProviderController::class);
-
-Route::resource('provider-leads', App\Http\Controllers\ProviderLeadController::class);
-
-Route::resource('provider-branches', App\Http\Controllers\ProviderBranchController::class);
