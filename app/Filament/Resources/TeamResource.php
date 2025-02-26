@@ -16,14 +16,17 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
-
+use Filament\Navigation\NavigationItem;
 use Filament\Tables\Columns\TextColumn;
 
 class TeamResource extends Resource
 {
     protected static ?string $model = Team::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static ?string $navigationGroup = null; // Removes it from any group
+    protected static ?int $navigationSort = null; // Ensures it's not sorted
+    protected static ?string $navigationIcon = null; // Hides from sidebar
+    protected static bool $shouldRegisterNavigation = false; // Hides it completely
 
     public static function form(Form $form): Form
     {
@@ -71,8 +74,14 @@ class TeamResource extends Resource
         ];
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function navigationItems(): array
     {
-        return 'System Management';
+        return [
+            \Filament\Navigation\NavigationItem::make()
+                ->label('Teams')
+                ->url(self::getUrl('index'))
+                ->icon('heroicon-o-users')
+                ->sort(6),
+        ];
     }
 }

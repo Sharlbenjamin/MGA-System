@@ -10,11 +10,18 @@ use Filament\Tables;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Navigation\NavigationItem;
 use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
 
 class ClientResource extends Resource
 {
     protected static ?string $model = Client::class;
+
+
+    protected static ?string $navigationGroup = null; // Removes it from any group
+    protected static ?int $navigationSort = null; // Ensures it's not sorted
+    protected static ?string $navigationIcon = null; // Hides from sidebar
+    protected static bool $shouldRegisterNavigation = false; // Hides it completely
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -81,8 +88,6 @@ class ClientResource extends Resource
         ];
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return 'CRM';
-    }
+
+
 }

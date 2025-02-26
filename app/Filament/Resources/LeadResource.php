@@ -18,10 +18,20 @@ use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
+use Filament\Navigation\NavigationItem;
+use Filament\Notifications\Notification;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Filters\SelectFilter;
 
 class LeadResource extends Resource
 {
     protected static ?string $model = Lead::class;
+
+
+    protected static ?string $navigationGroup = null; // Removes it from any group
+    protected static ?int $navigationSort = null; // Ensures it's not sorted
+    protected static ?string $navigationIcon = null; // Hides from sidebar
+    protected static bool $shouldRegisterNavigation = false; // Hides it completely
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -70,65 +80,46 @@ class LeadResource extends Resource
                 TextColumn::make('client.company_name')->sortable(),
                 TextColumn::make('email')->sortable()->searchable(),
                 TextColumn::make('first_name')->sortable()->searchable(),
-                TextColumn::make('status')->badge(),
+                TextColumn::make('status')->badge()->sortable()->searchable(),
                 TextColumn::make('last_contact_date')->date(),
             ])
             ->actions([
                 Action::make('Send Email')
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
-                    ->action(function ($record) {
-                        $user = Auth::user();
-            
-                        if (!$user) {
-                            Log::error("No authenticated user found!");
-                            return;
-                        }
-            
-                        // Fetch updated user info from the database
-                        $user = \App\Models\User::find($user->id);
-            
-                        Log::info("Using SMTP Credentials Before Sending Email:", [
-                            'email' => $user->email,
-                            'smtp_username' => $user->smtp_username,
-                            'smtp_password' => $user->smtp_password,
-                        ]);
-            
-                        // Dynamically set the mail configuration
-                        Config::set('mail.mailers.smtp.username', $user->smtp_username);
-                        Config::set('mail.mailers.smtp.password', $user->smtp_password);
-            
-                        // Confirm settings were updated
-                        Log::info("Current Mail Config:", [
-                            'MAIL_USERNAME' => config('mail.mailers.smtp.username'),
-                            'MAIL_PASSWORD' => config('mail.mailers.smtp.password'),
-                        ]);
-            
-                        // Fetch the corresponding draft email
-                        $draftMail = DraftMail::where('status', $record->status)->first();
-                        if (!$draftMail) {
-                            Log::error("No draft email found for status: {$record->status}");
-                            return;
-                        }
-            
-                        // Log the subject before sending
-                        Log::info("Email Subject Before Sending: " . $draftMail->mail_name);
-            
-                        // Test sending a different email class
-                        Mail::to($record->email)->send(new CustomLeadEmail($record, $draftMail, $user));
-            
-                        // Update the lead's status and last_contact_date
-                        $record->update([
-                            'status' => $draftMail->new_status,
-                            'last_contact_date' => now()->toDateString(), // Set last contact date to today
-                        ]);
-            
-                        Log::info("Email successfully sent to: {$record->email}");
-                        Log::info("Lead status updated to: {$draftMail->new_status}");
-                        Log::info("Last contact date updated to: " . now()->toDateString());
-                    })
+                    ->action(fn ($record) => self::sendEmails($record))
                     ->color('success'),
-            ]);
+            ]) ->filters([
+                SelectFilter::make('status')
+                    ->options([
+                        'Introduction' => 'Introduction',
+                        'Introduction Sent' => 'Introduction Sent',
+                        'Reminder' => 'Reminder',
+                        'Reminder Sent' => 'Reminder Sent',
+                        'Presentation' => 'Presentation',
+                        'Presentation Sent' => 'Presentation Sent',
+                        'Price List' => 'Price List',
+                        'Price List Sent' => 'Price List Sent',
+                        'Contract' => 'Contract',
+                        'Contract Sent' => 'Contract Sent',
+                        'Interested' => 'Interested',
+                        'Error' => 'Error',
+                        'Partner' => 'Partner',
+                        'Rejected' => 'Rejected',
+                    ])
+                    ->label('Filter by Status')
+                    ->attribute('status'),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    BulkAction::make('Send Bulk Emails')
+                        ->icon('heroicon-o-paper-airplane')
+                        ->requiresConfirmation()
+                        ->action(fn ($records) => self::sendEmails($records))
+                        ->deselectRecordsAfterCompletion()
+                        ->color('success'),
+                ]),
+            ]);;
     }
 
     public static function getPages(): array
@@ -140,9 +131,79 @@ class LeadResource extends Resource
         ];
     }
 
-
-    public static function getNavigationGroup(): ?string
+    public static function sendEmails($records)
     {
-        return 'CRM';
+        $user = Auth::user();
+        
+        if (!$user) {
+            Log::error("No authenticated user found!");
+            return;
+        }
+    
+        // Fetch updated user info from the database
+        $user = \App\Models\User::find($user->id);
+    
+        // Get SMTP credentials (use system default if user’s credentials are missing)
+        $smtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
+        $smtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
+    
+        // Ensure SMTP credentials are set correctly
+        if (!$smtpUsername || !$smtpPassword) {
+            Log::error("SMTP credentials missing for user: {$user->id}");
+            return;
+        }
+    
+        // Dynamically set the mail configuration
+        Config::set('mail.mailers.smtp.username', $smtpUsername);
+        Config::set('mail.mailers.smtp.password', $smtpPassword);
+    
+        // Convert a single record into a collection for uniform processing
+        $records = is_array($records) || $records instanceof \Illuminate\Support\Collection ? $records : collect([$records]);
+    
+        foreach ($records as $record) {
+            $draftMail = DraftMail::where('status', $record->status)->first();
+            
+            if (!$draftMail) {
+                Log::error("No draft email found for status: {$record->status}");
+                continue;
+            }
+    
+            try {
+                // Send the email
+                Mail::to($record->email)->send(new CustomLeadEmail($record, $draftMail, $user));
+    
+                // Update the lead's status and last_contact_date
+                $record->update([
+                    'status' => $draftMail->new_status,
+                    'last_contact_date' => now()->toDateString(),
+                ]);
+    
+                Log::info("Email successfully sent to: {$record->email}");
+            } catch (\Exception $e) {
+                Log::error("Email sending failed for {$record->email}: " . $e->getMessage());
+            }
+        }
+    
+        // Send a notification only if multiple emails were sent (bulk)
+        if ($records->count() > 1) {
+            Notification::make()
+                ->title('Bulk Emails Sent')
+                ->body('Emails have been sent to selected leads.')
+                ->success()
+                ->send();
+        }
     }
+    
+
+    public static function navigationItems(): array
+{
+    return [
+        \Filament\Navigation\NavigationItem::make()
+            ->label('Leads')
+            ->url(self::getUrl('index'))
+            ->icon('heroicon-o-light-bulb')
+            ->sort(2),
+    ];
+}
+
 }

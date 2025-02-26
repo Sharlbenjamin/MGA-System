@@ -18,14 +18,17 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\MultiSelect;
 use Filament\Tables\Columns\TextColumn;
-
+use Filament\Navigation\NavigationItem;
 use Filament\Forms\Components\FileUpload;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = null; // Removes it from any group
+    protected static ?int $navigationSort = null; // Ensures it's not sorted
+    protected static ?string $navigationIcon = null; // Hides from sidebar
+    protected static bool $shouldRegisterNavigation = false; // Hides it completely
 
     public static function form(Form $form): Form
 {
@@ -140,8 +143,16 @@ public static function table(Table $table): Table
         ];
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return 'System Management';
-    }
+    public static function navigationItems(): array
+{
+    return [
+        \Filament\Navigation\NavigationItem::make()
+            ->label('Users')
+            ->url(self::getUrl('index'))
+            ->icon('heroicon-o-users')
+            ->sort(6),
+    ];
+}
+
+
 }

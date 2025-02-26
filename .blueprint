@@ -1,10 +1,57 @@
 created:
-    - database/factories/UserSignatureFactory.php
-    - database/migrations/2025_02_24_170244_create_user_signatures_table.php
-    - app/Models/UserSignature.php
+    - app/Http/Controllers/ServiceTypeController.php
+    - app/Http/Controllers/ProviderController.php
+    - app/Http/Controllers/ProviderLeadController.php
+    - app/Http/Controllers/ProviderBranchController.php
+    - database/factories/ServiceTypeFactory.php
+    - database/factories/ProviderFactory.php
+    - database/factories/ProviderLeadFactory.php
+    - database/factories/ProviderBranchFactory.php
+    - database/migrations/2025_02_26_111102_create_service_types_table.php
+    - database/migrations/2025_02_26_111103_create_providers_table.php
+    - database/migrations/2025_02_26_111104_create_provider_leads_table.php
+    - database/migrations/2025_02_26_111105_create_provider_branches_table.php
+    - app/Models/ServiceType.php
+    - app/Models/Provider.php
+    - app/Models/ProviderLead.php
+    - app/Models/ProviderBranch.php
+    - tests/Feature/Http/Controllers/ServiceTypeControllerTest.php
+    - tests/Feature/Http/Controllers/ProviderControllerTest.php
+    - tests/Feature/Http/Controllers/ProviderLeadControllerTest.php
+    - tests/Feature/Http/Controllers/ProviderBranchControllerTest.php
+    - app/Http/Requests/ServiceTypeStoreRequest.php
+    - app/Http/Requests/ServiceTypeUpdateRequest.php
+    - app/Http/Requests/ProviderStoreRequest.php
+    - app/Http/Requests/ProviderUpdateRequest.php
+    - app/Http/Requests/ProviderLeadStoreRequest.php
+    - app/Http/Requests/ProviderLeadUpdateRequest.php
+    - app/Http/Requests/ProviderBranchStoreRequest.php
+    - app/Http/Requests/ProviderBranchUpdateRequest.php
+    - resources/views/serviceType/index.blade.php
+    - resources/views/serviceType/create.blade.php
+    - resources/views/serviceType/show.blade.php
+    - resources/views/serviceType/edit.blade.php
+    - resources/views/provider/index.blade.php
+    - resources/views/provider/create.blade.php
+    - resources/views/provider/show.blade.php
+    - resources/views/provider/edit.blade.php
+    - resources/views/providerLead/index.blade.php
+    - resources/views/providerLead/create.blade.php
+    - resources/views/providerLead/show.blade.php
+    - resources/views/providerLead/edit.blade.php
+    - resources/views/providerBranch/index.blade.php
+    - resources/views/providerBranch/create.blade.php
+    - resources/views/providerBranch/show.blade.php
+    - resources/views/providerBranch/edit.blade.php
+updated:
+    - routes/web.php
 models:
     Client: { company_name: string, type: 'enum:Assistance,Insurance,Agency', status: 'enum:Searching,Interested,Sent,Rejected,Active,On Hold', initials: 'string:10', number_requests: integer, relationships: { hasMany: Lead } }
     Lead: { client_id: 'id foreign:clients', email: 'string unique', first_name: string, status: 'enum:Introduction,Introduction Sent,Reminder,Reminder Sent,Presentation,Presentation Sent,Price List,Price List Sent,Contract,Contract Sent,Interested,Error,Partner,Rejected', last_contact_date: 'date nullable', relationships: { belongsTo: Client } }
     City: { name: string, country_id: 'foreign:Country', belongsTo: Country }
     Country: { name: string, hasMany: City }
     UserSignature: { user_id: 'foreign:users', name: string, job_title: string, department: 'enum:Operation,Financial,Provider Network,Client Network', work_phone: string, timestamps: timestamps }
+    ServiceType: { id: id, name: 'string:255 unique' }
+    ProviderLead: { id: id, city: 'string:255', service_types: 'belongsToMany:ServiceType', type: 'enum:Doctor,Clinic,Hospital,Dental', provider_id: 'id foreign:providers nullable', name: 'string:255 unique', email: 'string:255 nullable', phone: 'string:20 nullable', communication_method: 'string:50', status: 'enum:Pending information,Step one,Step one sent,Reminder,Reminder sent,Discount,Discount sent,Step two,Step two sent,Presentation,Presentation sent,Contract,Contract sent', last_contact_date: 'date nullable', comment: 'text nullable' }
+    Provider: { id: id, country: 'string:255', status: 'enum:Active,Hold,Potential,Black list', type: 'enum:Doctor,Hospital,Clinic,Dental,Agency', name: 'string:255 unique', payment_due: 'integer nullable', payment_method: 'enum:Online link,Bank transfer nullable', comment: 'text nullable' }
+    ProviderBranch: { id: id, provider_id: 'id foreign:providers', city: 'string:255', status: 'enum:Active,Hold', priority: 'integer range:1,10', service_type_id: 'id foreign:service_types', communication_method: 'string:50', day_cost: 'decimal:8,2', night_cost: 'decimal:8,2', weekend_cost: 'decimal:8,2', weekend_night_cost: 'decimal:8,2' }

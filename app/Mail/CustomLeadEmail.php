@@ -7,54 +7,82 @@ use Illuminate\Support\Facades\Log;
 
 class CustomLeadEmail extends Mailable
 {
-    public $lead;
+    public $recipient;  // Can be either a Lead or a ProviderLead
     public $draftMail;
     public $user;
 
-    public function __construct($lead, $draftMail, $user)
+    public function __construct($recipient, $draftMail, $user)
     {
-        $this->lead = $lead;
+        $this->recipient = $recipient;
         $this->draftMail = $draftMail;
         $this->user = $user;
     }
 
     public function build()
-{
-    // Change SMTP credentials dynamically
-    Config::set('mail.mailers.smtp.username', $this->user->smtp_username);
-    Config::set('mail.mailers.smtp.password', $this->user->smtp_password);
+    {
+        // Use user SMTP credentials if available, otherwise use system default
+        Config::set('mail.mailers.smtp.username', $this->user->smtp_username ?? Config::get('mail.mailers.smtp.username'));
+        Config::set('mail.mailers.smtp.password', $this->user->smtp_password ?? Config::get('mail.mailers.smtp.password'));
 
-    // Get company name (if client exists)
-    $company = optional($this->lead->client)->company_name ?? 'Your Company';
+        // Determine if the recipient is a Client Lead or Provider Lead
+        $isProviderLead = $this->recipient instanceof \App\Models\ProviderLead;
 
-    // Replace placeholders in the email body
-    $body = str_replace(
-        ['{first_name}', '{email}', '{company}'],
-        [$this->lead->first_name, $this->lead->email, $company],
-        $this->draftMail->body_mail
-    );
 
-    // Replace placeholders in the subject (header)
-    $subject = str_replace(
-        ['{first_name}', '{email}', '{company}'],
-        [$this->lead->first_name, $this->lead->email, $company],
-        trim($this->draftMail->mail_name)
-    );
+        // Use 'name' for ProviderLeads, 'first_name' for Client Leads
+        $leadName = $isProviderLead ? $this->recipient->name : $this->recipient->first_name;
 
-    // Get the full URL for the signature image
-    $signatureUrl = $this->user->signature_image
-        ? asset('storage/' . $this->user->signature_image)
-        : null;
+        // Get company name correctly
+        if ($isProviderLead) {
+            $company = optional($this->recipient->provider)->name ?? 'You';
+        } else {
+            $company = optional($this->recipient->client)->company_name ?? 'You';
+        }
 
-    Log::info("Final Email Subject: " . $subject);
-    Log::info("Signature Image URL: " . $signatureUrl);
+        // Ensure `service_types` is a properly formatted string
+        if (is_string($this->recipient->service_types)) {
+            $services = $this->recipient->service_types; // Already a comma-separated string
+        } elseif (is_array($this->recipient->service_types)) {
+            $services = implode(', ', $this->recipient->service_types); // Convert array to string
+        } else {
+            $services = 'your services'; // Default fallback
+        }
 
-    return $this->view('emails.lead_mail')
-                ->from($this->user->email, $this->user->name)
-                ->subject($subject)
-                ->with([
-                    'body' => $body,
-                    'signature' => $signatureUrl,
-                ]);
+
+        // **Extract city name properly (only exists in Provider Leads)**
+        if ($isProviderLead) {
+            $city = optional($this->recipient->city)->name ?? 'Unknown City';
+        } else {
+            $city = 'your city'; // Clients do not have a city field
 }
+
+        /// Replace placeholders in the email body
+        $body = str_replace(
+            ['{name}', '{email}', '{company}', '{city}', '{service}'],
+            [$leadName, $this->recipient->email, $company, $city, $services],
+            $this->draftMail->body_mail
+        );
+
+        // Replace placeholders in the subject
+        $subject = str_replace(
+            ['{name}', '{email}', '{company}', '{city}', '{service}'],
+            [$leadName, $this->recipient->email, $company, $city, $services],
+            trim($this->draftMail->mail_name)
+        );
+
+        // Get the full URL for the signature image (if available)
+        $signatureUrl = $this->user->signature_image
+            ? asset('storage/' . $this->user->signature_image)
+            : null;
+
+        Log::info("Final Email Subject: " . $subject);
+        Log::info("Signature Image URL: " . $signatureUrl);
+
+        return $this->view('emails.lead_mail')
+                    ->from($this->user->email, $this->user->name)
+                    ->subject($subject)
+                    ->with([
+                        'body' => $body,
+                        'signature' => $signatureUrl,
+                    ]);
+    }
 }

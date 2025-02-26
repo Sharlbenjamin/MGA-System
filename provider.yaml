@@ -1,0 +1,167 @@
+models:
+  ServiceType:
+    id: id
+    name: string:255 unique
+
+  Provider:
+    id: id
+    country_id: id foreign:cities
+    status: enum:Active,Hold,Potential,Black list
+    type: enum:Doctor,Hospital,Clinic,Dental,Agency
+    name: string:255 unique
+    payment_due: integer nullable
+    payment_method: enum:Online link,Bank transfer nullable
+    comment: text nullable
+
+  ProviderLead:
+    id: id
+    city_id: id foreign:cities
+    service_types: belongsToMany:ServiceType
+    type: enum:Doctor,Clinic,Hospital,Dental
+    provider_id: id foreign:providers nullable
+    name: string:255 unique
+    email: string:255 nullable
+    phone: string:20 nullable
+    communication_method: string:50
+    status: enum:Pending information,Step one,Step one sent,Reminder,Reminder sent,Discount,Discount sent,Step two,Step two sent,Presentation,Presentation sent,Contract,Contract sent
+    last_contact_date: date nullable
+    comment: text nullable
+
+  ProviderBranch:
+    id: id
+    provider_id: id foreign:providers
+    city_id: id foreign:cities
+    status: enum:Active,Hold
+    priority: integer range:1,10
+    service_type_id: id foreign:service_types
+    communication_method: string:50
+    day_cost: decimal:8,2
+    night_cost: decimal:8,2
+    weekend_cost: decimal:8,2
+    weekend_night_cost: decimal:8,2
+
+controllers:
+  ServiceType:
+    resource
+
+  Provider:
+    resource
+
+  ProviderLead:
+    resource
+
+  ProviderBranch:
+    resource
+
+filament:
+  resources:
+    ServiceType:
+      model: ServiceType
+      icon: heroicon-o-collection
+      navigation: true
+      table:
+        columns: id, name
+      form:
+        inputs: name
+
+    Provider:
+      model: Provider
+      icon: heroicon-o-office-building
+      navigation: true
+      table:
+        columns: id, country, status, type, name, payment_due, payment_method, comment
+      form:
+        inputs: country, status, type, name, payment_due, payment_method, comment
+
+    ProviderLead:
+      model: ProviderLead
+      icon: heroicon-o-user-group
+      navigation: true
+      table:
+        columns: id, city, service_types, type, provider_id, name, email, phone, communication_method, status, last_contact_date, comment
+      form:
+        inputs: 
+          provider_id:
+            type: select
+            options: Provider::pluck('name', 'id')
+            reactive: true
+          city:
+            type: select
+            options: City::where('country_id', Provider::where('id', $get('provider_id'))->value('country'))->pluck('name', 'id')
+            reactive: true
+          service_types:
+            type: multiSelect
+            options: ServiceType::pluck('name', 'id')
+            relation: serviceTypes
+          type:
+            type: select
+            options: ['Doctor', 'Clinic', 'Hospital', 'Dental']
+          name:
+            type: text
+          email:
+            type: text
+            validation: email
+          phone:
+            type: text
+            max: 20
+          communication_method:
+            type: select
+            options: ['Email', 'WhatsApp', 'Phone']
+          status:
+            type: select
+            options: 
+              Pending information: 'Pending Information'
+              Step one: 'Step One'
+              Step one sent: 'Step One Sent'
+              Reminder: 'Reminder'
+              Reminder sent: 'Reminder Sent'
+              Discount: 'Discount'
+              Discount sent: 'Discount Sent'
+              Step two: 'Step Two'
+              Step two sent: 'Step Two Sent'
+              Presentation: 'Presentation'
+              Presentation sent: 'Presentation Sent'
+              Contract: 'Contract'
+              Contract sent: 'Contract Sent'
+          last_contact_date:
+            type: datepicker
+          comment:
+            type: textarea
+            nullable: true
+
+    ProviderBranch:
+      model: ProviderBranch
+      icon: heroicon-o-location-marker
+      navigation: true
+      table:
+        columns: id, provider_id, city, status, priority, service_type_id, communication_method, day_cost, night_cost, weekend_cost, weekend_night_cost
+      form:
+        inputs: 
+          provider_id:
+            type: select
+            options: Provider::pluck('name', 'id')
+            reactive: true
+          city:
+            type: select
+            options: City::where('country_id', Provider::where('id', $get('provider_id'))->value('country'))->pluck('name', 'id')
+            reactive: true
+          status:
+            type: select
+            options: ['Active', 'Hold']
+          priority:
+            type: select
+            options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+          service_type_id:
+            type: select
+            options: ServiceType::pluck('name', 'id')
+          communication_method:
+            type: select
+            options: ['Email', 'WhatsApp', 'Phone']
+          day_cost:
+            type: number
+          night_cost:
+            type: number
+          weekend_cost:
+            type: number
+          weekend_night_cost:
+            type: number

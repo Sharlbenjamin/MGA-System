@@ -16,8 +16,11 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class CityResource extends Resource
 {
     protected static ?string $model = City::class;
-    protected static ?string $navigationGroup = 'Location Management';
-    protected static ?string $navigationIcon = 'heroicon-o-map';
+
+    protected static ?string $navigationGroup = null; // Removes it from any group
+    protected static ?int $navigationSort = null; // Ensures it's not sorted
+    protected static ?string $navigationIcon = null; // Hides from sidebar
+    protected static bool $shouldRegisterNavigation = false; // Hides it completely
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -64,9 +67,14 @@ class CityResource extends Resource
         ];
     }
 
-
-    public static function getNavigationGroup(): ?string
-    {
-        return 'System Management';
-    }
+    public static function navigationItems(): array
+{
+    return [
+        \Filament\Navigation\NavigationItem::make()
+            ->label('Cities')
+            ->url(self::getUrl('index'))
+            ->icon('heroicon-o-location-marker')
+            ->sort(4),
+    ];
+}
 }
