@@ -42,3 +42,4 @@ Route::middleware([\App\Http\Middleware\PasswordProtect::class, FilamentAuthenti
         });
     });
 });
+

@@ -2,16 +2,17 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Resources\CityResource;
-use App\Filament\Resources\ClientResource;
-use App\Filament\Resources\CountryResource;
-use App\Filament\Resources\DraftMailResource;
-use App\Filament\Resources\LeadResource;
-use App\Filament\Resources\ProviderBranchResource;
-use App\Filament\Resources\ProviderLeadResource;
-use App\Filament\Resources\ProviderResource;
-use App\Filament\Resources\UserResource;
-use App\Filament\Resources\TeamResource;
+use App\Filament\Admin\Resources\CityResource;
+use App\Filament\Admin\Resources\ClientResource;
+use App\Filament\Admin\Resources\CountryResource;
+use App\Filament\Admin\Resources\DraftMailResource;
+use App\Filament\Admin\Resources\LeadResource;
+use App\Filament\Admin\Resources\ProviderBranchResource;
+use App\Filament\Admin\Resources\ProviderLeadResource;
+use App\Filament\Admin\Resources\ProviderResource;
+use App\Filament\Admin\Resources\ContactResource;
+use App\Filament\Admin\Resources\UserResource;
+use App\Filament\Admin\Resources\TeamResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -40,6 +41,19 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->colors([
                 'primary' => Color::Amber,
+            ])
+            ->resources([
+                ClientResource::class,
+                CityResource::class,
+                CountryResource::class,
+                ContactResource::class,
+                DraftMailResource::class,
+                LeadResource::class,
+                ProviderBranchResource::class,
+                ProviderLeadResource::class,
+                ProviderResource::class,
+                TeamResource::class,
+                UserResource::class,
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
@@ -123,12 +137,18 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-user')
                     ->group('User Settings')
                     ->sort(1),
+                
+                NavigationItem::make('Contacts')
+                    ->url(fn () => ContactResource::getUrl())
+                    ->icon('heroicon-o-user')
+                    ->group('User Settings')
+                    ->sort(2),
     
                 NavigationItem::make('Teams')
                     ->url(fn () => TeamResource::getUrl())
                     ->icon('heroicon-o-users')
                     ->group('User Settings')
-                    ->sort(2),
+                    ->sort(3),
             ]);
     }
 }

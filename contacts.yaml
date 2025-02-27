@@ -1,0 +1,81 @@
+models:
+  Contact:
+    id: uuid
+    contactable_id: uuid
+    contactable_type: string
+    type: enum:client,provider,branch,patient
+    name: string
+    title: string nullable
+    email: string unique nullable
+    second_email: string unique nullable
+    phone_number: string nullable
+    second_phone: string nullable
+    country_id: foreign:countries
+    city_id: foreign:cities
+    address: string nullable
+    preferred_contact: enum:phone,second phone,email,second email
+    status: enum:active,inactive
+    timestamps: true
+
+controllers:
+  Contact:
+    resource
+
+filament:
+  resources:
+    Contact:
+      model: Contact
+      icon: heroicon-o-user
+      navigation: true
+      table:
+        columns: id, type, name, email, phone_number, status
+      form:
+        inputs:
+          type:
+            type: select
+            options: ['client', 'provider', 'branch', 'patient']
+            reactive: true
+          contactable_id:
+            type: select
+            options:
+              # This is a placeholder. In practice, you might use a dynamic approach
+              # (or separate the selection by type) to load the related entity.
+              Provider: Provider::pluck('name', 'id')
+              Client: Client::pluck('name', 'id')
+              Branch: Branch::pluck('name', 'id')
+              Patient: Patient::pluck('name', 'id')
+            reactive: true
+          name:
+            type: text
+          title:
+            type: text
+            nullable: true
+          email:
+            type: text
+            validation: email
+            nullable: true
+          second_email:
+            type: text
+            validation: email
+            nullable: true
+          phone_number:
+            type: text
+            nullable: true
+          second_phone:
+            type: text
+            nullable: true
+          country_id:
+            type: select
+            options: Country::pluck('name', 'id')
+          city_id:
+            type: select
+            options: City::pluck('name', 'id')
+          address:
+            type: textarea
+            nullable: true
+          preferred_contact:
+            type: select
+            options: ['phone', 'second phone', 'email', 'second email']
+          status:
+            type: select
+            options: ['active', 'inactive']
