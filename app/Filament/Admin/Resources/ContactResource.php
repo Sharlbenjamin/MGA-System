@@ -74,7 +74,7 @@ class ContactResource extends Resource
 
         Select::make('patient_id')
             ->label('Select Patient')
-        //    ->options(Patient::pluck('name', 'id'))
+            ->options(Patient::pluck('name', 'id'))
             ->visible(fn ($get) => $get('type') === 'Patient')
             ->nullable(),
 

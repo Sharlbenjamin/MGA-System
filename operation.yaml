@@ -1,0 +1,55 @@
+models:
+  Patient:
+    name: string            # not unique by default
+    client_id: foreign:clients
+    dob: date
+    gender: string
+    country: string
+
+  Request:
+    status: enum:New,Handling,"In Progress",Assisted,Hold,Void
+    mga_reference: string
+    patient_id: foreign:patients
+    client_reference: string,nullable
+    country_id: foreign:countries
+    city_id: foreign:cities
+    service_type_id: foreign:service_types
+    provider_id: foreign:providers,nullable
+    provider_branch_id: foreign:provider_branches
+    service_date: date
+    service_time: time
+    address: string
+    symptoms: text
+    diagnosis: text
+
+  MedicalReport:
+    date: date
+    status: enum:Waiting,Received,"Not Sent",Sent
+    request_id: foreign:requests
+    complain: longText
+    diagnosis: longText
+    history: longText
+    temperature: string
+    blood_pressure: string
+    pulse: string
+    examination: longText
+    advice: longText
+
+  Gop:
+    request_id: foreign:requests
+    type: enum:In,Out
+    amount: float
+    date: date
+
+  Prescription:
+    request_id: foreign:requests
+    name: string,nullable
+    serial: string,nullable
+    date:  date
+
+  Drug:
+    prescription_id: foreign:prescriptions
+    name: string
+    pharmaceutical: string
+    dose: string
+    duration: string

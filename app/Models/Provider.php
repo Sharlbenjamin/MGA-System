@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Provider extends Model
 {
@@ -45,5 +46,17 @@ class Provider extends Model
     public function leads()
     {
         return $this->hasMany(ProviderLead::class, 'provider_id');
+    }
+
+    public function requests(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Request::class,  // Final model
+            ProviderBranch::class,  // Intermediate model
+            'provider_id',     // Foreign key on ProviderBranch table
+            'provider_branch_id',    // Foreign key on requests table
+            'id',            // Local key on provider table
+            'id'             // Local key on request table
+        );
     }
 }

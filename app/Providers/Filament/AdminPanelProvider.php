@@ -11,6 +11,12 @@ use App\Filament\Admin\Resources\ProviderBranchResource;
 use App\Filament\Admin\Resources\ProviderLeadResource;
 use App\Filament\Admin\Resources\ProviderResource;
 use App\Filament\Admin\Resources\ContactResource;
+use App\Filament\Admin\Resources\DrugResource;
+use App\Filament\Admin\Resources\GopResource;
+use App\Filament\Admin\Resources\MedicalReportResource;
+use App\Filament\Admin\Resources\PatientResource;
+use App\Filament\Admin\Resources\PrescriptionResource;
+use App\Filament\Admin\Resources\FileResource;
 use App\Filament\Admin\Resources\UserResource;
 use App\Filament\Admin\Resources\TeamResource;
 use Filament\Http\Middleware\Authenticate;
@@ -54,6 +60,12 @@ class AdminPanelProvider extends PanelProvider
                 ProviderResource::class,
                 TeamResource::class,
                 UserResource::class,
+                PatientResource::class,
+                FileResource::class,
+                MedicalReportResource::class,
+                GopResource::class,
+                PrescriptionResource::class,
+                DrugResource::class,
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
@@ -149,6 +161,23 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-users')
                     ->group('User Settings')
                     ->sort(3),
+                // Operation
+                NavigationItem::make('Patients')
+                    ->url(fn () => PatientResource::getUrl())
+                    ->icon('heroicon-o-user-plus')
+                    ->group('Operation')
+                    ->sort(1),
+
+                NavigationItem::make('Files')
+                    ->url(fn () => FileResource::getUrl())
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->group('Operation')
+                    ->sort(2),
             ]);
     }
+
+    protected function getMaxContentWidth(): ?string
+{
+    return '7xl'; // or any other Tailwind CSS max-width value you prefer
+}
 }

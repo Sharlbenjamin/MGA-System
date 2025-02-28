@@ -75,9 +75,9 @@ class Contact extends Model
             case 'Branch':
                 $entity = \App\Models\ProviderBranch::find($this->branch_id);
                 return $entity ? $entity->branch_name : '';
-            // case 'Patient':
-            //     $entity = \App\Models\Patient::find($this->patient_id);
-            //     return $entity ? $entity->name : '';
+            case 'Patient':
+                 $entity = \App\Models\Patient::find($this->patient_id);
+                 return $entity ? $entity->name : '';
             default:
                 return '';
         }

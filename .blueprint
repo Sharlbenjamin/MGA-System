@@ -1,17 +1,22 @@
 created:
-    - app/Http/Controllers/ContactController.php
-    - database/factories/ContactFactory.php
-    - database/migrations/2025_02_27_101044_create_contacts_table.php
-    - app/Models/Contact.php
-    - tests/Feature/Http/Controllers/ContactControllerTest.php
-    - app/Http/Requests/ContactStoreRequest.php
-    - app/Http/Requests/ContactUpdateRequest.php
-    - resources/views/contact/index.blade.php
-    - resources/views/contact/create.blade.php
-    - resources/views/contact/show.blade.php
-    - resources/views/contact/edit.blade.php
-updated:
-    - routes/web.php
+    - database/factories/PatientFactory.php
+    - database/factories/RequestFactory.php
+    - database/factories/MedicalReportFactory.php
+    - database/factories/GopFactory.php
+    - database/factories/PrescriptionFactory.php
+    - database/factories/DrugFactory.php
+    - database/migrations/2025_02_27_165946_create_patients_table.php
+    - database/migrations/2025_02_27_165947_create_requests_table.php
+    - database/migrations/2025_02_27_165948_create_medical_reports_table.php
+    - database/migrations/2025_02_27_165949_create_gops_table.php
+    - database/migrations/2025_02_27_165950_create_prescriptions_table.php
+    - database/migrations/2025_02_27_165951_create_drugs_table.php
+    - app/Models/Patient.php
+    - app/Models/Request.php
+    - app/Models/MedicalReport.php
+    - app/Models/Gop.php
+    - app/Models/Prescription.php
+    - app/Models/Drug.php
 models:
     Client: { company_name: string, type: 'enum:Assistance,Insurance,Agency', status: 'enum:Searching,Interested,Sent,Rejected,Active,On Hold', initials: 'string:10', number_requests: integer, relationships: { hasMany: Lead } }
     Lead: { client_id: 'id foreign:clients', email: 'string unique', first_name: string, status: 'enum:Introduction,Introduction Sent,Reminder,Reminder Sent,Presentation,Presentation Sent,Price List,Price List Sent,Contract,Contract Sent,Interested,Error,Partner,Rejected', last_contact_date: 'date nullable', relationships: { belongsTo: Client } }
@@ -23,3 +28,9 @@ models:
     Provider: { id: id, country: 'string:255', status: 'enum:Active,Hold,Potential,Black list', type: 'enum:Doctor,Hospital,Clinic,Dental,Agency', name: 'string:255 unique', payment_due: 'integer nullable', payment_method: 'enum:Online link,Bank transfer nullable', comment: 'text nullable' }
     ProviderBranch: { id: id, provider_id: 'id foreign:providers', city: 'string:255', status: 'enum:Active,Hold', priority: 'integer range:1,10', service_type_id: 'id foreign:service_types', communication_method: 'string:50', day_cost: 'decimal:8,2', night_cost: 'decimal:8,2', weekend_cost: 'decimal:8,2', weekend_night_cost: 'decimal:8,2' }
     Contact: { id: uuid, contactable_id: uuid, contactable_type: string, type: 'enum:client,provider,branch,patient', name: string, title: 'string nullable', email: 'string unique nullable', second_email: 'string unique nullable', phone_number: 'string nullable', second_phone: 'string nullable', country_id: 'foreign:countries', city_id: 'foreign:cities', address: 'string nullable', preferred_contact: 'enum:phone,second phone,email,second email', status: 'enum:active,inactive', timestamps: timestamps }
+    Patient: { name: string, client_id: 'foreign:clients', dob: date, gender: string, country: string }
+    Request: { status: 'enum:New,Handling,"In Progress",Assisted,Hold,Void', mga_reference: string, patient_id: 'foreign:patients', client_reference: 'string,nullable', country_id: 'foreign:countries', city_id: 'foreign:cities', service_type_id: 'foreign:service_types', provider_id: 'foreign:providers,nullable', provider_branch_id: 'foreign:provider_branches', service_date: date, service_time: time, address: string, symptoms: text, diagnosis: text }
+    MedicalReport: { date: date, status: 'enum:Waiting,Received,"Not Sent",Sent', request_id: 'foreign:requests', complain: longText, diagnosis: longText, history: longText, temperature: string, blood_pressure: string, pulse: string, examination: longText, advice: longText }
+    Gop: { request_id: 'foreign:requests', type: 'enum:In,Out', amount: float, date: date }
+    Prescription: { request_id: 'foreign:requests', name: 'string,nullable', serial: 'string,nullable' }
+    Drug: { prescription_id: 'foreign:prescriptions', name: string, pharmaceutical: string, dose: string, duration: string }

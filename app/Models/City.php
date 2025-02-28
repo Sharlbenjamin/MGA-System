@@ -34,4 +34,9 @@ class City extends Model
     {
         return $this->belongsTo(Country::class);
     }
+
+    public function city(): BelongsTo
+    {
+        return $this->belongsTo(City::class);
+    }
 }
