@@ -30,8 +30,8 @@ Route::post('/password', function (Request $request) {
         session(['access_granted' => true]);
 
         return Auth::check()
-            ? redirect('/admin')  // Redirect to Filament dashboard if logged in
-            : redirect('/admin/login'); // Corrected route to Filament login page
+        ? redirect('/admin')  // Redirect to Filament dashboard if logged in
+        : redirect('/admin/login'); // Corrected route to Filament login page
     }
 
     return back()->withErrors(['password' => 'Incorrect password']);
