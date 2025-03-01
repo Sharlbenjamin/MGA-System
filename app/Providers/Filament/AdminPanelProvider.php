@@ -17,6 +17,8 @@ use App\Filament\Admin\Resources\MedicalReportResource;
 use App\Filament\Admin\Resources\PatientResource;
 use App\Filament\Admin\Resources\PrescriptionResource;
 use App\Filament\Admin\Resources\FileResource;
+use App\Filament\Admin\Resources\PermissionResource;
+use App\Filament\Admin\Resources\RoleResource;
 use App\Filament\Admin\Resources\UserResource;
 use App\Filament\Admin\Resources\TeamResource;
 use Filament\Http\Middleware\Authenticate;
@@ -67,6 +69,8 @@ class AdminPanelProvider extends PanelProvider
                 GopResource::class,
                 PrescriptionResource::class,
                 DrugResource::class,
+                RoleResource::class,
+                PermissionResource::class
             ])
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
@@ -162,6 +166,18 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-users')
                     ->group('User Settings')
                     ->sort(3),
+
+                    NavigationItem::make('Roles')
+                    ->url(fn () => RoleResource::getUrl('index'))
+                    ->icon('heroicon-o-shield-check')
+                    ->group('User Settings')
+                    ->sort(4),
+            
+                NavigationItem::make('Permissions')
+                    ->url(fn () => PermissionResource::getUrl('index'))
+                    ->icon('heroicon-o-key')
+                    ->group('User Settings')
+                    ->sort(5),
                 // Operation
                 NavigationItem::make('Patients')
                     ->url(fn () => PatientResource::getUrl())
