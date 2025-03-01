@@ -37,7 +37,3 @@ Route::post('/password', function (Request $request) {
     return back()->withErrors(['password' => 'Incorrect password']);
 })->name('password.submit');
 
-// ✅ Protect Filament Admin Panel with Password Middleware
-Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, DispatchServingFilamentEvent::class])->group(function () {
-    // Filament registers its own routes automatically, so no need to call anything here.
-});

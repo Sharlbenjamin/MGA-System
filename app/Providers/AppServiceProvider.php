@@ -15,7 +15,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->register(AdminPanelProvider::class);
+        $this->app->register(JetstreamServiceProvider::class);
     }
 
     /**
