@@ -3,14 +3,17 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate as FilamentAuthenticate;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Facades\Filament;
+use App\Http\Middleware\PasswordProtect;
 
 // ✅ Redirect root (`127.0.0.1` or `/`) based on session and authentication status
 Route::get('/', function () {
     if (session('access_granted')) {
-        return Auth::check() ? redirect('/admin') : redirect('/admin/login');
+        return Auth::check() 
+            ? redirect(route('filament.admin.home'))  // Redirect to Filament dashboard
+            : redirect(route('filament.admin.auth.login')); // Redirect to Filament login
     }
 
     return redirect()->route('password.form');
@@ -27,19 +30,14 @@ Route::post('/password', function (Request $request) {
         session(['access_granted' => true]);
 
         return Auth::check()
-            ? redirect('/admin') // If logged in, go to Filament dashboard
-            : redirect('/admin/login'); // If not logged in, go to Filament login
+            ? redirect(route('filament.admin.home'))  // Redirect to Filament dashboard if logged in
+            : redirect(route('filament.admin.auth.login')); // Redirect to Filament login
     }
 
     return back()->withErrors(['password' => 'Incorrect password']);
 })->name('password.submit');
 
 // ✅ Protect Filament Admin Panel with Password Middleware
-Route::middleware([\App\Http\Middleware\PasswordProtect::class, FilamentAuthenticate::class, DispatchServingFilamentEvent::class])->group(function () {
-    Route::prefix('admin')->group(function () {
-        Filament::serving(function () {
-            // Filament automatically registers its routes
-        });
-    });
+Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, DispatchServingFilamentEvent::class])->group(function () {
+    // Filament registers its own routes automatically, so no need to call anything here.
 });
-

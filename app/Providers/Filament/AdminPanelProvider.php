@@ -35,7 +35,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Navigation\NavigationItem;
-
+use Filament\Pages\Auth\Login; 
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -45,6 +45,7 @@ class AdminPanelProvider extends PanelProvider
         ->topNavigation()
             ->id('admin')
             ->path('admin')
+            ->login(Login::class) 
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -173,7 +174,7 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-clipboard-document-list')
                     ->group('Operation')
                     ->sort(2),
-            ]);
+            ]) ->maxContentWidth('full');
     }
 
     protected function getMaxContentWidth(): ?string

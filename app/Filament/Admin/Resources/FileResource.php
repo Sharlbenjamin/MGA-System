@@ -6,6 +6,8 @@ use App\Filament\Admin\Resources\FileResource\Pages;
 use App\Filament\Admin\Resources\FileResource\RelationManagers\GopRelationManager;
 use App\Filament\Admin\Resources\FileResource\RelationManagers\MedicalReportRelationManager;
 use App\Filament\Admin\Resources\FileResource\RelationManagers\PrescriptionRelationManager;
+use App\Filament\Admin\Resources\FileResource\RelationManagers\PatientRelationManager;
+
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Patient;
@@ -118,6 +120,7 @@ class FileResource extends Resource
             GopRelationManager::class, // Registers the Medical Reports table
             MedicalReportRelationManager::class, // Registers the Medical Reports table
             PrescriptionRelationManager::class, // Registers the Medical Reports table
+            PatientRelationManager::class,
         ];
 }
 
