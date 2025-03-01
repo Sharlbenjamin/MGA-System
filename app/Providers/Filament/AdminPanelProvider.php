@@ -176,8 +176,8 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(2),
             ]) ->maxContentWidth('full')
             ->brandName('MGA System')
-            ->brandLogo(asset('storage/logo.png'))
-            ->favicon(asset('storage/logo.png'));
+            ->brandLogo(asset('logo.png'))
+            ->favicon(asset('logo.png'));
     }
 
     protected function getMaxContentWidth(): ?string
