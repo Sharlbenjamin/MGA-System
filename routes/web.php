@@ -12,8 +12,8 @@ use App\Http\Middleware\PasswordProtect;
 Route::get('/', function () {
     if (session('access_granted')) {
         return Auth::check() 
-            ? redirect(route('filament.admin.home'))  // Redirect to Filament dashboard
-            : redirect(route('filament.admin.auth.login')); // Redirect to Filament login
+        ? redirect('/admin')  // Redirect to Filament dashboard if logged in
+        : redirect('/admin/login'); // Corrected route to Filament login page
     }
 
     return redirect()->route('password.form');
@@ -30,8 +30,8 @@ Route::post('/password', function (Request $request) {
         session(['access_granted' => true]);
 
         return Auth::check()
-            ? redirect(route('filament.admin.home'))  // Redirect to Filament dashboard if logged in
-            : redirect(route('filament.admin.auth.login')); // Redirect to Filament login
+            ? redirect('/admin')  // Redirect to Filament dashboard if logged in
+            : redirect('/admin/login'); // Corrected route to Filament login page
     }
 
     return back()->withErrors(['password' => 'Incorrect password']);
