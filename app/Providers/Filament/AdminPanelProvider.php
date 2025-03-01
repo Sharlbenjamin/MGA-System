@@ -174,7 +174,10 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-clipboard-document-list')
                     ->group('Operation')
                     ->sort(2),
-            ]) ->maxContentWidth('full');
+            ]) ->maxContentWidth('full')
+            ->brandName('MGA System')
+            ->brandLogo(asset('storage/logo.png'))
+            ->favicon(asset('storage/logo.png'));
     }
 
     protected function getMaxContentWidth(): ?string
