@@ -1,7 +1,7 @@
 <?php
 
 return [
-
+    'auth_guard' => 'web',
     /*
     |--------------------------------------------------------------------------
     | Broadcasting
@@ -32,7 +32,7 @@ return [
     ],
 
     'providers' => [
-        App\Providers\FilamentServiceProvider::class,
+        App\Providers\Filament\AdminPanelProvider::class,
     ],
     /*
     |--------------------------------------------------------------------------

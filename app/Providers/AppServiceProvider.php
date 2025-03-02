@@ -9,13 +9,13 @@ use App\Providers\Filament\AdminPanelProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public const HOME = '/admin'; // Redirect to Filament dashboard after login
+    public const HOME = '/'; // Redirect to Filament dashboard after login
     /**
      * Register any application services.
      */
     public function register(): void
     {
-        $this->app->register(JetstreamServiceProvider::class);
+        $this->app->register(AuthServiceProvider::class);
     }
 
     /**

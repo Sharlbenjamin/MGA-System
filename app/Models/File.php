@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+
 
 class File extends Model
 {
@@ -86,6 +88,18 @@ class File extends Model
     public function prescriptions(): HasMany
     {
         return $this->hasMany(Prescription::class);
+    }
+
+    public function provider(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Provider::class,        // Final model (Provider)
+            ProviderBranch::class,  // Intermediate model (ProviderBranch)
+            'provider_id',          // Foreign key on ProviderBranch (ProviderBranch.provider_id)
+            'id',                   // Foreign key on Provider (Provider.id)
+            'provider_branch_id',    // Local key on DrFiles (DrFiles.provider_branch_id)
+            'id'                    // Local key on ProviderBranch (ProviderBranch.id)
+        );
     }
 
 }

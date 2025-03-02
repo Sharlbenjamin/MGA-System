@@ -3,27 +3,27 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
-use Laravel\Jetstream\HasProfilePhoto;
-use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
+use Filament\Models\Contracts\FilamentUser;
 
-class User extends Authenticatable
+
+
+class User extends Authenticatable implements FilamentUser
+
 {
     use HasApiTokens;
 
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
-    use HasProfilePhoto;
     use HasRoles;
-    use HasTeams;
     use Notifiable;
-    use TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -86,9 +86,23 @@ class User extends Authenticatable
         return $this->hasOne(UserSignature::class);
     }
 
-    public function canAccessFilament(): bool
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        if ($panel->getId() === 'admin') {
+            return !$this->hasRole('Telemedicine Doctor'); // ❌ Block doctors from Admin Panel
+        }
+
+        if ($panel->getId() === 'doctor') {
+            return $this->hasRole('Telemedicine Doctor'); // ✅ Allow only doctors to Doctor Panel
+        }
+
+        return true; // ❌ Block access to any other panels
+    }
+
+    public function getProfilePhotoUrlAttribute(): string
 {
-    return $this->hasRole('admin'); // Only admin users can access Filament
+    return asset('/publiclogo.png'); // ✅ Use your logo.png as the default image
 }
 
 }
