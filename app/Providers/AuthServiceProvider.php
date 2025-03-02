@@ -64,6 +64,8 @@ class AuthServiceProvider extends ServiceProvider
         Gop::class => GopPolicy::class,
         Prescription::class => PrescriptionPolicy::class,
         Drug::class => DrugPolicy::class,
+        \Spatie\Permission\Models\Role::class => \App\Policies\RolePolicy::class,
+        \Spatie\Permission\Models\Permission::class => \App\Policies\PermissionPolicy::class,
     ];
 
     /**
