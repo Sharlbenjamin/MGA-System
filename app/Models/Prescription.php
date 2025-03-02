@@ -17,7 +17,7 @@ class Prescription extends Model
      * @var array
      */
     protected $fillable = [
-        'request_id',
+        'file_id',
         'name',
         'serial',
         'date',
@@ -30,10 +30,10 @@ class Prescription extends Model
      */
     protected $casts = [
         'id' => 'integer',
-        'request_id' => 'integer',
+        'file_id' => 'integer',
     ];
 
-    public function request(): BelongsTo
+    public function file(): BelongsTo
     {
         return $this->belongsTo(File::class);
     }

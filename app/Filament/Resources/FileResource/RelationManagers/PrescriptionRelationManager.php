@@ -12,6 +12,8 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Prescription;
 
 class PrescriptionRelationManager extends RelationManager
 {
@@ -94,6 +96,10 @@ class PrescriptionRelationManager extends RelationManager
                     Action::make('Export')
                     ->label('Export')
                     ->icon('heroicon-o-arrow-right-start-on-rectangle')->color('success')
+                    ->action(fn (Prescription $record) => response()->streamDownload(
+                        fn () => print(Pdf::loadView('pdf.prescription', ['prescription' => $record])->output()),
+                        'prescription-' . $record->id . '.pdf'
+                    )),
                 ])
 
             ->bulkActions([
