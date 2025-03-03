@@ -7,6 +7,8 @@ use App\Filament\Resources\FileResource\RelationManagers\GopRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\MedicalReportRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\PrescriptionRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\PatientRelationManager;
+use App\Filament\Resources\FileResource\RelationManagers\CommentsRelationManager;
+use App\Filament\Resources\FileResource\RelationManagers\AppointmentsRelationManager;
 
 use App\Models\Country;
 use App\Models\File;
@@ -120,16 +122,18 @@ class FileResource extends Resource
             MedicalReportRelationManager::class, // Registers the Medical Reports table
             PrescriptionRelationManager::class, // Registers the Medical Reports table
             PatientRelationManager::class,
+            CommentsRelationManager::class,
+            AppointmentsRelationManager::class,
         ];
 }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListFiles::route('/'),
-            'create' => Pages\CreateFile::route('/create'),
-            'edit' => Pages\EditFile::route('/{record}/edit'),
-            'view' => Pages\ViewFile::route('/{record}/show'),
+            'index' => FileResource\Pages\ListFiles::route('/'),
+            'create' => FileResource\Pages\CreateFile::route('/create'),
+            'edit' => FileResource\Pages\EditFile::route('/{record}/edit'),
+            'view' => FileResource\Pages\ViewFile::route('/{record}/show'),
         ];
     }
 

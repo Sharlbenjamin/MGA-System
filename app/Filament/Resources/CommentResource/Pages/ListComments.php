@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Doctor\Resources\FileResource\Pages;
+namespace App\Filament\Resources\CommentResource\Pages;
 
-use App\Filament\Doctor\Resources\FileResource;
+use App\Filament\Resources\CommentResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-class ListFile extends ListRecords
+class ListComments extends ListRecords
 {
-    protected static string $resource = FileResource::class;
+    protected static string $resource = CommentResource::class;
 
     protected function getHeaderActions(): array
     {

@@ -1,0 +1,126 @@
+<?php
+
+namespace App\Filament\Resources\FileResource\RelationManagers;
+
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Columns\TextColumn;
+
+class AppointmentsRelationManager extends RelationManager
+{
+    protected static string $relationship = 'Appointments';
+
+    public function form(Form $form): Form
+    {
+        return $form->schema([
+            Hidden::make('file_id')
+                ->default(fn() => $this->ownerRecord->getKey()),
+
+            Select::make('provider_branch_id')
+                ->relationship('providerBranch', 'name')
+                ->searchable()
+                ->required(),
+
+            DatePicker::make('service_date')->required(),
+            TimePicker::make('service_time')->nullable(),
+
+            Select::make('status')
+                ->options([
+                    'Requested' => 'Requested',
+                    'Pending' => 'Pending',
+                    'Confirmed' => 'Confirmed',
+                    'Cancelled' => 'Cancelled',
+                ])
+                ->default('Requested')
+                ->required(),
+        ]);
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('providerBranch.branch_name')->label('Provider Branch'),
+                TextColumn::make('service_date')->label('Service Date')->date(),
+                TextColumn::make('service_time')->label('Service Time'),
+                TextColumn::make('status')->label('Status')->badge(),
+            ])
+            ->headerActions([
+                Action::make('create')
+                    ->label('New Appointment')
+                    ->icon('heroicon-o-plus')
+                    ->modalHeading('Schedule an Appointment')
+                    ->modalButton('Create Appointment')
+                    ->form([
+                        Hidden::make('file_id')
+                            ->default(fn() => $this->ownerRecord->getKey()),
+
+                        Select::make('provider_branch_id')
+                            ->relationship('providerBranch', 'branch_name')
+                            ->searchable()
+                            ->required(),
+
+                        DatePicker::make('service_date')->required(),
+                        TimePicker::make('service_time')->nullable(),
+
+                        Select::make('status')
+                            ->options([
+                                'Requested' => 'Requested',
+                                'Pending' => 'Pending',
+                                'Confirmed' => 'Confirmed',
+                                'Cancelled' => 'Cancelled',
+                            ])
+                            ->default('Requested')
+                            ->required(),
+                    ])
+                    ->action(fn(array $data) => $this->ownerRecord->appointments()->create($data))
+                    ->successNotificationTitle('Appointment Created Successfully!'),
+            ])
+            ->actions([
+                Action::make('edit_appointment')
+                ->icon('heroicon-o-pencil')
+                ->modalHeading('Edit')
+                ->modalButton('Save Changes')
+                ->form(fn ($record) => [
+                    Select::make('provider_branch_id')
+                        ->relationship('providerBranch', 'branch_name')
+                        ->searchable()
+                        ->required()
+                        ->default($record->provider_branch_id), // Fetches previous value
+
+                    DatePicker::make('service_date')
+                        ->required()
+                        ->default($record->service_date), // Fetches previous value
+
+                    TimePicker::make('service_time')
+                        ->nullable()
+                        ->default($record->service_time), // Fetches previous value
+
+                    Select::make('status')
+                        ->options([
+                            'Requested' => 'Requested',
+                            'Pending' => 'Pending',
+                            'Confirmed' => 'Confirmed',
+                            'Cancelled' => 'Cancelled',
+                        ])
+                        ->default($record->status) // Fetches previous value
+                        ->required(),
+                ])
+                    ->successNotificationTitle('Appointment Updated Successfully!'),
+
+                DeleteAction::make()
+                    ->successNotificationTitle('Appointment Deleted Successfully!'),
+            ]);
+    }
+}

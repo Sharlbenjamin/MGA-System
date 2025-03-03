@@ -78,7 +78,7 @@ class FileResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListFile::route('/'),
+            'index' => Pages\ListFiles::route('/'),
             'create' => Pages\CreateFile::route('/create'),
             'edit' => Pages\EditFile::route('/{record}/edit'),
             'view' => Pages\ViewFile::route('/{record}/show'),

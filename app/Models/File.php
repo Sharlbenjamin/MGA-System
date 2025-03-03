@@ -101,5 +101,13 @@ class File extends Model
             'id'                    // Local key on ProviderBranch (ProviderBranch.id)
         );
     }
+    public function comments()
+    {
+        return $this->hasMany(Comment::class);
+    }
 
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
 }

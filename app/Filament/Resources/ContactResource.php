@@ -128,6 +128,8 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
                 'Second Phone' => 'Second Phone',
                 'Email'        => 'Email',
                 'Second Email' => 'Second Email',
+                'first_whatsapp' => 'First WhatsApp',
+                'second_whatsapp' => 'Second WhatsApp',
             ])
             ->nullable(),
         

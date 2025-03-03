@@ -60,6 +60,8 @@ class DoctorPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])->brandName('MGA System')
+            ->brandLogo(asset('logo.png'))
+            ->favicon(asset('logo.png'));
     }
 }
