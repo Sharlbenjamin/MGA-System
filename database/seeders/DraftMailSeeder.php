@@ -10,8 +10,8 @@ class DraftMailSeeder extends Seeder
     {
         $draftMails = [
             [
-                'mail_name' => "Introducing MedGuard: {Company}’s Trusted Partner in Travel Assistance & Telemedicine",
-                'body_mail' => "Dear {first_name},
+                'mail_name' => "Introducing MedGuard: {company}’s Trusted Partner in Travel Assistance & Telemedicine",
+                'body_mail' => "Dear {name},
                                 
                                 I hope this email finds you well. I’m thrilled to introduce MedGuard, a company committed to providing seamless travel assistance and reliable telemedicine services, all designed with your convenience in mind.
                                 
@@ -31,7 +31,7 @@ class DraftMailSeeder extends Seeder
             ],
             [
                 'mail_name' => "Med Guard's Price List and Coverage Area",
-                'body_mail' => "Dear {first_name},
+                'body_mail' => "Dear {name},
                                 
                                 Price list for <strong> House Call </strong> services: (House Call Services are available in the rest of the cities in these countries depending on the city and time of the request)
                                 
@@ -66,7 +66,7 @@ class DraftMailSeeder extends Seeder
             ],
             [
                 'mail_name' => "Follow up on Med Guard's Services",
-                'body_mail' => "Dear {first_name},
+                'body_mail' => "Dear {name},
                                 
                                 I hope you’re doing well. 
                                 
@@ -90,7 +90,7 @@ class DraftMailSeeder extends Seeder
             ],
             [
                 'mail_name' => "Medguard's Presentation",
-                'body_mail' => "Dear {first_name},
+                'body_mail' => "Dear {name},
                                 
                                 I hope this email finds you well. 
                                 
@@ -107,7 +107,7 @@ class DraftMailSeeder extends Seeder
             ],
             [
                 'mail_name' => "MedGuard Assistance Contract for Your Review & Signature",
-                'body_mail' => "Dear {first_name},
+                'body_mail' => "Dear {name},
                                 
                                 I hope you’re doing well. 
                                 

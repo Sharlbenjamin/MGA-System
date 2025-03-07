@@ -17,13 +17,16 @@ class DatabaseSeeder extends Seeder
             DraftMailSeeder::class, 
             CountriesTableSeeder::class,
             PrimaryCitiesSeeder::class,
-            LeadSeeder::class,
             ClientSeeder::class,
+            LeadSeeder::class,
             ProvidersSeeder::class,
             ServiceTypesSeeder::class,
             ProviderLeadsSeeder::class,
             UsersSeeder::class,
-            ProviderDraftMailSeeder::class
+            PermissionSeeder::class,
+            RoleSeeder::class,
+            ProviderDraftMailSeeder::class,
+            ProviderBranchSeeder::class,
         ]);
     }
 }

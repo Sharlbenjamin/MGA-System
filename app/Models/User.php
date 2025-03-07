@@ -4,26 +4,22 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-use Filament\Panel;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Filament\Models\Contracts\FilamentUser;
 use Illuminate\Notifications\Notifiable;
+use Filament\Notifications\Notification;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
-use Filament\Models\Contracts\FilamentUser;
-
+use Filament\Panel;
 
 
 class User extends Authenticatable implements FilamentUser
 
 {
-    use HasApiTokens;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory;
-    use HasRoles;
-    use Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -74,12 +70,6 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
-    public function team(): BelongsToMany
-    {
-        return $this->belongsToMany(\App\Models\Team::class)
-            ->withPivot('role')
-            ->withTimestamps();
-    }
 
     public function signature()
     {
@@ -101,8 +91,8 @@ class User extends Authenticatable implements FilamentUser
     }
 
     public function getProfilePhotoUrlAttribute(): string
-{
-    return asset('/publiclogo.png'); // ✅ Use your logo.png as the default image
-}
+    {
+        return asset('/publiclogo.png'); // ✅ Use your logo.png as the default image
+    }
 
 }

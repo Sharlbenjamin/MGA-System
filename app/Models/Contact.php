@@ -82,4 +82,17 @@ class Contact extends Model
                 return '';
         }
     }
+
+    public function preferredCommunication()
+    {
+        return match ($this->preferred_contact) {
+            'Phone' => ['type' => 'phone', 'value' => $this->phone_number],
+            'Second Phone' => ['type' => 'phone', 'value' => $this->second_phone],
+            'Email' => ['type' => 'email', 'value' => $this->email],
+            'Second Email' => ['type' => 'email', 'value' => $this->second_email],
+            'WhatsApp' => ['type' => 'whatsapp', 'value' => $this->first_whatsapp],
+            'Second WhatsApp' => ['type' => 'whatsapp', 'value' => $this->second_whatsapp],
+            default => null,
+        };
+    }
 }

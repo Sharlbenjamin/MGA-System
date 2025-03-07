@@ -5,6 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Mail;
+use Filament\Notifications\Notification;
+use App\Mail\AppointmentNotificationMail;
+use App\Mail\NotifyBranchMailable;
+use App\Mail\NotifyUsMailable;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Config;
 
 class ProviderBranch extends Model
 {
@@ -57,5 +65,44 @@ class ProviderBranch extends Model
     public function serviceType()
     {
         return $this->belongsTo(ServiceType::class, 'service_type_id');
+    }
+
+    public function firstContact()
+    {
+        return $this->hasMany(Contact::class, 'branch_id', 'id')->orderBy('created_at', 'asc')->first();
+    }
+
+    public function notifyBranch($type, $appointment)
+    {
+        $contact = $this->firstContact();
+        if (!$contact) {
+            return;
+        }
+        match ($contact->preferred_contact) {
+            'Phone', 'Second Phone' => $this->notifyByPhone($type, $appointment),
+            'first_whatsapp', 'second_whatsapp' => $this->notifyByWhatsapp($contact),
+            'Email', 'Second Email' => $this->notifyByEmail($type, $appointment),
+        };
+    }
+
+    private function notifyByPhone($type, $appointment)
+    {
+        $toMail = "mga.operation@medguarda.com";
+        Mail::to($toMail)->send(new NotifyUsMailable($type, $appointment));
+    }
+
+    private function notifyByEmail($type, $appointment)
+    {
+        $toMail = match ($this->firstContact()->preferred_contact){
+            'Email', => $this->firstContact()->email,
+            'Second Email' => $this->firstContact()->email,
+        };
+
+        Mail::to($toMail)->send(new NotifyBranchMailable($type, $appointment));
+    }
+
+    public function notifyByWhatsapp($contact)
+    {
+        return Notification::make()->title('Contact Provider')->body("wWhatsapp notifications are not active yet")->send();
     }
 }

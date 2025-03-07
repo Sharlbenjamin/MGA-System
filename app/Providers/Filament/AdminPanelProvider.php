@@ -33,18 +33,25 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Filament\Notifications\Notification;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Notifications\DatabaseNotification;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel->topNavigation()
-            ->default()
-            ->id('admin')
-            ->path('admin')
-            ->login()
+        //dd(Filament::auth()->user());
+        return $panel
+        ->topNavigation()
+        ->default()
+        ->id('admin')
+        ->path('admin')
+        ->login()
             ->colors([
                 'primary' => Color::Amber,
+                'gray' => Color::Blue,
             ])->resources([
                 ClientResource::class,
                 CityResource::class,
@@ -89,4 +96,6 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('logo.png'))
             ->favicon(asset('logo.png'));
     }
+    
+    
 }

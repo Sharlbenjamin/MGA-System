@@ -12,6 +12,11 @@ class LeadSeeder extends Seeder
      */
     public function run(): void
     {
-        Lead::factory()->count(5)->create();
+        Lead::firstOrCreate([
+            'client_id' => 1,
+            'email' => 'sharlhany@gmail.com',
+            'first_name' => 'Sharl',
+            'status' => 'Introduction',
+        ]);;
     }
 }

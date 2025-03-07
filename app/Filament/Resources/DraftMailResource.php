@@ -61,6 +61,15 @@ public static function form(Form $form): Form
         'Contract sent' => 'Contract sent',
     ];
 
+    $fileStatuses = [
+        'New' => 'New',
+        'Handling' => 'Handling',
+        'In Progress' => 'In Progress',
+        'Assisted' => 'Assisted',
+        'Hold' => 'Hold',
+        'Void' => 'Void',
+    ];
+
     return $form
         ->schema([
             TextInput::make('mail_name')
@@ -75,19 +84,20 @@ public static function form(Form $form): Form
                 ->options([
                     'Provider' => 'Provider',
                     'Client' => 'Client',
+                    'File' => 'File',
                 ])
                 ->reactive()
                 ->required(),
 
             Select::make('status')
-                ->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : $leadStatuses)
-                ->required()
+                ->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : ($get('type') === 'File' ? $fileStatuses : $leadStatuses))
+                ->nullable()
                 ->label('Lead Status')
                 ->reactive(),
 
             Select::make('new_status')
-                ->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : $leadStatuses)
-                ->required()
+                ->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : ($get('type') === 'File' ? $fileStatuses : $leadStatuses))
+                ->nullable()
                 ->label('New Status After Sending')
                 ->reactive(),
         ]);
@@ -107,6 +117,7 @@ public static function form(Form $form): Form
                     ->options([
                         'Provider' => 'Provider',
                         'Client' => 'Client',
+                        'File' => 'File',
                     ])
                     ->label('Filter by Type'),
             ])

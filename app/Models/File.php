@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
-
+use Illuminate\Support\Facades\Auth;
+use Filament\Facades\Filament;
 
 class File extends Model
 {
@@ -109,5 +111,70 @@ class File extends Model
     public function appointments()
     {
         return $this->hasMany(Appointment::class);
+    }
+    
+    public function fileBranches()
+    {
+        return \App\Models\ProviderBranch::query()
+            ->when($this->service_type_id, fn ($query) => 
+                $query->where('service_type_id', $this->service_type_id)
+            )
+            ->when($this->city_id, fn ($query) => 
+                $query->where('city_id', $this->city_id)
+            )
+            ->orderBy('priority', 'asc')
+            ->get(); // ✅ Ensure we retrieve a collection
+    }
+
+    public function requestAppointments($file)
+    {
+        foreach ($file->appointments as $appointment) {
+            if ($appointment->status === 'Cancelled') {
+                $appointment->providerBranch->notifyBranch('cancel');
+                continue;
+            }
+
+            if ($appointment->isUpdated()) {
+                $appointment->providerBranch->notifyBranch('update');
+            } else {
+                $appointment->providerBranch->notifyBranch('new');
+            }
+        }
+
+        // Notify the patient and client
+        $file->appointments()->latest()->first()?->patient->notifyPatient('available');
+        $file->client->notifyClient('available');
+
+        // Log in comments
+        $file->comments()->create([
+            'user_id' => Auth::id(),
+            'content' => "Appointment requests processed for file."
+        ]);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(function ($file) {
+            $file->patient->client->notifyClient('file_created', $file);
+        });
+
+        static::updated(function ($file) {
+            switch ($file->status) {
+                case 'Handling':
+                    $file->patient->client->notifyClient('file_handling', $file);
+                    break;
+                case 'Assisted':
+                    $file->patient->client->notifyClient('assisted', $file);
+                    break;
+                case 'Hold':
+                    $file->patient->client->notifyClient('file_hold', $file);
+                    break;
+                case 'Void':
+                    $file->patient->client->notifyClient('file_void', $file);
+                    break;
+            }
+        });
     }
 }

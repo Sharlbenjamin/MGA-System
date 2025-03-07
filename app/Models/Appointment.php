@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class Appointment extends Model
 {
@@ -26,6 +28,21 @@ class Appointment extends Model
 {
     parent::boot();
 
+    // When an appointment is created, log a comment and notify the branch
+    static::created(function ($appointment) {
+        $appointment->file->comments()->create([
+            'user_id' => Auth::id(),
+            'content' => "New appointment scheduled with **{$appointment->providerBranch->branch_name}** on **{$appointment->service_date}** at **{$appointment->service_time}**.",
+        ]);
+        // inform the branch
+        $appointment->providerBranch->notifyBranch('new', $appointment);
+        // update the file status
+        if($appointment->file->status === 'New') {
+            $appointment->file->update(['status' => 'Handling']);
+        }
+    });
+
+    // When an appointment is updated, check if it's confirmed
     static::updated(function ($appointment) {
         if ($appointment->status === 'Confirmed') {
             // Update the file with the confirmed appointment details
@@ -36,9 +53,13 @@ class Appointment extends Model
                 'service_time' => $appointment->service_time,
             ]);
 
+            $appointment->file->patient->notifyPatient('confirm', $appointment);
+            $appointment->file->patient->notifyClient('client_confirm', $appointment);
+            $appointment->providerBranch?->notifyBranch('confirm_appointment', $appointment);
+
             $appointment->file->comments()->create([
-                'user_id' => auth()->id(),
-                'content' => "Appointment confirmed with **{$appointment->providerBranch->name}** on **{$appointment->service_date}** at **{$appointment->service_time}**. File updated to 'In Progress'.",
+                'user_id' => Auth::id(),
+                'content' => "Appointment confirmed with **{$appointment->providerBranch->branch_name}** on **{$appointment->service_date}** at **{$appointment->service_time}**. File updated to 'In Progress'.",
             ]);
 
             // Cancel all other appointments linked to this file
@@ -46,13 +67,20 @@ class Appointment extends Model
                 ->where('id', '!=', $appointment->id) // Exclude the confirmed appointment
                 ->where('status', '!=', 'Cancelled') // Avoid redundant updates
                 ->update(['status' => 'Cancelled']);
+        }
 
-            if ($otherAppointments > 0) {
-                $appointment->file->comments()->create([
-                    'user_id' => auth()->id(),
-                    'content' => "**{$otherAppointments}** other appointment(s) were automatically cancelled after confirming this one.",
-                ]);
-            }
+        // Notify branch if the appointment was cancelled
+        if ($appointment->status === 'Cancelled') {
+            $appointment->providerBranch?->notifyBranch('cancel', $appointment);
+            //update teh comment of this appointment to reflect the cancellation
+            $appointment->file->comments()->where('content', 'like', "%{$appointment->providerBranch->branch_name}%")->update([
+                'content' => "Appointment with **{$appointment->providerBranch->branch_name}** on **{$appointment->service_date}** at **{$appointment->service_time}** was cancelled.",
+            ]);
+        }
+
+        // Notify branch if service date or time was changed
+        if ($appointment->wasChanged(['service_date', 'service_time'])) {
+            $appointment->providerBranch?->notifyBranch('update', $appointment);
         }
     });
 }

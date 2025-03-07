@@ -57,7 +57,7 @@ class AppointmentsRelationManager extends RelationManager
                 TextColumn::make('status')->label('Status')->badge(),
             ])
             ->headerActions([
-                Action::make('create')
+                Action::make('create_appointment')
                     ->label('New Appointment')
                     ->icon('heroicon-o-plus')
                     ->modalHeading('Schedule an Appointment')
@@ -66,10 +66,9 @@ class AppointmentsRelationManager extends RelationManager
                         Hidden::make('file_id')
                             ->default(fn() => $this->ownerRecord->getKey()),
 
-                        Select::make('provider_branch_id')
-                            ->relationship('providerBranch', 'branch_name')
-                            ->searchable()
-                            ->required(),
+                        Select::make('provider_branch_id')->label('Provider Branch')->searchable()->preload()->required()
+                        ->options(fn ($get) => \App\Models\File::find($get('file_id'))?->fileBranches()
+                        ->pluck('branch_name', 'id') ?? []),
 
                         DatePicker::make('service_date')->required(),
                         TimePicker::make('service_time')->nullable(),
@@ -116,7 +115,9 @@ class AppointmentsRelationManager extends RelationManager
                         ])
                         ->default($record->status) // Fetches previous value
                         ->required(),
-                ])
+                ]) ->action(function (array $data, $record) { // Handle update logic
+                    $record->update($data);
+                })
                     ->successNotificationTitle('Appointment Updated Successfully!'),
 
                 DeleteAction::make()

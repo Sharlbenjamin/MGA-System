@@ -1,7 +1,10 @@
 <?php
 
 return [
-    'auth_guard' => 'web',
+    'auth' => [
+    'guard' => 'web',
+    'user' => App\Models\User::class,
+    ],
     /*
     |--------------------------------------------------------------------------
     | Broadcasting

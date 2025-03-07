@@ -108,7 +108,11 @@ class FileResource extends Resource
             ->actions([
                 Tables\Actions\Action::make('View')
                 ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id])) 
-                ->icon('heroicon-o-eye')
+                ->icon('heroicon-o-eye'),
+                Tables\Actions\Action::make('Edit')
+                ->url(fn (File $record) => FileResource::getUrl('edit', ['record' => $record->id])) 
+                ->icon('heroicon-o-pencil'),
+                
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
