@@ -69,37 +69,45 @@ public static function form(Form $form): Form
         'Hold' => 'Hold',
         'Void' => 'Void',
     ];
+     // $notificationStatuses = [
+    //     'Client New File' => 'Client New File',
+    //     'Client Handling File' => 'Client Handling File',
+    //     'Client File In Progress' => 'Client File In Progress',
+    //     'Client File Assisted' => 'Client File Assisted',
+    //     'Client File On Hold' => 'Client File On Hold',
+    //     'Client File Cancelled' => 'Client File Cancelled',
+    //     'Patient New File' => 'Patient New File',
+    //     'Patient Appointment Confirmed' => 'Patient Appointment Confirmed',
+    //     'Patient Appointment Avilable' => 'Patient Appointment Avilable',
+    //     'Patient Appointment Assisted' => 'Patient Appointment Assisted',
+    //     'Branch Requesting New Appointment' => 'Branch Requesting New Appointment',
+    //     'Branch Appointment Update' => 'Branch Appointment Update',
+    //     'Branch Appointment Confirmed' => 'Branch Appointment Confirmed',
+    //     'Branch Appointment Cancelled' => 'Branch Appointment Cancelled',
+    //     'Our Appointment Booking Instructions' => 'Appointment Booking Instructions',
+    //     'Our Confirm Appointment Instructions' => 'Confirm Appointment Instructions',
+    //     'Cancel Appointment Instructions' => 'Cancel Appointment Instructions',
+    // ];
+
 
     return $form
         ->schema([
-            TextInput::make('mail_name')
-                ->required(),
-            Textarea::make('body_mail')
-                ->required()
-                ->columnSpanFull()
+            TextInput::make('mail_name')->required(),
+            Textarea::make('body_mail')->required()->columnSpanFull()
                 ->helperText('Use {name}, {email}, {serice}, {city}, and {company} as placeholders for lead data.'),
 
-            Select::make('type')
-                ->label('Type')
+            Select::make('type')->label('Type')
                 ->options([
                     'Provider' => 'Provider',
                     'Client' => 'Client',
                     'File' => 'File',
-                ])
-                ->reactive()
-                ->required(),
+                ])->reactive()->required(),
 
-            Select::make('status')
-                ->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : ($get('type') === 'File' ? $fileStatuses : $leadStatuses))
-                ->nullable()
-                ->label('Lead Status')
-                ->reactive(),
+            Select::make('status')->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : ($get('type') === 'File' ? $fileStatuses : $leadStatuses))
+                ->nullable()->label('Lead Status')->reactive(),
 
-            Select::make('new_status')
-                ->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : ($get('type') === 'File' ? $fileStatuses : $leadStatuses))
-                ->nullable()
-                ->label('New Status After Sending')
-                ->reactive(),
+            Select::make('new_status')->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : ($get('type') === 'File' ? $fileStatuses : $leadStatuses))
+                ->nullable()->label('New Status After Sending')->reactive(),
         ]);
 }
 

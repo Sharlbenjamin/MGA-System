@@ -8,22 +8,23 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Appointment;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Appointment;
+use App\Models\File;
 
 class NotifyPatientMailable extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $type;
-    public $appointment;
+    public $file;
     /**
      * Create a new message instance.
      */
-    public function __construct($type, Appointment $appointment)
+    public function __construct($type, File $file)
     {
         $this->type = $type;
-        $this->appointment = $appointment;
+        $this->file = $file;
     }
 
     public function build()
@@ -33,50 +34,25 @@ class NotifyPatientMailable extends Mailable
         $password = Auth::user()->smtp_password;
         
         $view = match ($this->type) {
-            'new' => 'emails.new-appointment-branch-mail',
-            'update' => 'emails.update-appointment-branch-mail',
-            'cancel' => 'emails.cancel-appointment-branch-mail',
-            'confirm' => 'emails.confirm-appointment-patient-mail',
-            'available' => 'emails.available-appointments-mail',
+            'patient_available' => 'emails.available-appointments-patient-mail', //done
+            'confirm' => 'emails.confirm-appointment-patient-mail', // done
             'reminder' => 'emails.reminder-appointment-mail',
-            'file_created' => 'emails.file-created-client-mail',
-            'file_cancelled' => 'emails.file-cancelled-mail',
-            'assisted' => 'emails.patient-assisted-mail',
-            default => 'emails.default-notification',
+            'file_created' => 'emails.file-created-client-mail', //done
+            'assisted' => 'emails.patient-assisted-patient-mail', //done
+        };
+
+        $header = match ($this->type) {
+            'confirm' => 'Appointment Confirmation',
+            'reminder' => 'Appointment Reminder',
+            'patient_available' => 'Available Appointments',
+            'file_created' => 'File Created Notification',
+            'assisted' => 'Patient Assisted',
         };
         
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject("Appointment Notification - {$this->type}")
-                    ->with(['appointment' => $this->appointment]);
+                    ->subject($header)
+                    ->with(['appointment' => $this->file]);
     }
-    /**
-     * Get the message envelope.
-     */
-    public function envelope(): Envelope
-    {
-        return new Envelope(
-            subject: 'Notify Patient Mailable',
-        );
-    }
-
-    /**
-     * Get the message content definition.
-     */
-    public function content(): Content
-    {
-        return new Content(
-            view: 'view.name',
-        );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
-    }
+    
 }

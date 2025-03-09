@@ -76,6 +76,7 @@ class ProviderBranch extends Model
     {
         $contact = $this->firstContact();
         if (!$contact) {
+            Notification::make()->title('No Provider Contact')->body("No contact information found for this branch")->danger()->send();
             return;
         }
         match ($contact->preferred_contact) {
@@ -95,7 +96,7 @@ class ProviderBranch extends Model
     {
         $toMail = match ($this->firstContact()->preferred_contact){
             'Email', => $this->firstContact()->email,
-            'Second Email' => $this->firstContact()->email,
+            'Second Email' => $this->firstContact()->second_email,
         };
 
         Mail::to($toMail)->send(new NotifyBranchMailable($type, $appointment));

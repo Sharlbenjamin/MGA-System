@@ -36,18 +36,29 @@ class NotifyClientMailable extends Mailable
         $password = Auth::user()->smtp_password;
         
         $view = match ($this->type) {
-            'file_created' => 'emails.file-created-client-mail',
-            'file_void' => 'emails.file-cancelled-mail',
-            'client_confirm' => 'emails.confirm-appointment-client-mail',
-            'file_handling' => 'emails.handling-appointment-client-mail',
-            'available' => 'emails.available-appointments-mail',
+            'file_created' => 'emails.file-created-client-mail', //done Tested
+            'file_void' => 'emails.file-cancelled-mail', //done
+            'file_hold' => 'emails.file-hold-client-mail', //done
+            'client_confirm' => 'emails.confirm-appointment-client-mail', // done
+            'available' => 'emails.available-appointments-mail', // done
             'reminder' => 'emails.reminder-appointment-mail',
-            'assisted' => 'emails.patient-assisted-mail',
+            'assisted' => 'emails.patient-assisted-mail', // done
+        };
+
+        $header = match ($this->type) {
+            'file_created' => 'File Created Notification',
+            'file_void' => 'File Cancelled Notification',
+            'client_confirm' => 'Appointment Confirmation',
+            'file_handling' => 'Appointment Handling',
+            'file_hold' => 'Appointment Hold',
+            'available' => 'Available Appointments',
+            'reminder' => 'Appointment Reminder',
+            'assisted' => 'Patient Assisted',
         };
         
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject("Appointment Notification - {$this->type}")
+                    ->subject($header)
                     ->with(['file' => $this->file]);
     }
 

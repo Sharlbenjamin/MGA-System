@@ -50,8 +50,7 @@ class AdminPanelProvider extends PanelProvider
         ->path('admin')
         ->login()
             ->colors([
-                'primary' => Color::Amber,
-                'gray' => Color::Blue,
+                'primary' => Color::hex('#191970'),
             ])->resources([
                 ClientResource::class,
                 CityResource::class,

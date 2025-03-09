@@ -42,84 +42,26 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
     public static function form(Form $form): Form
 {
     return $form->schema([
-        Select::make('type')
-            ->label('Contact Type')
+        Select::make('type')->label('Contact Type')
             ->options([
                 'Client'   => 'Client',
                 'Provider' => 'Provider',
                 'Branch'   => 'Branch',
                 'Patient'  => 'Patient',
-            ])
-            ->reactive()
-            ->required(),
-
-        Select::make('client_id')
-            ->label('Select Client')
-            ->options(Client::pluck('company_name', 'id'))
-            ->visible(fn ($get) => $get('type') === 'Client')
-            ->nullable(),
-
-        Select::make('provider_id')
-            ->label('Select Provider')
-            ->options(Provider::pluck('name', 'id'))
-            ->visible(fn ($get) => $get('type') === 'Provider')
-            ->nullable(),
-
-        Select::make('branch_id')
-            ->label('Select Branch')
-            ->options(ProviderBranch::pluck('branch_name', 'id'))
-            ->visible(fn ($get) => $get('type') === 'Branch')
-            ->nullable(),
-
-        Select::make('patient_id')
-            ->label('Select Patient')
-            ->options(Patient::pluck('name', 'id'))
-            ->visible(fn ($get) => $get('type') === 'Patient')
-            ->nullable(),
-
-        TextInput::make('name')
-            ->label('Contact Name')
-            ->required(),
-        
-            TextInput::make('title')
-            ->label('Title')
-            ->nullable(),
-        
-        TextInput::make('email')
-            ->label('Email')
-            ->email()
-            ->unique() // Note: ensure unique validation doesn't conflict when editing.
-            ->nullable(),
-        
-        TextInput::make('second_email')
-            ->label('Second Email')
-            ->email()
-            ->unique() // As above, consider handling uniqueness on update.
-            ->nullable(),
-        
-        TextInput::make('phone_number')
-            ->label('Phone Number')
-            ->nullable(),
-        
-        TextInput::make('second_phone')
-            ->label('Second Phone')
-            ->nullable(),
-        
-        Select::make('country_id')
-            ->label('Country')
-            ->options(Country::pluck('name', 'id'))
-            ->reactive()
-            ->nullable(),
-        
-        Select::make('city_id')
-            ->label('City')
-            ->options(fn ($get) => City::where('country_id', $get('country_id'))->pluck('name', 'id'))
-            ->reactive()
-            ->nullable(),
-        
-        Textarea::make('address')
-            ->label('Address')
-            ->nullable(),
+            ])->reactive()->required(),
+        Select::make('client_id')->label('Select Client')->options(Client::pluck('company_name', 'id'))->visible(fn ($get) => $get('type') === 'Client')->nullable(),
+        Select::make('provider_id')->label('Select Provider')->options(Provider::pluck('name', 'id'))->visible(fn ($get) => $get('type') === 'Provider')->nullable(),
+        Select::make('branch_id')->label('Select Branch')->options(ProviderBranch::pluck('branch_name', 'id'))->visible(fn ($get) => $get('type') === 'Branch')->nullable(),
+        Select::make('patient_id')->label('Select Patient')->options(Patient::pluck('name', 'id'))->visible(fn ($get) => $get('type') === 'Patient')->nullable(),
+        TextInput::make('name')->label('Contact Name')->required(),
+        TextInput::make('title')->label('Title')->nullable(),
+        TextInput::make('email')->label('Email')->email()->unique('contacts', 'email', ignoreRecord: true)->nullable(),
+        TextInput::make('second_email')->label('Second Email')->email()->nullable(),
+        TextInput::make('phone_number')->label('Phone Number')->nullable(),
+        TextInput::make('second_phone')->label('Second Phone')->nullable(),
+        Select::make('country_id')->label('Country')->options(Country::pluck('name', 'id'))->reactive()->nullable(),
+        Select::make('city_id')->label('City')->options(fn ($get) => City::where('country_id', $get('country_id'))->pluck('name', 'id'))->reactive()->nullable(),
+        Textarea::make('address')->label('Address')->nullable(),
         
         Select::make('preferred_contact')
             ->label('Preferred Contact Method')

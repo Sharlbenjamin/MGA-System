@@ -49,15 +49,15 @@ class Patient extends Model
 
     public function firstContact()
     {
-        return $this->hasMany(Contact::class, 'client_id', 'id')->orderBy('created_at', 'asc')->first();
+        return $this->hasMany(Contact::class, 'patient_id', 'id')->orderBy('created_at', 'asc')->first();
     }
 
-    public function notifyPatient($type, $appointment)
+    public function notifyPatient($type, $file)
     {
         $contact = $this->firstContact();
 
         if (!$contact) {
-            return Notification::make()->title('Patient Notification')->body('Patient has no contact information')->send();
+            return Notification::make()->title('Patient Notification')->body('Patient has no contact information')->danger()->send();
         }
 
         switch ($contact->preferred_contact) {
@@ -65,10 +65,10 @@ class Patient extends Model
                 Notification::make()->title('Patient Notification')->body("Please call the patient at: {$contact->phone_number}")->send();
                 break;
             case 'Email':
-                Mail::to($contact->email)->send(new NotifyPatientMailable($type, $appointment));
-
+                Mail::to($contact->email)->send(new NotifyPatientMailable($type, $file));
+                break;
             case 'Second Email':
-                Mail::to($contact->second_email)->send(new NotifyPatientMailable($type, $appointment));
+                Mail::to($contact->second_email)->send(new NotifyPatientMailable($type, $file));
                 break;
         }
     }

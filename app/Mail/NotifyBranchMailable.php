@@ -36,15 +36,22 @@ class NotifyBranchMailable extends Mailable
         $password = Auth::user()->smtp_password;
         
         $view = match ($this->type) {
-            'new' => 'emails.new-appointment-branch-mail',
-            'confirm_appointment' => 'emails.confirm-appointment-branch-mail',
-            'update' => 'emails.update-appointment-branch-mail',
-            'cancel' => 'emails.cancel-appointment-branch-mail',
+            'new' => 'emails.new-appointment-branch-mail', // done
+            'confirm_appointment' => 'emails.confirm-appointment-branch-mail', // done
+            'update' => 'emails.update-appointment-branch-mail', // done
+            'cancel' => 'emails.cancel-appointment-branch-mail', // done
+        };
+
+        $header = match ($this->type) {
+            'new' => 'New Appointment Notification',
+            'confirm_appointment' => 'Appointment Confirmation',
+            'update' => 'Appointment Update',
+            'cancel' => 'Appointment Cancellation',
         };
         
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject("Appointment Notification - {$this->appointment->file->mga_reference}")
+                    ->subject($header)
                     ->with(['appointment' => $this->appointment]);
     }
 

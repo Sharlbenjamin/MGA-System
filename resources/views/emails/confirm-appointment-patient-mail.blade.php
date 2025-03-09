@@ -1,12 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Appointment Confirmation {{$appointment->file->mga_reference}}</title>
+    <title>Appointment Confirmation {{$file->mga_reference}}</title>
 </head>
 <body>
-    <p>Hello,</p>
-    <p>Your appointment at <strong>{{ $appointment->providerBranch->branch_name }}</strong> is scheduled for <strong>{{ $appointment->service_date }}</strong> at <strong>{{ $appointment->service_time }}</strong>.</p>
-    <p>Thank you.</p>
+    <p>Dear {{ $file->patient->name }},</p>
+    <p>Your appointment has been confirmed.</p>
+    <p><strong>MGA Reference:</strong> {{ $file->mga_reference }}</p>
+    <p><strong>Appointment Details:</strong></p>
+    <ul>
+    <li><strong>Date:</strong> {{ $file->appointments->where('status', 'Confirmed')->first()->service_date }}</li>
+    <li><strong>Time:</strong> {{ $file->appointments->where('status', 'Confirmed')->first()->service_time }}</li>
+    <li><strong>Location:</strong> {{ $file->appointments->where('status', 'Confirmed')->first()->providerBranch->branch_name }} - {{ $file->appointments->where('status', 'Confirmed')->first()->providerBranch->address }}</li>
+    </ul>
+
     @include('draftsignature', ['signature' => auth()->user()->signature])
 </body>
 </html>

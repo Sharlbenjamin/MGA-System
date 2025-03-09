@@ -28,10 +28,10 @@ class NotifyUsMailable extends Mailable
         $password = Auth::user()->smtp_password;
         
         $view = match ($this->type) {
-            'new' => 'emails.new-appointment-mga-mail',
-            'confirm_appointment' => 'emails.confirm-appointment-mga-mail',
-            'update' => 'emails.update-appointment-mga-mail',
-            'cancel' => 'emails.cancel-appointment-mga-mail',
+            'new' => 'emails.new-appointment-mga-mail', // done Tested
+            'confirm_appointment' => 'emails.confirm-appointment-mga-mail', //done Tested
+            'update' => 'emails.update-appointment-mga-mail', //done Tested
+            'cancel' => 'emails.cancel-appointment-mga-mail', // done Tested
         };
         
         return $this->view($view)

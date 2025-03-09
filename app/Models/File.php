@@ -130,21 +130,16 @@ class File extends Model
     {
         foreach ($file->appointments as $appointment) {
             if ($appointment->status === 'Cancelled') {
-                $appointment->providerBranch->notifyBranch('cancel');
+                $appointment->providerBranch->notifyBranch('cancel', $appointment);
                 continue;
             }
 
             if ($appointment->isUpdated()) {
-                $appointment->providerBranch->notifyBranch('update');
+                $appointment->providerBranch->notifyBranch('update', $appointment);
             } else {
-                $appointment->providerBranch->notifyBranch('new');
+                $appointment->providerBranch->notifyBranch('new', $appointment);
             }
         }
-
-        // Notify the patient and client
-        $file->appointments()->latest()->first()?->patient->notifyPatient('available');
-        $file->client->notifyClient('available');
-
         // Log in comments
         $file->comments()->create([
             'user_id' => Auth::id(),
@@ -158,23 +153,35 @@ class File extends Model
 
         static::created(function ($file) {
             $file->patient->client->notifyClient('file_created', $file);
+            $file->patient->notifyPatient('file_created', $file);
         });
 
         static::updated(function ($file) {
             switch ($file->status) {
                 case 'Handling':
-                    $file->patient->client->notifyClient('file_handling', $file);
+                    $file->patient->client->notifyClient('available', $file);
                     break;
                 case 'Assisted':
                     $file->patient->client->notifyClient('assisted', $file);
+                    $file->patient->notifyPatient('assisted', $file);
                     break;
                 case 'Hold':
                     $file->patient->client->notifyClient('file_hold', $file);
+                    $file->cancelAppointments($file);
                     break;
                 case 'Void':
                     $file->patient->client->notifyClient('file_void', $file);
+                    $file->cancelAppointments($file);
                     break;
             }
         });
+    }
+
+    public function cancelAppointments($file)
+    {
+        foreach ($file->appointments as $appointment) {
+            $appointment->status = 'Cancelled';
+            $appointment->save();
+        }
     }
 }

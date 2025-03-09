@@ -36,10 +36,6 @@ class Appointment extends Model
         ]);
         // inform the branch
         $appointment->providerBranch->notifyBranch('new', $appointment);
-        // update the file status
-        if($appointment->file->status === 'New') {
-            $appointment->file->update(['status' => 'Handling']);
-        }
     });
 
     // When an appointment is updated, check if it's confirmed
@@ -53,8 +49,9 @@ class Appointment extends Model
                 'service_time' => $appointment->service_time,
             ]);
 
-            $appointment->file->patient->notifyPatient('confirm', $appointment);
-            $appointment->file->patient->notifyClient('client_confirm', $appointment);
+            //$appointment->file->patient->notifyPatient('confirm', $appointment);
+            $appointment->file->patient->client->notifyClient('client_confirm', $appointment->file);
+            $appointment->file->patient->notifyPatient('confirm', $appointment->file);
             $appointment->providerBranch?->notifyBranch('confirm_appointment', $appointment);
 
             $appointment->file->comments()->create([
