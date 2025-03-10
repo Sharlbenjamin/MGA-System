@@ -98,8 +98,13 @@ class LeadResource extends Resource
                     ->color('success'),
             ]) ->filters([
                 SelectFilter::make('client_id')
-                    ->label('Client')
-                    ->relationship('client', 'status') // Adjust based on your relationship
+                    ->label('Client Status')
+                    ->relationship('client', 'status')
+                    ->options([
+                        'Searching' => 'Searching',
+                        'Interested' => 'Interested',
+                        'Sent' => 'Sent',
+                    ])
                     ->searchable()
                     ->preload()
                     ->multiple(),
