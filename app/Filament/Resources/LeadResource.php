@@ -87,7 +87,7 @@ class LeadResource extends Resource
                     ->action(fn ($record) => self::sendEmails($record))
                     ->color('success'),
             ]) ->filters([
-                SelectFilter::make('status')
+                SelectFilter::make('status')->multiple()
                     ->options([
                         'Introduction' => 'Introduction',
                         'Introduction Sent' => 'Introduction Sent',

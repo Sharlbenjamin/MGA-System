@@ -51,7 +51,7 @@ class Provider extends Model
     public function requests(): HasManyThrough
     {
         return $this->hasManyThrough(
-            Request::class,  // Final model
+            File::class,  // Final model
             ProviderBranch::class,  // Intermediate model
             'provider_id',     // Foreign key on ProviderBranch table
             'provider_branch_id',    // Foreign key on requests table
