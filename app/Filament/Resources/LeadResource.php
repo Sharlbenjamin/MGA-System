@@ -99,17 +99,17 @@ class LeadResource extends Resource
                     ->color('success'),
             ]) ->filters([
                 SelectFilter::make('client_id')
-    ->label('Client')
-    ->options(
-        Client::query()
-            ->distinct()
-            ->orderBy('status')
-            ->pluck('status', 'id')->unique()
-            ->toArray()
-    )
-    ->searchable()
-    ->preload()
-    ->multiple(),
+                    ->label('Client')
+                    ->options(
+                        Client::query()
+                            ->distinct()
+                            ->orderBy('status')
+                            ->pluck('status', 'id')->unique()
+                            ->toArray()
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
                 Filter::make('needs_action')
                 ->label('Needs Action')
                 ->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),

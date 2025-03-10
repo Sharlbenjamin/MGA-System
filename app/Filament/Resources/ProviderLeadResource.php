@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\Mail;
 use App\Models\DraftMail;
 use Carbon\Carbon;
 use App\Mail\CustomLeadEmail;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection as SupportCollection;
@@ -119,14 +121,17 @@ protected static ?string $navigationIcon = 'heroicon-o-light-bulb'; // 💡 Prov
 
 public static function table(Tables\Table $table): Tables\Table
 {
+    $ActionStatuses = ['Pending information', 'Step one', 'Reminder', 'Discount', 'Step two', 'Presentation', 'Contract'];
     return $table
+    ->query(
+        ProviderLead::query()->whereHas('provider', function ($query) {
+            $query->where('status', 'Potential');
+        })
+    )
         ->columns([
             TextColumn::make('name')->label('Lead Name')->sortable()->searchable(),
-
             TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
-
             TextColumn::make('city.name')->label('City')->sortable()->searchable(),
-
             TextColumn::make('service_types')
                 ->label('Service Types')
                 ->badge()
@@ -173,7 +178,27 @@ public static function table(Tables\Table $table): Tables\Table
             Tables\Actions\DeleteBulkAction::make(),
         ])
         ->filters([
-            // Add filters if needed
+            SelectFilter::make('status')->multiple()
+                    ->options([
+                        'Pending information' => 'Pending information',
+                        'Step one' => 'Step one',
+                        'Step one sent' => 'Step one sent',
+                        'Reminder' => 'Reminder',
+                        'Reminder sent' => 'Reminder sent',
+                        'Discount' => 'Discount',
+                        'Discount sent' => 'Discount sent',
+                        'Step two' => 'Step two',
+                        'Step two sent' => 'Step two sent',
+                        'Presentation' => 'Presentation',
+                        'Presentation sent' => 'Presentation sent',
+                        'Contract' => 'Contract',
+                        'Contract sent' => 'Contract sent',
+                    ])
+                    ->label('Filter by Status')
+                    ->attribute('status'),
+                Filter::make('needs_action')
+                    ->label('Needs Action')
+                    ->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
         ]);
 }
 
