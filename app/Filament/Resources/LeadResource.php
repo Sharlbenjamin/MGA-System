@@ -89,7 +89,7 @@ class LeadResource extends Resource
                 TextColumn::make('email')->sortable()->searchable(),
                 TextColumn::make('first_name')->sortable()->searchable(),
                 TextColumn::make('status')->badge()->sortable()->searchable(),
-                TextColumn::make('last_contact_date')->date(),
+                TextColumn::make('last_contact_date')->date()->sortable()->searchable(),
             ])
             ->actions([
                 Action::make('Send Email')
