@@ -12,6 +12,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\Action;
 use App\Mail\CustomLeadEmail;
+use App\Models\Client;
 use Illuminate\Support\Facades\Mail;
 use App\Models\DraftMail;
 use Filament\Tables\Actions\BulkAction;
@@ -98,16 +99,17 @@ class LeadResource extends Resource
                     ->color('success'),
             ]) ->filters([
                 SelectFilter::make('client_id')
-                    ->label('Client Status')
-                    ->relationship('client', 'status')
-                    ->options([
-                        'Searching' => 'Searching',
-                        'Interested' => 'Interested',
-                        'Sent' => 'Sent',
-                    ])
-                    ->searchable()
-                    ->preload()
-                    ->multiple(),
+    ->label('Client')
+    ->options(
+        Client::query()
+            ->distinct()
+            ->orderBy('status')
+            ->pluck('status', 'id')->unique()
+            ->toArray()
+    )
+    ->searchable()
+    ->preload()
+    ->multiple(),
                 Filter::make('needs_action')
                 ->label('Needs Action')
                 ->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
