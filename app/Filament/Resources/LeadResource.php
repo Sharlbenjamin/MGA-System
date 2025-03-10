@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\Config;
 use Filament\Navigation\NavigationItem;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 
 class LeadResource extends Resource
 {
@@ -72,7 +74,15 @@ class LeadResource extends Resource
 
     public static function table(Tables\Table $table): Tables\Table
     {
+
+        $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
+        
         return $table
+        ->query(
+            Lead::query()->whereHas('client', function ($query) {
+                $query->whereNotIn('status', ['Active', 'On Hold', 'Rejected']);
+            })
+        )
             ->columns([
                 TextColumn::make('client.company_name')->sortable(),
                 TextColumn::make('email')->sortable()->searchable(),
@@ -87,6 +97,15 @@ class LeadResource extends Resource
                     ->action(fn ($record) => self::sendEmails($record))
                     ->color('success'),
             ]) ->filters([
+                SelectFilter::make('client_id')
+                    ->label('Client')
+                    ->relationship('client', 'status') // Adjust based on your relationship
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
+                Filter::make('needs_action')
+                ->label('Needs Action')
+                ->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
                 SelectFilter::make('status')->multiple()
                     ->options([
                         'Introduction' => 'Introduction',
