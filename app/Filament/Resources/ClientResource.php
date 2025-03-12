@@ -68,6 +68,7 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
                 TextColumn::make('initials'),
                 TextColumn::make('number_requests'),
                 TextColumn::make('leads_count')->label('Leads')->counts('leads'),
+                TextColumn::make('latestLead.last_contact_date')->label('Last Contact')->date('d-m-Y')->sortable(),
             ])->filters([
                 SelectFilter::make('status')->multiple()
                 ->options([

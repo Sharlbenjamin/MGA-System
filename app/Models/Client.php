@@ -64,6 +64,11 @@ class Client extends Model
         return $this->hasMany(Contact::class, 'client_id', 'id')->orderBy('created_at', 'asc')->first();
     }
 
+    public function latestLead()
+    {
+        return $this->hasOne(Lead::class)->latestOfMany('last_contact_date');
+    }
+
     public function notifyClient($type, $file)
     {
         $contact = $this->firstContact();
