@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProviderResource\Pages;
+use App\Filament\Resources\ProviderResource\RelationManagers\ProviderLeadRelationManager;
 use App\Models\Provider;
 use App\Models\Country;
 use App\Models\City;
@@ -16,6 +17,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Resources\Resource;
 use Filament\Forms\Get;
+use Filament\Tables\Columns\Summarizers\Count;
+use Filament\Tables\Filters\SelectFilter;
 
 class ProviderResource extends Resource
 {
@@ -87,28 +90,30 @@ public static function table(Tables\Table $table): Tables\Table
     return $table
         ->columns([
             TextColumn::make('name')->label('Provider Name')->sortable()->searchable(),
-
             TextColumn::make('country.name')->label('Country')->sortable()->searchable(), // ✅ Fix: Show Country Name
-
             BadgeColumn::make('status')
                 ->colors([
                     'success' => 'Active',
                     'warning' => 'Hold',
-                    'gray' => 'Potential',
+                    'info' => 'Potential',
                     'red' => 'Black List',
                 ])
                 ->sortable(),
-
             TextColumn::make('type')->label('Provider Type')->sortable(),
-
-            TextColumn::make('payment_due')->label('Payment Due (Days)')->sortable(),
-
-            TextColumn::make('payment_method')->label('Payment Method')->sortable(),
-
-            TextColumn::make('comment')->label('Comment')->limit(50),
+            TextColumn::make('leads_count')->label('Leads')->counts('leads'),
+            TextColumn::make('latestLead.last_contact_date')->label('Last Contact')->date('d-m-Y'),
         ])
         ->filters([
-            // Add filters if needed
+            SelectFilter::make('status')->multiple()
+                    ->options([
+                        'Active' => 'Active',
+                        'Hold' => 'Hold',
+                        'Potential' => 'Potential',
+                        'Black List' => 'Black List',
+                    ])->label('Filter by Status')->attribute('status'),
+            //country filter
+            SelectFilter::make('country_id')->multiple()
+                    ->options(Country::pluck('name', 'id'))->label('Filter by Country')->attribute('country_id'),
         ])
         ->actions([
             Tables\Actions\EditAction::make(),
@@ -122,7 +127,7 @@ public static function table(Tables\Table $table): Tables\Table
     public static function getRelations(): array
     {
         return [
-            // Define relationships here if needed
+            ProviderLeadRelationManager::class,
         ];
     }
 

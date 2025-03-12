@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Models\DraftMail;
 use Carbon\Carbon;
 use App\Mail\CustomLeadEmail;
+use Filament\Notifications\Notification;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Support\Facades\Log;
@@ -40,47 +41,22 @@ protected static ?string $navigationIcon = 'heroicon-o-light-bulb'; // 💡 Prov
 {
     return $form
         ->schema([
-            Select::make('provider_id')
-                ->label('Provider')
-                ->options(Provider::pluck('name', 'id'))
-                ->searchable()
-                ->reactive()
-                ->required(),
+            Select::make('provider_id')->label('Provider')->options(Provider::pluck('name', 'id'))->searchable()->reactive()->required(),
 
-            Select::make('city_id')
-                ->label('City')
+            Select::make('city_id')->label('City')
                 ->options(fn ($get) => 
                     City::where('country_id', Provider::where('id', $get('provider_id'))->value('country_id'))->pluck('name', 'id')
-                )
-                ->searchable()
-                ->reactive()
-                ->required(),
-
+                )->searchable()->reactive()->required(),
             Select::make('service_types')
                 ->label('Service Types')
                 ->options(ServiceType::pluck('name', 'name')) // ✅ Fetch service type names
-                ->multiple() // ✅ Allow multiple selections
-                ->preload()
-                ->searchable()
+                ->multiple()->preload()->searchable()
                 ->formatStateUsing(fn ($state) => is_string($state) ? explode(',', $state) : ($state ?? [])) // ✅ Convert string to array before display
                 ->dehydrateStateUsing(fn ($state) => is_array($state) ? implode(',', $state) : $state) // ✅ Convert array back to string on save
                 ->required(),
-
-            TextInput::make('name')
-                ->label('Lead Name')
-                ->required()
-                ->maxLength(255),
-
-            TextInput::make('email')
-                ->label('Email')
-                ->email()
-                ->nullable(),
-
-            TextInput::make('phone')
-                ->label('Phone')
-                ->tel()
-                ->nullable(),
-
+            TextInput::make('name')->label('Lead Name')->required()->maxLength(255),
+            TextInput::make('email')->label('Email')->email()->nullable(),
+            TextInput::make('phone')->label('Phone')->tel()->nullable(),
             Select::make('communication_method')
                 ->label('Contact Method')
                 ->options([
@@ -108,14 +84,8 @@ protected static ?string $navigationIcon = 'heroicon-o-light-bulb'; // 💡 Prov
                     'Contract sent' => 'Contract Sent',
                 ])
                 ->required(),
-
-            DatePicker::make('last_contact_date')
-                ->label('Last Contact Date')
-                ->nullable(),
-
-            Textarea::make('comment')
-                ->label('Comment')
-                ->nullable(),
+            DatePicker::make('last_contact_date')->label('Last Contact Date')->nullable(),
+            Textarea::make('comment')->label('Comment')->nullable(),
         ]);
 }
 
@@ -157,14 +127,10 @@ public static function table(Tables\Table $table): Tables\Table
                 ])
                 ->sortable(),
 
-            TextColumn::make('last_contact_date')->label('Last Contact')->sortable(),
+            TextColumn::make('last_contact_date')->label('Last Contact')->date('d-m-Y')->sortable(),
 
         ])->actions([
-            Action::make('sendEmail')
-                ->label('Email')
-                ->icon('heroicon-o-paper-airplane')
-                ->requiresConfirmation()
-                ->color('success')
+            Action::make('sendEmail')->label('Email')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->color('success')
                 ->action(fn (ProviderLead $record) => static::processProviderEmails(collect([$record]))),
         ])
         ->bulkActions([
@@ -199,6 +165,10 @@ public static function table(Tables\Table $table): Tables\Table
                 Filter::make('needs_action')
                     ->label('Needs Action')
                     ->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
+                    SelectFilter::make('provider.name')->multiple()
+                    ->options(Provider::pluck('name', 'id'))
+                    ->label('Provider')
+                    ->attribute('provider_id'),
         ]);
 }
 
@@ -212,8 +182,8 @@ public static function processProviderEmails(SupportCollection $providerLeads)
     $user = Auth::user();
 
     // System default SMTP credentials
-    $systemSmtpUsername = Config::get('mail.mailers.smtp.username', 'default-smtp@example.com');
-    $systemSmtpPassword = Config::get('mail.mailers.smtp.password', 'default-smtp-password');
+    $systemSmtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
+    $systemSmtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
 
     foreach ($providerLeads as $providerLead) {
         // Find the corresponding draft mail based on provider lead status
@@ -222,6 +192,7 @@ public static function processProviderEmails(SupportCollection $providerLeads)
             ->first();
 
         if (!$draftMail) {
+            Notification::make()->title('Email Not Sent')->body("Draft Mail for step '{$providerLead->status}' not found.")->danger()->send();
             continue; // Skip if no matching draft email is found
         }
 
@@ -243,6 +214,7 @@ public static function processProviderEmails(SupportCollection $providerLeads)
                 'last_contact_date' => Carbon::now(),
             ]);
         } catch (\Exception $e) {
+            Notification::make()->title('Email Sending Failed')->body("Email sending failed for {$providerLead->email}: " . $e->getMessage())->danger()->send();
             Log::error("Email sending failed for {$providerLead->email}: " . $e->getMessage());
         }
     }

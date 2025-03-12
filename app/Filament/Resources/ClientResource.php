@@ -25,18 +25,13 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
     {
         return $form
             ->schema([
-                TextInput::make('company_name')
-                    ->required()
-                    ->maxLength(255),
-
+                TextInput::make('company_name')->required()->maxLength(255),
                 Select::make('type')
                     ->options([
                         'Assistance' => 'Assistance',
                         'Insurance' => 'Insurance',
                         'Agency' => 'Agency',
-                    ])
-                    ->required(),
-
+                    ])->required(),
                 Select::make('status')
                     ->options([
                         'Searching' => 'Searching',
@@ -48,13 +43,8 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
                     ])
                     ->required(),
 
-                TextInput::make('initials')
-                    ->maxLength(10)
-                    ->required(),
-
-                TextInput::make('number_requests')
-                    ->numeric()
-                    ->required(),
+                TextInput::make('initials')->maxLength(10)->required(),
+                TextInput::make('number_requests')->numeric()->required(),
             ]);
     }
 

@@ -47,6 +47,10 @@ class Provider extends Model
     {
         return $this->hasMany(ProviderLead::class, 'provider_id');
     }
+    public function latestLead()
+    {
+        return $this->hasOne(ProviderLead::class)->latestOfMany('last_contact_date');
+    }
 
     public function requests(): HasManyThrough
     {

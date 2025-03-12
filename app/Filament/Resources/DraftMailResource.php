@@ -94,7 +94,7 @@ public static function form(Form $form): Form
         ->schema([
             TextInput::make('mail_name')->required(),
             Textarea::make('body_mail')->required()->columnSpanFull()
-                ->helperText('Use {name}, {email}, {serice}, {city}, and {company} as placeholders for lead data.'),
+                ->helperText('Use {name}, {email}, {serice}, {city}, {username}, and {company} as placeholders for lead data.'),
 
             Select::make('type')->label('Type')
                 ->options([

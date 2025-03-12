@@ -2,6 +2,7 @@
 namespace App\Mail;
 
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 
@@ -57,15 +58,15 @@ class CustomLeadEmail extends Mailable
 
         /// Replace placeholders in the email body
         $body = str_replace(
-            ['{name}', '{email}', '{company}', '{city}', '{service}'],
-            [$leadName, $this->recipient->email, $company, $city, $services],
+            ['{name}', '{email}', '{company}', '{city}', '{service}', '{username}'],
+            [$leadName, $this->recipient->email, $company, $city, $services, Auth::user()->signature->name],
             $this->draftMail->body_mail
         );
 
         // Replace placeholders in the subject
         $subject = str_replace(
-            ['{name}', '{email}', '{company}', '{city}', '{service}'],
-            [$leadName, $this->recipient->email, $company, $city, $services],
+            ['{name}', '{email}', '{company}', '{city}', '{service}', '{username}'],
+            [$leadName, $this->recipient->email, $company, $city, $services, Auth::user()->signature->name],
             trim($this->draftMail->mail_name)
         );
 
