@@ -11,10 +11,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class LeadsRelationManager extends RelationManager
 {
@@ -89,6 +88,12 @@ class LeadsRelationManager extends RelationManager
                 ->modalHeading('Send Tailored Mail')
                 ->modalButton('Send')
                 ->icon('heroicon-o-paper-airplane'),
+            ])->headerActions([
+                // reroute button to create a new lead related to the resource
+                Tables\Actions\CreateAction::make(),
+            ])->actions([
+                //reroute to another edit view
+                Tables\Actions\EditAction::make(),
             ]);
     }
 }
