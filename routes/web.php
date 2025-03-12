@@ -45,8 +45,8 @@ Route::get('/redirect-after-login', function () {
     $user = Auth::user();
 
     return $user->hasRole('Telemedicine Doctor')
-        ? redirect(route('filament.doctor.home'))  // 🚀 Redirect Doctors to Doctor Panel
-        : redirect(route('filament.admin.home')); // 🚀 Redirect Others to Admin Panel
+        ? redirect(route('filament.doctor.pages.dashboard'))  // 🚀 Redirect Doctors to Doctor Panel
+        : redirect(route('filament.admin.pages.dashboard')); // 🚀 Redirect Others to Admin Panel
 })->name('redirect.after.login');
 
 // ✅ Protect Filament Admin Panel with Password Middleware
