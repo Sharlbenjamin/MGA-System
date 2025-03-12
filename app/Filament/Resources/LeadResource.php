@@ -25,6 +25,7 @@ use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
+use Illuminate\Database\Eloquent\Collection;
 
 class LeadResource extends Resource
 {
@@ -134,15 +135,43 @@ class LeadResource extends Resource
                     ->attribute('status'),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
                     BulkAction::make('Send Bulk Emails')
                         ->icon('heroicon-o-paper-airplane')
                         ->requiresConfirmation()
                         ->action(fn ($records) => self::sendEmails($records))
                         ->deselectRecordsAfterCompletion()
                         ->color('success'),
-                ]),
-            ]);;
+                BulkAction::make('updateStatus')
+                ->label('Update Status')
+                ->icon('heroicon-o-arrow-down-on-square-stack')->color('info')
+                ->form([
+                    Select::make('status')
+                        ->label('New Status')
+                        ->options([
+                            [
+                                'Introduction' => 'Introduction',
+                                'Introduction Sent' => 'Introduction Sent',
+                                'Reminder' => 'Reminder',
+                                'Reminder Sent' => 'Reminder Sent',
+                                'Presentation' => 'Presentation',
+                                'Presentation Sent' => 'Presentation Sent',
+                                'Price List' => 'Price List',
+                                'Price List Sent' => 'Price List Sent',
+                                'Contract' => 'Contract',
+                                'Contract Sent' => 'Contract Sent',
+                                'Interested' => 'Interested',
+                                'Error' => 'Error',
+                                'Partner' => 'Partner',
+                                'Rejected' => 'Rejected',
+                            ]
+                        ])
+                        ->required(),
+                ])
+                ->action(function (Collection $records, array $data) {
+                    $records->each->update(['status' => $data['status']]);
+                })
+                ->deselectRecordsAfterCompletion(), // Optional: Unselect records after action
+        ]);;
     }
 
     public static function getPages(): array
