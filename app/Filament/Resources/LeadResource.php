@@ -40,18 +40,9 @@ class LeadResource extends Resource
     {
         return $form
             ->schema([
-                Select::make('client_id')
-                    ->relationship('client', 'company_name')
-                    ->required(),
-
-                TextInput::make('email')
-                    ->email()
-                    ->unique('leads', 'email', ignoreRecord: true)
-                    ->required(),
-
-                TextInput::make('first_name')
-                    ->required(),
-
+                Select::make('client_id')->relationship('client', 'company_name')->required(),
+                TextInput::make('email')->email()->unique('leads', 'email', ignoreRecord: true)->required(),
+                TextInput::make('first_name')->required(),
                 Select::make('status')
                     ->options([
                         'Introduction' => 'Introduction',
@@ -71,8 +62,7 @@ class LeadResource extends Resource
                     ])
                     ->required(),
 
-                DatePicker::make('last_contact_date')
-                    ->nullable(),
+                DatePicker::make('last_contact_date')->nullable(),
             ]);
     }
 
@@ -88,10 +78,25 @@ class LeadResource extends Resource
             })
         )
             ->columns([
-                TextColumn::make('client.company_name')->sortable(),
+                TextColumn::make('client.company_name')->sortable()->searchable(),
                 TextColumn::make('email')->sortable()->searchable(),
                 TextColumn::make('first_name')->sortable()->searchable(),
-                TextColumn::make('status')->badge()->sortable()->searchable(),
+                TextColumn::make('status')->badge()->sortable()->color(fn (string $state): string => match ($state) {
+                    'Introduction' => 'warning',
+                        'Introduction Sent' => 'info',
+                        'Reminder' => 'warning',
+                        'Reminder Sent' => 'info',
+                        'Presentation' => 'warning',
+                        'Presentation Sent' => 'info',
+                        'Price List' => 'warning',
+                        'Price List Sent' => 'info',
+                        'Contract' => 'warning',
+                        'Contract Sent' => 'info',
+                        'Interested' => 'warning',
+                        'Error' => 'danger',
+                        'Partner' => 'success',
+                        'Rejected' => 'gray',
+            }),
                 TextColumn::make('last_contact_date')->date()->sortable()->searchable(),
             ])
             ->actions([
@@ -173,15 +178,10 @@ class LeadResource extends Resource
                         $records->each->update(['status' => $data['status']]);
                     })
                     ->deselectRecordsAfterCompletion(), // Optional: Unselect records after action
-                    BulkAction::make('send_tailored_mail')
-                ->label('Send Tailored Mail')
+                    BulkAction::make('send_tailored_mail')->label('Send Tailored Mail')
                 ->form([
-                    TextInput::make('subject')
-                        ->label('Email Subject')
-                        ->required(),
-                    Textarea::make('body')
-                        ->label('Email Body')
-                        ->required(),
+                    TextInput::make('subject')->label('Email Subject')->required(),
+                    Textarea::make('body')->label('Email Body')->required(),
                 ])
                 ->action(function (ComponentContainer $form, $records) {
                     $subject = $form->getState()['subject'];
@@ -195,7 +195,7 @@ class LeadResource extends Resource
                 ->modalHeading('Send Tailored Mail')
                 ->modalButton('Send')
                 ->icon('heroicon-o-paper-airplane'),
-        ]);;
+        ]);
     }
 
     public static function getPages(): array

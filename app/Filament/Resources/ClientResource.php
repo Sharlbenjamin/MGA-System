@@ -12,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Navigation\NavigationItem;
 use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
+use Filament\Tables\Filters\SelectFilter;
 
 class ClientResource extends Resource
 {
@@ -54,9 +55,30 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
             ->columns([
                 TextColumn::make('company_name')->sortable()->searchable(),
                 TextColumn::make('type'),
-                TextColumn::make('status')->badge(),
+                //color the badges if searching red
+                TextColumn::make('status')
+                ->badge()->color(fn (string $state): string => match ($state) {
+                        'Searching' => 'danger',
+                        'Interested' => 'warning',
+                        'Sent' => 'success',
+                        'Rejected' => 'gray',
+                        'Active' => 'success',
+                        'On Hold' => 'gray',
+                }),
                 TextColumn::make('initials'),
                 TextColumn::make('number_requests'),
+                TextColumn::make('leads_count')->label('Leads')->counts('leads'),
+            ])->filters([
+                SelectFilter::make('status')->multiple()
+                ->options([
+                        'Searching' => 'Searching',
+                        'Interested' => 'Interested',
+                        'Sent' => 'Sent',
+                        'Rejected' => 'Rejected',
+                        'Active' => 'Active',
+                        'On Hold' => 'On Hold',
+                ])
+                ->label('Filter by Status')->attribute('status')
             ]);
     }
 

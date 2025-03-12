@@ -49,4 +49,17 @@ class Lead extends Model
         self::whereIn('email', $cc)->update(['last_contact_date' => Carbon::now()]);
         Notification::make()->title('success')->body('Emails sent successfully!');
     }
+
+    public static function boot()
+    {
+        parent::boot();
+        static::updated(function ($lead) {
+            // if lead status is Error or Missing Information
+            if($lead->client->leads->where('status', 'Error')->count() > 0) {
+                $lead->client->update([
+                    'status' => 'Searching'
+                ]);
+            }
+        });
+    }
 }
