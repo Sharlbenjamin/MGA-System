@@ -2,9 +2,13 @@
 
 namespace App\Models;
 
+use App\Mail\TailoredMailable;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Carbon;
 
 class Lead extends Model
 {
@@ -37,5 +41,12 @@ class Lead extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public static function sendTailoredMail(array $cc, string $subject, string $body)
+    {
+        Mail::cc($cc)->send(new TailoredMailable($subject, $body));
+        self::whereIn('email', $cc)->update(['last_contact_date' => Carbon::now()]);
+        Notification::make()->title('success')->body('Emails sent successfully!');
     }
 }

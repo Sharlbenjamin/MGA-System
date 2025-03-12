@@ -15,6 +15,8 @@ use App\Mail\CustomLeadEmail;
 use App\Models\Client;
 use Illuminate\Support\Facades\Mail;
 use App\Models\DraftMail;
+use Filament\Forms\ComponentContainer;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -141,36 +143,58 @@ class LeadResource extends Resource
                         ->action(fn ($records) => self::sendEmails($records))
                         ->deselectRecordsAfterCompletion()
                         ->color('success'),
-                BulkAction::make('updateStatus')
-                ->label('Update Status')
-                ->icon('heroicon-o-arrow-down-on-square-stack')->color('info')
+                    BulkAction::make('updateStatus')
+                    ->label('Update Status')
+                    ->icon('heroicon-o-arrow-down-on-square-stack')->color('info')
+                    ->form([
+                        Select::make('status')
+                            ->label('New Status')
+                            ->options([
+                                [
+                                    'Introduction' => 'Introduction',
+                                    'Introduction Sent' => 'Introduction Sent',
+                                    'Reminder' => 'Reminder',
+                                    'Reminder Sent' => 'Reminder Sent',
+                                    'Presentation' => 'Presentation',
+                                    'Presentation Sent' => 'Presentation Sent',
+                                    'Price List' => 'Price List',
+                                    'Price List Sent' => 'Price List Sent',
+                                    'Contract' => 'Contract',
+                                    'Contract Sent' => 'Contract Sent',
+                                    'Interested' => 'Interested',
+                                    'Error' => 'Error',
+                                    'Partner' => 'Partner',
+                                    'Rejected' => 'Rejected',
+                                ]
+                            ])
+                            ->required(),
+                    ])
+                    ->action(function (Collection $records, array $data) {
+                        $records->each->update(['status' => $data['status']]);
+                    })
+                    ->deselectRecordsAfterCompletion(), // Optional: Unselect records after action
+                    BulkAction::make('send_tailored_mail')
+                ->label('Send Tailored Mail')
                 ->form([
-                    Select::make('status')
-                        ->label('New Status')
-                        ->options([
-                            [
-                                'Introduction' => 'Introduction',
-                                'Introduction Sent' => 'Introduction Sent',
-                                'Reminder' => 'Reminder',
-                                'Reminder Sent' => 'Reminder Sent',
-                                'Presentation' => 'Presentation',
-                                'Presentation Sent' => 'Presentation Sent',
-                                'Price List' => 'Price List',
-                                'Price List Sent' => 'Price List Sent',
-                                'Contract' => 'Contract',
-                                'Contract Sent' => 'Contract Sent',
-                                'Interested' => 'Interested',
-                                'Error' => 'Error',
-                                'Partner' => 'Partner',
-                                'Rejected' => 'Rejected',
-                            ]
-                        ])
+                    TextInput::make('subject')
+                        ->label('Email Subject')
+                        ->required(),
+                    Textarea::make('body')
+                        ->label('Email Body')
                         ->required(),
                 ])
-                ->action(function (Collection $records, array $data) {
-                    $records->each->update(['status' => $data['status']]);
+                ->action(function (ComponentContainer $form, $records) {
+                    $subject = $form->getState()['subject'];
+                    $body = $form->getState()['body'];
+
+                    foreach ($records as $lead) {
+                        Lead::sendTailoredMail([$lead->email], $subject, $body);
+                    }
+
                 })
-                ->deselectRecordsAfterCompletion(), // Optional: Unselect records after action
+                ->modalHeading('Send Tailored Mail')
+                ->modalButton('Send')
+                ->icon('heroicon-o-paper-airplane'),
         ]);;
     }
 
