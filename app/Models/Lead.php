@@ -25,6 +25,9 @@ class Lead extends Model
         'first_name',
         'status',
         'last_contact_date',
+        'linked_in',
+        'phone',
+        'contact_method',
     ];
 
     /**

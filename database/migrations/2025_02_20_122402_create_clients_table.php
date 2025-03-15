@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('company_name');
             $table->enum('type', ["Assistance","Insurance","Agency"]);
-            $table->enum('status', ["Searching","Interested","Sent","Rejected","Active","On"]);
+            $table->enum('status', ["Searching","Interested","Sent","Rejected","Active","On Hold", "Closed", "Broker", "No Reply"]);
             $table->string('initials', 10);
             $table->integer('number_requests');
             $table->timestamps();

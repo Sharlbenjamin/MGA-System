@@ -32,32 +32,17 @@ class LeadsRelationManager extends RelationManager
 
     public function form(Forms\Form $form): Forms\Form
     {
+        $leadStatuses =['Introduction' => 'Introduction','Introduction Sent' => 'Introduction Sent','Reminder' => 'Reminder','Reminder Sent' => 'Reminder Sent','Presentation' => 'Presentation','Presentation Sent' => 'Presentation Sent','Price List' => 'Price List','Price List Sent' => 'Price List Sent','Contract' => 'Contract','Contract Sent' => 'Contract Sent','Interested' => 'Interested','Error' => 'Error','Partner' => 'Partner','Rejected' => 'Rejected',];
+        $methods = ['Email' => 'Email', 'Phone' => 'Phone', 'Linked In' => 'Linked In', 'Other' => 'Other',];
         return $form
             ->schema([
-                TextInput::make('email')->email()->unique('leads', 'email', ignoreRecord: true)->required()->required(),
+                Select::make('status')->options($leadStatuses)->required()->preload()->searchable(),
                 TextInput::make('first_name')->required(),
-
-                Select::make('status')
-                    ->options([
-                        'Introduction' => 'Introduction',
-                        'Introduction Sent' => 'Introduction Sent',
-                        'Reminder' => 'Reminder',
-                        'Reminder Sent' => 'Reminder Sent',
-                        'Presentation' => 'Presentation',
-                        'Presentation Sent' => 'Presentation Sent',
-                        'Price List' => 'Price List',
-                        'Price List Sent' => 'Price List Sent',
-                        'Contract' => 'Contract',
-                        'Contract Sent' => 'Contract Sent',
-                        'Interested' => 'Interested',
-                        'Error' => 'Error',
-                        'Partner' => 'Partner',
-                        'Rejected' => 'Rejected',
-                    ])
-                    ->required(),
-
-                DatePicker::make('last_contact_date')
-                    ->nullable(),
+                TextInput::make('email')->email()->unique('leads', 'email', ignoreRecord: true)->required(),
+                TextInput::make('phone')->label('Phone')->nullable(),
+                TextInput::make('linked_in')->label('Linked In')->nullable(),
+                Select::make('contact_method')->options($methods)->preload()->searchable(),
+                DatePicker::make('last_contact_date')->nullable(),
             ]);
     }
 
@@ -68,6 +53,7 @@ class LeadsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('email')->sortable()->searchable(),
                 TextColumn::make('first_name')->sortable()->searchable(),
+                TextColumn::make('contact_method')->sortable()->searchable(),
                 TextColumn::make('status')->badge()->sortable()->color(fn (string $state): string => match ($state) {
                     'Introduction' => 'warning',
                         'Introduction Sent' => 'info',

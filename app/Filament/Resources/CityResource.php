@@ -25,11 +25,9 @@ protected static ?string $navigationIcon = 'heroicon-o-map-pin'; // 📍 Cities 
     {
         return $form
             ->schema([
+                Forms\Components\Select::make('country_id')->relationship('country', 'name')->searchable()->preload(),
+                Forms\Components\Select::make('province_id')->relationship('province', 'name')->searchable()->preload(),
                 Forms\Components\TextInput::make('name')->required(),
-                Forms\Components\Select::make('country_id')
-                    ->relationship('country', 'name')
-                    ->searchable()
-                    ->required(),
             ]);
     }
 
@@ -39,6 +37,7 @@ protected static ?string $navigationIcon = 'heroicon-o-map-pin'; // 📍 Cities 
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable(),
                 Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable(),
+                Tables\Columns\TextColumn::make('province.name')->label('province')->sortable(),
             ])
             ->filters([])
             ->actions([

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientResource\Pages;
+use App\Filament\Resources\ClientResource\RelationManagers\ContactRelationManager;
 use App\Models\Client;
 use Filament\Resources\Resource;
 use Filament\Forms;
@@ -19,8 +20,8 @@ class ClientResource extends Resource
     protected static ?string $model = Client::class;
 
     protected static ?string $navigationGroup = 'CRM';
-protected static ?int $navigationSort = 1;
-protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients Icon
+    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationIcon = 'heroicon-o-users'; 
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -41,6 +42,8 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
                         'Rejected' => 'Rejected',
                         'Active' => 'Active',
                         'On Hold' => 'On Hold',
+                        'Broker' => 'Broker',
+                        'No Reply' => 'No Reply',
                     ])
                     ->required(),
 
@@ -54,7 +57,7 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
         return $table
             ->columns([
                 TextColumn::make('company_name')->sortable()->searchable(),
-                TextColumn::make('type'),
+                TextColumn::make('type')->sortable(),
                 //color the badges if searching red
                 TextColumn::make('status')
                 ->badge()->color(fn (string $state): string => match ($state) {
@@ -64,11 +67,13 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
                         'Rejected' => 'gray',
                         'Active' => 'success',
                         'On Hold' => 'gray',
+                        'Broker' => 'success',
+                        'No Reply' => 'danger',
                 }),
                 TextColumn::make('initials'),
                 TextColumn::make('number_requests'),
-                TextColumn::make('leads_count')->label('Leads')->counts('leads'),
-                TextColumn::make('latestLead.last_contact_date')->label('Last Contact')->date('d-m-Y')->sortable(),
+                TextColumn::make('leads_count')->label('Leads')->sortable()->counts('leads'),
+                TextColumn::make('latestLead.last_contact_date')->sortable()->label('Last Contact')->date('d-m-Y'),
             ])->filters([
                 SelectFilter::make('status')->multiple()
                 ->options([
@@ -78,6 +83,9 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
                         'Rejected' => 'Rejected',
                         'Active' => 'Active',
                         'On Hold' => 'On Hold',
+                        'Broker' => 'Broker',
+                        'No Reply' => 'No Reply',
+
                 ])
                 ->label('Filter by Status')->attribute('status')
             ]);
@@ -86,7 +94,8 @@ protected static ?string $navigationIcon = 'heroicon-o-users'; // 👥 Clients I
     public static function getRelations(): array
 {
     return [
-        LeadsRelationManager::class, // Register the Leads relation
+        LeadsRelationManager::class,
+        ContactRelationManager::class, 
     ];
 }
 

@@ -18,6 +18,8 @@ class CitiesRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\Select::make('country_id')->relationship('country', 'name')->searchable()->preload(),
+                Forms\Components\Select::make('province_id')->relationship('province', 'name')->searchable()->preload(),
                 Forms\Components\TextInput::make('name')->required(),
             ]);
     }
@@ -25,9 +27,11 @@ class CitiesRelationManager extends RelationManager
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')->sortable(),
-            ])
+        ->columns([
+            Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+            Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable(),
+            Tables\Columns\TextColumn::make('province.name')->label('province')->sortable(),
+        ])
             ->filters([])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),

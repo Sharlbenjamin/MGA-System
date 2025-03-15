@@ -18,6 +18,7 @@ class City extends Model
     protected $fillable = [
         'name',
         'country_id',
+        'province_id',
     ];
 
     /**
@@ -28,15 +29,15 @@ class City extends Model
     protected $casts = [
         'id' => 'integer',
         'country_id' => 'integer',
+        'province_id' => 'integer',
     ];
 
     public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class);
     }
-
-    public function city(): BelongsTo
+    public function province(): BelongsTo
     {
-        return $this->belongsTo(City::class);
+        return $this->belongsTo(Province::class);
     }
 }

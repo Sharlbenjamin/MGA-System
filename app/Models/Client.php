@@ -63,6 +63,10 @@ class Client extends Model
     {
         return $this->hasMany(Contact::class, 'client_id', 'id')->orderBy('created_at', 'asc')->first();
     }
+    public function contacts()
+{
+    return $this->hasMany(Contact::class);
+}
 
     public function latestLead()
     {

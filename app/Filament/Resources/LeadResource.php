@@ -38,49 +38,33 @@ class LeadResource extends Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
+        $leadStatuses =['Introduction' => 'Introduction','Introduction Sent' => 'Introduction Sent','Reminder' => 'Reminder','Reminder Sent' => 'Reminder Sent','Presentation' => 'Presentation','Presentation Sent' => 'Presentation Sent','Price List' => 'Price List','Price List Sent' => 'Price List Sent','Contract' => 'Contract','Contract Sent' => 'Contract Sent','Interested' => 'Interested','Error' => 'Error','Partner' => 'Partner','Rejected' => 'Rejected',];
+        $methods = ['Email' => 'Email', 'Phone' => 'Phone', 'Linked In' => 'Linked In', 'Other' => 'Other',];
         return $form
             ->schema([
-                Select::make('client_id')->relationship('client', 'company_name')->required(),
-                TextInput::make('email')->email()->unique('leads', 'email', ignoreRecord: true)->required(),
+                Select::make('client_id')->relationship('client', 'company_name')->required()->preload()->searchable(),
+                Select::make('status')->options($leadStatuses)->required()->preload()->searchable(),
                 TextInput::make('first_name')->required(),
-                Select::make('status')
-                    ->options([
-                        'Introduction' => 'Introduction',
-                        'Introduction Sent' => 'Introduction Sent',
-                        'Reminder' => 'Reminder',
-                        'Reminder Sent' => 'Reminder Sent',
-                        'Presentation' => 'Presentation',
-                        'Presentation Sent' => 'Presentation Sent',
-                        'Price List' => 'Price List',
-                        'Price List Sent' => 'Price List Sent',
-                        'Contract' => 'Contract',
-                        'Contract Sent' => 'Contract Sent',
-                        'Interested' => 'Interested',
-                        'Error' => 'Error',
-                        'Partner' => 'Partner',
-                        'Rejected' => 'Rejected',
-                    ])
-                    ->required(),
-
+                TextInput::make('email')->email()->unique('leads', 'email', ignoreRecord: true)->required(),
+                TextInput::make('phone')->label('Phone')->nullable(),
+                TextInput::make('linked_in')->label('Linked In')->nullable(),
+                Select::make('contact_method')->options($methods)->preload()->searchable(),
                 DatePicker::make('last_contact_date')->nullable(),
             ]);
     }
 
     public static function table(Tables\Table $table): Tables\Table
     {
-
+        $leadStatuses =['Introduction' => 'Introduction','Introduction Sent' => 'Introduction Sent','Reminder' => 'Reminder','Reminder Sent' => 'Reminder Sent','Presentation' => 'Presentation','Presentation Sent' => 'Presentation Sent','Price List' => 'Price List','Price List Sent' => 'Price List Sent','Contract' => 'Contract','Contract Sent' => 'Contract Sent','Interested' => 'Interested','Error' => 'Error','Partner' => 'Partner','Rejected' => 'Rejected',];
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
-        ->query(
-            Lead::query()->whereHas('client', function ($query) {
-                $query->whereNotIn('status', ['Active', 'On Hold', 'Rejected']);
-            })
-        )
+        ->query(Lead::query()->whereHas('client', function ($query) {$query->whereNotIn('status', ['Active', 'On Hold', 'Rejected']);}))
             ->columns([
                 TextColumn::make('client.company_name')->sortable()->searchable(),
                 TextColumn::make('email')->sortable()->searchable(),
                 TextColumn::make('first_name')->sortable()->searchable(),
+                TextColumn::make('contact_method')->sortable()->searchable(),
                 TextColumn::make('status')->badge()->sortable()->color(fn (string $state): string => match ($state) {
                     'Introduction' => 'warning',
                         'Introduction Sent' => 'info',
@@ -100,54 +84,13 @@ class LeadResource extends Resource
                 TextColumn::make('last_contact_date')->date()->sortable()->searchable(),
             ])
             ->actions([
-                Action::make('Send Email')
-                    ->icon('heroicon-o-paper-airplane')
-                    ->requiresConfirmation()
-                    ->action(fn ($record) => self::sendEmails($record))
-                    ->color('success'),
+                Action::make('Send Email')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->action(fn ($record) => self::sendEmails($record))->color('success'),
             ]) ->filters([
-                SelectFilter::make('client_id')
-                    ->label('Client')
-                    ->options(
-                        Client::query()
-                            ->distinct()
-                            ->orderBy('status')
-                            ->pluck('status', 'id')->unique()
-                            ->toArray()
-                    )
-                    ->searchable()
-                    ->preload()
-                    ->multiple(),
-                Filter::make('needs_action')
-                ->label('Needs Action')
-                ->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
-                SelectFilter::make('status')->multiple()
-                    ->options([
-                        'Introduction' => 'Introduction',
-                        'Introduction Sent' => 'Introduction Sent',
-                        'Reminder' => 'Reminder',
-                        'Reminder Sent' => 'Reminder Sent',
-                        'Presentation' => 'Presentation',
-                        'Presentation Sent' => 'Presentation Sent',
-                        'Price List' => 'Price List',
-                        'Price List Sent' => 'Price List Sent',
-                        'Contract' => 'Contract',
-                        'Contract Sent' => 'Contract Sent',
-                        'Interested' => 'Interested',
-                        'Error' => 'Error',
-                        'Partner' => 'Partner',
-                        'Rejected' => 'Rejected',
-                    ])
-                    ->label('Filter by Status')
-                    ->attribute('status'),
-            ])
-            ->bulkActions([
-                    BulkAction::make('Send Bulk Emails')
-                        ->icon('heroicon-o-paper-airplane')
-                        ->requiresConfirmation()
-                        ->action(fn ($records) => self::sendEmails($records))
-                        ->deselectRecordsAfterCompletion()
-                        ->color('success'),
+                SelectFilter::make('client_id')->label('Client Status')->options(Client::query()->distinct()->orderBy('status')->pluck('status', 'id')->unique()->toArray())->searchable()->preload()->multiple(),
+                Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
+                SelectFilter::make('status')->multiple()->options($leadStatuses)->label('Filter by Status')->attribute('status'),
+            ])->bulkActions([
+                BulkAction::make('Send Bulk Emails')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->action(fn ($records) => self::sendEmails($records))->deselectRecordsAfterCompletion()->color('success'),
                     BulkAction::make('updateStatus')
                     ->label('Update Status')
                     ->icon('heroicon-o-arrow-down-on-square-stack')->color('info')

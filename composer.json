@@ -16,6 +16,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "livewire/livewire": "^3.0",
+        "phpmailer/phpmailer": "^6.9",
         "spatie/laravel-permission": "^6.16",
         "twilio/sdk": "^8.3"
     },
