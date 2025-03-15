@@ -52,7 +52,7 @@ protected static ?string $navigationIcon = 'heroicon-o-globe-alt'; // 🌍 Count
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('iso')->sortable(),
-                Tables\Columns\TextColumn::make('name')->sortable(),
+                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('nicename')->sortable(),
                 Tables\Columns\TextColumn::make('iso3')->sortable(),
                 Tables\Columns\TextColumn::make('numcode')->sortable(),

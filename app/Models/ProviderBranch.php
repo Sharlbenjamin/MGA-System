@@ -27,6 +27,7 @@ class ProviderBranch extends Model
         'provider_id',
         'branch_name',
         'city_id',
+        'province_id',
         'status',
         'priority',
         'service_type_id',
@@ -35,6 +36,21 @@ class ProviderBranch extends Model
         'night_cost',
         'weekend_cost',
         'weekend_night_cost',
+        'emergency',
+        'pediatrician_emergency',
+        'dental',
+        'pediatrician',
+        'gynecology',
+        'urology',
+        'cardiology',
+        'ophthalmology',
+        'trauma_orthopedics',
+        'surgery',
+        'intensive_care',
+        'obstetrics_delivery',
+        'hyperbaric_chamber',
+        
+        
     ];
 
     /**

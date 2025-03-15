@@ -7,7 +7,9 @@ use App\Models\ProviderBranch;
 use App\Models\Provider;
 use App\Models\ServiceType;
 use App\Models\City;
+use App\Models\Province;
 use Filament\Forms;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -29,57 +31,42 @@ protected static ?string $navigationIcon = 'heroicon-o-home-modern'; // 🏠 Bra
 {
     return $form
         ->schema([
-            TextInput::make('branch_name')
-                ->label('Branch Name')
-                ->required()
-                ->maxLength(255), // ✅ Added new field
-
-            Select::make('provider_id')
-                ->label('Provider')
-                ->options(Provider::pluck('name', 'id'))
-                ->searchable()
-                ->required(),
-
-                Select::make('city_id')
-                ->label('City')
-                ->options(fn ($get) => 
-                    City::where('country_id', Provider::where('id', $get('provider_id'))->value('country_id'))->pluck('name', 'id')
-                )
-                ->searchable()
-                ->reactive()
-                ->required(),
-
-            Select::make('status')
-                ->label('Status')
-                ->options([
-                    'Active' => 'Active',
-                    'Hold' => 'Hold',
-                ])
-                ->required(),
-
-            Select::make('priority')
-                ->label('Priority')
-                ->options([
+            TextInput::make('branch_name')->label('Branch Name')->required()->maxLength(255),
+            Select::make('provider_id')->label('Provider')->options(Provider::pluck('name', 'id'))->searchable()->required(),
+            Select::make('city_id')->label('City')->options(fn ($get) => City::where('country_id', Provider::where('id', $get('provider_id'))->value('country_id'))->pluck('name', 'id'))->searchable()->reactive()->required(),
+            Select::make('province')->label('Province')->options(fn ($get) => Province::where('country_id', Provider::where('id', $get('provider_id'))->value('country_id'))->pluck('name', 'id'))->searchable()->reactive(),
+            Select::make('status')->label('Status')->options(['Active' => 'Active','Hold' => 'Hold',])->required(),
+            Select::make('priority')->label('Priority')->options([
                     '1' => '1', '2' => '2', '3' => '3', '4' => '4', '5' => '5',
                     '6' => '6', '7' => '7', '8' => '8', '9' => '9', '10' => '10',
-                ])
-                ->required(),
+                ])->required(),
 
-            Select::make('service_type_id')
-                ->label('Service Type')
-                ->options(ServiceType::pluck('name', 'id'))
-                ->searchable()
-                ->required(),
-
-            Select::make('communication_method')
-                ->label('Communication Method')
-                ->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])
-                ->required(),
+            Select::make('service_type_id')->label('Service Type')->options(ServiceType::pluck('name', 'id'))->searchable()->required(),
+            Select::make('communication_method')->label('Communication Method')->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])->required(),
 
             TextInput::make('day_cost')->label('Day Cost')->numeric()->nullable(),
             TextInput::make('night_cost')->label('Night Cost')->numeric()->nullable(),
             TextInput::make('weekend_cost')->label('Weekend Cost')->numeric()->nullable(),
             TextInput::make('weekend_night_cost')->label('Weekend Night Cost')->numeric()->nullable(),
+            
+            Section::make('Medical Services')
+                ->schema([
+                    Toggle::make('emergency')->label('Emergency')->inline(),
+                    Toggle::make('pediatrician_emergency')->label('Pediatrician Emergency')->inline(),
+                    Toggle::make('dental')->label('Dental')->inline(),
+                    Toggle::make('pediatrician')->label('Pediatrician')->inline(),
+                    Toggle::make('gynecology')->label('Gynecology')->inline(),
+                    Toggle::make('urology')->label('Urology')->inline(),
+                    Toggle::make('cardiology')->label('Cardiology')->inline(),
+                    Toggle::make('ophthalmology')->label('Ophthalmology')->inline(),
+                    Toggle::make('trauma_orthopedics')->label('Trauma / Orthopedics')->inline(),
+                    Toggle::make('surgery')->label('Surgery')->inline(),
+                    Toggle::make('intensive_care')->label('Intensive Care')->inline(),
+                    Toggle::make('obstetrics_delivery')->label('Obstetrics / Delivery')->inline(),
+                    Toggle::make('hyperbaric_chamber')->label('Hyperbaric Chamber')->inline(),
+                ])
+        
+       
         ]);
 }
 
