@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProviderResource\Pages;
+use App\Filament\Resources\ProviderResource\RelationManagers\ProviderBranchRelationManager;
 use App\Filament\Resources\ProviderResource\RelationManagers\ProviderLeadRelationManager;
 use App\Models\Provider;
 use App\Models\Country;
@@ -128,6 +129,7 @@ public static function table(Tables\Table $table): Tables\Table
     {
         return [
             ProviderLeadRelationManager::class,
+            ProviderBranchRelationManager::class,
         ];
     }
 
