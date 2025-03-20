@@ -46,6 +46,16 @@ class Lead extends Model
         return $this->belongsTo(Client::class);
     }
 
+    public function interactions()
+    {
+        return $this->hasMany(Interaction::class);
+    }
+
+    public function tasks()
+    {
+        return $this->morphMany(Task::class, 'taskable');
+    }
+
     public static function sendTailoredMail(array $cc, string $subject, string $body)
     {
         Mail::cc($cc)->send(new TailoredMailable($subject, $body));

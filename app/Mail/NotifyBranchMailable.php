@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use App\Models\Appointment;
 
-
 class NotifyBranchMailable extends Mailable
 {
     use Queueable, SerializesModels;
@@ -36,17 +35,19 @@ class NotifyBranchMailable extends Mailable
         $password = Auth::user()->smtp_password;
         
         $view = match ($this->type) {
-            'new' => 'emails.new-appointment-branch-mail', // done
-            'confirm_appointment' => 'emails.confirm-appointment-branch-mail', // done
-            'update' => 'emails.update-appointment-branch-mail', // done
-            'cancel' => 'emails.cancel-appointment-branch-mail', // done
+            'appointment_created' => 'emails.new-appointment-branch-mail',
+            'appointment_confirmed' => 'emails.confirm-appointment-branch-mail',
+            'appointment_updated' => 'emails.update-appointment-branch-mail',
+            'appointment_cancelled' => 'emails.cancel-appointment-branch-mail',
+            default => 'emails.general-notification-branch-mail',
         };
 
         $header = match ($this->type) {
-            'new' => 'New Appointment Notification',
-            'confirm_appointment' => 'Appointment Confirmation',
-            'update' => 'Appointment Update',
-            'cancel' => 'Appointment Cancellation',
+            'appointment_created' => 'New Appointment Notification',
+            'appointment_confirmed' => 'Appointment Confirmation',
+            'appointment_updated' => 'Appointment Update',
+            'appointment_cancelled' => 'Appointment Cancellation',
+            default => 'General Notification', // Fallback
         };
         
         return $this->view($view)

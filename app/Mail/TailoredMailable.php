@@ -30,7 +30,7 @@ class TailoredMailable extends Mailable
         $username = Auth::user()->smtp_username;
         $password = Auth::user()->smtp_password;
 
-        return $this->subject($this->customSubject)
+        return $this->subject($this->subject)
                     ->from($username, Auth::user()->name)
                     ->view('emails.tailored-mail') // Make sure this Blade view exists
                     ->with(['body' => $this->body]);

@@ -54,7 +54,7 @@ class AppointmentResource extends Resource
     {
         return $table->columns([
             TextColumn::make('file.id')->label('File ID')->sortable(),
-            TextColumn::make('providerBranch.name')->label('Provider Branch'),
+            TextColumn::make('providerBranch.branch_name')->label('Provider Branch'),
             TextColumn::make('service_date')->label('Service Date')->date(),
             TextColumn::make('service_time')->label('Service Time'),
             TextColumn::make('status')->label('Status')->badge(),

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->foreignId('city_id')->nullable()->constrained()->onDelete('set null');
             $table->string('service_types');
             $table->enum('type', ["Doctor","Clinic","Hospital","Dental"]);
-            $table->enum('status', ["Pending information","Step one","Step one sent","Reminder","Reminder sent","Discount","Discount sent","Step two","Step two sent","Presentation","Presentation sent","Contract","Contract sent"]);
+            $table->string('status', 255);
             $table->string('email', 255)->nullable();
             $table->string('phone', 20)->nullable();
             $table->string('communication_method', 50);

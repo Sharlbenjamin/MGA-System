@@ -9,7 +9,7 @@ use App\Filament\Resources\FileResource\RelationManagers\PrescriptionRelationMan
 use App\Filament\Resources\FileResource\RelationManagers\PatientRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\CommentsRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\AppointmentsRelationManager;
-
+use App\Filament\Resources\FileResource\RelationManagers\TaskRelationManager;
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Patient;
@@ -50,13 +50,12 @@ class FileResource extends Resource
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
             Select::make('status')->options(['New' => 'New','Handling' => 'Handling','In Progress' => 'In Progress','Assisted' => 'Assisted','Hold' => 'Hold','Void' => 'Void',])->default('New')->required(),
             TextInput::make('client_reference')->label('Client Reference')->nullable(),
-            Select::make('country_id')->relationship('country', 'name')->label('Country')->searchable()->nullable()->live(),
+            Select::make('country_id')->relationship('country', 'name')->label('Country')->preload()->searchable()->nullable()->live(),
             Select::make('city_id')->label('City')->searchable()->nullable()->options(fn ($get) => \App\Models\City::where('country_id', $get('country_id'))->pluck('name', 'id'))->reactive(),
             Select::make('provider_branch_id')->label('Provider Branch')->searchable()->nullable()
-            ->options(fn ($get) => \App\Models\ProviderBranch::where('city_id', $get('city_id'))
-                ->where('service_type_id', $get('service_type_id')) // Match both fields
-                ->pluck('branch_name', 'id'))
-            ->reactive(),
+            ->options(fn ($get) => \App\Models\ProviderBranch::when($get('service_type_id') != 2, function ($query) use ($get) {
+                return $query->where('city_id', $get('city_id'));
+            })->where('service_type_id', $get('service_type_id'))->orderBy('priority', 'asc')->pluck('branch_name', 'id'))->reactive(),
             DatePicker::make('service_date')->label('Service Date')->nullable(),
             TimePicker::make('service_time')->label('Service Time')->nullable(),
             TextInput::make('address')->label('Address')->nullable(),
@@ -122,14 +121,15 @@ class FileResource extends Resource
     public static function getRelations(): array
     {
         return [
-            GopRelationManager::class, // Registers the Medical Reports table
-            MedicalReportRelationManager::class, // Registers the Medical Reports table
-            PrescriptionRelationManager::class, // Registers the Medical Reports table
+            GopRelationManager::class,
+            MedicalReportRelationManager::class,
+            PrescriptionRelationManager::class,
             PatientRelationManager::class,
             CommentsRelationManager::class,
             AppointmentsRelationManager::class,
+            TaskRelationManager::class
         ];
-}
+    }
 
     public static function getPages(): array
     {

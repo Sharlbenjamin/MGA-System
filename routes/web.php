@@ -7,6 +7,7 @@ use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate as FilamentAuthenticate;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use App\Http\Middleware\PasswordProtect;
+use App\Http\Controllers\GoogleAuthController;
 
 // ✅ Step 1: Check for site password unless already logged in
 Route::get('/', function () {
@@ -53,3 +54,6 @@ Route::get('/redirect-after-login', function () {
 Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, DispatchServingFilamentEvent::class])->group(function () {
     // Filament registers its own routes automatically.
 });
+
+
+Route::post('/create-meeting', [GoogleAuthController::class, 'createMeeting'])->name('google.create-meeting');

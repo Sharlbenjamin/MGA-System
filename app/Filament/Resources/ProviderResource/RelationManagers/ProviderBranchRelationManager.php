@@ -25,13 +25,17 @@ class ProviderBranchRelationManager extends RelationManager
 {
     protected static string $relationship = 'Branches';
 
+    public static function query(Builder $query): Builder
+    {
+        return $query->where('provider_id', static::getOwnerRecord()->id);
+    }
     public function form(Forms\Form $form): Forms\Form
 {
     return $form
         ->schema([
             TextInput::make('branch_name')->label('Branch Name')->required()->maxLength(255),
-            Select::make('city_id')->label('City')->options(fn ($get) => City::where('country_id', Provider::where('id', $get('provider_id'))->value('country_id'))->pluck('name', 'id'))->searchable()->reactive()->required(),
-            Select::make('province')->label('Province')->options(fn ($get) => Province::where('country_id', Provider::where('id', $get('provider_id'))->value('country_id'))->pluck('name', 'id'))->searchable()->reactive(),
+            Select::make('city_id')->label('City')->options(fn ($get) => City::where('country_id', Provider::where('id',$this->getOwnerRecord()->id)->value('country_id'))->pluck('name', 'id'))->searchable()->reactive()->required(),
+            Select::make('province')->label('Province')->options(fn ($get) => Province::where('country_id', Provider::where('id', $this->getOwnerRecord()->id)->value('country_id'))->pluck('name', 'id'))->searchable()->reactive(),
             Select::make('status')->label('Status')->options(['Active' => 'Active','Hold' => 'Hold',])->required(),
             Select::make('priority')->label('Priority')->options([
                     '1' => '1', '2' => '2', '3' => '3', '4' => '4', '5' => '5',
@@ -70,10 +74,8 @@ class ProviderBranchRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('Leads')
+            ->recordTitleAttribute('Branches')
             ->columns([
-            TextColumn::make('name')->label('Lead Name')->sortable()->searchable(),
-            TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
             TextColumn::make('city.name')->label('City')->sortable()->searchable(),
             TextColumn::make('service_types')
                 ->label('Service Types')

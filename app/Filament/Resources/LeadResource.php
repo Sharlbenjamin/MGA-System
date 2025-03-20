@@ -2,6 +2,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LeadResource\Pages;
+use App\Filament\Resources\LeadResource\RelationManagers\InteractionsRelationManager;
 use App\Models\Lead;
 use Filament\Resources\Resource;
 use Filament\Forms;
@@ -15,18 +16,16 @@ use App\Mail\CustomLeadEmail;
 use App\Models\Client;
 use Illuminate\Support\Facades\Mail;
 use App\Models\DraftMail;
+use Carbon\Carbon;
 use Filament\Forms\ComponentContainer;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
-use Filament\Navigation\NavigationItem;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Collection;
 
 class LeadResource extends Resource
@@ -34,7 +33,7 @@ class LeadResource extends Resource
     protected static ?string $model = Lead::class;
     protected static ?string $navigationGroup = 'CRM';
     protected static ?int $navigationSort = 2;
-    protected static ?string $navigationIcon = 'heroicon-o-light-bulb'; // 💡 Leads Icon
+    protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -95,27 +94,27 @@ class LeadResource extends Resource
                     ->label('Update Status')
                     ->icon('heroicon-o-arrow-down-on-square-stack')->color('info')
                     ->form([
-                        Select::make('status')
-                            ->label('New Status')
-                            ->options([
-                                [
-                                    'Introduction' => 'Introduction',
-                                    'Introduction Sent' => 'Introduction Sent',
-                                    'Reminder' => 'Reminder',
-                                    'Reminder Sent' => 'Reminder Sent',
-                                    'Presentation' => 'Presentation',
-                                    'Presentation Sent' => 'Presentation Sent',
-                                    'Price List' => 'Price List',
-                                    'Price List Sent' => 'Price List Sent',
-                                    'Contract' => 'Contract',
-                                    'Contract Sent' => 'Contract Sent',
-                                    'Interested' => 'Interested',
-                                    'Error' => 'Error',
-                                    'Partner' => 'Partner',
-                                    'Rejected' => 'Rejected',
-                                ]
-                            ])
-                            ->required(),
+                Select::make('status')
+                    ->label('New Status')
+                    ->options([
+                        [
+                            'Introduction' => 'Introduction',
+                            'Introduction Sent' => 'Introduction Sent',
+                            'Reminder' => 'Reminder',
+                            'Reminder Sent' => 'Reminder Sent',
+                            'Presentation' => 'Presentation',
+                            'Presentation Sent' => 'Presentation Sent',
+                            'Price List' => 'Price List',
+                            'Price List Sent' => 'Price List Sent',
+                            'Contract' => 'Contract',
+                            'Contract Sent' => 'Contract Sent',
+                            'Interested' => 'Interested',
+                            'Error' => 'Error',
+                            'Partner' => 'Partner',
+                            'Rejected' => 'Rejected',
+                        ]
+                    ])
+                    ->required(),
                     ])
                     ->action(function (Collection $records, array $data) {
                         $records->each->update(['status' => $data['status']]);
@@ -196,6 +195,13 @@ class LeadResource extends Resource
                     'status' => $draftMail->new_status,
                     'last_contact_date' => now()->toDateString(),
                 ]);
+                $record->interactions()->create([
+                    'lead_id' => $record->id,
+                    'user_id' => Auth::id(),
+                    'method' => 'Email',
+                    'status' => $record->status,
+                    'interaction_date' => Carbon::now(),
+                ]);
     
                 Log::info("Email successfully sent to: {$record->email}");
             } catch (\Exception $e) {
@@ -214,15 +220,12 @@ class LeadResource extends Resource
     }
     
 
-    public static function navigationItems(): array
-{
-    return [
-        \Filament\Navigation\NavigationItem::make()
-            ->label('Leads')
-            ->url(self::getUrl('index'))
-            ->icon('heroicon-o-light-bulb')
-            ->sort(2),
-    ];
-}
+
+    public static function getRelations(): array
+    {
+        return [
+            InteractionsRelationManager::class,
+        ];   
+    }
 
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProviderLeadResource\Pages;
+use App\Filament\Resources\ProviderLeadResource\RelationManagers\InteractionsRelationManager;
 use App\Models\ProviderLead;
 use App\Models\City;
 use App\Models\ServiceType;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\Mail;
 use App\Models\DraftMail;
 use Carbon\Carbon;
 use App\Mail\CustomLeadEmail;
+use App\Models\Country;
+use App\Models\Interaction;
+use Filament\Forms\ComponentContainer;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -35,8 +39,8 @@ class ProviderLeadResource extends Resource
     protected static ?string $model = ProviderLead::class;
 
     protected static ?string $navigationGroup = 'PRM';
-protected static ?int $navigationSort = 2;
-protected static ?string $navigationIcon = 'heroicon-o-light-bulb'; // 💡 Provider Leads Icon
+    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationIcon = 'heroicon-o-light-bulb'; // 💡 Provider Leads Icon
     public static function form(Forms\Form $form): Forms\Form
 {
     return $form
@@ -82,6 +86,11 @@ protected static ?string $navigationIcon = 'heroicon-o-light-bulb'; // 💡 Prov
                     'Presentation sent' => 'Presentation Sent',
                     'Contract' => 'Contract',
                     'Contract sent' => 'Contract Sent',
+                    'Fake Case' => 'Fake Case',
+                    'Fake Case sent' => 'Fake Case sent',
+                    'Cancel Case' => 'Cancel Case',
+                    'Cancel Case sent' => 'Cancel Case sent',
+                    
                 ])
                 ->required(),
             DatePicker::make('last_contact_date')->label('Last Contact Date')->nullable(),
@@ -91,7 +100,7 @@ protected static ?string $navigationIcon = 'heroicon-o-light-bulb'; // 💡 Prov
 
 public static function table(Tables\Table $table): Tables\Table
 {
-    $ActionStatuses = ['Pending information', 'Step one', 'Reminder', 'Discount', 'Step two', 'Presentation', 'Contract'];
+    $ActionStatuses = ['Pending information', 'Step one', 'Reminder', 'Discount', 'Step two', 'Presentation', 'Contract', 'Fake Case', 'Cancel Case'];
     return $table
     ->query(
         ProviderLead::query()->whereHas('provider', function ($query) {
@@ -113,6 +122,8 @@ public static function table(Tables\Table $table): Tables\Table
                 ->colors([
                     'gray' => 'Pending information',
                     'blue' => 'Step one',
+                    'blue' => 'Fake Case',
+                    'blue' => 'Fake Case Sent',
                     'green' => 'Step one sent',
                     'yellow' => 'Reminder',
                     'red' => 'Reminder sent',
@@ -142,6 +153,20 @@ public static function table(Tables\Table $table): Tables\Table
                 ->action(fn (SupportCollection $records) => static::processProviderEmails($records)),
 
             Tables\Actions\DeleteBulkAction::make(),
+            BulkAction::make('send_tailored_mail')->label('Send Tailored Mail')
+                ->form([
+                    TextInput::make('subject')->label('Email Subject')->required(),
+                    Textarea::make('body')->label('Email Body')->required(),
+                ])
+                ->action(function (ComponentContainer $form, $records) {
+                    $subject = $form->getState()['subject'];
+                    $body = $form->getState()['body'];
+
+                    foreach ($records as $lead) {
+                        ProviderLead::sendTailoredMail([$lead->email], $subject, $body);
+                    }
+
+                })
         ])
         ->filters([
             SelectFilter::make('status')->multiple()
@@ -159,16 +184,17 @@ public static function table(Tables\Table $table): Tables\Table
                         'Presentation sent' => 'Presentation sent',
                         'Contract' => 'Contract',
                         'Contract sent' => 'Contract sent',
-                    ])
-                    ->label('Filter by Status')
-                    ->attribute('status'),
-                Filter::make('needs_action')
-                    ->label('Needs Action')
-                    ->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
-                    SelectFilter::make('provider.name')->multiple()
-                    ->options(Provider::pluck('name', 'id'))
-                    ->label('Provider')
-                    ->attribute('provider_id'),
+                        'Fake Case' => 'Fake Case',
+                        'Fake Case sent' => 'Fake Case sent',
+                        'Cancel Case' => 'Cancel Case',
+                        'Cancel Case sent' => 'Cancel Case sent',
+                    ])->label('Filter by Status')->attribute('status'),
+            Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
+            SelectFilter::make('city_id')
+            ->label('Filter by City')
+            ->options(City::whereHas('country', fn ($q) => $q->whereIn('id', [179, 73, 201, 119, 94, 156]))->pluck('name', 'id'))
+            ->preload()
+            ->multiple()
         ]);
 }
 
@@ -213,6 +239,14 @@ public static function processProviderEmails(SupportCollection $providerLeads)
                 'status' => $draftMail->new_status,
                 'last_contact_date' => Carbon::now(),
             ]);
+
+            $providerLead->interactions()->create([
+                'user_id' => Auth::id(),
+                'provider_lead_id' => $providerLead->id,
+                'method' => 'Email',
+                'status' => $providerLead->status,
+                'interaction_date' => Carbon::now(),
+            ]);
         } catch (\Exception $e) {
             Notification::make()->title('Email Sending Failed')->body("Email sending failed for {$providerLead->email}: " . $e->getMessage())->danger()->send();
             Log::error("Email sending failed for {$providerLead->email}: " . $e->getMessage());
@@ -222,7 +256,7 @@ public static function processProviderEmails(SupportCollection $providerLeads)
     public static function getRelations(): array
     {
         return [
-            // Define any related models if needed
+            InteractionsRelationManager::class,
         ];
     }
 

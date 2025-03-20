@@ -59,6 +59,10 @@ public static function form(Form $form): Form
         'Presentation sent' => 'Presentation sent',
         'Contract' => 'Contract',
         'Contract sent' => 'Contract sent',
+        'Fake Case' => 'Fake Case',
+        'Fake Case sent' => 'Fake Case sent',
+        'Cancel Case' => 'Cancel Case',
+        'Cancel Case sent' => 'Cancel Case sent',
     ];
 
     $fileStatuses = [

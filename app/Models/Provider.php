@@ -52,6 +52,10 @@ class Provider extends Model
         return $this->hasOne(ProviderLead::class)->latestOfMany('last_contact_date');
     }
 
+    public function tasks()
+    {
+        return $this->morphMany(Task::class, 'taskable');
+    }
     public function requests(): HasManyThrough
     {
         return $this->hasManyThrough(

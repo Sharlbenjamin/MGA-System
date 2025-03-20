@@ -13,7 +13,7 @@
     <ul>
     <li><strong>Date:</strong> {{ $appointment->service_date }}</li>
     <li><strong>Time:</strong> {{ $appointment->service_time }}</li>
-    <li><strong>Location:</strong> {{ $appointment->providerBranch->firstContact()->address }}</li>
+    <li><strong>Location:</strong> {{ $appointment->providerBranch->primaryContact('Appointment')->address ?? 'N/A' }}</li>
     </ul>
     <p>Please take note of these changes.</p>
     <p>Please confirm the availability at your earliest convenience.</p>

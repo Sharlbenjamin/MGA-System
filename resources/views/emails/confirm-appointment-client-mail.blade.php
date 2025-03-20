@@ -13,7 +13,7 @@
     <ul>
     <li><strong>Date:</strong> {{ $file->service_date }}</li>
     <li><strong>Time:</strong> {{ $file->service_time }}</li>
-    <li><strong>Location:</strong> {{ $file->providerBranch->firstContact()->address }}</li>
+    <li><strong>Location:</strong> {{ $file->providerBranch->primaryContact('Appointment')->address ?? 'N/A' }}</li>
     </ul>
     
     @include('draftsignature', ['signature' => auth()->user()->signature])

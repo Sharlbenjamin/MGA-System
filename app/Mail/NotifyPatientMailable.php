@@ -17,28 +17,37 @@ class NotifyPatientMailable extends Mailable
     use Queueable, SerializesModels;
 
     public $type;
-    public $file;
+    public $data; // Changed from $file to $data
     /**
      * Create a new message instance.
      */
-    public function __construct($type, File $file)
+    public function __construct($type, $data) // Updated parameter type
     {
         $this->type = $type;
-        $this->file = $file;
+        $this->data = $data; // Updated assignment
     }
 
     public function build()
     {
+        // Ensure file relation is loaded before using it
+        if (!isset($this->data->file) && method_exists($this->data, 'file')) {
+            $this->data->load('file');
+        }
+
         // Override only MAIL_USERNAME and MAIL_PASSWORD dynamically
         $username = Auth::user()->smtp_username;
         $password = Auth::user()->smtp_password;
         
         $view = match ($this->type) {
-            'patient_available' => 'emails.available-appointments-patient-mail', //done
-            'confirm' => 'emails.confirm-appointment-patient-mail', // done
-            'reminder' => 'emails.reminder-appointment-mail',
-            'file_created' => 'emails.file-created-client-mail', //done
-            'assisted' => 'emails.patient-assisted-patient-mail', //done
+            'appointment_created' => 'emails.new-appointment-mga-mail',
+            'appointment_confirmed' => 'emails.confirm-appointment-mga-mail',
+            'appointment_updated' => 'emails.update-appointment-mga-mail',
+            'appointment_cancelled' => 'emails.cancel-appointment-mga-mail',
+            'file_created' => 'emails.file-created-mga-mail',
+            'file_cancelled' => 'emails.file-cancelled-mga-mail',
+            'file_hold' => 'emails.file-hold-mga-mail',
+            'file_assisted' => 'emails.file-assisted-mga-mail',
+            default => 'emails.general-notification-mga-mail', // Fallback
         };
 
         $header = match ($this->type) {
@@ -47,12 +56,13 @@ class NotifyPatientMailable extends Mailable
             'patient_available' => 'Available Appointments',
             'file_created' => 'File Created Notification',
             'assisted' => 'Patient Assisted',
+            'Appointment' => 'Appointment Notification', // added for NotifyUsMailable match case
         };
         
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject($header)
-                    ->with(['appointment' => $this->file]);
+                    ->subject($header . " - " . ($this->data->file->mga_reference ?? 'No Reference'))
+                    ->with(['appointment' => $this->data]); // Updated to use $data
     }
     
 }
