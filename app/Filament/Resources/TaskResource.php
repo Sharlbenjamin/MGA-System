@@ -18,6 +18,11 @@ class TaskResource extends Resource
 {
     protected static ?string $model = Task::class;
     
+    protected static ?string $navigationGroup = null; // Removes it from any group
+    protected static ?int $navigationSort = null; // Ensures it's not sorted
+    protected static ?string $navigationIcon = null; // Hides from sidebar
+    protected static bool $shouldRegisterNavigation = false; // Hides it completely
+
 
     public static function form(Forms\Form $form): Forms\Form
     {
