@@ -117,14 +117,14 @@ class File extends Model
     {
         return $this->hasMany(Task::class);
     }
-    
+
     public function fileBranches()
     {
         return \App\Models\ProviderBranch::query()
-            ->when($this->service_type_id, fn ($query) => 
+            ->when($this->service_type_id, fn ($query) =>
                 $query->where('service_type_id', $this->service_type_id)
             )
-            ->when($this->city_id, fn ($query) => 
+            ->when($this->city_id, fn ($query) =>
                 $query->where('city_id', $this->city_id)
             )
             ->orderBy('priority', 'asc')
@@ -160,7 +160,7 @@ class File extends Model
             $file->patient->client?->notifyClient('file_created', $file);
             $file->patient?->notifyPatient('file_created', $file);
         });
-        
+
         static::updated(function ($file) {
             if ($file->isDirty('status')) {
                 if (!$file->mga_reference) {
@@ -171,7 +171,7 @@ class File extends Model
                     'Assisted' => $file->patient->client?->notifyClient('file_assisted', $file),
                     'In Progress' => $file->patient->client?->notifyClient('file_available', $file),
                     'Hold' => $file->patient->client?->notifyClient('file_hold', $file),
-                    'Void' => $file->patient->client?->notifyClient('file_cancelled', $file),
+                    'Cancelled' => $file->patient->client?->notifyClient('file_cancelled', $file),
                     default => null,
                 };
             }

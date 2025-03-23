@@ -30,44 +30,18 @@
             <h1>PRESCRIPTION</h1>
         </div>
         <div class="doctor-info">
-            <p class="bold">Doctor:</p> {{ $prescription->file->providerBranch->name }}
+            <p class="bold">Doctor:</p> {{ $gop->file->providerBranch->name ?? 'N/A' }}
         </div>
         <div class="section">
             <div class="patient-info">
-                <p class="bold">Patient Name:</p> {{ $prescription->file->patient->name }}
-                <p class="bold">Gender:</p> {{ $prescription->file->patient->gender }}
-                <p class="bold">Age:</p> {{ $prescription->file->patient->dob }}
+                <p class="bold">Patient Name:</p> {{ $gop->file->patient->name ?? 'N/A' }}
+                <p class="bold">Gender:</p> {{ $gop->file->patient->gender ?? 'N/A' }}
+                <p class="bold">Age:</p> {{ $gop->file->patient->dob ?? 'N/A' }}
             </div>
             <div class="diagnosis-info">
-                <p class="bold">Diagnosis:</p> {{ $prescription->file->diagnosis }}
+                <p class="bold">Diagnosis:</p> {{ $gop->file->diagnosis ?? 'N/A' }}
             </div>
         </div>
-        <div class="rx-section">
-            <div class="rx-symbol">Rx</div>
-            <div class="rx-details"></div>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Drug Name</th>
-                    <th>Pharm.</th>
-                    <th>Dosage</th>
-                    <th>Frequency</th>
-                    <th>Duration</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($prescription->drugs as $drug)
-                    <tr>
-                        <td>{{ $drug->name }}</td>
-                        <td>{{ $drug->pharmaceutical }}</td>
-                        <td>{{ $drug->dose }}</td>
-                        <td>{{ $drug->frequency }}</td>
-                        <td>{{ $drug->duration }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
         <div class="footer">
             <p>📍 Company: Spain | 📞 Contact: +34634070722 | 🌍 Website: medguarda.com</p>
         </div>

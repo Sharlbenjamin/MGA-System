@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('mga_reference')->unique();
             $table->foreignId('patient_id')->constrained();
             $table->foreignId('service_type_id')->constrained();
-            $table->enum('status', ["New", "Handling", "In Progress", "Assisted", "Hold", "Void"])->default("New");
+            $table->string('status')->default("New");
             $table->string('client_reference')->nullable();
             $table->foreignId('country_id')->nullable()->constrained();
             $table->foreignId('city_id')->nullable()->constrained();

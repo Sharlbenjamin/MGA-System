@@ -14,10 +14,13 @@ use Filament\Tables\Filters\Filter;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ToggleColumn;
+use Illuminate\Database\Eloquent\Model;
 
 class TaskRelationManager extends RelationManager
 {
     protected static string $relationship = 'tasks';
+
+    protected static ?string $title = 'Tasks';
 
     public function form(Forms\Form $form): Forms\Form
     {

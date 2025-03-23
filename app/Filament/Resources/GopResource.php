@@ -3,15 +3,15 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\GopResource\Pages;
-use App\Filament\Resources\GopResource\RelationManagers;
 use App\Models\Gop;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class GopResource extends Resource
 {
@@ -22,19 +22,25 @@ class GopResource extends Resource
     protected static ?string $navigationIcon = null; // Hides from sidebar
     protected static bool $shouldRegisterNavigation = false; // Hides it completely
 
-    public static function form(Form $form): Form
+    public static function form(Forms\Form $form): Forms\Form
     {
         return $form
             ->schema([
-                //
+                Select::make('type')->options(['In' => 'In', 'Out' => 'Out'])->required(),
+                TextInput::make('amount')->numeric()->required(),
+                DatePicker::make('date')->required(),
+                Select::make('status')->options(['Not Sent' => 'Not Sent', 'Sent' => 'Sent', 'Updated' => 'Updated', 'Cancelled' => 'Cancelled'])->default('Not Sent')->required(),
             ]);
     }
 
-    public static function table(Table $table): Table
+    public static function table(Tables\Table $table): Tables\Table
     {
         return $table
             ->columns([
-                //
+                TextColumn::make('type')->label('Type')->sortable(),
+                TextColumn::make('amount')->label('Amount')->sortable(),
+                TextColumn::make('date')->label('Date')->sortable(),
+                TextColumn::make('status')->label('Status')->badge()->sortable(),
             ])
             ->filters([
                 //

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('file_id')->constrained();
             $table->enum('type', ["In","Out"]);
+            $table->string('status')->default('Not Sent');
             $table->float('amount');
             $table->date('date');
             $table->timestamps();

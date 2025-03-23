@@ -48,7 +48,7 @@ class FileResource extends Resource
             }),
             TextInput::make('mga_reference')->label('MGA Reference')->required()->readOnly()->unique(ignoreRecord: true)->helperText('Auto-generated when you chose the patient'),
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
-            Select::make('status')->options(['New' => 'New','Handling' => 'Handling','In Progress' => 'In Progress','Assisted' => 'Assisted','Hold' => 'Hold','Void' => 'Void',])->default('New')->required(),
+            Select::make('status')->options(['New' => 'New','Handling' => 'Handling','In Progress' => 'In Progress', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required(),
             TextInput::make('client_reference')->label('Client Reference')->nullable(),
             Select::make('country_id')->relationship('country', 'name')->label('Country')->preload()->searchable()->nullable()->live(),
             Select::make('city_id')->label('City')->searchable()->nullable()->options(fn ($get) => \App\Models\City::where('country_id', $get('country_id'))->pluck('name', 'id'))->reactive(),
@@ -68,9 +68,21 @@ class FileResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->withCount(['tasks as undone_tasks_count' => function ($query) {
+                $query->where('is_done', false);
+            }]))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('status')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
+                    'New' => 'success',
+                    'Handling' => 'info',
+                    'In Progress' => 'info',
+                    'Confirmed' => 'success',
+                    'Assisted' => 'success',
+                    'Hold' => 'warning',
+                    'Cancelled' => 'danger',
+                    'Void' => 'gray',
+                }),
                 // Relationship columns
                 Tables\Columns\TextColumn::make('patient.name')->label('Patient')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
@@ -79,6 +91,8 @@ class FileResource extends Resource
                 Tables\Columns\TextColumn::make('providerBranch.branch_name')->label('Provider Branch')->sortable()->searchable(),
                 // Date & Time columns
                 Tables\Columns\TextColumn::make('service_date')->date()->sortable(),
+                // count undone tasks
+                Tables\Columns\TextColumn::make('undone_tasks_count')->label('Undone Tasks')->badge()->color('warning')->sortable(),
             ])
             ->filters([
                 // Filter by status
@@ -87,31 +101,33 @@ class FileResource extends Resource
                         'New' => 'New',
                         'Handling' => 'Handling',
                         'In Progress' => 'In Progress',
+                        'Confirmed' => 'Confirmed',
                         'Assisted' => 'Assisted',
                         'Hold' => 'Hold',
+                        'Cancelled' => 'Cancelled',
                         'Void' => 'Void',
                     ]),
                 SelectFilter::make('country_id')
                     ->options(\App\Models\Country::pluck('name', 'id'))
                     ->label('Country'),
-    
+
                 SelectFilter::make('city_id')
                     ->options(\App\Models\City::pluck('name', 'id'))
                     ->label('City'),
-    
+
                 SelectFilter::make('service_type_id')
                     ->options(\App\Models\ServiceType::pluck('name', 'id'))
                     ->label('Service Type'),
-                
+
             ])
             ->actions([
                 Tables\Actions\Action::make('View')
-                ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id])) 
+                ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id]))
                 ->icon('heroicon-o-eye'),
                 Tables\Actions\Action::make('Edit')
-                ->url(fn (File $record) => FileResource::getUrl('edit', ['record' => $record->id])) 
+                ->url(fn (File $record) => FileResource::getUrl('edit', ['record' => $record->id]))
                 ->icon('heroicon-o-pencil'),
-                
+
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
@@ -144,10 +160,10 @@ class FileResource extends Resource
     public static function generateMGAReference($patientId)
     {
         if (!$patientId) return 'MG000XXX';
-    
+
         $patient = \App\Models\Patient::find($patientId);
         if (!$patient || !$patient->client) return 'MG000XXX';
-    
+
         return sprintf('MG%03d%s', $patient->client->files()->count() + 1, $patient->client->initials ?? '');
     }
 

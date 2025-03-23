@@ -17,7 +17,7 @@ use Filament\Tables\Columns\TextColumn;
 class GopRelationManager extends RelationManager
 {
     protected static string $relationship = 'gops'; // Make sure this matches your File model relationship name
-    protected static ?string $title = 'GOP Records';
+    protected static ?string $title = 'GOP';
 
     // Enable create, edit and delete operations
     protected static bool $canCreate = true;
@@ -31,29 +31,24 @@ class GopRelationManager extends RelationManager
                 TextColumn::make('type'),
                 TextColumn::make('amount'),
                 TextColumn::make('date')->date(),
+                TextColumn::make('status')->badge()->color(fn($state) => $state === 'Sent' ? 'success' : 'danger'),
             ])
             ->headerActions([
                 // Create via modal action
-                Action::make('create')
-                    ->label('Add GOP')
-                    ->icon('heroicon-o-plus')
-                    ->modalHeading('Add GOP')
-                    ->modalButton('Create')
+                Action::make('create')->label('Add GOP')->icon('heroicon-o-plus')->modalHeading('Add GOP')
+                ->modalButton('Create')
                     ->form([
                         // Use a hidden field to set file_id from the owner record
-                        Hidden::make('file_id')
-                            ->default(fn() => $this->ownerRecord->getKey()),
+                        Hidden::make('file_id')->default(fn() => $this->ownerRecord->getKey()),
                         Select::make('type')
                             ->options([
                                 'In'  => 'In',
                                 'Out' => 'Out',
                             ])
                             ->required(),
-                        TextInput::make('amount')
-                            ->numeric()
-                            ->required(),
-                        DatePicker::make('date')
-                            ->required(),
+                        TextInput::make('amount')->numeric()->required(),
+                        DatePicker::make('date')->required(),
+                        Select::make('status')->options(['Not Sent' => 'Not Sent', 'Sent' => 'Sent', 'Updated' => 'Updated', 'Cancelled' => 'Cancelled'])->default('Not Sent')->required(),
                     ])
                     ->action(function (array $data) {
                         // Create the GOP record using the parent model's relation
@@ -61,6 +56,18 @@ class GopRelationManager extends RelationManager
                     })
             ])
             ->actions([
+                // Add this new action before existing actions
+                Action::make('sendToBranch')
+                    ->label('Send')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Send GOP')
+                    ->modalDescription('Are you sure you want to send this GOP to the branch?')
+                    ->modalSubmitActionLabel('Send GOP')
+                    ->action(function ($record) {
+                        $record->sendGopToBranch();
+                    }),
                 // Edit via modal action
                 Action::make('edit')
                     ->label('Edit')
@@ -70,22 +77,15 @@ class GopRelationManager extends RelationManager
                     ->form(function ($record) {
                         return [
                             // file_id can be hidden and unchanged
-                            Hidden::make('file_id')
-                                ->default($record->file_id),
+                            Hidden::make('file_id')->default($record->file_id),
                             Select::make('type')
                                 ->options([
                                     'In'  => 'In',
                                     'Out' => 'Out',
-                                ])
-                                ->default($record->type)
-                                ->required(),
-                            TextInput::make('amount')
-                                ->numeric()
-                                ->default($record->amount)
-                                ->required(),
-                            DatePicker::make('date')
-                                ->default($record->date)
-                                ->required(),
+                                ])->default($record->type)->required(),
+                            TextInput::make('amount')->numeric()->default($record->amount)->required(),
+                            DatePicker::make('date')->default($record->date)->required(),
+                            Select::make('status')->options(['Not Sent' => 'Not Sent', 'Sent' => 'Sent', 'Updated' => 'Updated', 'Cancelled' => 'Cancelled'])->default($record->status)->required(),
                         ];
                     })
                     ->action(function ($record, array $data) {

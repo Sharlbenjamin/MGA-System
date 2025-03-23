@@ -58,19 +58,26 @@ class Appointment extends Model
 
         static::created(function ($appointment) {
             $appointment->providerBranch?->notifyBranch('appointment_created', $appointment);
+            if($appointment->file->status === 'New') {
+                $appointment->file->update(['status' => 'Handling']);
+            }
         });
-        
+
         static::updated(function ($appointment) {
             if ($appointment->status === 'Confirmed') {
                 $appointment->file->patient->client?->notifyClient('appointment_confirmed_client', $appointment);
                 $appointment->file->patient?->notifyPatient('appointment_confirmed_patient', $appointment);
                 $appointment->providerBranch?->notifyBranch('appointment_confirmed', $appointment);
+                $appointment->file->update(['status' => 'Confirmed']);
+                $appointment->file->appointments()->where('id', '!=', $appointment->id)->update(['status' => 'Cancelled']);
+
+
             }
-        
+
             if ($appointment->status === 'Cancelled') {
                 $appointment->providerBranch?->notifyBranch('appointment_cancelled', $appointment);
             }
-        
+
             if ($appointment->wasChanged(['service_date', 'service_time'])) {
                 $appointment->providerBranch?->notifyBranch('appointment_updated', $appointment);
             }

@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources;
 
+
 use App\Filament\Resources\ProviderBranchResource\Pages;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\ContactRelationManager;
 use App\Models\ProviderBranch;
 use App\Models\Provider;
 use App\Models\ServiceType;
@@ -113,7 +115,7 @@ public static function table(Tables\Table $table): Tables\Table
     public static function getRelations(): array
     {
         return [
-            // Define any relationships here if needed
+            ContactRelationManager::class,
         ];
     }
 

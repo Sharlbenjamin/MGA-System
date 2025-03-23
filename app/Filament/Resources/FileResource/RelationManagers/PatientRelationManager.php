@@ -35,7 +35,7 @@ class PatientRelationManager extends RelationManager
             ->headerActions([
                 // Create via modal action
                 Action::make('create')
-                    ->label('Add GOP')
+                    ->label('Add')
                     ->icon('heroicon-o-plus')
                     ->modalHeading('Add GOP')
                     ->modalButton('Create')
