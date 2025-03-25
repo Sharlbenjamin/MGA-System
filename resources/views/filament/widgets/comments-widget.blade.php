@@ -1,13 +1,29 @@
-<x-filament-widgets::widget>
+<x-filament::widget>
     <x-filament::card>
-        <div class="space-y-4">
-            @foreach($record->comments as $comment)
-                <div class="border-b pb-4">
-                    <div class="font-bold text-primary-600">{{ $comment->user->name }}</div>
-                    <div class="prose max-w-none">{{ $comment->content }}</div>
-                    <div class="text-sm text-gray-500">{{ $comment->created_at->format('M d, Y H:i') }}</div>
-                </div>
-            @endforeach
-        </div>
+        @if($record)
+            <div class="space-y-4">
+                @forelse($this->getComments() as $comment)
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <div class="font-medium text-gray-900">
+                            {{ $comment->user->name }}
+                        </div>
+                        <div class="mt-1 text-sm text-gray-500">
+                            {{ $comment->created_at->diffForHumans() }}
+                        </div>
+                        <div class="mt-2 text-gray-700">
+                            {{ $comment->content }}
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-sm text-gray-500">
+                        No comments yet.
+                    </div>
+                @endforelse
+            </div>
+        @else
+            <div class="text-sm text-gray-500">
+                Select a file to view comments.
+            </div>
+        @endif
     </x-filament::card>
-</x-filament-widgets::widget>
+</x-filament::widget>

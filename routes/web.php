@@ -8,6 +8,9 @@ use Filament\Http\Middleware\Authenticate as FilamentAuthenticate;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use App\Http\Middleware\PasswordProtect;
 use App\Http\Controllers\GoogleAuthController;
+use Google\Client as Google_Client;
+use Google\Service\Calendar;
+use Illuminate\Support\Facades\Log;
 
 // ✅ Step 1: Check for site password unless already logged in
 Route::get('/', function () {
@@ -50,10 +53,40 @@ Route::get('/redirect-after-login', function () {
         : redirect(route('filament.admin.pages.dashboard')); // 🚀 Redirect Others to Admin Panel
 })->name('redirect.after.login');
 
-// ✅ Protect Filament Admin Panel with Password Middleware
+// Filament Admin Panel Routes
 Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, DispatchServingFilamentEvent::class])->group(function () {
     // Filament registers its own routes automatically.
 });
 
-
+// Google Meet Route
 Route::post('/create-meeting', [GoogleAuthController::class, 'createMeeting'])->name('google.create-meeting');
+
+Route::get('/google/callback', function (Request $request) {
+    $client = new Google_Client();
+    $client->setAuthConfig(storage_path('app/google-calendar/credentials.json'));
+    $client->setAccessType('offline');
+    $client->setPrompt('select_account consent');
+    $client->setScopes([
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/calendar.events'
+    ]);
+
+    if ($request->has('code')) {
+        $token = $client->fetchAccessTokenWithAuthCode($request->code);
+        $client->setAccessToken($token);
+
+        // Store the token to disk for future use
+        if (!file_exists(dirname(storage_path('app/google-calendar/token.json')))) {
+            mkdir(dirname(storage_path('app/google-calendar/token.json')), 0700, true);
+        }
+        file_put_contents(storage_path('app/google-calendar/token.json'), json_encode($client->getAccessToken()));
+
+        return 'Authorization successful! You can close this window.';
+    }
+
+    return 'Authorization failed!';
+});
+
+// Remove or comment out the test routes we created earlier
+// Route::get('/test-meet', ...);
+// Route::post('/api/create-meet', ...);

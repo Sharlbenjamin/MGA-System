@@ -21,23 +21,14 @@ class AppointmentResource extends Resource
     protected static ?int $navigationSort = null; // Ensures it's not sorted
     protected static ?string $navigationIcon = null; // Hides from sidebar
     protected static bool $shouldRegisterNavigation = false; // Hides it completely
-    
+
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Select::make('file_id')
-                ->relationship('file', 'id')
-                ->searchable()
-                ->required(),
-
-            Select::make('provider_branch_id')
-                ->relationship('providerBranch', 'branch_name')
-                ->searchable()
-                ->required(),
-
+            Select::make('file_id')->relationship('file', 'id')->searchable()->required(),
+            Select::make('provider_branch_id')->relationship('providerBranch', 'branch_name')->searchable()->required(),
             DatePicker::make('service_date')->required(),
             TimePicker::make('service_time')->nullable(),
-
             Select::make('status')
                 ->options([
                     'Requested' => 'Requested',

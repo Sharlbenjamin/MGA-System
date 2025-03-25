@@ -20,18 +20,21 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ProviderLeadRelationManager extends RelationManager
 {
-    protected static string $relationship = 'Leads';
+    protected static string $relationship = 'leads';
 
     public function form(Form $form): Form
     {
         return $form
         ->schema([
-            Select::make('provider_id')->label('Provider')->options(Provider::pluck('name', 'id'))->searchable()->reactive()->required(),
-
             Select::make('city_id')->label('City')
-                ->options(fn ($get) => 
-                    City::where('country_id', Provider::where('id', $get('provider_id'))->value('country_id'))->pluck('name', 'id')
-                )->searchable()->reactive()->required(),
+                ->options(function (RelationManager $livewire) {
+                    $provider = $livewire->getOwnerRecord(); // This gets the provider
+                    return City::where('country_id', $provider->country_id)
+                        ->pluck('name', 'id');
+                })
+                ->searchable()
+                ->reactive()
+                ->required(),
             Select::make('service_types')
                 ->label('Service Types')
                 ->options(ServiceType::pluck('name', 'name')) // ✅ Fetch service type names
@@ -48,8 +51,7 @@ class ProviderLeadRelationManager extends RelationManager
                     'Email' => 'Email',
                     'WhatsApp' => 'WhatsApp',
                     'Phone' => 'Phone',
-                ])
-                ->required(),
+                ])->required(),
 
             Select::make('status')
                 ->label('Status')
@@ -67,6 +69,10 @@ class ProviderLeadRelationManager extends RelationManager
                     'Presentation sent' => 'Presentation Sent',
                     'Contract' => 'Contract',
                     'Contract sent' => 'Contract Sent',
+                    'Fake Case' => 'Fake Case',
+                    'Fake Case sent' => 'Fake Case Sent',
+                    'Cancel Case' => 'Cancel Case',
+                    'Cancel Case sent' => 'Cancel Case Sent',
                 ])
                 ->required(),
             DatePicker::make('last_contact_date')->label('Last Contact Date')->date('d-m-Y')->nullable(),

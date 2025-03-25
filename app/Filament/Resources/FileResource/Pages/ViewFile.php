@@ -112,22 +112,10 @@ class ViewFile extends ViewRecord
                     Repeater::make('selected_branches')
                         ->label('Available Branches')
                         ->schema([
-                            Checkbox::make('selected')
-                                ->label('Select')
-                                ->default(false),
-
-                            TextInput::make('name')
-                                ->label('Branch Name')
-                                ->disabled(),
-
-                            TextInput::make('provider')
-                                ->label('Provider Name')
-                                ->disabled(),
-
-                            TextInput::make('preferred_contact')
-                                ->label('Preferred Contact')
-                                ->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')
-                                ->disabled(),
+                            Checkbox::make('selected')->label('Select')->default(false),
+                            TextInput::make('name')->label('Branch Name')->disabled(),
+                            TextInput::make('provider')->label('Provider Name')->disabled(),
+                            TextInput::make('preferred_contact')->label('Preferred Contact')->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')->disabled(),
                         ])
                         ->columns(4)
                         ->default(fn ($record) => $record->fileBranches()->map(fn ($branch) => [
@@ -223,27 +211,15 @@ class ViewFile extends ViewRecord
 
         // ✅ Notify user of results
         if (!empty($skippedBranches)) {
-            Notification::make()
-                ->title('Some Requests Skipped')
-                ->body('The following branches were skipped due to missing contact: ' . implode(', ', $skippedBranches))
-                ->warning()
-                ->send();
+            Notification::make()->title('Some Requests Skipped')->body('The following branches were skipped due to missing contact: ' . implode(', ', $skippedBranches))->warning()->send();
         }
 
         if (!empty($updatedAppointments)) {
-            Notification::make()
-                ->title('Appointments Updated')
-                ->body('Appointments updated for: ' . implode(', ', $updatedAppointments))
-                ->info()
-                ->send();
+            Notification::make()->title('Appointments Updated')->body('Appointments updated for: ' . implode(', ', $updatedAppointments))->info()->send();
         }
 
         if (!empty($newAppointments)) {
-            Notification::make()
-                ->title('Appointments Created')
-                ->body('Appointments created for: ' . implode(', ', $newAppointments))
-                ->success()
-                ->send();
+            Notification::make()->title('Appointments Created')->body('Appointments created for: ' . implode(', ', $newAppointments))->success()->send();
         }
     }
 

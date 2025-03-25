@@ -2,7 +2,7 @@
 
 return [
 
-    'default_auth_profile' => env('GOOGLE_CALENDAR_AUTH_PROFILE', 'service_account'),
+    'default_auth_profile' => 'service_account',
 
     'auth_profiles' => [
 
@@ -13,7 +13,7 @@ return [
             /*
              * Path to the json file containing the credentials.
              */
-            'credentials_json' => storage_path('app/google-calendar.json'),
+            'credentials_json' => storage_path('app/google-calendar/credentials.json'),
         ],
 
         /*
@@ -35,10 +35,10 @@ return [
     /*
      *  The id of the Google Calendar that will be used by default.
      */
-    'calendar_id' => env('GOOGLE_CALENDAR_ID'),
+    'calendar_id' => env('GOOGLE_CALENDAR_ID', 'mga.operation@medguarda.com'),
 
      /*
      *  The email address of the user account to impersonate.
      */
-    'user_to_impersonate' => env('GOOGLE_CALENDAR_IMPERSONATE'),
+    'user_to_impersonate' => env('GOOGLE_CALENDAR_IMPERSONATE', 'mga.operation@medguarda.com'),
 ];

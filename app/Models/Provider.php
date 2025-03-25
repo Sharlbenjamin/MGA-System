@@ -10,26 +10,8 @@ class Provider extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
-    protected $fillable = [
-        'country_id',
-        'status',
-        'type',
-        'name',
-        'payment_due',
-        'payment_method',
-        'comment',
-    ];
+    protected $fillable = ['country_id','status','type','name','payment_due','payment_method','comment',];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
     protected $casts = [
         'id' => 'integer',
     ];

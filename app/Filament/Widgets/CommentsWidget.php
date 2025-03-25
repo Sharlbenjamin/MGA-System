@@ -3,21 +3,21 @@
 namespace App\Filament\Widgets;
 
 use Filament\Widgets\Widget;
-use Filament\Infolists\Components\RepeatableEntry;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\Card;
-use Filament\Infolists\Infolist;
+use App\Models\File;
 
 class CommentsWidget extends Widget
 {
+    public ?File $record = null;
+
     protected static string $view = 'filament.widgets.comments-widget';
 
-    protected int | string | array $columnSpan = 'full';
-
-    public $record;
-
-    public function mount($record)
+    public static function canView(): bool
     {
-        $this->record = $record;
+        return true;
+    }
+
+    public function getComments()
+    {
+        return $this->record?->comments ?? collect();
     }
 }

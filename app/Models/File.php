@@ -10,6 +10,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Support\Facades\Auth;
 use Filament\Facades\Filament;
+use Google\Service\Calendar;
+use Google\Service\Calendar\Event;
+use Google\Service\Calendar\ConferenceData;
+use Google\Service\Calendar\CreateConferenceRequest;
+use Google\Service\Calendar\ConferenceSolutionKey;
+use Illuminate\Support\Facades\Log;
+use App\Services\GoogleCalendar as GoogleCalendarService;
+use App\Services\GoogleMeetService;
 
 class File extends Model
 {
@@ -184,5 +192,10 @@ class File extends Model
             $appointment->status = 'Cancelled';
             $appointment->save();
         }
+    }
+
+    public function generateGoogleMeetLink()
+    {
+        return app(GoogleMeetService::class)->generateMeetLink($this);
     }
 }
