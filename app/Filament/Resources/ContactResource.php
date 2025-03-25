@@ -62,7 +62,7 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
         Select::make('country_id')->label('Country')->options(Country::pluck('name', 'id'))->reactive()->nullable(),
         Select::make('city_id')->label('City')->options(fn ($get) => City::where('country_id', $get('country_id'))->pluck('name', 'id'))->reactive()->nullable(),
         Textarea::make('address')->label('Address')->nullable(),
-        
+
         Select::make('preferred_contact')
             ->label('Preferred Contact Method')
             ->options([
@@ -73,8 +73,8 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
                 'first_whatsapp' => 'First WhatsApp',
                 'second_whatsapp' => 'Second WhatsApp',
             ])
-            ->nullable(),
-        
+            ->required(),
+
         Select::make('status')
             ->label('Status')
             ->options([
@@ -83,7 +83,7 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
             ])
             ->default('Active')
             ->nullable(),
-        
+
     ]);
 }
 

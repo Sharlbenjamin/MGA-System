@@ -26,7 +26,7 @@ protected static ?string $navigationIcon = 'heroicon-o-user-plus'; // ➕👤 Pa
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')->required(),
-                Forms\Components\Select::make('client_id')->relationship('client', 'company_name')->required(),
+                Forms\Components\Select::make('client_id')->relationship('client', 'company_name', fn ($query) => $query->where('status', 'Active'))->searchable()->preload()->required(),
                 Forms\Components\DatePicker::make('dob')->nullable(),
                 Forms\Components\Select::make('gender')->options(['male' => 'Male','female' => 'Female','other' => 'Other',])->nullable(),
                 Forms\Components\Select::make('country_id')->relationship('country', 'name')->label('Country')->searchable()->nullable(),

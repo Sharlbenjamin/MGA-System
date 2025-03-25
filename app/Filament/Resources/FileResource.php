@@ -39,13 +39,19 @@ class FileResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Select::make('patient_id')->relationship('patient', 'name')->label('Patient')->required()->live()
-            ->afterStateUpdated(function ($state, callable $set, $livewire) {
-                // Only generate a new reference if it's empty (new file)
-                if (empty($livewire->data['mga_reference'])) {
-                    $set('mga_reference', self::generateMGAReference($state));
-                }
-            }),
+            Select::make('patient_id')
+                ->relationship(
+                    'patient',
+                    'name',
+                    fn ($query) => $query->whereHas('client', fn ($q) => $q->where('status', 'Active'))
+                )
+                ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} - {$record->client->company_name}")
+                ->label('Patient')->required()->live()->searchable()->preload()
+                ->afterStateUpdated(function ($state, callable $set, $livewire) {
+                    if (empty($livewire->data['mga_reference'])) {
+                        $set('mga_reference', self::generateMGAReference($state));
+                    }
+                }),
             TextInput::make('mga_reference')->label('MGA Reference')->required()->readOnly()->unique(ignoreRecord: true)->helperText('Auto-generated when you chose the patient'),
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
             Select::make('status')->options(['New' => 'New','Handling' => 'Handling','In Progress' => 'In Progress', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required(),
