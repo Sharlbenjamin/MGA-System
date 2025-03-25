@@ -11,7 +11,7 @@
         "filament/filament": "^3.2",
         "filament/infolists": "^3.2",
         "filament/notifications": "^3.3",
-        "google/apiclient": "^2.0",
+        "google/apiclient": "^2.18",
         "illuminate/notifications": "*",
         "laravel/framework": "^11.31",
         "laravel/sanctum": "^4.0",

@@ -71,7 +71,7 @@ class GoogleMeetService
 
             return $createdEvent->getHangoutLink();
         } catch (\Exception $e) {
-            Notification::make()->danger()->title('Calendar Event Creation Failed')->body('Failed to create calendar event.')->send();
+            Notification::make()->danger()->title('Calendar Event Creation Failed')->body($e->getMessage())->send();
             return null;
         }
     }

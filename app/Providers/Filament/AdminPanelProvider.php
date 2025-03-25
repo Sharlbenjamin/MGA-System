@@ -95,6 +95,6 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('logo.png'))
             ->favicon(asset('logo.png'));
     }
-    
-    
+
+
 }
