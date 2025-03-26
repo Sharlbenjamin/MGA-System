@@ -1,21 +1,15 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\Resources\PatientResource\RelationManagers;
 
+use App\Filament\Resources\FileResource;
 use App\Filament\Resources\FileResource\Pages;
-use App\Filament\Resources\FileResource\RelationManagers\GopRelationManager;
-use App\Filament\Resources\FileResource\RelationManagers\MedicalReportRelationManager;
-use App\Filament\Resources\FileResource\RelationManagers\PrescriptionRelationManager;
-use App\Filament\Resources\FileResource\RelationManagers\PatientRelationManager;
-use App\Filament\Resources\FileResource\RelationManagers\CommentsRelationManager;
-use App\Filament\Resources\FileResource\RelationManagers\AppointmentsRelationManager;
-use App\Filament\Resources\FileResource\RelationManagers\TaskRelationManager;
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Patient;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,15 +22,13 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Filters\SelectFilter;
 
-class FileResource extends Resource
+class FileRelationManager extends RelationManager
 {
+    protected static string $relationship = 'files';
+
     protected static ?string $model = File::class;
 
-    protected static ?string $navigationGroup = 'Operation';
-    protected static ?int $navigationSort = 2;
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list'; // 📋 Files Icon
-
-    public static function form(Form $form): Form
+    public function form(Form $form): Form
     {
         return $form->schema([
             Select::make('patient_id')
@@ -45,21 +37,15 @@ class FileResource extends Resource
                     'name',
                     fn ($query) => $query->whereHas('client', fn ($q) => $q->where('status', 'Active'))
                 )
-                ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->name} - {$record->client->company_name}")
-                ->label('Patient')
-                ->required()
-                ->live(onBlur: false)
-                ->searchable()
-                ->preload()
-                ->disabled(fn ($context) => $context === 'edit')
+                ->default($this->ownerRecord->id)
+                ->disabled()
                 ->dehydrated()
-                ->afterStateUpdated(function ($state, callable $set) {
-                    $set('mga_reference', File::generateMGAReference($state));
-                }),
+                ->label('Patient'),
             TextInput::make('mga_reference')
                 ->label('MGA Reference')
                 ->required()
                 ->readOnly()
+                ->default(fn () => File::generateMGAReference($this->ownerRecord->id))
                 ->unique(ignoreRecord: true)
                 ->helperText('Auto-generated based on the patient'),
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
@@ -80,7 +66,7 @@ class FileResource extends Resource
     }
 
 
-    public static function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
             ->modifyQueryUsing(fn ($query) => $query->withCount(['tasks as undone_tasks_count' => function ($query) {
@@ -88,7 +74,6 @@ class FileResource extends Resource
             }]))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('patient.client.company_name')->label('Client')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'New' => 'success',
                     'Handling' => 'info',
@@ -100,7 +85,6 @@ class FileResource extends Resource
                     'Void' => 'gray',
                 }),
                 // Relationship columns
-                Tables\Columns\TextColumn::make('patient.name')->label('Patient')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('city.name')->label('City')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('serviceType.name')->label('Service Type')->sortable()->searchable(),
@@ -123,54 +107,20 @@ class FileResource extends Resource
                         'Cancelled' => 'Cancelled',
                         'Void' => 'Void',
                     ]),
-                SelectFilter::make('country_id')
-                    ->options(\App\Models\Country::pluck('name', 'id'))
-                    ->label('Country'),
-
-                SelectFilter::make('city_id')
-                    ->options(\App\Models\City::pluck('name', 'id'))
-                    ->label('City'),
-
-                SelectFilter::make('service_type_id')
-                    ->options(\App\Models\ServiceType::pluck('name', 'id'))
-                    ->label('Service Type'),
+                SelectFilter::make('country_id')->options(\App\Models\Country::pluck('name', 'id'))->label('Country'),
+                SelectFilter::make('city_id')->options(\App\Models\City::pluck('name', 'id'))->label('City'),
+                SelectFilter::make('service_type_id')->options(\App\Models\ServiceType::pluck('name', 'id'))->label('Service Type'),
 
             ])
             ->actions([
-                Tables\Actions\Action::make('View')
-                ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id]))
-                ->icon('heroicon-o-eye'),
-                Tables\Actions\Action::make('Edit')
-                ->url(fn (File $record) => FileResource::getUrl('edit', ['record' => $record->id]))
-                ->icon('heroicon-o-pencil'),
-
+                Tables\Actions\Action::make('View')->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id]))->icon('heroicon-o-eye'),
+                Tables\Actions\Action::make('Edit')->url(fn (File $record) => FileResource::getUrl('edit', ['record' => $record->id]))->icon('heroicon-o-pencil'),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
+            ])->headerActions([
+                Tables\Actions\CreateAction::make(),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            GopRelationManager::class,
-            MedicalReportRelationManager::class,
-            PrescriptionRelationManager::class,
-            PatientRelationManager::class,
-            CommentsRelationManager::class,
-            AppointmentsRelationManager::class,
-            TaskRelationManager::class
-        ];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => FileResource\Pages\ListFiles::route('/'),
-            'create' => FileResource\Pages\CreateFile::route('/create'),
-            'edit' => FileResource\Pages\EditFile::route('/{record}/edit'),
-            'view' => FileResource\Pages\ViewFile::route('/{record}/show'),
-        ];
     }
 
 }

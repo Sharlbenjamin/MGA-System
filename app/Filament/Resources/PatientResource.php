@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PatientResource\Pages;
-use App\Filament\Resources\PatientResource\RelationManagers;
+use App\Filament\Resources\PatientResource\RelationManagers\FileRelationManager;
 use App\Models\Patient;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -35,38 +35,45 @@ protected static ?string $navigationIcon = 'heroicon-o-user-plus'; // ➕👤 Pa
 
 
     public static function table(Table $table): Table
-{
-    return $table
-        ->columns([
-            Tables\Columns\TextColumn::make('id')->sortable(),
-            Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-            Tables\Columns\TextColumn::make('client.company_name')
-                ->label('Client'),
-            // Calculate Age in Years and Months
-            Tables\Columns\TextColumn::make('dob')
-                ->label('Age')
-                ->getStateUsing(function ($record) {
-                    $dob = \Carbon\Carbon::parse($record->dob);
-                    return $dob->diff(\Carbon\Carbon::now())->format('%y y, %m m');
-                })
-                ->sortable(),
-            // Display Country Name via Relationship
-            Tables\Columns\TextColumn::make('country.name')
-                ->label('Country')
-                ->sortable()
-                ->searchable(),
-        ])
-        ->filters([
-            Tables\Filters\SelectFilter::make('client_id')
-            ->label('Client')
-            ->relationship('client', 'company_name'),
-    ])
-        ->actions([
-        ])
-        ->bulkActions([
-            Tables\Actions\DeleteBulkAction::make(),
-        ]);
-}
+    {
+        return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('files'))
+            ->columns([
+                Tables\Columns\TextColumn::make('client.company_name')->label('Client')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('client.company_name')
+                    ->label('Client'),
+                Tables\Columns\TextColumn::make('dob')
+                    ->label('Age')
+                    ->getStateUsing(function ($record) {
+                        $dob = \Carbon\Carbon::parse($record->dob);
+                        return $dob->diff(\Carbon\Carbon::now())->format('%y y, %m m');
+                    })
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('files_count')
+                    ->label('Files')
+                    ->badge()
+                    ->color('success')
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('client_id')->label('Client')->relationship('client', 'company_name'),
+            ])
+            ->actions([
+            ])
+            ->bulkActions([
+                Tables\Actions\DeleteBulkAction::make(),
+            ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            FileRelationManager::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [

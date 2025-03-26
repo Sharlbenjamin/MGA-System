@@ -29,7 +29,7 @@ return new class extends Migration
             $table->foreignId('country_id')->nullable()->constrained();
             $table->foreignId('city_id')->nullable()->constrained();
             $table->string('address')->nullable();
-            $table->enum('preferred_contact', ["Phone", "Second Phone", "Email", "Second Email"])->nullable();
+            $table->string('preferred_contact')->nullable();
             $table->enum('status', ["Active", "Inactive"])->nullable();
             $table->timestamps();
         });

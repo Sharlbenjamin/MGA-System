@@ -13,19 +13,18 @@ class Patient extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
 
-    protected $fillable = [
-        'name',
-        'client_id',
-        'dob',
-        'gender',
-        'country',
-    ];
+    protected $fillable = ['name','client_id','dob','gender','country',];
 
     protected $casts = [
         'id' => 'integer',
         'client_id' => 'integer',
         'dob' => 'date',
     ];
+
+    public function files()
+    {
+        return $this->hasMany(File::class);
+    }
 
     public function client(): BelongsTo
     {
@@ -65,5 +64,5 @@ class Patient extends Model
 
         return $query->first();
     }
-    
+
 }

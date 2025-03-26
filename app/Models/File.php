@@ -65,6 +65,11 @@ class File extends Model
         return $this->belongsTo(Patient::class);
     }
 
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
     public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class);
@@ -164,6 +169,20 @@ class File extends Model
     {
         parent::boot();
 
+        static::deleting(function ($file) {
+            // Delete nested relationships first
+            foreach($file->prescriptions as $prescription) {
+                $prescription->drugs()->delete();
+            }
+            // Delete all related records
+            $file->prescriptions()->delete();
+            $file->gops()->delete();
+            $file->medicalReports()->delete();
+            $file->comments()->delete();
+            $file->appointments()->delete();
+            $file->tasks()->delete();
+        });
+
         static::created(function ($file) {
             $file->patient->client?->notifyClient('file_created', $file);
             $file->patient?->notifyPatient('file_created', $file);
@@ -197,5 +216,15 @@ class File extends Model
     public function generateGoogleMeetLink()
     {
         return app(GoogleMeetService::class)->generateMeetLink($this);
+    }
+
+    public static function generateMGAReference($patientId)
+    {
+        if (!$patientId) return 'MG000XXX';
+
+        $patient = Patient::find($patientId);
+        if (!$patient || !$patient->client) return 'MG000XXX';
+
+        return sprintf('MG%03d%s', $patient->client->files()->count() + 1, $patient->client->initials ?? '');
     }
 }

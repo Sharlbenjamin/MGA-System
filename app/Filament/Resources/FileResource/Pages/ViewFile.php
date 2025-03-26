@@ -68,7 +68,7 @@ class ViewFile extends ViewRecord
                             // 🟢 Client Details - Bottom Card (Green)
                             Card::make()
                                 ->schema([
-                                    TextEntry::make('client.name')->label('Client Name')->weight('bold')->color('info'),
+                                    TextEntry::make('patient.client.company_name')->label('Client Name')->weight('bold')->color('info'),
                                     TextEntry::make('client_reference')->label('Client Reference')->color('info'),
                                     TextEntry::make('country.name')->label('Country')->color('info'),
                                     TextEntry::make('city.name')->label('City')->color('info'),

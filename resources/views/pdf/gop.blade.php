@@ -27,10 +27,10 @@
     <div class="container">
         <div class="header">
             <img src="{{ public_path('logo.png') }}" alt="Medical Logo">
-            <h1>PRESCRIPTION</h1>
+            <h1>Guarantee of Payment</h1>
         </div>
         <div class="doctor-info">
-            <p class="bold">Doctor:</p> {{ $gop->file->providerBranch->name ?? 'N/A' }}
+            <p class="bold">Doctor:</p> {{ $gop->file->providerBranch->branch_name ?? 'N/A' }}
         </div>
         <div class="section">
             <div class="patient-info">

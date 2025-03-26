@@ -33,8 +33,8 @@ trait NotifiableEntity
         match ($contact->preferred_contact) {
             'Phone', 'Second Phone' => $this->notifyByPhone($data, $status),
             'Email', 'Second Email' => $this->notifyByEmail($reason, $status, $data),
-            'first_whatsapp', 'second_whatsapp' => $this->notifyByWhatsapp($data),
-            'SMS' => $this->notifyBySms($data),
+            'First Whatsapp', 'Second Whatsapp' => $this->notifyByWhatsapp($data),
+            'First SMS', 'Second SMS' => $this->notifyBySms($data),
         };
     }
 
@@ -80,7 +80,47 @@ trait NotifiableEntity
 
     public function notifyByWhatsapp($data)
     {
-        // Future WhatsApp logic
+        $twilio = new \Twilio\Rest\Client(
+            config('services.twilio.sid'),
+            config('services.twilio.token')
+        );
+
+        $contact = $this->primaryContact($this->detectNotificationReason($data));
+
+        // Clean and format the recipient's phone number
+        $cleanNumber = preg_replace('/[^0-9+]/', '', $contact->phone_number);
+        if (!str_starts_with($cleanNumber, '+')) {
+            $cleanNumber = '+' . $cleanNumber;
+        }
+
+        // Get the from number without any formatting
+        $fromNumber = config('services.twilio.whatsapp_from');
+        // Remove any existing prefixes or formatting
+        $fromNumber = preg_replace('/[^0-9]/', '', $fromNumber);
+
+        $message = "Hello! You have a new notification regarding your " . $this->detectNotificationReason($data);
+
+        try {
+            $twilio->messages->create(
+                "whatsapp:" . $cleanNumber,  // To number with whatsapp: prefix
+                [
+                    'from' => "whatsapp:+1" . $fromNumber,  // From number with proper US format
+                    'body' => $message
+                ]
+            );
+
+            Notification::make()
+                ->title('WhatsApp Notification')
+                ->body('Message sent successfully')
+                ->success()
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('WhatsApp Notification Failed')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 
     public function notifyBySms($data)
