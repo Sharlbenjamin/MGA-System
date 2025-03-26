@@ -16,10 +16,6 @@ class GopMailable extends Mailable
 {
     use Queueable, SerializesModels;
 
-    private const MAIL_USERNAME = 'mga.operation@medguarda.com';
-    private const MAIL_PASSWORD = 'xjigoujmiosmmesv';
-    private const MAIL_FROM_NAME = 'MGA Operations';
-
     public $gop;
 
     public function __construct(Gop $gop)
