@@ -40,7 +40,7 @@ class NotifyUsMailable extends Mailable
             'file_cancelled' => 'emails.file-cancelled-mga-mail',
             'file_hold' => 'emails.file-hold-mga-mail',
             'file_assisted' => 'emails.file-assisted-mga-mail',
-            'file_handling' => 'emails.file-handling-mga-mail', // Added handling case
+            'file_handling' => 'emails.file-handling-mga-mail',
             'file_available' => 'emails.available-appointments-mail',
             default => 'emails.general-notification-mga-mail',
         };
@@ -52,7 +52,7 @@ class NotifyUsMailable extends Mailable
             'appointment_confirmed' => '[Branch] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->file->mga_reference),
             'appointment_updated' => '[Branch] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->file->mga_reference),
             'appointment_cancelled' => '[Branch] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->file->mga_reference),
-            'file_created' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->file->mga_reference),
+            'file_created' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
             'file_cancelled' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
             'file_hold' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
             'file_assisted' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),

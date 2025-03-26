@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Filament\Notifications\Notification;
-use Twilio\Rest\Client as TwilioClient; 
+use Twilio\Rest\Client as TwilioClient;
 use Illuminate\Support\Facades\Log;
 use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
@@ -53,7 +53,7 @@ class Client extends Model
     public function notifyClient($type, $data)
     {
         $reason = $this->detectNotificationReason($data);
-        $this->sendNotification($reason, $type, $data);
+        $this->sendNotification($reason, $type, $data, 'Client');
     }
 
     public function contacts()
@@ -72,7 +72,7 @@ class Client extends Model
 
         return $query->first();
     }
-    
+
     public function sendWhatsAppMessage($type, $file)
     {
         try {

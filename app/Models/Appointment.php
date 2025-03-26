@@ -65,8 +65,8 @@ class Appointment extends Model
 
         static::updated(function ($appointment) {
             if ($appointment->status === 'Confirmed') {
-                //$appointment->file->patient->client?->notifyClient('appointment_confirmed_client', $appointment);
-                //$appointment->file->patient?->notifyPatient('appointment_confirmed_patient', $appointment);
+                $appointment->file->patient->client?->notifyClient('appointment_confirmed_client', $appointment);
+                $appointment->file->patient?->notifyPatient('appointment_confirmed_patient', $appointment);
                 $appointment->providerBranch?->notifyBranch('appointment_confirmed', $appointment);
                 $appointment->file->update(['status' => 'Confirmed']);
                 $appointment->file->appointments()->where('id', '!=', $appointment->id)->update(['status' => 'Cancelled']);

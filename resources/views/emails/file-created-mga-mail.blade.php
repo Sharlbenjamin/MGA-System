@@ -1,24 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>New File Created</title>
+    <title>New FIle is Created {{$file->mga_reference}}</title>
 </head>
 <body>
-    <p>A new file has been created with the following details:</p>
-    <p><strong>MGA Reference:</strong> {{ $data->mga_reference }}</p>
-    <p><strong>Service Type:</strong> {{ $data->serviceType->name }}</p>
-    <p><strong>Patient Name:</strong> {{ $data->patient->name }}</p>
-    <p><strong>Status:</strong> {{ $data->status }}</p>
+    <p>Dear {{ $file->patient->name }} Team,</p>
+    <p>Your case has been successfully added to our files records.</p>
+    <p><strong>MGA Reference:</strong> {{ $file->mga_reference }}</p>
+    <p><strong>Patient Date of Birth:</strong> {{ $file->patient->dob ?? "NA" }}</p>
+    <p><strong>Patient Service Country:</strong> {{ $file->country->name ?? "NA"}}</p>
+    <p><strong>Patient Service City:</strong> {{ $file->city->name ?? "NA"}}</p>
+    <p><strong>Requested Service:</strong> {{ $file->serviceType->name ?? "NA"}}</p>
+    @if(!empty($file->client_reference))
+    <p><strong>Client Reference:</strong> {{ $file->client_reference }}</p>
+    @endif
+    @if(!empty($file->symptoms))
+        <p><strong>Symptoms:</strong> {{ $file->symptoms }}</p>
+    @endif
+    <p>Status: <strong>{{$file->status}}</strong></p>
+    <p>Thank you for choosing our services.</p>
 
-    <p><strong>Instructions for Employee:</strong></p>
-    <ul>
-        <li>Confirm with the client that their file has been created successfully.</li>
-        <li>Provide details on the next steps and expected processing time.</li>
-        <li>Check if any further information is needed from the client.</li>
-    </ul>
-
-    <p>Please proceed with the necessary actions.</p>
-    
     @include('draftsignature', ['signature' => auth()->user()->signature])
 </body>
 </html>

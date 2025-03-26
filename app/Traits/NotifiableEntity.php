@@ -22,7 +22,7 @@ trait NotifiableEntity
         };
     }
 
-    public function sendNotification($reason, $status, $data)
+    public function sendNotification($reason, $status, $data, $parent = null)
     {
         $contact = $this->primaryContact($reason);
         if (!$contact) {
@@ -32,7 +32,7 @@ trait NotifiableEntity
 
         match ($contact->preferred_contact) {
             'Phone', 'Second Phone' => $this->notifyByPhone($data, $status),
-            'Email', 'Second Email' => $this->notifyByEmail($reason, $status, $data),
+            'Email', 'Second Email' => $this->notifyByEmail($reason, $status, $data, $parent),
             'First Whatsapp', 'Second Whatsapp' => $this->notifyByWhatsapp($data),
             'First SMS', 'Second SMS' => $this->notifyBySms($data),
         };
@@ -67,12 +67,12 @@ trait NotifiableEntity
         Mail::to('mga.operation@medguarda.com')->send(new NotifyUsMailable($status, $data));
     }
 
-    private function notifyByEmail($reason, $type, $data)
+    private function notifyByEmail($reason, $type, $data, $parent)
     {
-        $mailable = match ($reason) {
-            'Appointment' => new NotifyBranchMailable($type, $data), // Appointment expects (type, Appointment)
-            'File' => new NotifyPatientMailable($type, $data), // File expects (type, File)
-            'Invoice', 'Balance' => new NotifyClientMailable($type, $data), // Invoice expects (type, File)
+        $mailable = match ($parent) {
+            'Branch' => new NotifyBranchMailable($type, $data),
+            'Client' => new NotifyClientMailable($type, $data),
+            'Patient' => new NotifyPatientMailable($type, $data),
         };
 
         Mail::to($this->primaryContact($reason)->email)->send($mailable);
@@ -80,6 +80,8 @@ trait NotifiableEntity
 
     public function notifyByWhatsapp($data)
     {
+        Notification::make()->title('No whats app Reminder Yet')->danger()->send();
+        return;
         $twilio = new \Twilio\Rest\Client(
             config('services.twilio.sid'),
             config('services.twilio.token')
@@ -108,18 +110,9 @@ trait NotifiableEntity
                     'body' => $message
                 ]
             );
-
-            Notification::make()
-                ->title('WhatsApp Notification')
-                ->body('Message sent successfully')
-                ->success()
-                ->send();
+            Notification::make()->title('WhatsApp Notification')->success()->send();
         } catch (\Exception $e) {
-            Notification::make()
-                ->title('WhatsApp Notification Failed')
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
+            Notification::make()->title('WhatsApp Notification Failed')->body($e->getMessage())->danger()->send();
         }
     }
 

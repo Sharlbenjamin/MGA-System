@@ -83,6 +83,6 @@ class ProviderBranch extends Model
     public function notifyBranch($type, $data)
     {
         $reason = $this->detectNotificationReason($data);
-        $this->sendNotification($reason, $type, $data);
+        $this->sendNotification($reason, $type, $data, 'Branch');
     }
 }

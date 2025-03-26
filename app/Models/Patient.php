@@ -49,7 +49,7 @@ class Patient extends Model
     public function notifyPatient($type, $data)
     {
         $reason = $this->detectNotificationReason($data);
-        $this->sendNotification($reason, $type, $data);
+        $this->sendNotification($reason, $type, $data, 'Patient');
     }
 
     public function primaryContact($reason = null)
