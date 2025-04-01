@@ -10,27 +10,27 @@ class InvoicePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view-any-invoices');
+        return $user->hasPermissionTo('view Invoices');
     }
 
     public function view(User $user, Invoice $invoice): bool
     {
-        return $user->hasPermissionTo('view-invoices');
+        return $user->hasPermissionTo('view Invoices');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create-invoices');
+        return $user->hasPermissionTo('create Invoices');
     }
 
     public function update(User $user, Invoice $invoice): bool
     {
-        return $user->hasPermissionTo('edit-invoices');
+        return $user->hasPermissionTo('edit Invoices');
     }
 
     public function delete(User $user, Invoice $invoice): bool
     {
-        return $user->hasPermissionTo('delete-invoices');
+        return $user->hasPermissionTo('delete Invoices');
     }
 
     public function restore(User $user, Invoice $invoice): bool
