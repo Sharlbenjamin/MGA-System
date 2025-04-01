@@ -3,3 +3,6 @@ Next Push and Pull Command terminal commands that I need to run
 php artisan migrate
 php artisan filament:optimize
 php artisan filament:clear
+
+
+create Roles
