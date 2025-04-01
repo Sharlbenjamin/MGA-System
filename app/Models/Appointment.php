@@ -30,7 +30,7 @@ class Appointment extends Model
 
         // When an appointment is created, log a comment and notify the branch
         static::creating(function ($appointment) {
-            if (!$appointment->providerBranch?->primaryContact('Appointment')) {
+            if (!$appointment->providerBranch->primaryContact('Appointment')) {
                 return false; // Skip appointment creation if no contact exists
             }
 
@@ -49,7 +49,7 @@ class Appointment extends Model
                     ]);
 
                     // Notify the branch of the update
-                    $existingAppointment->providerBranch?->notifyBranch('appointment_updated', $existingAppointment);
+                    $existingAppointment->providerBranch->notifyBranch('appointment_updated', $existingAppointment);
                 }
 
                 return false; // Prevent duplicate creation but allow updates
@@ -57,7 +57,7 @@ class Appointment extends Model
         });
 
         static::created(function ($appointment) {
-            $appointment->providerBranch?->notifyBranch('appointment_created', $appointment);
+            $appointment->providerBranch->notifyBranch('appointment_created', $appointment);
             if($appointment->file->status === 'New') {
                 $appointment->file->update(['status' => 'Handling']);
             }
@@ -65,23 +65,28 @@ class Appointment extends Model
 
         static::updated(function ($appointment) {
             if ($appointment->status === 'Confirmed') {
-                $appointment->file->patient->client?->notifyClient('appointment_confirmed_client', $appointment);
-                $appointment->file->patient?->notifyPatient('appointment_confirmed_patient', $appointment);
-                $appointment->providerBranch?->notifyBranch('appointment_confirmed', $appointment);
-                $appointment->file->update(['status' => 'Confirmed']);
+                $appointment->file->update([
+                    'status' => 'Confirmed',
+                    'service_date' => $appointment->service_date,
+                    'service_time' => $appointment->service_time,
+                    'provider_branch_id' => $appointment->provider_branch_id,
+                ]);
                 $appointment->file->appointments()->where('id', '!=', $appointment->id)->update(['status' => 'Cancelled']);
                 if ($appointment->file->service_type_id === 2) {
                     $appointment->file->generateGoogleMeetLink();
                 }
+                $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment);
+                $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
+                $appointment->providerBranch->notifyBranch('appointment_confirmed', $appointment);
 
             }
 
             if ($appointment->status === 'Cancelled') {
-                $appointment->providerBranch?->notifyBranch('appointment_cancelled', $appointment);
+                $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
             }
 
             if ($appointment->wasChanged(['service_date', 'service_time'])) {
-                $appointment->providerBranch?->notifyBranch('appointment_updated', $appointment);
+                $appointment->providerBranch->notifyBranch('appointment_updated', $appointment);
             }
         });
     }

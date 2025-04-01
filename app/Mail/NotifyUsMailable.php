@@ -30,6 +30,7 @@ class NotifyUsMailable extends Mailable
         }
 
         $view = match ($this->type) {
+            // re Create any of the drafts in the emails folder and make sure of avoiding duplications
             'appointment_confirmed_client' => 'emails.client.confirm-appointment-mail',
             'appointment_confirmed_patient' => 'emails.patient.confirm-appointment-mail',
             'appointment_created' => 'emails.new-appointment-mga-mail',
@@ -42,7 +43,6 @@ class NotifyUsMailable extends Mailable
             'file_assisted' => 'emails.file-assisted-mga-mail',
             'file_handling' => 'emails.file-handling-mga-mail',
             'file_available' => 'emails.available-appointments-mail',
-            default => 'emails.general-notification-mga-mail',
         };
 
         $customSubject = match ($this->type) {

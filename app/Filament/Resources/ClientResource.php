@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientResource\Pages;
+use App\Filament\Resources\ClientResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ContactRelationManager;
 use App\Models\Client;
 use Filament\Resources\Resource;
@@ -21,7 +22,7 @@ class ClientResource extends Resource
 
     protected static ?string $navigationGroup = 'CRM';
     protected static ?int $navigationSort = 1;
-    protected static ?string $navigationIcon = 'heroicon-o-users'; 
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -95,7 +96,8 @@ class ClientResource extends Resource
 {
     return [
         LeadsRelationManager::class,
-        ContactRelationManager::class, 
+        ContactRelationManager::class,
+        BankAccountRelationManager::class,
     ];
 }
 

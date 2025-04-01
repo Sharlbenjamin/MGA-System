@@ -28,6 +28,16 @@ class Client extends Model
         'id' => 'integer',
     ];
 
+    public function getNameAttribute()
+    {
+        return $this->company_name;
+    }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class);
+    }
+
     public function leads(): HasMany
     {
         return $this->hasMany(Lead::class);
@@ -67,7 +77,7 @@ class Client extends Model
         if ($reason === 'Invoice' || $reason === 'Balance') {
             $query->where('name', 'Financial');
         } elseif ($reason === 'Appointment') {
-            $query->where('name', 'Operation');
+            $query->where('name', 'like', '%Operation%');
         }
 
         return $query->first();

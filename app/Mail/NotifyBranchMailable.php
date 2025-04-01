@@ -27,29 +27,28 @@ class NotifyBranchMailable extends Mailable
         $this->type = $type;
         $this->appointment = $appointment;
     }
-    
+
     public function build()
     {
         // Override only MAIL_USERNAME and MAIL_PASSWORD dynamically
         $username = Auth::user()->smtp_username;
         $password = Auth::user()->smtp_password;
-        
+
         $view = match ($this->type) {
-            'appointment_created' => 'emails.new-appointment-branch-mail',
-            'appointment_confirmed' => 'emails.confirm-appointment-branch-mail',
-            'appointment_updated' => 'emails.update-appointment-branch-mail',
-            'appointment_cancelled' => 'emails.cancel-appointment-branch-mail',
-            default => 'emails.general-notification-branch-mail',
+            'appointment_created' => 'emails.branch.new-appointment-branch-mail',
+            'appointment_confirmed' => 'emails.branch.confirm-appointment-branch-mail',
+            'appointment_updated' => 'emails.branch.update-appointment-branch-mail',
+            'appointment_cancelled' => 'emails.branch.cancel-appointment-branch-mail',
         };
 
         $header = match ($this->type) {
-            'appointment_created' => 'New Appointment Notification',
-            'appointment_confirmed' => 'Appointment Confirmation',
-            'appointment_updated' => 'Appointment Update',
-            'appointment_cancelled' => 'Appointment Cancellation',
-            default => 'General Notification', // Fallback
+            // lets add the mga_reference and the branch_name to the subject
+            'appointment_created' => 'Branch New Appointment - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name,
+            'appointment_confirmed' => 'Branch Appointment Confirmation - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name,
+            'appointment_updated' => 'Branch Appointment Update - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name,
+            'appointment_cancelled' => 'Branch Appointment Cancellation - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name,
         };
-        
+
         return $this->view($view)
                     ->from($username, Auth::user()->name)
                     ->subject($header)

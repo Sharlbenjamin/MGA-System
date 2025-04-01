@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources;
 
-
 use App\Filament\Resources\ProviderBranchResource\Pages;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\ContactRelationManager;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\BankAccountRelationManager;
 use App\Models\ProviderBranch;
 use App\Models\Provider;
 use App\Models\ServiceType;
@@ -50,7 +50,7 @@ class ProviderBranchResource extends Resource
             TextInput::make('night_cost')->label('Night Cost')->numeric()->nullable(),
             TextInput::make('weekend_cost')->label('Weekend Cost')->numeric()->nullable(),
             TextInput::make('weekend_night_cost')->label('Weekend Night Cost')->numeric()->nullable(),
-            
+
             Section::make('Medical Services')
                 ->schema([
                     Toggle::make('emergency')->label('Emergency')->inline(),
@@ -67,8 +67,8 @@ class ProviderBranchResource extends Resource
                     Toggle::make('obstetrics_delivery')->label('Obstetrics / Delivery')->inline(),
                     Toggle::make('hyperbaric_chamber')->label('Hyperbaric Chamber')->inline(),
                 ])
-        
-       
+
+
         ]);
 }
 
@@ -116,6 +116,7 @@ public static function table(Tables\Table $table): Tables\Table
     {
         return [
             ContactRelationManager::class,
+            BankAccountRelationManager::class,
         ];
     }
 

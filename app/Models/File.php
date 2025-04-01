@@ -65,6 +65,16 @@ class File extends Model
         return $this->belongsTo(Patient::class);
     }
 
+    public function getNameAttribute()
+    {
+        return $this->mga_reference . ' - ' . $this->patient->name;
+    }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class, 'file_id', 'id');
+    }
+
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
@@ -141,21 +151,21 @@ class File extends Model
                 $query->where('city_id', $this->city_id)
             )
             ->orderBy('priority', 'asc')
-            ->get(); // ✅ Ensure we retrieve a collection
+            ->get();
     }
 
     public function requestAppointments($file)
     {
         foreach ($file->appointments as $appointment) {
             if ($appointment->status === 'Cancelled') {
-                $appointment->providerBranch?->notifyBranch('cancel', $appointment);
+                $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
                 continue;
             }
 
             if ($appointment->isUpdated()) {
-                $appointment->providerBranch?->notifyBranch('update', $appointment);
+                $appointment->providerBranch->notifyBranch('appointment_updated', $appointment);
             } else {
-                $appointment->providerBranch?->notifyBranch('new', $appointment);
+                $appointment->providerBranch->notifyBranch('appointment_created', $appointment);
             }
         }
         // Log in comments
@@ -184,8 +194,8 @@ class File extends Model
         });
 
         static::created(function ($file) {
-            $file->patient->client?->notifyClient('file_created', $file);
-            $file->patient?->notifyPatient('file_created', $file);
+            $file->patient->client->notifyClient('file_created', $file);
+            //$file->patient->notifyPatient('file_created', $file);
         });
 
         static::updated(function ($file) {
@@ -195,10 +205,11 @@ class File extends Model
                 }
 
                 match ($file->status) {
-                    'Assisted' => $file->patient->client?->notifyClient('file_assisted', $file),
-                    'In Progress' => $file->patient->client?->notifyClient('file_available', $file),
-                    'Hold' => $file->patient->client?->notifyClient('file_hold', $file),
-                    'Cancelled' => $file->patient->client?->notifyClient('file_cancelled', $file),
+                    'Assisted' => $file->patient->client->notifyClient('file_assisted', $file),
+                    'In Progress' => $file->patient->client->notifyClient('file_available', $file),
+                    'Hold' => $file->patient->client->notifyClient('file_hold', $file),
+                    'Cancelled' => $file->patient->client->notifyClient('file_cancelled', $file),
+                    //'Void' => $file->patient->client->notifyClient('file_void', $file),
                     default => null,
                 };
             }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ProviderResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\ProviderResource\Pages;
 use App\Filament\Resources\ProviderResource\RelationManagers\ProviderBranchRelationManager;
 use App\Filament\Resources\ProviderResource\RelationManagers\ProviderLeadRelationManager;
@@ -33,56 +34,29 @@ class ProviderResource extends Resource
 {
     return $form
         ->schema([
-            Select::make('country_id')
-                ->label('Country')
-                ->options(Country::pluck('name', 'id'))
-                ->searchable()
-                ->required(),
+            Select::make('country_id')->label('Country')->options(Country::pluck('name', 'id'))->searchable()->required(),
+            Select::make('status')->label('Status')->options([
+                'Active' => 'Active',
+                'Hold' => 'Hold',
+                'Potential' => 'Potential',
+                'Black List' => 'Black List',
+            ])->required(),
+            Select::make('type')->label('Provider Type')->options([
+                'Doctor' => 'Doctor',
+                'Hospital' => 'Hospital',
+                'Clinic' => 'Clinic',
+                'Dental' => 'Dental',
+                'Agency' => 'Agency',
+            ])->required(),
+            TextInput::make('name')->label('Provider Name')->required()->maxLength(255),
 
-            Select::make('status')
-                ->label('Status')
-                ->options([
-                    'Active' => 'Active',
-                    'Hold' => 'Hold',
-                    'Potential' => 'Potential',
-                    'Black List' => 'Black List',
-                ])
-                ->required(),
-
-            Select::make('type')
-                ->label('Provider Type')
-                ->options([
-                    'Doctor' => 'Doctor',
-                    'Hospital' => 'Hospital',
-                    'Clinic' => 'Clinic',
-                    'Dental' => 'Dental',
-                    'Agency' => 'Agency',
-                ])
-                ->required(),
-
-            TextInput::make('name')
-                ->label('Provider Name')
-                ->required()
-                ->maxLength(255),
-
-            TextInput::make('payment_due')
-                ->label('Payment Due (Days)')
-                ->numeric()
-                ->minValue(0)
-                ->nullable(),
-
-            Select::make('payment_method')
-                ->label('Payment Method')
-                ->options([
-                    'Online Link' => 'Online Link',
-                    'Bank Transfer' => 'Bank Transfer',
-                    'AEAT' => 'AEAT',
-                ])
-                ->nullable(),
-
-            Textarea::make('comment')
-                ->label('Comment')
-                ->nullable(),
+            TextInput::make('payment_due')->label('Payment Due (Days)')->numeric()->minValue(0)->nullable(),
+            Select::make('payment_method')->label('Payment Method')->options([
+                'Online Link' => 'Online Link',
+                'Bank Transfer' => 'Bank Transfer',
+                'AEAT' => 'AEAT',
+            ])->nullable(),
+            Textarea::make('comment')->label('Comment')->nullable(),
         ]);
 }
 
@@ -130,6 +104,7 @@ public static function table(Tables\Table $table): Tables\Table
         return [
             ProviderLeadRelationManager::class,
             ProviderBranchRelationManager::class,
+            BankAccountRelationManager::class,
         ];
     }
 

@@ -10,8 +10,8 @@
     <p><strong>Patient Name:</strong> {{ $file->patient->name }}</p>
     <p><strong>{{$file->patient->client->company_name}} Reference:</strong> {{ $file->client_reference }}</p>
     <p><strong>Status :</strong> {{ $file->status }}</p>
-    <p>Your financial team will receive an email with all the financial details from our financial team's email (mga.operation@medguarda.com)</p>
-    
+    <p>Once our invoice is issued, your financial team will receive an invoice from our financial team's email (mga.financial@medguarda.com)</p>
+
     @include('draftsignature', ['signature' => auth()->user()->signature])
 </body>
 </html>

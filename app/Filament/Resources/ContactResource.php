@@ -53,7 +53,11 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
         Select::make('provider_id')->label('Select Provider')->options(Provider::pluck('name', 'id'))->visible(fn ($get) => $get('type') === 'Provider')->nullable(),
         Select::make('branch_id')->label('Select Branch')->options(ProviderBranch::pluck('branch_name', 'id'))->visible(fn ($get) => $get('type') === 'Branch')->nullable(),
         Select::make('patient_id')->label('Select Patient')->options(Patient::pluck('name', 'id'))->visible(fn ($get) => $get('type') === 'Patient')->nullable(),
-        TextInput::make('name')->label('Contact Name')->required()->helperText('Dynamic names (Operation, Financial, GOP)'),
+        Select::make('name')->multiple()->label('Contact Name')->required()->helperText('Dynamic names (Operation, Financial, GOP)')->options([
+            'Operation' => 'Operation',
+            'Financial' => 'Financial',
+            'GOP' => 'GOP',
+        ]),
         TextInput::make('title')->label('Title')->nullable(),
         TextInput::make('email')->label('Email')->email()->unique('contacts', 'email', ignoreRecord: true)->nullable(),
         TextInput::make('second_email')->label('Second Email')->email()->nullable(),

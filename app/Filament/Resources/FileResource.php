@@ -10,6 +10,7 @@ use App\Filament\Resources\FileResource\RelationManagers\PatientRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\CommentsRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\AppointmentsRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\TaskRelationManager;
+use App\Filament\Resources\FileResource\RelationManagers\BankAccountRelationManager;
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Patient;
@@ -82,10 +83,12 @@ class FileResource extends Resource
 
     public static function table(Table $table): Table
     {
+        // sort by service_date
         return $table
             ->modifyQueryUsing(fn ($query) => $query->withCount(['tasks as undone_tasks_count' => function ($query) {
                 $query->where('is_done', false);
             }]))
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('patient.client.company_name')->label('Client')->sortable()->searchable(),
@@ -159,7 +162,8 @@ class FileResource extends Resource
             PatientRelationManager::class,
             CommentsRelationManager::class,
             AppointmentsRelationManager::class,
-            TaskRelationManager::class
+            TaskRelationManager::class,
+            BankAccountRelationManager::class,
         ];
     }
 
