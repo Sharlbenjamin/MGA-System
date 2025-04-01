@@ -37,32 +37,38 @@ class NotifyPatientMailable extends Mailable
         // Override only MAIL_USERNAME and MAIL_PASSWORD dynamically
         $username = Auth::user()->smtp_username;
         $password = Auth::user()->smtp_password;
-        
+
         $view = match ($this->type) {
-            'appointment_created' => 'emails.new-appointment-mga-mail',
-            'appointment_confirmed' => 'emails.confirm-appointment-mga-mail',
-            'appointment_updated' => 'emails.update-appointment-mga-mail',
-            'appointment_cancelled' => 'emails.cancel-appointment-mga-mail',
-            'file_created' => 'emails.file-created-mga-mail',
-            'file_cancelled' => 'emails.file-cancelled-mga-mail',
-            'file_hold' => 'emails.file-hold-mga-mail',
-            'file_assisted' => 'emails.file-assisted-mga-mail',
-            default => 'emails.general-notification-mga-mail', // Fallback
+            // 'appointment_created' => 'emails.new-appointment-mga-mail',
+            'appointment_confirmed' => 'emails.patient.confirm-appointment-mail',
+            // 'appointment_updated' => 'emails.update-appointment-mga-mail',
+            // 'appointment_cancelled' => 'emails.cancel-appointment-mga-mail',
+            'file_created' => 'emails.patient.file-created-mail',
+            //'file_cancelled' => 'emails.file-cancelled-mga-mail',
+            //'file_hold' => 'emails.file-hold-mga-mail',
+            //'file_assisted' => 'emails.file-assisted-mga-mail',
         };
 
         $header = match ($this->type) {
             'confirm' => 'Appointment Confirmation',
             'reminder' => 'Appointment Reminder',
+            'appointment_confirmed' => 'Appointment Confirmed',
             'patient_available' => 'Available Appointments',
             'file_created' => 'File Created Notification',
             'assisted' => 'Patient Assisted',
-            'Appointment' => 'Appointment Notification', // added for NotifyUsMailable match case
+            'Appointment' => 'Appointment Notification',
         };
-        
+
+        if ($this->data instanceof File) {
+            $file = $this->data;
+        } else {
+            $file = $this->data->file;
+        }
+
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject($header . " - " . ($this->data->file->mga_reference ?? 'No Reference'))
-                    ->with(['appointment' => $this->data]); // Updated to use $data
+                    ->subject($header . " - " . ($file->mga_reference ?? 'No Reference'))
+                    ->with(['file' => $file]);
     }
-    
+
 }

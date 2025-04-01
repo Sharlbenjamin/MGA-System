@@ -59,7 +59,7 @@ class Patient extends Model
         if ($reason === 'Invoice' || $reason === 'Balance') {
             $query->where('name', 'Financial');
         } elseif ($reason === 'Appointment') {
-            $query->where('name', 'Operation');
+            $query->where('name', 'like', '%Operation%');
         }
 
         return $query->first();

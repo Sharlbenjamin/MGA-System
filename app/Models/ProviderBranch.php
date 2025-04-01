@@ -12,38 +12,28 @@ use App\Mail\NotifyUsMailable;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
 class ProviderBranch extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
 
-    protected $fillable = [
-        'provider_id',
-        'branch_name',
-        'city_id',
-        'province_id',
-        'status',
-        'priority',
-        'service_type_id',
-        'communication_method',
-        'day_cost','night_cost','weekend_cost','weekend_night_cost', // Costs
-        'emergency','pediatrician_emergency','dental','pediatrician','gynecology','urology','cardiology','ophthalmology', // Services
-        'trauma_orthopedics','surgery','intensive_care','obstetrics_delivery','hyperbaric_chamber', // Services
-    ];
+    protected $fillable = ['provider_id', 'branch_name', 'city_id', 'province_id', 'status', 'priority', 'service_type_id', 'communication_method', 'day_cost', 'night_cost', 'weekend_cost', 'weekend_night_cost', 'emergency', 'pediatrician_emergency', 'dental', 'pediatrician', 'gynecology', 'urology', 'cardiology', 'ophthalmology', 'trauma_orthopedics', 'surgery', 'intensive_care', 'obstetrics_delivery', 'hyperbaric_chamber'];
 
-    protected $casts = [
-        'id' => 'integer',
-        'provider_id' => 'integer',
-        'service_type_id' => 'integer',
-        'day_cost' => 'decimal:2',
-        'night_cost' => 'decimal:2',
-        'weekend_cost' => 'decimal:2',
-        'weekend_night_cost' => 'decimal:2',
-    ];
+    protected $casts = ['id' => 'integer', 'provider_id' => 'integer', 'service_type_id' => 'integer', 'day_cost' => 'decimal:2', 'night_cost' => 'decimal:2', 'weekend_cost' => 'decimal:2', 'weekend_night_cost' => 'decimal:2'];
 
     public function provider(): BelongsTo
     {
         return $this->belongsTo(Provider::class);
+    }
+
+    public function getNameAttribute()
+    {
+        return $this->branch_name;
+    }
+
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class, 'branch_id', 'id');
     }
 
     public function city()
@@ -74,7 +64,7 @@ class ProviderBranch extends Model
         if ($reason === 'Invoice' || $reason === 'Balance') {
             $query->where('name', 'Financial');
         } elseif ($reason === 'Appointment') {
-            $query->where('name', 'Operation');
+            $query->where('name', 'like', '%Operation%');
         }
 
         return $query->first();

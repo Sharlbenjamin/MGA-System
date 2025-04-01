@@ -167,14 +167,13 @@ class ViewFile extends ViewRecord
                     ->first();
 
                 if ($existingAppointment) {
-                    $newDate = now()->addDays(1)->toDateString();
+                    $newDate = now()->toDateString();
 
                     if ($existingAppointment->service_date !== $newDate) {
                         $existingAppointment->update([
                             'service_date' => $newDate,
                         ]);
                         $updatedAppointments[] = $providerBranch->branch_name;
-                        $existingAppointment->providerBranch?->notifyBranch('appointment_updated', $existingAppointment);
                     }
                     continue;
                 }
@@ -183,16 +182,14 @@ class ViewFile extends ViewRecord
                 $appointment = new \App\Models\Appointment([
                     'file_id' => $record->id,
                     'provider_branch_id' => $branchId,
-                    'service_date' => now()->addDays(1)->toDateString(),
+                    'service_date' => now()->toDateString(),
+                    'service_time' => now()->toTimeString(),
                     'status' => 'Requested',
                 ]);
 
                 if ($appointment->save()) {
                     // ✅ Track newly created appointments
                     $newAppointments[] = $providerBranch->branch_name;
-
-                    // ✅ Notify the branch
-                    $appointment->providerBranch?->notifyBranch('appointment_created', $appointment);
 
                     // ✅ Create a task for the new appointment
                     \App\Models\Task::create([

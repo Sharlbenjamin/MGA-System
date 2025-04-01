@@ -25,7 +25,12 @@ class ContactRelationManager extends RelationManager
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            TextInput::make('name')->label('Contact Name')->required()->helperText('Dynamic names (Operation, Financial, GOP, Appointment)'),
+            Select::make('name')->multiple()->label('Contact Name')->required()->helperText('Dynamic names (Operation, Financial, GOP, Appointment)')->options([
+                'Operation' => 'Operation',
+                'Financial' => 'Financial',
+                'GOP' => 'GOP',
+                'Appointment' => 'Appointment',
+            ]),
             TextInput::make('title')->label('Title')->nullable(),
             TextInput::make('email')->label('Email')->email()->unique('contacts', 'email', ignoreRecord: true)->nullable(),
             TextInput::make('second_email')->label('Second Email')->email()->nullable(),

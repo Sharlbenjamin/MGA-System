@@ -26,7 +26,7 @@ trait NotifiableEntity
     {
         $contact = $this->primaryContact($reason);
         if (!$contact) {
-            Notification::make()->title("No Contact Found")->body("No {$reason} contact found")->danger()->send();
+            Notification::make()->title("No ".$parent." Contact Found")->body("No {$reason} contact found")->danger()->send();
             return;
         }
 
@@ -41,12 +41,6 @@ trait NotifiableEntity
     private function notifyByPhone($data, $status)
     {
         $file_id = $data instanceof \App\Models\File ? $data->id : ($data->file_id ?? null);
-
-        if (!$file_id) {
-            // Removed debugging log
-        }
-
-        // Removed debugging log
 
         // Step 1: Create Notification
         Notification::make()->title('Phone Notification')->body("Call the recipient")->send();
