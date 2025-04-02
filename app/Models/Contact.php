@@ -12,11 +12,6 @@ class Contact extends Model
 {
     use HasFactory, HasUuids;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'type',
         'client_id',
@@ -36,14 +31,10 @@ class Contact extends Model
         'status',
     ];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
     protected $casts = [
         'country_id' => 'integer',
         'city_id' => 'integer',
+        'name' => 'array',
     ];
 
     public function contactable(): MorphTo

@@ -72,7 +72,7 @@ class Client extends Model
     }
     public function primaryContact($reason = null)
     {
-        $query = $this->contacts();
+        $query = $this->contacts()->where('status', 'Active');
 
         if ($reason === 'Invoice' || $reason === 'Balance') {
             $query->where('name', 'Financial');
