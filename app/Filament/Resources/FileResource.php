@@ -86,8 +86,7 @@ class FileResource extends Resource
         // sort by service_date
         return $table
             ->modifyQueryUsing(fn ($query) => $query->withCount(['tasks as undone_tasks_count' => function ($query) {
-                $query->where('is_done', false)
-                    ->whereColumn('file_id', 'files.id');
+                $query->where('is_done', false);
             }]))
             ->defaultSort('created_at', 'desc')
             ->columns([

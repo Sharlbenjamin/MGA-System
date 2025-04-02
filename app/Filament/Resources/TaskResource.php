@@ -17,7 +17,7 @@ use Filament\Tables\Filters\Filter;
 class TaskResource extends Resource
 {
     protected static ?string $model = Task::class;
-    
+
     protected static ?string $navigationGroup = null; // Removes it from any group
     protected static ?int $navigationSort = null; // Ensures it's not sorted
     protected static ?string $navigationIcon = null; // Hides from sidebar
@@ -28,10 +28,7 @@ class TaskResource extends Resource
     {
         return $form
             ->schema([
-                Select::make('user_id')
-                    ->relationship('user', 'name')
-                    ->required(),
-
+                Select::make('user_id')->relationship('user', 'name')->required(),
                 Select::make('department')
                     ->options([
                         'Operation' => 'Operation',
@@ -40,11 +37,7 @@ class TaskResource extends Resource
                         'Network' => 'Providers Network',
                     ])
                     ->required(),
-
-                Select::make('file_id')
-                    ->relationship('file', 'reference')
-                    ->searchable()
-                    ->nullable(),
+                Select::make('file_id')->relationship('file', 'reference')->searchable()->nullable(),
 
                 Select::make('taskable_type')
                     ->options([
@@ -54,26 +47,17 @@ class TaskResource extends Resource
                         'App\Models\Patient' => 'Patient',
                         'App\Models\Client' => 'Client',
                     ])->searchable()->nullable(),
-
-                TextInput::make('title')
-                    ->required(),
-
-                Textarea::make('description')
-                    ->nullable(),
-
-                DateTimePicker::make('due_date')
-                    ->nullable(),
+                TextInput::make('title')->required(),
+                Textarea::make('description')->nullable(),
+                DateTimePicker::make('due_date')->nullable(),
 
                 Select::make('is_done')
                     ->options([
                         0 => 'Pending',
                         1 => 'Completed'
-                    ])
-                    ->default(0),
+                    ])->default(0),
 
-                Select::make('done_by')
-                    ->relationship('doneBy', 'name')
-                    ->nullable(),
+                Select::make('done_by')->relationship('doneBy', 'name')->nullable(),
             ]);
     }
 
@@ -82,6 +66,7 @@ class TaskResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('title')->sortable()->searchable(),
+                TextColumn::make('file.mga_reference')->label('File')->sortable()->searchable(),
                 TextColumn::make('user.name')->label('Assigned To')->sortable(),
                 TextColumn::make('department')->sortable(),
                 TextColumn::make('due_date')->dateTime()->sortable(),
