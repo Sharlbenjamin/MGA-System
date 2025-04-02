@@ -42,15 +42,15 @@ trait NotifiableEntity
     {
         $file_id = $data instanceof \App\Models\File ? $data->id : ($data->file_id ?? null);
 
-        // Step 1: Create Notification
-        Notification::make()->title('Phone Notification')->body("Call the recipient")->send();
+        $recipient = "Patient or Branch or Client";
+        Notification::make()->title('Phone Notification')->body("Call the" .$recipient)->send();
 
-        // Step 2: Create a Task
+
         Task::create([
             'taskable_id' => $data->id,
             'taskable_type' => get_class($data),
-            'department' => 'General',
-            'title' => $status, // Use `$status` directly
+            'department' => 'Operation',
+            'title' => 'Phone Call Required', // Use `$status` directly
             'description' => 'Call the recipient', // Fallback case
             'due_date' => now()->addMinutes(30),
             'user_id' => Auth::id(),
