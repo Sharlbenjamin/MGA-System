@@ -82,7 +82,11 @@ class Appointment extends Model
             }
 
             if ($appointment->status === 'Cancelled') {
-                $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
+                // check the previous status
+                $previousStatus = $appointment->getOriginal('status');
+                if ($previousStatus === 'Available') {
+                    $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
+                }
             }
 
             if ($appointment->wasChanged(['service_date', 'service_time'])) {

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('provider_branch_id')->constrained()->onDelete('cascade');
             $table->date('service_date');
             $table->time('service_time')->nullable();
-            $table->enum('status', ['Requested', 'Pending', 'Confirmed', 'Cancelled'])->default('Requested');
+            $table->string('status')->default('Requested');
             $table->timestamps();
         });
     }

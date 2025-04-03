@@ -3,7 +3,7 @@
 <body>
     @if($appointment->providerBranch->provider->status == 'Active')
     <p>Dear {{ $appointment->providerBranch->branch_name }},</p>
-    <p>We are Requesting an appointment availaility with the following details.</p>
+    <p>We are Requesting an appointment availability with the following details.</p>
     <p><strong>MGA Reference:</strong> {{ $appointment->file->mga_reference }}</p>
     <p><strong>Patient Name:</strong> {{ $appointment->file->patient->name }}</p>
     <p><strong>Appointment Details:</strong></p>

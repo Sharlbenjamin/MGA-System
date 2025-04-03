@@ -9,7 +9,7 @@
     <p><strong>Service City:</strong> {{ $file->city->name ?? 'N/A' }}</p>
     <p>Here are the available slots:</p>
     <ul>
-    @foreach($file->appointments->where('status', 'Pending') as $appointment)
+    @foreach($file->appointments->where('status', 'Available') as $appointment)
     <li>{{ $appointment->service_date }} at {{ $appointment->service_time }} {{$appointment->providerBranch->weekend_night_cost ? 'Average Cost: ' . $appointment->providerBranch->weekend_night_cost : ''}}</li>
     @endforeach
     </ul>

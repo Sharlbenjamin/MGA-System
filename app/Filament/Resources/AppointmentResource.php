@@ -3,15 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
-use App\Filament\Resources\AppointmentResource\RelationManagers;
 use App\Models\Appointment;
+use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TimePicker;
-use Filament\Tables\Columns\TextColumn;
 
 class AppointmentResource extends Resource
 {
@@ -25,14 +22,14 @@ class AppointmentResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Select::make('file_id')->relationship('file', 'id')->searchable()->required(),
-            Select::make('provider_branch_id')->relationship('providerBranch', 'branch_name')->searchable()->required(),
-            DatePicker::make('service_date')->required(),
-            TimePicker::make('service_time')->nullable(),
-            Select::make('status')
+            Forms\Components\Select::make('file_id')->relationship('file', 'id')->searchable()->required(),
+            Forms\Components\Select::make('provider_branch_id')->relationship('providerBranch', 'branch_name')->searchable()->required(),
+            Forms\Components\DatePicker::make('service_date')->required(),
+            Forms\Components\TimePicker::make('service_time')->nullable(),
+            Forms\Components\Select::make('status')
                 ->options([
                     'Requested' => 'Requested',
-                    'Pending' => 'Pending',
+                    'Available' => 'Available',
                     'Confirmed' => 'Confirmed',
                     'Cancelled' => 'Cancelled',
                 ])
@@ -44,12 +41,20 @@ class AppointmentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('file.id')->label('File ID')->sortable(),
-            TextColumn::make('providerBranch.branch_name')->label('Provider Branch'),
-            TextColumn::make('service_date')->label('Service Date')->date(),
-            TextColumn::make('service_time')->label('Service Time'),
-            TextColumn::make('status')->label('Status')->badge(),
-            TextColumn::make('created_at')->label('Created')->dateTime(),
+            Tables\Columns\TextColumn::make('file.id')->label('File ID')->sortable(),
+            Tables\Columns\TextColumn::make('providerBranch.branch_name')->label('Provider Branch'),
+            Tables\Columns\TextColumn::make('service_date')->label('Service Date')->date(),
+            Tables\Columns\TextColumn::make('service_time')->label('Service Time'),
+            Tables\Columns\TextColumn::make('status')->label('Status')->badge(),
+            Tables\Columns\TextColumn::make('created_at')->label('Created')->dateTime(),
+        ]) ->actions([
+            Tables\Actions\EditAction::make(),
+            Tables\Actions\DeleteAction::make(),
+        ])
+        ->bulkActions([
+            Tables\Actions\BulkActionGroup::make([
+                Tables\Actions\DeleteBulkAction::make(),
+            ]),
         ]);
     }
 

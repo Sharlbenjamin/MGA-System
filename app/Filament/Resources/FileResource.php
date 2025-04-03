@@ -57,15 +57,11 @@ class FileResource extends Resource
                 ->afterStateUpdated(function ($state, callable $set) {
                     $set('mga_reference', File::generateMGAReference($state));
                 }),
-            TextInput::make('mga_reference')
-                ->label('MGA Reference')
-                ->required()
-                ->readOnly()
-                ->unique(ignoreRecord: true)
-                ->helperText('Auto-generated based on the patient'),
+            TextInput::make('mga_reference')->label('MGA Reference')->required()->readOnly()->unique(ignoreRecord: true)->helperText('Auto-generated based on the patient'),
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
-            Select::make('status')->options(['New' => 'New','Handling' => 'Handling','In Progress' => 'In Progress', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required(),
+            Select::make('status')->options(['New' => 'New','Handling' => 'Handling','Available' => 'Available', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required(),
             TextInput::make('client_reference')->label('Client Reference')->nullable(),
+            Select::make('contact_patient')->label('Who will Contact the Patient?')->options(['Client' => 'Client','MGA' => 'MGA', 'Ask' => 'Ask'])->default('Client')->required(),
             Select::make('country_id')->relationship('country', 'name')->label('Country')->preload()->searchable()->nullable()->live(),
             Select::make('city_id')->label('City')->searchable()->nullable()->options(fn ($get) => \App\Models\City::where('country_id', $get('country_id'))->pluck('name', 'id'))->reactive(),
             Select::make('provider_branch_id')->label('Provider Branch')->searchable()->nullable()
@@ -95,7 +91,7 @@ class FileResource extends Resource
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'New' => 'success',
                     'Handling' => 'info',
-                    'In Progress' => 'info',
+                    'Available' => 'info',
                     'Confirmed' => 'success',
                     'Assisted' => 'success',
                     'Hold' => 'warning',
@@ -108,6 +104,11 @@ class FileResource extends Resource
                 Tables\Columns\TextColumn::make('city.name')->label('City')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('serviceType.name')->label('Service Type')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('providerBranch.branch_name')->label('Provider Branch')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('contact_patient')->label('Contact Patient')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
+                    'Client' => 'success',
+                    'MGA' => 'info',
+                    'Ask' => 'warning',
+                }),
                 // Date & Time columns
                 Tables\Columns\TextColumn::make('service_date')->date()->sortable(),
                 // count undone tasks
@@ -119,25 +120,16 @@ class FileResource extends Resource
                     ->options([
                         'New' => 'New',
                         'Handling' => 'Handling',
-                        'In Progress' => 'In Progress',
+                        'Available' => 'Available',
                         'Confirmed' => 'Confirmed',
                         'Assisted' => 'Assisted',
                         'Hold' => 'Hold',
                         'Cancelled' => 'Cancelled',
                         'Void' => 'Void',
                     ]),
-                SelectFilter::make('country_id')
-                    ->options(\App\Models\Country::pluck('name', 'id'))
-                    ->label('Country'),
-
-                SelectFilter::make('city_id')
-                    ->options(\App\Models\City::pluck('name', 'id'))
-                    ->label('City'),
-
-                SelectFilter::make('service_type_id')
-                    ->options(\App\Models\ServiceType::pluck('name', 'id'))
-                    ->label('Service Type'),
-
+                SelectFilter::make('country_id')->options(\App\Models\Country::pluck('name', 'id'))->label('Country'),
+                SelectFilter::make('city_id')->options(\App\Models\City::pluck('name', 'id'))->label('City'),
+                SelectFilter::make('service_type_id')->options(\App\Models\ServiceType::pluck('name', 'id'))->label('Service Type'),
             ])
             ->actions([
                 Tables\Actions\Action::make('View')
