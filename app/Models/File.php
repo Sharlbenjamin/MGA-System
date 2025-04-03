@@ -23,42 +23,9 @@ class File extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
-    protected $fillable = [
-        'status',
-        'mga_reference',
-        'patient_id',
-        'client_reference',
-        'country_id',
-        'city_id',
-        'service_type_id',
-        'provider_branch_id',
-        'service_date',
-        'service_time',
-        'address',
-        'symptoms',
-        'diagnosis',
-    ];
+    protected $fillable = ['status','mga_reference','patient_id','client_reference','country_id','city_id','service_type_id','provider_branch_id','service_date','service_time','address','symptoms','diagnosis','contact_patient',];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
-    protected $casts = [
-        'id' => 'integer',
-        'patient_id' => 'integer',
-        'country_id' => 'integer',
-        'city_id' => 'integer',
-        'service_type_id' => 'integer',
-        'provider_id' => 'integer',
-        'provider_branch_id' => 'integer',
-        'service_date' => 'date',
-    ];
+    protected $casts = ['id' => 'integer','patient_id' => 'integer','country_id' => 'integer','city_id' => 'integer','service_type_id' => 'integer','provider_branch_id' => 'integer','service_date' => 'date',];
 
     public function patient(): BelongsTo
     {
@@ -206,9 +173,10 @@ class File extends Model
 
                 match ($file->status) {
                     'Assisted' => $file->patient->client->notifyClient('file_assisted', $file),
-                    'In Progress' => $file->patient->client->notifyClient('file_available', $file),
+                    'Available' => $file->patient->client->notifyClient('file_available', $file),
                     'Hold' => $file->patient->client->notifyClient('file_hold', $file),
                     'Cancelled' => $file->patient->client->notifyClient('file_cancelled', $file),
+                    'Requesting GOP' => $file->patient->client->notifyClient('requesting_gop', $file),
                     //'Void' => $file->patient->client->notifyClient('file_void', $file),
                     default => null,
                 };

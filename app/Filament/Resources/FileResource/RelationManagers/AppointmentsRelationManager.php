@@ -24,13 +24,8 @@ class AppointmentsRelationManager extends RelationManager
     public function form(Form $form): Form
     {
         return $form->schema([
-            Hidden::make('file_id')
-                ->default(fn() => $this->ownerRecord->getKey()),
-
-            Select::make('provider_branch_id')
-                ->relationship('providerBranch', 'name')
-                ->searchable()
-                ->required(),
+            Hidden::make('file_id')->default(fn() => $this->ownerRecord->getKey()),
+            Select::make('provider_branch_id')->relationship('providerBranch', 'name')->searchable()->required(),
 
             DatePicker::make('service_date')->required(),
             TimePicker::make('service_time')->nullable(),
@@ -38,11 +33,11 @@ class AppointmentsRelationManager extends RelationManager
             Select::make('status')
                 ->options([
                     'Requested' => 'Requested',
-                    'Pending' => 'Pending',
+                    'Available' => 'Available',
                     'Confirmed' => 'Confirmed',
                     'Cancelled' => 'Cancelled',
-                ])
-                ->default('Requested')
+                    ])
+                    ->default('Requested')
                 ->required(),
         ]);
     }
@@ -54,7 +49,7 @@ class AppointmentsRelationManager extends RelationManager
                 TextColumn::make('providerBranch.branch_name')->label('Provider Branch'),
                 TextColumn::make('service_date')->label('Service Date')->date(),
                 TextColumn::make('service_time')->label('Service Time'),
-                TextColumn::make('status')->label('Status')->badge(),
+                TextColumn::make('status')->label('Status')->badge()->color(fn (string $state): string => match ($state) {'Confirmed' => 'success','Available' => 'info','Requested' => 'warning','Cancelled' => 'danger',}),
             ])
             ->headerActions([
                 Action::make('create_appointment')
@@ -76,7 +71,7 @@ class AppointmentsRelationManager extends RelationManager
                         Select::make('status')
                             ->options([
                                 'Requested' => 'Requested',
-                                'Pending' => 'Pending',
+                                'Available' => 'Available',
                                 'Confirmed' => 'Confirmed',
                                 'Cancelled' => 'Cancelled',
                             ])
@@ -96,26 +91,19 @@ class AppointmentsRelationManager extends RelationManager
                         ->relationship('providerBranch', 'branch_name')
                         ->searchable()
                         ->required()
-                        ->default($record->provider_branch_id), // Fetches previous value
-
-                    DatePicker::make('service_date')
-                        ->required()
-                        ->default($record->service_date), // Fetches previous value
-
-                    TimePicker::make('service_time')
-                        ->nullable()
-                        ->default($record->service_time), // Fetches previous value
-
+                        ->default($record->provider_branch_id),
+                    DatePicker::make('service_date')->required()->default($record->service_date),
+                    TimePicker::make('service_time')->nullable()->default($record->service_time),
                     Select::make('status')
                         ->options([
                             'Requested' => 'Requested',
-                            'Pending' => 'Pending',
+                            'Available' => 'Available',
                             'Confirmed' => 'Confirmed',
                             'Cancelled' => 'Cancelled',
-                        ])
-                        ->default($record->status) // Fetches previous value
+                        ])->searchable()
+                        ->default($record->status)
                         ->required(),
-                ]) ->action(function (array $data, $record) { // Handle update logic
+                ]) ->action(function (array $data, $record) {
                     $record->update($data);
                 })
                     ->successNotificationTitle('Appointment Updated Successfully!'),

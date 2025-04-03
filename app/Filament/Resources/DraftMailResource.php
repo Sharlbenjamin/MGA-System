@@ -68,7 +68,9 @@ public static function form(Form $form): Form
     $fileStatuses = [
         'New' => 'New',
         'Handling' => 'Handling',
-        'In Progress' => 'In Progress',
+        'Available' => 'Available',
+        'Confirmed' => 'Confirmed',
+        'Requesting GOP' => 'Requesting GOP',
         'Assisted' => 'Assisted',
         'Hold' => 'Hold',
         'Void' => 'Void',
@@ -76,7 +78,7 @@ public static function form(Form $form): Form
      // $notificationStatuses = [
     //     'Client New File' => 'Client New File',
     //     'Client Handling File' => 'Client Handling File',
-    //     'Client File In Progress' => 'Client File In Progress',
+    //     'Client File Available' => 'Client File Available',
     //     'Client File Assisted' => 'Client File Assisted',
     //     'Client File On Hold' => 'Client File On Hold',
     //     'Client File Cancelled' => 'Client File Cancelled',

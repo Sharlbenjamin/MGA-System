@@ -40,7 +40,8 @@ class NotifyClientMailable extends Mailable
 
         $view = match ($this->type) {
             'file_created' => 'emails.client.file-created-client-mail',
-            'file_void' => 'emails.client.file-void-mail',
+            'requesting_gop' => 'emails.client.requesting-gop-mail',
+            //'file_void' => 'emails.client.file-void-mail',
             'file_cancelled' => 'emails.client.file-cancelled-mail',
             'file_hold' => 'emails.client.file-hold-client-mail',
             'file_available' => 'emails.client.available-appointments-mail',
@@ -57,23 +58,12 @@ class NotifyClientMailable extends Mailable
         } else {
             $file = $this->data->file;
         }
-        $header = match ($this->type) {
-            'file_created' => 'File Created - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'file_void' => 'File Cancelled - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'file_cancelled' => 'File Cancelled - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'file_hold' => 'Appointment Hold - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'file_available' => 'Available Appointments - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'file_assisted' => 'Client Assisted - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'appointment_reminder' => 'Appointment Reminder - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'appointment_created' => 'New Appointment - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'appointment_confirmed' => 'Appointment Confirmation - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'appointment_cancelled' => 'Appointment Cancellation - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-            'appointment_updated' => 'Appointment Update - ' . $file->mga_reference. ' - ' . $file->patient->client->company_name,
-        };
+        $header = $file->patient->client->company_name. 'Reference '. $file->client_reference. ' File Reference - ' . $file->mga_reference;
+
 
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject($header . " - " . ($file->mga_reference ?? 'No Reference') . " - " . ($file->patient->client->company_name ?? 'No Reference'))
+                    ->subject($header)
                     ->with(['file' => $file]);
     }
 

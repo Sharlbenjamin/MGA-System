@@ -28,6 +28,7 @@ return new class extends Migration
             $table->string('address')->nullable();
             $table->text('symptoms')->nullable();
             $table->text('diagnosis')->nullable();
+            $table->string('contact_patient')->nullable()->default('Client');
             $table->timestamps();
         });
 

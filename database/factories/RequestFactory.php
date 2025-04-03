@@ -8,8 +8,7 @@ use App\Models\City;
 use App\Models\Country;
 use App\Models\Patient;
 use App\Models\ProviderBranch;
-use App\Models\Providers,nullable;
-use App\Models\Request;
+use App\Models\File;
 use App\Models\ServiceType;
 
 class RequestFactory extends Factory
@@ -19,7 +18,7 @@ class RequestFactory extends Factory
      *
      * @var string
      */
-    protected $model = Request::class;
+    protected $model = File::class;
 
     /**
      * Define the model's default state.
@@ -27,14 +26,13 @@ class RequestFactory extends Factory
     public function definition(): array
     {
         return [
-            'status' => fake()->randomElement(["New","Handling","In Progress","Assisted","Hold","Void"]),
+            'status' => fake()->randomElement(["New","Handling","Available","Assisted","Hold","Void"]),
             'mga_reference' => fake()->word(),
             'patient_id' => Patient::factory(),
             'client_reference' => fake()->word(),
             'country_id' => Country::factory(),
             'city_id' => City::factory(),
             'service_type_id' => ServiceType::factory(),
-            'provider_id' => Providers,nullable::factory(),
             'provider_branch_id' => ProviderBranch::factory(),
             'service_date' => fake()->date(),
             'service_time' => fake()->time(),
