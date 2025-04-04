@@ -71,20 +71,6 @@ class ProviderBranch extends Model
         return $this->hasMany(Contact::class, 'branch_id', 'id')->where('type', 'Branch');
     }
 
-
-    public function primaryContact($reason = null)
-    {
-        $query = $this->contacts()->where('status', 'Active');
-
-        if ($reason === 'Invoice' || $reason === 'Balance') {
-            $query->where('name', 'Financial');
-        } elseif ($reason === 'Appointment') {
-            $query->where('name', 'like', '%Operation%');
-        }
-
-        return $query->first();
-    }
-
     public function notifyBranch($type, $data)
     {
         $reason = $this->detectNotificationReason($data);

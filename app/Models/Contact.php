@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
 class Contact extends Model
 {
     use HasFactory;
@@ -35,7 +35,25 @@ class Contact extends Model
         return $this->belongsTo(City::class);
     }
 
-    // In App\Models\Contact.php
+    public function clients(): HasMany
+    {
+        return $this->hasMany(Client::class, 'gop_contact_id', 'id');
+    }
+
+    public function providers(): HasMany
+    {
+        return $this->hasMany(Provider::class, 'gop_contact_id', 'id');
+    }
+
+    public function branches(): HasMany
+    {
+        return $this->hasMany(ProviderBranch::class, 'gop_contact_id', 'id');
+    }
+
+    public function patients(): HasMany
+    {
+        return $this->hasMany(Patient::class, 'gop_contact_id', 'id');
+    }
 
     public function getEntityNameAttribute(): string
     {

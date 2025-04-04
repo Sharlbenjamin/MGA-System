@@ -13,6 +13,20 @@ use Illuminate\Support\Facades\Auth;
 
 trait NotifiableEntity
 {
+
+    public function primaryContact($reason = null)
+    {
+        if ($reason === 'Invoice' || $reason === 'Balance' || $reason === 'Financial') {
+            return $this->financialContact;
+        } elseif ($reason === 'Appointment' || $reason === 'File' || $reason === 'Operation') {
+            return $this->operationContact;
+        } elseif ($reason === 'GOP') {
+            return $this->gopContact;
+        }
+
+        return null;
+    }
+
     private function detectNotificationReason($data)
     {
         return match (get_class($data)) {

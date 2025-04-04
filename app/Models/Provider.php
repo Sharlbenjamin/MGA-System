@@ -55,15 +55,15 @@ class Provider extends Model
         return $this->belongsTo(Contact::class, 'financial_contact_id');
     }
 
-    public function requests(): HasManyThrough
+    public function files(): HasManyThrough
     {
         return $this->hasManyThrough(
             File::class,  // Final model
             ProviderBranch::class,  // Intermediate model
             'provider_id',     // Foreign key on ProviderBranch table
-            'provider_branch_id',    // Foreign key on requests table
+            'provider_branch_id',    // Foreign key on files table
             'id',            // Local key on provider table
-            'id'             // Local key on request table
+            'id'             // Local key on files table
         );
     }
     public function bankAccounts(): HasMany

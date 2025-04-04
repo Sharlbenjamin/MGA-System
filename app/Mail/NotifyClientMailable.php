@@ -46,6 +46,7 @@ class NotifyClientMailable extends Mailable
             'file_hold' => 'emails.client.file-hold-client-mail',
             'file_available' => 'emails.client.available-appointments-mail',
             'file_assisted' => 'emails.client.client-assisted-mail',
+            'ask_client' => 'emails.client.ask-client-mail',
             //'appointment_reminder' => 'emails.client.appointment-reminder-mail',
             //'appointment_created' => 'emails.client.new-appointment-client-mail',
             'appointment_confirmed' => 'emails.client.confirm-appointment-client-mail',
@@ -58,7 +59,7 @@ class NotifyClientMailable extends Mailable
         } else {
             $file = $this->data->file;
         }
-        $header = $file->patient->client->company_name. 'Reference '. $file->client_reference. ' File Reference - ' . $file->mga_reference;
+        $header = $file->patient->client->company_name. ' Reference '. $file->client_reference. ' File Reference - ' . $file->mga_reference;
 
 
         return $this->view($view)
