@@ -16,13 +16,7 @@ class Client extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
 
-    protected $fillable = [
-        'company_name',
-        'type',
-        'status',
-        'initials',
-        'number_requests',
-    ];
+    protected $fillable = ['company_name','type','status','initials','number_requests','gop_contact_id','operation_contact_id','financial_contact_id',];
 
     protected $casts = [
         'id' => 'integer',
@@ -41,6 +35,21 @@ class Client extends Model
     public function leads(): HasMany
     {
         return $this->hasMany(Lead::class);
+    }
+
+    public function gopContact()
+    {
+        return $this->belongsTo(Contact::class, 'gop_contact_id');
+    }
+
+    public function operationContact()
+    {
+        return $this->belongsTo(Contact::class, 'operation_contact_id');
+    }
+
+    public function financialContact()
+    {
+        return $this->belongsTo(Contact::class, 'financial_contact_id');
     }
 
     public function files(): HasManyThrough

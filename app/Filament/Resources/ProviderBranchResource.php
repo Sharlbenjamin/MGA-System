@@ -9,6 +9,7 @@ use App\Models\ProviderBranch;
 use App\Models\Provider;
 use App\Models\ServiceType;
 use App\Models\City;
+use App\Models\Contact;
 use App\Models\Province;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
@@ -44,7 +45,10 @@ class ProviderBranchResource extends Resource
                 ])->required(),
 
             Select::make('service_type_id')->label('Service Type')->options(ServiceType::pluck('name', 'id'))->searchable()->required(),
-            Select::make('communication_method')->label('Communication Method')->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])->required(),
+            //Select::make('communication_method')->label('Communication Method')->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])->required(),
+            Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+            Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+            Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
 
             TextInput::make('day_cost')->label('Day Cost')->numeric()->nullable(),
             TextInput::make('night_cost')->label('Night Cost')->numeric()->nullable(),

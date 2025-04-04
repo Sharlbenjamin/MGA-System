@@ -10,26 +10,9 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Contact extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory;
 
-    protected $fillable = [
-        'type',
-        'client_id',
-        'provider_id',
-        'branch_id',
-        'patient_id',
-        'name',
-        'title',
-        'email',
-        'second_email',
-        'phone_number',
-        'second_phone',
-        'country_id',
-        'city_id',
-        'address',
-        'preferred_contact',
-        'status',
-    ];
+    protected $fillable = ['type','client_id','provider_id','branch_id','patient_id','name','title','email','second_email','phone_number','second_phone','country_id','city_id','address','preferred_contact','status',];
 
     protected $casts = [
         'country_id' => 'integer',

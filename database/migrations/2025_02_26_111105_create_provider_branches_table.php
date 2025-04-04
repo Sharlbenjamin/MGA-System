@@ -21,6 +21,9 @@ return new class extends Migration
             $table->enum('status', ["Active","Hold"]);
             $table->integer('priority');
             $table->foreignId('service_type_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('gop_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('operation_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('financial_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
             $table->string('communication_method', 50)->nullable();
             $table->decimal('day_cost', 8, 2)->nullable();
             $table->decimal('night_cost', 8, 2)->nullable();

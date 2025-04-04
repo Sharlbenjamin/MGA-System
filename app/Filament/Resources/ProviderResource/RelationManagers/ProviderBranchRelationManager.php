@@ -43,13 +43,13 @@ class ProviderBranchRelationManager extends RelationManager
                 ])->required(),
 
             Select::make('service_type_id')->label('Service Type')->options(ServiceType::pluck('name', 'id'))->searchable()->required(),
-            Select::make('communication_method')->label('Communication Method')->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])->required(),
+            //Select::make('communication_method')->label('Communication Method')->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])->required(),
 
             TextInput::make('day_cost')->label('Day Cost')->numeric()->nullable(),
             TextInput::make('night_cost')->label('Night Cost')->numeric()->nullable(),
             TextInput::make('weekend_cost')->label('Weekend Cost')->numeric()->nullable(),
             TextInput::make('weekend_night_cost')->label('Weekend Night Cost')->numeric()->nullable(),
-            
+
             Section::make('Medical Services')
                 ->schema([
                     Toggle::make('emergency')->label('Emergency')->inline(),
@@ -66,8 +66,8 @@ class ProviderBranchRelationManager extends RelationManager
                     Toggle::make('obstetrics_delivery')->label('Obstetrics / Delivery')->inline(),
                     Toggle::make('hyperbaric_chamber')->label('Hyperbaric Chamber')->inline(),
                 ])
-        
-       
+
+
         ]);
 }
 
