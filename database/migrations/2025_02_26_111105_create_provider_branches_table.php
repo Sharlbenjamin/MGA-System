@@ -20,7 +20,7 @@ return new class extends Migration
             $table->foreignId('city_id')->nullable()->constrained()->onDelete('set null');
             $table->enum('status', ["Active","Hold"]);
             $table->integer('priority');
-            $table->foreignId('service_type_id')->nullable()->constrained()->onDelete('set null');
+            $table->string('service_types')->nullable();
             $table->foreignId('gop_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
             $table->foreignId('operation_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
             $table->foreignId('financial_contact_id')->nullable()->constrained('contacts')->onDelete('set null');

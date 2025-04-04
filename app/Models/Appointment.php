@@ -72,16 +72,21 @@ class Appointment extends Model
                     'provider_branch_id' => $appointment->provider_branch_id,
                 ]);
                 $appointment->file->appointments()->where('id', '!=', $appointment->id)->update(['status' => 'Cancelled']);
-                if ($appointment->file->service_type_id === 2) {
+
+                // Get the service type name for telemedicine (ID 2)
+                $telemedicineName = ServiceType::find(2)?->name;
+                $branchServiceTypes = explode(',', $appointment->file->providerBranch->service_types ?? '');
+
+                if (in_array($telemedicineName, $branchServiceTypes)) {
                     $appointment->file->generateGoogleMeetLink();
                 }
+
                 if($appointment->file->contact_patient === 'Client'){
                     $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment);
                 }else{
                     $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
                 }
                 $appointment->providerBranch->notifyBranch('appointment_confirmed', $appointment);
-
             }
 
             if ($appointment->status === 'Cancelled') {

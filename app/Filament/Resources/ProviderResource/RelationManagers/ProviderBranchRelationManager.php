@@ -42,7 +42,12 @@ class ProviderBranchRelationManager extends RelationManager
                     '6' => '6', '7' => '7', '8' => '8', '9' => '9', '10' => '10',
                 ])->required(),
 
-            Select::make('service_type_id')->label('Service Type')->options(ServiceType::pluck('name', 'id'))->searchable()->required(),
+            Select::make('service_types')
+                ->label('Service Types')
+                ->multiple()
+                ->options(ServiceType::pluck('name', 'name'))
+                ->searchable()
+                ->required(),
             //Select::make('communication_method')->label('Communication Method')->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])->required(),
 
             TextInput::make('day_cost')->label('Day Cost')->numeric()->nullable(),

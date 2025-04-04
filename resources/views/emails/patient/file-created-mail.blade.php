@@ -1,8 +1,5 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>New FIle is Created {{$file->mga_reference}}</title>
-</head>
 <body>
     <p>Dear {{ $file->patient->name }},</p>
     <p>Your case has been successfully added to our files records.</p>

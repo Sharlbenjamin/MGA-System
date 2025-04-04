@@ -62,6 +62,7 @@ class File extends Model
         return $this->belongsTo(ServiceType::class);
     }
 
+
     public function providerBranch(): BelongsTo
     {
         return $this->belongsTo(ProviderBranch::class);
@@ -110,15 +111,15 @@ class File extends Model
 
     public function fileBranches()
     {
+        $serviceTypeName = ServiceType::find($this->service_type_id)?->name;
+
         return \App\Models\ProviderBranch::query()
-            ->when($this->service_type_id, fn ($query) =>
-                $query->where('service_type_id', $this->service_type_id)
+            ->when($serviceTypeName, fn ($query) =>
+                $query->where('service_types', 'like', '%' . $serviceTypeName . '%')
             )
             ->when($this->city_id, fn ($query) =>
                 $query->where('city_id', $this->city_id)
-            )
-            ->orderBy('priority', 'asc')
-            ->get();
+            )->orderBy('priority', 'asc')->get();
     }
 
     public function requestAppointments($file)
@@ -179,7 +180,7 @@ class File extends Model
 
                 match ($file->status) {
                     'Assisted' => $file->patient->client->notifyClient('file_assisted', $file),
-                    'Available' => $file->patient->client->notifyClient('file_available', $file),
+                    'Available' => $file->contact_patient === 'Client' ? $file->patient->client->notifyClient('file_available', $file) : $file->patient->notifyPatient('file_available', $file),
                     'Hold' => $file->patient->client->notifyClient('file_hold', $file),
                     'Cancelled' => $file->patient->client->notifyClient('file_cancelled', $file),
                     'Requesting GOP' => $file->patient->client->notifyClient('requesting_gop', $file),

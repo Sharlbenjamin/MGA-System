@@ -44,19 +44,9 @@ class NotifyPatientMailable extends Mailable
             // 'appointment_updated' => 'emails.update-appointment-mga-mail',
             // 'appointment_cancelled' => 'emails.cancel-appointment-mga-mail',
             'file_created' => 'emails.patient.file-created-mail',
-            //'file_cancelled' => 'emails.file-cancelled-mga-mail',
+            'file_available' => 'emails.patient.file-available-mail',
             //'file_hold' => 'emails.file-hold-mga-mail',
             //'file_assisted' => 'emails.file-assisted-mga-mail',
-        };
-
-        $header = match ($this->type) {
-            'confirm' => 'Appointment Confirmation',
-            'reminder' => 'Appointment Reminder',
-            'appointment_confirmed' => 'Appointment Confirmed',
-            'patient_available' => 'Available Appointments',
-            'file_created' => 'File Created Notification',
-            'assisted' => 'Patient Assisted',
-            'Appointment' => 'Appointment Notification',
         };
 
         if ($this->data instanceof File) {
@@ -67,7 +57,7 @@ class NotifyPatientMailable extends Mailable
 
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject($header . " - " . ($file->mga_reference ?? 'No Reference'))
+                    ->subject($file->patient->name . " - ". $file->serviceType->name . " - ". $file->city->name)
                     ->with(['file' => $file]);
     }
 
