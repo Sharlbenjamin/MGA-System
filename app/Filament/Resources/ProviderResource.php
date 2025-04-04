@@ -21,7 +21,7 @@ use Filament\Resources\Resource;
 use Filament\Forms\Get;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Filters\SelectFilter;
-
+use App\Models\Contact;
 class ProviderResource extends Resource
 {
     protected static ?string $model = Provider::class;
@@ -57,6 +57,9 @@ class ProviderResource extends Resource
                 'AEAT' => 'AEAT',
             ])->nullable(),
             Textarea::make('comment')->label('Comment')->nullable(),
+            Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+            Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+            Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
         ]);
 }
 

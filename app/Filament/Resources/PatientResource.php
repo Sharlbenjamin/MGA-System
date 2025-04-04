@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PatientResource\Pages;
 use App\Filament\Resources\PatientResource\RelationManagers\FileRelationManager;
+use App\Models\Contact;
 use App\Models\Patient;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -30,6 +31,9 @@ protected static ?string $navigationIcon = 'heroicon-o-user-plus'; // ➕👤 Pa
                 Forms\Components\DatePicker::make('dob')->nullable(),
                 Forms\Components\Select::make('gender')->options(['male' => 'Male','female' => 'Female','other' => 'Other',])->nullable(),
                 Forms\Components\Select::make('country_id')->relationship('country', 'name')->label('Country')->searchable()->nullable(),
+                Forms\Components\Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+                Forms\Components\Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+                Forms\Components\Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
             ]);
     }
 

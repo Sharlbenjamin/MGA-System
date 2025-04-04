@@ -15,7 +15,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Navigation\NavigationItem;
 use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
 use Filament\Tables\Filters\SelectFilter;
-
+use App\Models\Contact;
 class ClientResource extends Resource
 {
     protected static ?string $model = Client::class;
@@ -50,6 +50,9 @@ class ClientResource extends Resource
 
                 TextInput::make('initials')->maxLength(10)->required(),
                 TextInput::make('number_requests')->numeric()->required(),
+                Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+                Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+                Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
             ]);
     }
 

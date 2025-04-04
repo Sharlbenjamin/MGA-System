@@ -13,7 +13,7 @@ class Patient extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
 
-    protected $fillable = ['name','client_id','dob','gender','country',];
+    protected $fillable = ['name','client_id','dob','gender','country','gop_contact_id','operation_contact_id','financial_contact_id',];
 
     protected $casts = [
         'id' => 'integer',
@@ -39,6 +39,21 @@ class Patient extends Model
     public function tasks()
     {
         return $this->morphMany(Task::class, 'taskable');
+    }
+
+    public function gopContact()
+    {
+        return $this->belongsTo(Contact::class, 'gop_contact_id');
+    }
+
+    public function operationContact()
+    {
+        return $this->belongsTo(Contact::class, 'operation_contact_id');
+    }
+
+    public function financialContact()
+    {
+        return $this->belongsTo(Contact::class, 'financial_contact_id');
     }
 
     public function contacts()
