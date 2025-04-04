@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
-<body>
     <p>Dear {{ $file->patient->client->company_name }} Team,</p>
     <p>Your case has been successfully added to our files records.</p>
+    <p>We kindly request your confirmation regarding who will be responsible for maintaining communication with the patient.</p>
+    <p>We are waiting for your response to proceed with the next steps.</p>
+    <p>Please find the details of the file below:</p>
     <p><strong>MGA Reference:</strong> {{ $file->mga_reference }}</p>
     <p><strong>Patient Name:</strong> {{ $file->patient->name }}</p>
     <p><strong>Patient Date of Birth:</strong> {{ $file->patient->dob ?? "NA" }}</p>

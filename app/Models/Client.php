@@ -79,18 +79,6 @@ class Client extends Model
     {
         return $this->hasMany(Contact::class, 'client_id', 'id')->where('type', 'Client');
     }
-    public function primaryContact($reason = null)
-    {
-        $query = $this->contacts()->where('status', 'Active');
-
-        if ($reason === 'Invoice' || $reason === 'Balance') {
-            $query->where('name', 'Financial');
-        } elseif ($reason === 'Appointment') {
-            $query->where('name', 'like', '%Operation%');
-        }
-
-        return $query->first();
-    }
 
     public function sendWhatsAppMessage($type, $file)
     {

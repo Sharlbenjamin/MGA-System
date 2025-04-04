@@ -161,8 +161,14 @@ class File extends Model
         });
 
         static::created(function ($file) {
-            $file->patient->client->notifyClient('file_created', $file);
-            //$file->patient->notifyPatient('file_created', $file);
+            if($file->contact_patient === 'Client'){
+                $file->patient->client->notifyClient('file_created', $file);
+            }elseif($file->contact_patient === 'Ask'){
+                $file->patient->client->notifyClient('ask_client', $file);
+
+            }else{
+                $file->patient->notifyPatient('file_created', $file);
+            }
         });
 
         static::updated(function ($file) {

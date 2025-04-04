@@ -75,8 +75,11 @@ class Appointment extends Model
                 if ($appointment->file->service_type_id === 2) {
                     $appointment->file->generateGoogleMeetLink();
                 }
-                $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment);
-                $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
+                if($appointment->file->contact_patient === 'Client'){
+                    $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment);
+                }else{
+                    $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
+                }
                 $appointment->providerBranch->notifyBranch('appointment_confirmed', $appointment);
 
             }
