@@ -41,17 +41,10 @@ class NotifyBranchMailable extends Mailable
             'appointment_cancelled' => 'emails.branch.cancel-appointment-branch-mail',
         };
 
-        $header = match ($this->type) {
-            // lets add the mga_reference and the branch_name to the subject
-            'appointment_created' => 'Branch New Appointment - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name,
-            'appointment_confirmed' => 'Branch Appointment Confirmation - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name,
-            'appointment_updated' => 'Branch Appointment Update - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name,
-            'appointment_cancelled' => 'Branch Appointment Cancellation - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name,
-        };
 
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject($header)
+                    ->subject('Branch Appointment - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name)
                     ->with(['appointment' => $this->appointment]);
     }
 

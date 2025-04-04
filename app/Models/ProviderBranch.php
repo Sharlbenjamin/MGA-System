@@ -17,9 +17,25 @@ class ProviderBranch extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
 
-    protected $fillable = ['provider_id', 'branch_name', 'city_id', 'province_id', 'status', 'priority', 'service_type_id', 'communication_method', 'day_cost', 'night_cost', 'weekend_cost', 'weekend_night_cost', 'emergency', 'pediatrician_emergency', 'dental', 'pediatrician', 'gynecology', 'urology', 'cardiology', 'ophthalmology', 'trauma_orthopedics', 'surgery', 'intensive_care', 'obstetrics_delivery', 'hyperbaric_chamber','gop_contact_id','operation_contact_id','financial_contact_id'];
+    protected $fillable = [
+        'provider_id', 'branch_name', 'city_id', 'province_id', 'status',
+        'priority', 'service_types', // This will store comma-separated names
+        'communication_method', 'day_cost', 'night_cost', 'weekend_cost',
+        'weekend_night_cost', 'emergency', 'pediatrician_emergency', 'dental',
+        'pediatrician', 'gynecology', 'urology', 'cardiology', 'ophthalmology',
+        'trauma_orthopedics', 'surgery', 'intensive_care', 'obstetrics_delivery',
+        'hyperbaric_chamber','gop_contact_id','operation_contact_id','financial_contact_id'
+    ];
 
-    protected $casts = ['id' => 'integer', 'provider_id' => 'integer', 'service_type_id' => 'integer', 'day_cost' => 'decimal:2', 'night_cost' => 'decimal:2', 'weekend_cost' => 'decimal:2', 'weekend_night_cost' => 'decimal:2'];
+    protected $casts = [
+        'id' => 'integer',
+        'provider_id' => 'integer',
+        'service_types' => 'array', // Laravel will automatically handle comma-separated conversion
+        'day_cost' => 'decimal:2',
+        'night_cost' => 'decimal:2',
+        'weekend_cost' => 'decimal:2',
+        'weekend_night_cost' => 'decimal:2'
+    ];
 
     public function provider(): BelongsTo
     {
@@ -56,9 +72,12 @@ class ProviderBranch extends Model
         return $this->belongsTo(Contact::class, 'financial_contact_id');
     }
 
-    public function serviceType()
+    public function serviceTypes()
     {
-        return $this->belongsTo(ServiceType::class, 'service_type_id');
+        return $this->belongsToMany(ServiceType::class, null, 'service_types')
+            ->using(function ($value) {
+                return ServiceType::whereIn('name', explode(',', $value))->get();
+            });
     }
 
     public function tasks()

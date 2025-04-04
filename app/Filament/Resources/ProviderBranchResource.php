@@ -44,7 +44,7 @@ class ProviderBranchResource extends Resource
                     '6' => '6', '7' => '7', '8' => '8', '9' => '9', '10' => '10',
                 ])->required(),
 
-            Select::make('service_type_id')->label('Service Type')->options(ServiceType::pluck('name', 'id'))->searchable()->required(),
+            Select::make('service_types')->label('Service Types')->multiple()->options(ServiceType::pluck('name', 'name'))->searchable()->required(),
             //Select::make('communication_method')->label('Communication Method')->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])->required(),
             Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
             Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
@@ -81,13 +81,9 @@ public static function table(Tables\Table $table): Tables\Table
     return $table
         ->columns([
             TextColumn::make('branch_name')->label('Branch Name')->sortable()->searchable(),
-
             TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
-
             TextColumn::make('city.name')->label('City')->sortable()->searchable(),
-
-            TextColumn::make('serviceType.name')->label('Service Type')->sortable(), // ✅ Fix: Show Service Type Name
-
+            TextColumn::make('service_types')->label('Service Types')->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state)->sortable(),
             BadgeColumn::make('status')
                 ->colors([
                     'success' => 'Active',
@@ -96,9 +92,6 @@ public static function table(Tables\Table $table): Tables\Table
                 ->sortable(),
 
             TextColumn::make('priority')->sortable(),
-
-            TextColumn::make('communication_method')->label('Communication Method')->sortable(),
-
             TextColumn::make('day_cost')->label('Day Cost'),
             TextColumn::make('night_cost')->label('Night Cost'),
             TextColumn::make('weekend_cost')->label('Weekend Cost'),
