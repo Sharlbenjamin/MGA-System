@@ -62,6 +62,11 @@ class GopRelationManager extends RelationManager
                     })
             ])
             ->actions([
+                Action::make('viewGop')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->url(fn ($record) => route('gop.view', $record))
+                    ->openUrlInNewTab(),
                 // Add this new action before existing actions
                 Action::make('sendToBranch')
                     ->label('Send')

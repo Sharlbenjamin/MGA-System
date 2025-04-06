@@ -34,6 +34,11 @@ class ViewFile extends ViewRecord
 {
     protected static string $resource = FileResource::class;
 
+    public function getTitle(): string
+    {
+        return $this->record->mga_reference;
+    }
+
     public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
@@ -46,11 +51,8 @@ class ViewFile extends ViewRecord
                             // 🔸 MGA Reference - Top Card (Gray Background, Orange Text)
                             Card::make()
                                 ->schema([
-                                    TextEntry::make('mga_reference')
-                                        ->label('MGA Reference')
-                                        ->color('warning') // Orange text
-                                        ->weight('bold')
-                                        ->size('lg'),
+                                    TextEntry::make('mga_reference')->label('MGA Reference')->color('warning')->weight('bold')->size('lg'),
+                                    TextEntry::make('created_at')->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->format('d/m/Y'))->label('Created At')->color('info'),
                                 ])
                                 ->columnSpan(1),
 

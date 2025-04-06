@@ -11,6 +11,7 @@ use App\Http\Controllers\GoogleAuthController;
 use Google\Client as Google_Client;
 use Google\Service\Calendar;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\GopController;
 
 // ✅ Step 1: Check for site password unless already logged in
 Route::get('/', function () {
@@ -90,3 +91,5 @@ Route::get('/google/callback', function (Request $request) {
 // Remove or comment out the test routes we created earlier
 // Route::get('/test-meet', ...);
 // Route::post('/api/create-meet', ...);
+
+Route::get('/gop/{gop}', [GopController::class, 'view'])->name('gop.view');

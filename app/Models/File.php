@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\GoogleCalendar as GoogleCalendarService;
 use App\Services\GoogleMeetService;
 use App\Services\GoogleDriveFolderService;
+
 class File extends Model
 {
     use HasFactory;
@@ -185,15 +186,14 @@ class File extends Model
         });
 
         static::created(function ($file) {
-            if($file->contact_patient === 'Client'){
-                $file->patient->client->notifyClient('file_created', $file);
-            }elseif($file->contact_patient === 'Ask'){
-                $file->patient->client->notifyClient('ask_client', $file);
-
-            }else{
-                $file->patient->notifyPatient('file_created', $file);
-            }
-            $file->generateGoogleDriveFolder($file);
+            //if($file->contact_patient === 'Client'){
+            //    $file->patient->client->notifyClient('file_created', $file);
+            //}elseif($file->contact_patient === 'Ask'){
+            //    $file->patient->client->notifyClient('ask_client', $file);
+            //}else{
+            //    $file->patient->notifyPatient('file_created', $file);
+            //}
+            app(GoogleDriveFolderService::class)->generateGoogleDriveFolder($file);
         });
 
         static::updated(function ($file) {

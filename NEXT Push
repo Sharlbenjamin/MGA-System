@@ -9,9 +9,4 @@ create Roles
 
 php artisan migrate --path=database/migrations/2025_04_04_191002_file_fees.php
 
-
-
-mysql
-
-ALTER TABLE files ADD COLUMN google_drive_link TEXT NULL;
-ALTER TABLE gops ADD COLUMN gop_google_drive_link TEXT NULL;
+upload the json file
