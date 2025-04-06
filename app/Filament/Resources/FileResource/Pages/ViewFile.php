@@ -88,6 +88,11 @@ class ViewFile extends ViewRecord
                                 TextEntry::make('address')->label('Address')->color('info'),
                                 TextEntry::make('symptoms')->label('Symptoms')->color('info'),
                                 TextEntry::make('diagnosis')->label('Diagnosis')->color('info'),
+                                TextEntry::make('google_drive_link')
+                                    ->label('Google Drive Link')
+                                    ->color('info')
+                                    ->formatStateUsing(fn ($state) => $state)
+                                    ->url(fn ($state) => str_starts_with($state, 'http') ? $state : "https://{$state}", true),
                             ])
                             ->columnSpan(1), // Column 2 (Right)
                     ]),
@@ -118,7 +123,7 @@ class ViewFile extends ViewRecord
                             TextInput::make('preferred_contact')->label('Preferred Contact')->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')->disabled(),
                         ])
                         ->columns(4)
-                        ->default(fn ($record) => $record->fileBranches()->map(fn ($branch) => [
+                        ->default(fn ($record) => $record->availableBranches()->map(fn ($branch) => [
                             'id' => $branch->id,
                             'selected' => false,
                             'name' => $branch->branch_name,

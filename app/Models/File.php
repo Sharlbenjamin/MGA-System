@@ -18,14 +18,14 @@ use Google\Service\Calendar\ConferenceSolutionKey;
 use Illuminate\Support\Facades\Log;
 use App\Services\GoogleCalendar as GoogleCalendarService;
 use App\Services\GoogleMeetService;
-
+use App\Services\GoogleDriveFolderService;
 class File extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['status','mga_reference','patient_id','client_reference','country_id','city_id','service_type_id','provider_branch_id','service_date','service_time','address','symptoms','diagnosis','contact_patient',];
+    protected $fillable = ['status','mga_reference','patient_id','client_reference','country_id','city_id','service_type_id','provider_branch_id','service_date','service_time','address','symptoms','diagnosis','contact_patient', 'google_drive_link'];
 
-    protected $casts = ['id' => 'integer','patient_id' => 'integer','country_id' => 'integer','city_id' => 'integer','service_type_id' => 'integer','provider_branch_id' => 'integer','service_date' => 'date',];
+    protected $casts = ['id' => 'integer','patient_id' => 'integer','country_id' => 'integer','city_id' => 'integer','service_type_id' => 'integer','provider_branch_id' => 'integer','service_date' => 'date', ];
 
     public function patient(): BelongsTo
     {
@@ -119,7 +119,30 @@ class File extends Model
             )
             ->when($this->city_id, fn ($query) =>
                 $query->where('city_id', $this->city_id)
-            )->orderBy('priority', 'asc')->get();
+            )
+            ->when($this->city_id, fn ($query) =>
+                $query->where('province_id', $this->city->province_id)
+            )
+            ->where('status', 'Active')->orderBy('priority', 'asc')->get();
+    }
+
+
+    public function availableBranches()
+    {
+        $serviceTypeName = ServiceType::find($this->service_type_id)?->name;
+        $availableBranches = ProviderBranch::where('service_types', 'like', '%' . $serviceTypeName . '%');
+
+        // service_type_id == 2 ignore all filters except service_type_id
+        // else filter filter (country,city,province,service_type_id,boolean)
+        // we need to be able to create many cities for the same branch
+        if($this->service_type_id == 2){
+            return $availableBranches->get();
+        }else{
+            return $availableBranches->when($this->city_id, fn ($query) =>
+                $query->where('city_id', $this->city_id)
+            )
+            ->where('status', 'Active')->orderBy('priority', 'asc')->get();
+        }
     }
 
     public function requestAppointments($file)
@@ -170,6 +193,7 @@ class File extends Model
             }else{
                 $file->patient->notifyPatient('file_created', $file);
             }
+            $file->generateGoogleDriveFolder($file);
         });
 
         static::updated(function ($file) {
