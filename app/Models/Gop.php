@@ -13,7 +13,7 @@ class Gop extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['file_id','type','amount','status','date',];
+    protected $fillable = ['file_id','type','amount','status','date','gop_google_drive_link'];
     protected $casts = ['id' => 'integer','file_id' => 'integer','amount' => 'float','date' => 'date','status' => 'string',];
 
     public function file(): BelongsTo

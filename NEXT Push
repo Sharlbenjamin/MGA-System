@@ -7,6 +7,11 @@ php artisan filament:clear
 
 create Roles
 
+php artisan migrate --path=database/migrations/2025_04_04_191002_file_fees.php
 
-ALTER TABLE provider_branches MODIFY COLUMN service_type_id VARCHAR(255),DROP FOREIGN KEY provider_branches_service_type_id_foreign;
-ALTER TABLE provider_branches CHANGE COLUMN service_type_id service_types VARCHAR(255);
+
+
+mysql
+
+ALTER TABLE files ADD COLUMN google_drive_link TEXT NULL;
+ALTER TABLE gops ADD COLUMN gop_google_drive_link TEXT NULL;

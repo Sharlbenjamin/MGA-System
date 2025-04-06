@@ -29,6 +29,7 @@ return new class extends Migration
             $table->text('symptoms')->nullable();
             $table->text('diagnosis')->nullable();
             $table->string('contact_patient')->nullable()->default('Client');
+            $table->text('google_drive_link')->nullable();
             $table->timestamps();
         });
 

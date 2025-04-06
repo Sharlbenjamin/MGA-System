@@ -30,6 +30,7 @@ class GopResource extends Resource
                 TextInput::make('amount')->numeric()->required(),
                 DatePicker::make('date')->required(),
                 Select::make('status')->options(['Not Sent' => 'Not Sent', 'Sent' => 'Sent', 'Updated' => 'Updated', 'Cancelled' => 'Cancelled'])->default('Not Sent')->required(),
+                TextInput::make('gop_google_drive_link')->label('Google Drive Link')->nullable(),
             ]);
     }
 

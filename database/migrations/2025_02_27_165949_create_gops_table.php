@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('status')->default('Not Sent');
             $table->float('amount');
             $table->date('date');
+            $table->text('gop_google_drive_link')->nullable();
             $table->timestamps();
         });
 

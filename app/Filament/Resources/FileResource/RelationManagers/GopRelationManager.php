@@ -32,6 +32,11 @@ class GopRelationManager extends RelationManager
                 TextColumn::make('amount'),
                 TextColumn::make('date')->date(),
                 TextColumn::make('status')->badge()->color(fn($state) => $state === 'Sent' ? 'success' : 'danger'),
+                TextColumn::make('gop_google_drive_link')
+                    ->label('Google Drive Link')
+                    ->color('info')
+                    ->formatStateUsing(fn ($state) => $state)
+                    ->url(fn ($state) => str_starts_with($state, 'http') ? $state : "https://{$state}", true),
             ])
             ->headerActions([
                 // Create via modal action
@@ -49,6 +54,7 @@ class GopRelationManager extends RelationManager
                         TextInput::make('amount')->numeric()->required(),
                         DatePicker::make('date')->required(),
                         Select::make('status')->options(['Not Sent' => 'Not Sent', 'Sent' => 'Sent', 'Updated' => 'Updated', 'Cancelled' => 'Cancelled'])->default('Not Sent')->required(),
+                        TextInput::make('gop_google_drive_link')->label('Google Drive Link')->nullable(),
                     ])
                     ->action(function (array $data) {
                         // Create the GOP record using the parent model's relation
@@ -86,6 +92,7 @@ class GopRelationManager extends RelationManager
                             TextInput::make('amount')->numeric()->default($record->amount)->required(),
                             DatePicker::make('date')->default($record->date)->required(),
                             Select::make('status')->options(['Not Sent' => 'Not Sent', 'Sent' => 'Sent', 'Updated' => 'Updated', 'Cancelled' => 'Cancelled'])->default($record->status)->required(),
+                            TextInput::make('gop_google_drive_link')->label('Google Drive Link')->nullable(),
                         ];
                     })
                     ->action(function ($record, array $data) {
