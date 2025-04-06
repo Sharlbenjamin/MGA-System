@@ -40,13 +40,17 @@ class Gop extends Model
 
     public function sendGopToBranch()
     {
+
+        if($this->type == 'In'){
+            return;
+        }
         // cehck if there is a branch in the file
         $branch = $this->file->providerBranch;
         if (!$branch) {
             Notification::make()->title('GOP Notification')->body('This file doesn\'t have a branch')->danger()->send();
             return false;
         }
-        $gopContact = $branch->contacts()->where('name', 'GOP')->first();
+        $gopContact = $branch->contacts()->where('name', 'like', '%GOP%')->first();
 
         if (!$gopContact?->email) {
             Notification::make()->title('GOP Notification')->body('This branch doesn\'t have a GOP contact')->danger()->send();
