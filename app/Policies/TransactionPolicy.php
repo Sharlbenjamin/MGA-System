@@ -10,27 +10,27 @@ class TransactionPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view Transactions');
+        return $user->hasPermissionTo('view Transaction');
     }
 
     public function view(User $user, Transaction $transaction): bool
     {
-        return $user->hasPermissionTo('view Transactions');
+        return $user->hasPermissionTo('view Transaction');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create Transactions');
+        return $user->hasPermissionTo('create Transaction');
     }
 
     public function update(User $user, Transaction $transaction): bool
     {
-        return $user->hasPermissionTo('edit Transactions');
+        return $user->hasPermissionTo('edit Transaction');
     }
 
     public function delete(User $user, Transaction $transaction): bool
     {
-        return $user->hasPermissionTo('delete Transactions');
+        return $user->hasPermissionTo('delete Transaction');
     }
 
     public function restore(User $user, Transaction $transaction): bool

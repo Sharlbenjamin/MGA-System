@@ -39,7 +39,7 @@ class FileFeeResource extends Resource
                 Tables\Columns\TextColumn::make('country.name'),
                 Tables\Columns\TextColumn::make('city.name'),
                 Tables\Columns\TextColumn::make('amount')
-                    ->money(),
+                    ->money('eur'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime(),
             ])
