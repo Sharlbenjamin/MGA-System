@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('provider_id')->constrained();
             $table->string('branch_name', 255);
             $table->foreignId('city_id')->nullable()->constrained()->onDelete('set null');
+            $table->boolean('all_country')->default(false);
             $table->enum('status', ["Active","Hold"]);
             $table->integer('priority');
             $table->string('service_types')->nullable();

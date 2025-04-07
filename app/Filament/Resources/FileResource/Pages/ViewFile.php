@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use App\Filament\Widgets\CommentsWidget;
+use Filament\Forms\Components\Toggle;
 
 class ViewFile extends ViewRecord
 {
@@ -52,28 +53,26 @@ class ViewFile extends ViewRecord
                             Card::make()
                                 ->schema([
                                     TextEntry::make('mga_reference')->label('MGA Reference')->color('warning')->weight('bold')->size('lg'),
-                                    TextEntry::make('created_at')->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->format('d/m/Y'))->label('Created At')->color('info'),
+                                    TextEntry::make('created_at')->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->format('d/m/Y'))->label('File Date')->color('warning'),
                                 ])
                                 ->columnSpan(1),
 
                             // 🔹 Patient Details - Middle Card (Blue)
                             Card::make()
                                 ->schema([
-                                    TextEntry::make('patient.name')->label('Patient Name')->weight('bold')->color('info'),
-                                    TextEntry::make('patient.dob')->color('info')
+                                    TextEntry::make('patient.name')->label('Patient Name')->weight('bold')->color('danger'),
+                                    TextEntry::make('patient.dob')->color('danger')
                                         ->label('Age')
-                                        ->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->age . ' years')->color('info'),
-                                    TextEntry::make('patient.gender')->label('Gender')->color('info'),
+                                        ->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->age . ' years')->color('danger'),
+                                    TextEntry::make('patient.gender')->label('Gender')->color('danger'),
                                 ])// Blue background
                                 ->columnSpan(1),
 
                             // 🟢 Client Details - Bottom Card (Green)
                             Card::make()
                                 ->schema([
-                                    TextEntry::make('patient.client.company_name')->label('Client Name')->weight('bold')->color('info'),
-                                    TextEntry::make('client_reference')->label('Client Reference')->color('info'),
-                                    TextEntry::make('country.name')->label('Country')->color('info'),
-                                    TextEntry::make('city.name')->label('City')->color('info'),
+                                    TextEntry::make('patient.client.company_name')->label('Client Name')->weight('bold')->color('success'),
+                                    TextEntry::make('client_reference')->label('Client Reference')->color('success'),
                                 ])
                                 ->columnSpan(1),
                         ])
@@ -87,6 +86,8 @@ class ViewFile extends ViewRecord
                                 TextEntry::make('providerBranch.branch_name')->label('Branch Name')->color('info'),
                                 TextEntry::make('service_date')->label('Service Date')->date()->color('info'),
                                 TextEntry::make('service_time')->label('Service Time')->time()->color('info'),
+                                TextEntry::make('country.name')->label('Country')->color('info'),
+                                TextEntry::make('city.name')->label('City')->color('info'),
                                 TextEntry::make('address')->label('Address')->color('info'),
                                 TextEntry::make('symptoms')->label('Symptoms')->color('info'),
                                 TextEntry::make('diagnosis')->label('Diagnosis')->color('info'),
@@ -114,8 +115,24 @@ class ViewFile extends ViewRecord
             Action::make('requestAppointments')
                 ->label('Request Appointments')
                 ->modalHeading('Select Branches for Appointment Request')
-                ->modalWidth('4xl') // Make modal wider
+                ->modalWidth('4xl')
                 ->form([
+                    Toggle::make('searchByProvince')
+                        ->label('Search by Province')
+                        ->default(false)
+                        ->live()
+                        ->afterStateUpdated(function ($state, $set, $record) {
+                            $branches = $record->availableBranches();
+                            $selectedBranches = $state ? $branches['allBranches'] : $branches['cityBranches'];
+
+                            $set('selected_branches', $selectedBranches->map(fn ($branch) => [
+                                'id' => $branch->id,
+                                'selected' => false,
+                                'name' => $branch->branch_name,
+                                'provider' => $branch->provider->name ?? 'N/A',
+                                'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
+                            ])->toArray());
+                        }),
                     Repeater::make('selected_branches')
                         ->label('Available Branches')
                         ->schema([
@@ -125,13 +142,18 @@ class ViewFile extends ViewRecord
                             TextInput::make('preferred_contact')->label('Preferred Contact')->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')->disabled(),
                         ])
                         ->columns(4)
-                        ->default(fn ($record) => $record->availableBranches()->map(fn ($branch) => [
-                            'id' => $branch->id,
-                            'selected' => false,
-                            'name' => $branch->branch_name,
-                            'provider' => $branch->provider->name ?? 'N/A',
-                            'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
-                        ])->toArray()),
+                        ->default(function ($get, $record) {
+                            $branches = $record->availableBranches();
+                            $selectedBranches = $branches['cityBranches']; // Start with city branches
+
+                            return $selectedBranches->map(fn ($branch) => [
+                                'id' => $branch->id,
+                                'selected' => false,
+                                'name' => $branch->branch_name,
+                                'provider' => $branch->provider->name ?? 'N/A',
+                                'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
+                            ])->toArray();
+                        }),
                 ])
                 ->modalButton('Send Requests')
                 ->action(fn (array $data, $record) => $this->bulkSendRequests($data, $record)),
