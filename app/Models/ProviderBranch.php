@@ -19,7 +19,7 @@ class ProviderBranch extends Model
 
     protected $fillable = [
         'provider_id', 'branch_name', 'city_id', 'province_id', 'status',
-        'priority', 'service_types', // This will store comma-separated names
+        'priority', 'service_types', 'all_country',
         'communication_method', 'day_cost', 'night_cost', 'weekend_cost',
         'weekend_night_cost', 'emergency', 'pediatrician_emergency', 'dental',
         'pediatrician', 'gynecology', 'urology', 'cardiology', 'ophthalmology',
@@ -30,7 +30,8 @@ class ProviderBranch extends Model
     protected $casts = [
         'id' => 'integer',
         'provider_id' => 'integer',
-        'service_types' => 'array', // Laravel will automatically handle comma-separated conversion
+        'service_types' => 'array',
+        'cities' => 'array',
         'day_cost' => 'decimal:2',
         'night_cost' => 'decimal:2',
         'weekend_cost' => 'decimal:2',
@@ -94,5 +95,15 @@ class ProviderBranch extends Model
     {
         $reason = $this->detectNotificationReason($data);
         $this->sendNotification($reason, $type, $data, 'Branch');
+    }
+
+    public function cities()
+    {
+        return $this->belongsToMany(City::class, 'branch_cities');
+    }
+
+    public function branchCities()
+    {
+        return $this->hasMany(BranchCity::class);
     }
 }

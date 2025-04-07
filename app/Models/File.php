@@ -127,23 +127,45 @@ class File extends Model
             ->where('status', 'Active')->orderBy('priority', 'asc')->get();
     }
 
-
     public function availableBranches()
     {
-        $serviceTypeName = ServiceType::find($this->service_type_id)?->name;
-        $availableBranches = ProviderBranch::where('service_types', 'like', '%' . $serviceTypeName . '%');
+        $serviceTypeName = $this->serviceType?->name;
 
-        // service_type_id == 2 ignore all filters except service_type_id
-        // else filter filter (country,city,province,service_type_id,boolean)
-        // we need to be able to create many cities for the same branch
-        if($this->service_type_id == 2){
-            return $availableBranches->get();
-        }else{
-            return $availableBranches->when($this->city_id, fn ($query) =>
-                $query->where('city_id', $this->city_id)
+        // Get city-filtered branches
+        $cityBranches = \App\Models\ProviderBranch::query()
+            ->when($serviceTypeName, fn ($q) =>
+                $q->where('service_types', 'like', '%' . $serviceTypeName . '%')
             )
-            ->where('status', 'Active')->orderBy('priority', 'asc')->get();
-        }
+            ->when($this->service_type_id != 2 && $this->city, function ($q) {
+                $q->where(function($sq) {
+                    $sq->whereHas('branchCities', function ($bc) {
+                        $bc->where('city_id', $this->city_id);
+                    })->orWhere('all_country', true);
+                });
+            })
+            ->where('status', 'Active')
+            ->orderBy('priority', 'asc')
+            ->get();
+
+        // Get province-filtered branches
+        $provinceBranches = \App\Models\ProviderBranch::query()
+            ->when($serviceTypeName, fn ($q) =>
+                $q->where('service_types', 'like', '%' . $serviceTypeName . '%')
+            )
+            ->when($this->service_type_id != 2 && $this->city, function ($q) {
+                $q->where(function($sq) {
+                    $sq->where('province_id', $this->city->province_id)
+                        ->orWhere('all_country', true);
+                });
+            })
+            ->where('status', 'Active')
+            ->orderBy('priority', 'asc')
+            ->get();
+
+        return [
+            'cityBranches' => $cityBranches,
+            'allBranches' => $provinceBranches->merge($cityBranches)->unique('id')
+        ];
     }
 
     public function requestAppointments($file)
@@ -186,13 +208,13 @@ class File extends Model
         });
 
         static::created(function ($file) {
-            //if($file->contact_patient === 'Client'){
-            //    $file->patient->client->notifyClient('file_created', $file);
-            //}elseif($file->contact_patient === 'Ask'){
-            //    $file->patient->client->notifyClient('ask_client', $file);
-            //}else{
-            //    $file->patient->notifyPatient('file_created', $file);
-            //}
+            if($file->contact_patient === 'Client'){
+                $file->patient->client->notifyClient('file_created', $file);
+            }elseif($file->contact_patient === 'Ask'){
+                $file->patient->client->notifyClient('ask_client', $file);
+            }else{
+                $file->patient->notifyPatient('file_created', $file);
+            }
             app(GoogleDriveFolderService::class)->generateGoogleDriveFolder($file);
         });
 
