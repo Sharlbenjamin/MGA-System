@@ -7,23 +7,15 @@ php artisan filament:clear
 
 create Roles
 
-php artisan migrate --path=database/migrations/2025_04_04_191002_file_fees.php
+
+php artisan db:seed --class=ProvinceSeeder
+
+php artisan db:seed --class=CitySeeder
 
 
 
-php artisan migrate --path=/database/migrations/2025_04_06_201508_create_branch_cities_table.php
+php artisan db:seed --class=PermissionSeeder
+
+php artisan db:seed --class=RoleSeeder
 
 
-
-
-ALTER TABLE provider_branches ADD COLUMN all_country BOOLEAN DEFAULT FALSE;
-
-
-INSERT INTO branch_cities (provider_branch_id, city_id, created_at, updated_at)
-SELECT
-    pb.id as provider_branch_id,
-    pb.city_id as city_id,
-    NOW() as created_at,
-    NOW() as updated_at
-FROM provider_branches pb
-WHERE pb.city_id IS NOT NULL;

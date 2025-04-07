@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            DraftMailSeeder::class, 
+            DraftMailSeeder::class,
             CountriesTableSeeder::class,
             PrimaryCitiesSeeder::class,
             ClientSeeder::class,
@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             ProviderDraftMailSeeder::class,
             ProviderBranchSeeder::class,
+            ProvinceSeeder::class,
         ]);
     }
 }

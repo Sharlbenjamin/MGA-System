@@ -15,11 +15,11 @@ class Country extends Model
      * @var array
      */
     protected $fillable = [
-        'iso', 
-        'name', 
-        'nicename', 
-        'iso3', 
-        'numcode', 
+        'iso',
+        'name',
+        'nicename',
+        'iso3',
+        'numcode',
         'phonecode'
     ];
 
@@ -35,5 +35,10 @@ class Country extends Model
     public function cities()
     {
         return $this->hasMany(City::class);
+    }
+
+    public function provinces()
+    {
+        return $this->hasMany(Province::class);
     }
 }

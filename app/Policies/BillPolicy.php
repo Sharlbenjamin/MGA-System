@@ -10,27 +10,27 @@ class BillPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view Bills');
+        return $user->hasPermissionTo('view Bill');
     }
 
     public function view(User $user, Bill $bill): bool
     {
-        return $user->hasPermissionTo('view Bills');
+        return $user->hasPermissionTo('view Bill');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create Bills');
+        return $user->hasPermissionTo('create Bill');
     }
 
     public function update(User $user, Bill $bill): bool
     {
-        return $user->hasPermissionTo('edit Bills');
+        return $user->hasPermissionTo('edit Bill');
     }
 
     public function delete(User $user, Bill $bill): bool
     {
-        return $user->hasPermissionTo('delete Bills');
+        return $user->hasPermissionTo('delete Bill');
     }
 
     public function restore(User $user, Bill $bill): bool

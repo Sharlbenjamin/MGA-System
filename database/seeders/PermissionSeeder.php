@@ -26,6 +26,13 @@ class PermissionSeeder extends Seeder
             'Gop',
             'Prescription',
             'Drug',
+            'FileFee',
+            'BankAccount',
+            'Invoice',
+            'InvoiceItem',
+            'Bill',
+            'BillItem',
+            'Transaction',
         ];
 
         $actions = ['view', 'create', 'edit', 'delete'];
