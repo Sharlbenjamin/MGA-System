@@ -27,12 +27,14 @@ class ItemsRelationManager extends RelationManager
                     ->required()
                     ->numeric()
                     ->inputMode('decimal')
-                    ->step('0.01'),
+                    ->step('0.01')
+                    ->prefix('€'),
 
                 Forms\Components\TextInput::make('discount')
                     ->numeric()
                     ->inputMode('decimal')
-                    ->step('0.01'),
+                    ->step('0.01')
+                    ->prefix('%')->default('0'),
             ]);
     }
 

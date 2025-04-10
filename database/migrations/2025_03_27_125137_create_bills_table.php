@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->foreignId('file_id')->constrained()->onDelete('cascade');
-            $table->foreignId('bank_account_id')->constrained()->onDelete('cascade');
+            $table->foreignId('bank_account_id')->nullable()->constrained()->onDelete('cascade');
             $table->date('due_date');
             $table->decimal('total_amount', 15, 2);
             $table->decimal('discount', 15, 2)->default(0);
@@ -23,7 +23,8 @@ return new class extends Migration
             $table->date('payment_date')->nullable();
             $table->foreignId('transaction_group_id')->nullable()->constrained()->onDelete('set null');
             $table->decimal('paid_amount', 15, 2)->nullable();
-            $table->string('attachment_path')->nullable();
+            $table->string('bill_google_link')->nullable();
+            $table->date('bill_date')->nullable();
             $table->timestamps();
         });
     }

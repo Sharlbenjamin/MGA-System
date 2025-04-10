@@ -19,7 +19,8 @@ class Bill extends Model
         'payment_date',
         'transaction_group_id',
         'paid_amount',
-        'uploaded_pdf_path',
+        'bill_google_link',
+        'bill_date',
     ];
 
     protected $casts = [
@@ -28,11 +29,17 @@ class Bill extends Model
         'discount' => 'decimal:2',
         'payment_date' => 'date',
         'paid_amount' => 'decimal:2',
+        'bill_date' => 'date',
     ];
 
     public function file(): BelongsTo
     {
         return $this->belongsTo(File::class);
+    }
+
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class);
     }
 
     public function bankAccount(): BelongsTo
@@ -48,5 +55,16 @@ class Bill extends Model
     public function items(): HasMany
     {
         return $this->hasMany(BillItem::class);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($bill) {
+            if (!$bill->due_date) {
+                $bill->due_date = $bill->bill_date->addDays(45);
+            }
+        });
     }
 }

@@ -82,6 +82,11 @@ class BankAccount extends Model
         return $this->hasMany(Bill::class);
     }
 
+    public function ourBank(): bool
+    {
+        return $this->where('type', 'Internal')->exists();
+    }
+
     public function setTypeAttribute($value)
     {
         $this->attributes['type'] = $value;

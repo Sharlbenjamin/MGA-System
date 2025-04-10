@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\GoogleCalendar as GoogleCalendarService;
 use App\Services\GoogleMeetService;
 use App\Services\GoogleDriveFolderService;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class File extends Model
 {
@@ -82,6 +83,25 @@ class File extends Model
     public function prescriptions(): HasMany
     {
         return $this->hasMany(Prescription::class);
+    }
+
+    public function createInvoice()
+    {
+        $invoice = new Invoice();
+        $invoice->patient_id = $this->patient_id;
+        $invoice->name = Invoice::generateInvoiceNumber($invoice);
+        $invoice->due_date = now()->addDays(60);
+        $invoice->status = 'Draft';
+        $invoice->save();
+    }
+    public function invoices(): HasManyThrough
+    {
+        return $this->hasManyThrough(Invoice::class, Patient::class, 'id', 'patient_id', 'id', 'id');
+    }
+
+    public function bills(): HasMany
+    {
+        return $this->hasMany(Bill::class);
     }
 
     public function provider(): HasOneThrough
@@ -223,6 +243,9 @@ class File extends Model
                 if (!$file->mga_reference) {
                     return;
                 }
+                // if the service type is '2' but make sure it isDirty()
+                //then call googleCalendar
+
 
                 match ($file->status) {
                     'Assisted' => $file->patient->client->notifyClient('file_assisted', $file),

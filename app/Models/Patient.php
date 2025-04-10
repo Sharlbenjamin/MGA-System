@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Filament\Notifications\Notification;
 use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Patient extends Model
 {
@@ -24,6 +26,11 @@ class Patient extends Model
     public function files()
     {
         return $this->hasMany(File::class);
+    }
+
+    public function getFilesCountAttribute()
+    {
+        return $this->files()->count();
     }
 
     public function client(): BelongsTo
@@ -61,10 +68,70 @@ class Patient extends Model
         return $this->hasMany(Contact::class, 'patient_id', 'id')->where('type', 'Patient');
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function bills(): HasManyThrough
+    {
+        return $this->hasManyThrough(Bill::class, File::class);
+    }
+
     public function notifyPatient($type, $data)
     {
         $reason = $this->detectNotificationReason($data);
         $this->sendNotification($reason, $type, $data, 'Patient');
     }
 
+
+
+
+
+
+    // Financial Calculations
+    public function getInvoicesTotalAttribute()
+    {
+        return $this->invoices()->sum('total_amount');
+    }
+
+    public function getInvoicesTotalPaidAttribute()
+    {
+        return $this->invoices()->sum('paid_amount');
+    }
+
+    public function getInvoicesTotalOutstandingAttribute()
+    {
+        return $this->invoices_total - $this->invoices_total_paid;
+    }
+
+    public function getBillsTotalAttribute()
+    {
+        return $this->bills()->sum('total_amount');
+    }
+
+    public function getBillsTotalPaidAttribute()
+    {
+        return $this->bills()->sum('paid_amount');
+    }
+
+    public function getBillsTotalOutstandingAttribute()
+    {
+        return $this->bills_total - $this->bills_total_paid;
+    }
+
+    public function getProfitTotalAttribute()
+    {
+        return $this->invoices_total - $this->bills_total;
+    }
+
+    public function getProfitTotalPaidAttribute()
+    {
+        return $this->invoices_total_paid - $this->bills_total_paid;
+    }
+
+    public function getProfitTotalOutstandingAttribute()
+    {
+        return $this->invoices_total_outstanding - $this->bills_total_outstanding;
+    }
 }

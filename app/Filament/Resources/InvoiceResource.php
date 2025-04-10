@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\InvoiceResource\Pages;
 use App\Filament\Resources\InvoiceResource\RelationManagers\ItemsRelationManager;
+use App\Models\BankAccount;
 use App\Models\Invoice;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -15,10 +16,9 @@ use Illuminate\Database\Eloquent\Builder;
 class InvoiceResource extends Resource
 {
     protected static ?string $model = Invoice::class;
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationIcon = 'heroicon-o-document-currency-euro';
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationGroup = 'Finance';
-    protected static bool $shouldRegisterNavigation = false; // Hides it completely
 
     public static function form(Form $form): Form
     {
@@ -34,31 +34,36 @@ class InvoiceResource extends Resource
                         Forms\Components\Select::make('patient_id')
                             ->relationship('patient', 'name')
                             ->required()
-                            ->searchable(),
+                            ->searchable()
+                            ->default(fn () => request()->get('patient_id')),
 
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')
+                            ->options(function () {
+                                return BankAccount::where('type', 'internal')->pluck('beneficiary_name', 'id');
+                            })
                             ->nullable(),
 
-                        Forms\Components\DatePicker::make('due_date')
-                            ->disabled()
-                            ->dehydrated(),
+                        Forms\Components\DatePicker::make('invoice_date')
+                            ->default(now()->format('Y-m-d')),
 
                         Forms\Components\Select::make('status')
                             ->options([
-                                'draft' => 'Draft',
-                                'sent' => 'Sent',
-                                'overdue' => 'Overdue',
-                                'paid' => 'Paid',
-                            ])
+                                'Draft' => 'Draft',
+                                'Sent' => 'Sent',
+                                'Posted' => 'Posted',
+                                'Overdue' => 'Overdue',
+                                'Paid' => 'Paid',
+                            ])->default('Draft')
                             ->required(),
 
                         Forms\Components\TextInput::make('discount')
-                            ->numeric()
+                            ->numeric()->prefix('€')
                             ->default(0)
                             ->inputMode('decimal')
                             ->step('0.01'),
-                    ])->columnSpan(['lg' => 2]),
+
+                        ])->columnSpan(['lg' => 2]),
 
                 Forms\Components\Card::make()
                     ->schema([
@@ -66,9 +71,9 @@ class InvoiceResource extends Resource
                             ->label('Created at')
                             ->content(fn (?Invoice $record): string => $record ? $record->created_at->diffForHumans() : '-'),
 
-                        Forms\Components\Placeholder::make('updated_at')
-                            ->label('Last modified at')
-                            ->content(fn (?Invoice $record): string => $record ? $record->updated_at->diffForHumans() : '-'),
+                        Forms\Components\Placeholder::make('due_date')
+                            ->label('Due date')
+                            ->content(fn (?Invoice $record): string => $record ? '(' . $record->due_date->format('d/m/Y') . ')' . ' - ' . abs((int)$record->due_date->diffInDays(now())) . ' days' : '-'),
 
                         Forms\Components\Placeholder::make('subtotal')
                             ->label('Subtotal')
@@ -90,24 +95,17 @@ class InvoiceResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('patient.name')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('due_date')
-                    ->date()
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('patient.name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
 
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
-                        'danger' => 'overdue',
-                        'warning' => 'draft',
-                        'success' => 'paid',
-                        'primary' => 'sent',
+                        'danger' => 'Overdue',
+                        'warning' => 'Draft',
+                        'info' => 'Posted',
+                        'success' => 'Paid',
+                        'primary' => 'Sent',
                     ]),
 
                 Tables\Columns\TextColumn::make('final_total')
@@ -123,12 +121,15 @@ class InvoiceResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+
+                Tables\Filters\SelectFilter::make('patient_id')->relationship('patient', 'name'),
+
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'draft' => 'Draft',
-                        'sent' => 'Sent',
-                        'overdue' => 'Overdue',
-                        'paid' => 'Paid',
+                        'Draft' => 'Draft',
+                        'Sent' => 'Sent',
+                        'Overdue' => 'Overdue',
+                        'Paid' => 'Paid',
                     ]),
 
                 Tables\Filters\Filter::make('due_date')

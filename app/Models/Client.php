@@ -49,7 +49,7 @@ class Client extends Model
 
     public function financialContact()
     {
-        return $this->belongsTo(Contact::class, 'financial_contact_id');
+        return $this->contacts()->where('name', 'like', '%Financial%')->first();
     }
 
     public function files(): HasManyThrough
@@ -111,4 +111,59 @@ class Client extends Model
             return false;
         }
     }
+
+
+
+
+
+    // Over View Calculations
+
+    public function invoices()
+    {
+        return $this->hasManyThrough(Invoice::class, Patient::class);
+    }
+
+
+
+
+
+
+
+    public function getFilesCountAttribute()
+    {
+        return $this->files()->count();
+    }
+
+    public function getFilesCancelledCountAttribute()
+    {
+        return $this->files()->where('status', 'Cancelled')->count();
+    }
+
+    public function getFilesAssistedCountAttribute()
+    {
+        return $this->files()->where('status', 'Assisted')->count();
+    }
+
+    public function getInvoicesTotalNumberAttribute()
+    {
+        return $this->invoices()->count();
+    }
+
+    public function getInvoicesTotalAttribute()
+    {
+        return $this->invoices()->sum('total_amount');
+    }
+
+    public function getInvoicesTotalPaidAttribute()
+    {
+        return $this->invoices()->sum('paid_amount');
+    }
+
+    public function getInvoicesTotalOutstandingAttribute()
+    {
+        return $this->invoices_total - $this->invoices_total_paid;
+    }
+
+
+
 }

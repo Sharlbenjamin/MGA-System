@@ -112,6 +112,14 @@ class ViewFile extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('viewFinancial')
+                ->label('Invocies & Bills')
+                ->icon('heroicon-o-document-currency-euro')
+                ->url(fn ($record) => route('filament.admin.resources.patients.financial', [
+                    'record' => $record->patient_id,
+                    'file_id' => $record->id
+                ]))
+                ->openUrlInNewTab(false)->color('success'),
             Action::make('requestAppointments')
                 ->label('Request Appointments')
                 ->modalHeading('Select Branches for Appointment Request')
