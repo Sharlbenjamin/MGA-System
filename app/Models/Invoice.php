@@ -57,11 +57,8 @@ class Invoice extends Model
                 $invoice->name = static::generateInvoiceNumber($invoice);
             }
 
-            // If status is sent, set invoice_date
-            if ($invoice->status === 'sent') {
                 $invoice->invoice_date = now();
                 $invoice->due_date = now()->addDays(60);
-            }
         });
 
         static::updating(function ($invoice) {
