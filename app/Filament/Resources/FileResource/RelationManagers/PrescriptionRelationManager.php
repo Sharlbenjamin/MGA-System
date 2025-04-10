@@ -98,7 +98,7 @@ class PrescriptionRelationManager extends RelationManager
                     ->icon('heroicon-o-arrow-right-start-on-rectangle')->color('success')
                     ->action(fn (Prescription $record) => response()->streamDownload(
                         fn () => print(Pdf::loadView('pdf.prescription', ['prescription' => $record])->output()),
-                        'prescription-' . $record->id . '.pdf'
+                        $record->file->patient->name . ' Prescription Report ' . $record->file->mga_reference . '.pdf'
                     )),
                 ])
 
