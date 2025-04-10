@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ContactRelationManager;
+use App\Filament\Resources\ClientResource\RelationManagers\InvoiceRelationManager;
 use App\Models\Client;
 use Filament\Resources\Resource;
 use Filament\Forms;
@@ -101,6 +102,7 @@ class ClientResource extends Resource
         LeadsRelationManager::class,
         ContactRelationManager::class,
         BankAccountRelationManager::class,
+        InvoiceRelationManager::class,
     ];
 }
 
@@ -110,6 +112,7 @@ class ClientResource extends Resource
             'index' => Pages\ListClients::route('/'),
             'create' => Pages\CreateClient::route('/create'),
             'edit' => Pages\EditClient::route('/{record}/edit'),
+            'overview' => Pages\ClientOverview::route('/{record}'),
         ];
     }
 

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToOneThrough;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
 {
@@ -24,6 +25,7 @@ class Invoice extends Model
         'transaction_group_id',
         'paid_amount',
         'draft_path',
+        'invoice_date',
     ];
 
     protected $attributes = [
@@ -40,6 +42,7 @@ class Invoice extends Model
         'tax' => 'decimal:2',
         'payment_date' => 'date',
         'paid_amount' => 'decimal:2',
+        'invoice_date' => 'date',
     ];
 
     private const TAX_RATE = 0.21;
@@ -49,12 +52,23 @@ class Invoice extends Model
         parent::boot();
 
         static::creating(function ($invoice) {
-            // Set the due date to 60 days from creation
-            $invoice->due_date = now()->addDays(60);
-
             // Generate the invoice number
             if (!$invoice->name) {
                 $invoice->name = static::generateInvoiceNumber($invoice);
+            }
+
+            // If status is sent, set invoice_date
+            if ($invoice->status === 'sent') {
+                $invoice->invoice_date = now();
+                $invoice->due_date = now()->addDays(60);
+            }
+        });
+
+        static::updating(function ($invoice) {
+            // If status is being changed to sent
+            if ($invoice->isDirty('status') && $invoice->status === 'sent') {
+                $invoice->invoice_date = now();
+                $invoice->due_date = now()->addDays(60);
             }
         });
     }
@@ -81,6 +95,13 @@ class Invoice extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function file(): HasOne
+    {
+        return $this->hasOne(File::class, 'patient_id', 'patient_id')
+            ->oldest()
+            ->limit(1);
     }
 
     public function client(): HasOneThrough
@@ -175,6 +196,6 @@ class Invoice extends Model
 
     public function getFinalTotalAttribute(): float
     {
-        return $this->discounted_subtotal + $this->tax_amount;
+        return $this->total_amount;
     }
 }

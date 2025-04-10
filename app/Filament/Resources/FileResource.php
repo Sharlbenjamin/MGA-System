@@ -11,6 +11,7 @@ use App\Filament\Resources\FileResource\RelationManagers\CommentsRelationManager
 use App\Filament\Resources\FileResource\RelationManagers\AppointmentsRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\TaskRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\BankAccountRelationManager;
+use App\Filament\Resources\FileResource\RelationManagers\BillRelationManager;
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Patient;
@@ -152,6 +153,7 @@ class FileResource extends Resource
             AppointmentsRelationManager::class,
             TaskRelationManager::class,
             BankAccountRelationManager::class,
+            BillRelationManager::class,
         ];
     }
 

@@ -36,7 +36,7 @@
             <div class="patient-info">
                 <p class="bold">Patient Name:</p> {{ $prescription->file->patient->name }}
                 <p class="bold">Gender:</p> {{ $prescription->file->patient->gender }}
-                <p class="bold">Age:</p> {{ $prescription->file->patient->dob }}
+                <p class="bold">Date of Birth:</p> {{ $prescription->file->patient->dob?->format('d/m/Y') }}
             </div>
             <div class="diagnosis-info">
                 <p class="bold">Diagnosis:</p> {{ $prescription->file->diagnosis }}
@@ -52,7 +52,6 @@
                     <th>Drug Name</th>
                     <th>Pharm.</th>
                     <th>Dosage</th>
-                    <th>Frequency</th>
                     <th>Duration</th>
                 </tr>
             </thead>
@@ -62,14 +61,18 @@
                         <td>{{ $drug->name }}</td>
                         <td>{{ $drug->pharmaceutical }}</td>
                         <td>{{ $drug->dose }}</td>
-                        <td>{{ $drug->frequency }}</td>
                         <td>{{ $drug->duration }}</td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
         <div class="footer">
-            <p>📍 Company: Spain | 📞 Contact: +34634070722 | 🌍 Website: medguarda.com</p>
+            <ul>
+                <li>Company Name: Med Guard Assistance</li>
+                <li>Email: mga.operation@medguarda.com</li>
+                <li>Phone: +34 634 070 722</li>
+                <li>Website: <a href="https://medguarda.com">medguarda.com</a></li>
+            </ul>
         </div>
     </div>
 </body>

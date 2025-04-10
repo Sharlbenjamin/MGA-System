@@ -1,21 +1,20 @@
 Next Push and Pull Command terminal commands that I need to run
 
-php artisan migrate
-php artisan filament:optimize
-php artisan filament:clear
-
-
-create Roles
-
-
-php artisan db:seed --class=ProvinceSeeder
-
-php artisan db:seed --class=CitySeeder
 
 
 
-php artisan db:seed --class=PermissionSeeder
 
-php artisan db:seed --class=RoleSeeder
+-- 1. Rename attachment_path to invoice_google_link in invoices table
+ALTER TABLE invoices CHANGE attachment_path invoice_google_link VARCHAR(255);
 
+-- 2. Add invoice_date column to invoices table
+ALTER TABLE invoices ADD COLUMN invoice_date DATE NULL;
 
+-- 3. Rename attachment_path to bill_google_link in bills table
+ALTER TABLE bills CHANGE attachment_path bill_google_link VARCHAR(255);
+
+-- 4. Add bill_date column to bills table
+ALTER TABLE bills ADD COLUMN bill_date DATE NULL;
+
+-- 5. Make bank_account_id nullable in bills table
+ALTER TABLE bills MODIFY bank_account_id BIGINT UNSIGNED NULL;

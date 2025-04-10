@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PatientResource\Pages;
 use App\Filament\Resources\PatientResource\RelationManagers\FileRelationManager;
+use App\Filament\Resources\PatientResource\RelationManagers\InvoiceRelationManager;
+use App\Filament\Resources\PatientResource\RelationManagers\BillRelationManager;
 use App\Models\Contact;
 use App\Models\Patient;
 use Filament\Forms;
@@ -75,6 +77,7 @@ protected static ?string $navigationIcon = 'heroicon-o-user-plus'; // ➕👤 Pa
     {
         return [
             FileRelationManager::class,
+            InvoiceRelationManager::class,
         ];
     }
 
@@ -84,6 +87,7 @@ protected static ?string $navigationIcon = 'heroicon-o-user-plus'; // ➕👤 Pa
             'index' => Pages\ListPatients::route('/'),
             'create' => Pages\CreatePatient::route('/create'),
             'edit' => Pages\EditPatient::route('/{record}/edit'),
+            'financial' => Pages\PatientFinancialView::route('/{record}/financial'),
         ];
     }
 }

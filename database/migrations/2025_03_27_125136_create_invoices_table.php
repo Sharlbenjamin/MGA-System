@@ -24,7 +24,8 @@ return new class extends Migration
             $table->date('payment_date')->nullable();
             $table->foreignId('transaction_group_id')->nullable()->constrained()->onDelete('set null');
             $table->decimal('paid_amount', 15, 2)->nullable();
-            $table->string('attachment_path')->nullable();
+            $table->string('invoice_google_link')->nullable();
+            $table->date('invoice_date')->nullable();
             $table->timestamps();
         });
     }
