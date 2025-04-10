@@ -49,15 +49,15 @@ class FileResource extends Resource
                 ->label('Show Only My Files')
                 ->trueLabel('Yes')
                 ->falseLabel('No')
-                ->query(fn (Builder $query, $state) => 
-                    $state ? $query->whereHas('providerBranch.provider', fn ($q) => 
+                ->query(fn (Builder $query, $state) =>
+                    $state ? $query->whereHas('providerBranch.provider', fn ($q) =>
                         $q->where('name', auth()->user()->name)
                     ) : $query
                 ),
         ])
             ->actions([
                 Tables\Actions\Action::make('View')
-                ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id])) 
+                ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id]))
                 ->icon('heroicon-o-eye')
             ])
             ->bulkActions([
