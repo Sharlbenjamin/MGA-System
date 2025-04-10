@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Prescription Report</title>
+    <title>{{ $prescription->file->patient->name }} Prescription Report {{ $prescription->file->mga_reference }}</title>
     <style>
         @page { size: A4 portrait; margin: 20px; }
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
