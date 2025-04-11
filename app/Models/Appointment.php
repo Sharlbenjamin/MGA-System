@@ -44,7 +44,7 @@ class Appointment extends Model
                 if ($existingAppointment->service_date !== $appointment->service_date) {
                     $existingAppointment->update([
                         'service_date' => $appointment->service_date,
-                        'service_time' => $appointment->service_time, // Ensure service_time updates if necessary
+                        'service_time' => $appointment->service_time,
                         'status' => 'Requested',
                     ]);
 
@@ -74,10 +74,8 @@ class Appointment extends Model
                 $appointment->file->appointments()->where('id', '!=', $appointment->id)->update(['status' => 'Cancelled']);
 
                 // Get the service type name for telemedicine (ID 2)
-                $telemedicineName = ServiceType::find(2)?->name;
-                $branchServiceTypes = explode(',', $appointment->file->providerBranch->service_types ?? '');
 
-                if (in_array($telemedicineName, $branchServiceTypes)) {
+                if ($appointment->file->service_type_id == 2) {
                     $appointment->file->generateGoogleMeetLink();
                 }
 

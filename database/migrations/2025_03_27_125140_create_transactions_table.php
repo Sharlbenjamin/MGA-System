@@ -14,15 +14,16 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->foreignId('transaction_group_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('bank_account_id')->constrained()->onDelete('cascade');
             $table->string('related_type');
-            $table->unsignedBigInteger('related_id');
+            $table->unsignedBigInteger('related_id')->nullable();
             $table->decimal('amount', 15, 2);
             $table->string('type');
             $table->date('date');
             $table->text('notes')->nullable();
             $table->string('attachment_path')->nullable();
+            $table->decimal('bank_charges', 15, 2)->default(0);
+            $table->boolean('charges_covered_by_client')->default(false);
             $table->timestamps();
         });
     }

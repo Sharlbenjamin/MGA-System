@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Bill extends Model
 {
@@ -17,7 +18,7 @@ class Bill extends Model
         'discount',
         'status',
         'payment_date',
-        'transaction_group_id',
+        'transaction_id',
         'paid_amount',
         'bill_google_link',
         'bill_date',
@@ -37,6 +38,11 @@ class Bill extends Model
         return $this->belongsTo(File::class);
     }
 
+    public function branch(): HasOneThrough
+    {
+        return $this->hasOneThrough(ProviderBranch::class, File::class);
+    }
+
     public function patient(): BelongsTo
     {
         return $this->belongsTo(Patient::class);
@@ -47,9 +53,9 @@ class Bill extends Model
         return $this->belongsTo(BankAccount::class);
     }
 
-    public function transactionGroup(): BelongsTo
+    public function transaction()
     {
-        return $this->belongsTo(TransactionGroup::class);
+        return $this->belongsTo(Transaction::class);
     }
 
     public function items(): HasMany

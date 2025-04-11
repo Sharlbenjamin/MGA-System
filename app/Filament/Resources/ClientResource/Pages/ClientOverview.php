@@ -33,10 +33,12 @@ class ClientOverview extends ViewRecord
                 TextEntry::make('filesCancelledCount')->label('Total Cancelled Files')->color('info'),
                 TextEntry::make('filesAssistedCount')->label('Total Assisted')->color('info'),
                 //  Invoices Data
-                TextEntry::make('invoicesTotalNumber')->label('Total Number of Invoices')->color('warning'),
-                TextEntry::make('invoicesTotal')->label('Total Invoices')->color('warning'),
-                TextEntry::make('invoicesTotalPaid')->label('Total Invoices Paid')->color('warning'),
-                TextEntry::make('invoicesTotalOutstanding')->label('Total Invoices Outstanding')->color('warning'),
+                TextEntry::make('invoicesTotalNumber')->label('Number of Invoices')->color('warning'),
+                TextEntry::make('invoicesTotal')->label('Total Invoices')->color('warning')->money('eur'),
+                TextEntry::make('invoicesTotalNumberPaid')->label('Number of Invoices Paid')->color('warning'),
+                TextEntry::make('invoicesTotalPaid')->label('Total Invoices Paid')->color('warning')->money('eur'),
+                TextEntry::make('invoicesTotalNumberOutstanding')->label('Number of Invoices Outstanding')->color('warning'),
+                TextEntry::make('invoicesTotalOutstanding')->label('Total Invoices Outstanding')->color('warning')->money('eur'),
                 // Transactions Data
                 TextEntry::make('transactionsLastDate')->label('Last Transaction Date')->color('success'),
                 TextEntry::make('transactionLastAmount')->label('Last Transaction Amount')->color('success'),

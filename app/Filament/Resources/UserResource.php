@@ -40,14 +40,14 @@ protected static ?string $navigationIcon = 'heroicon-o-user'; // 👤 Users Icon
                 ->email()
                 ->required()
                 ->unique('users', 'email', ignoreRecord: true), // Ignore the current user's email
-                
+
             TextInput::make('password')
                 ->password()
                 ->minLength(8)
                 ->dehydrated(fn ($state) => !empty($state)) // ✅ Only save if a new password is entered
                 ->nullable(),
 
-            
+
                 Forms\Components\Select::make('roles')
                 ->label('User Role')
                 ->multiple() // Allows selecting multiple roles
@@ -55,25 +55,16 @@ protected static ?string $navigationIcon = 'heroicon-o-user'; // 👤 Users Icon
                 ->relationship('roles', 'name') // Connects it to Spatie roles
                 ->preload()
                 ->required(),
-            
+
                 Forms\Components\TextInput::make('smtp_username')
                 ->label('SMTP Username')
                 ->helperText('Enter your email SMTP username.'),
-            
+
             Forms\Components\TextInput::make('smtp_password')
                 ->label('SMTP Password')
                 ->password()
+                ->hidden(fn($get) => in_array('Telemedicine Doctor', $get('roles') ?? []))
                 ->helperText('Enter your email SMTP password.'),
-            
-            FileUpload::make('signature_image')
-                ->image()
-                ->acceptedFileTypes(['image/png', 'image/jpg', 'image/jpeg']) // ✅ Restrict file types
-                ->directory('signatures') // ✅ Saves in storage/app/public/signatures
-                ->disk('public') // ✅ Ensures correct storage disk
-                ->visibility('public') // ✅ Makes file accessible
-                ->preserveFilenames()
-                ->columnSpanFull()
-                ->nullable(), // ✅ Makes it mandatory
 
                 // User Signature
                 Forms\Components\Section::make('Signature Details') // Add a section for the signature
@@ -81,11 +72,11 @@ protected static ?string $navigationIcon = 'heroicon-o-user'; // 👤 Users Icon
                 ->schema([
                     Forms\Components\TextInput::make('name')
                         ->label('Name (in signature)')
-                        ->nullable(),
+                        ->required(),
 
                     Forms\Components\TextInput::make('job_title')
                         ->label('Job Title (in signature)')
-                        ->nullable(),
+                        ->required(),
 
                     Forms\Components\Select::make('department')
                         ->label('Department (in signature)')
@@ -95,11 +86,11 @@ protected static ?string $navigationIcon = 'heroicon-o-user'; // 👤 Users Icon
                             'Provider Network' => 'Provider Network',
                             'Client Network' => 'Client Network',
                         ])
-                        ->nullable(),
+                        ->required(),
 
                     Forms\Components\TextInput::make('work_phone')
                         ->label('Work Phone (in signature)')
-                        ->nullable(),
+                        ->required(),
                 ]),
         ]);
 }

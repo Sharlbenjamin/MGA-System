@@ -22,7 +22,7 @@ class Invoice extends Model
         'tax',
         'status',
         'payment_date',
-        'transaction_group_id',
+        'transaction_id',
         'paid_amount',
         'draft_path',
         'invoice_date',
@@ -116,19 +116,14 @@ class Invoice extends Model
         return $this->belongsTo(BankAccount::class);
     }
 
-    public function transactionGroup(): BelongsTo
+    public function transaction()
     {
-        return $this->belongsTo(TransactionGroup::class);
+        return $this->belongsTo(Transaction::class);
     }
 
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceItem::class);
-    }
-
-    public function transactions(): MorphMany
-    {
-        return $this->morphMany(Transaction::class, 'related');
     }
 
     public function calculateTotal()

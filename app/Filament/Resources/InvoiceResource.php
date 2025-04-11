@@ -50,8 +50,9 @@ class InvoiceResource extends Resource
                         Forms\Components\Select::make('status')
                             ->options([
                                 'Draft' => 'Draft',
-                                'Sent' => 'Sent',
                                 'Posted' => 'Posted',
+                                'Sent' => 'Sent',
+                                'Unpaid' => 'Unpaid',
                                 'Overdue' => 'Overdue',
                                 'Paid' => 'Paid',
                             ])->default('Draft')
@@ -102,7 +103,8 @@ class InvoiceResource extends Resource
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'danger' => 'Overdue',
-                        'warning' => 'Draft',
+                        'warning' => 'Unpaid',
+                        'gray' => 'Draft',
                         'info' => 'Posted',
                         'success' => 'Paid',
                         'primary' => 'Sent',
@@ -127,7 +129,9 @@ class InvoiceResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Draft' => 'Draft',
+                        'Posted' => 'Posted',
                         'Sent' => 'Sent',
+                        'Unpaid' => 'Unpaid',
                         'Overdue' => 'Overdue',
                         'Paid' => 'Paid',
                     ]),

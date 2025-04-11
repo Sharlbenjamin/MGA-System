@@ -1,12 +1,47 @@
 Next Push and Pull Command terminal commands that I need to run
 
 
--- 6. Make due_date nullable in invoices table
-ALTER TABLE invoices MODIFY due_date DATE NULL;
+// lets modify the bill model and teh invoice model tables the column transaction_group_id to be transaction_id
 
--- 7. Make due_date nullable in bills table
-ALTER TABLE bills MODIFY due_date DATE NULL;
+ALTER TABLE bills RENAME COLUMN transaction_group_id TO transaction_id;
+ALTER TABLE invoices RENAME COLUMN transaction_group_id TO transaction_id;
 
 
+//Let add 2 columns in the transaction table bank_charges and charges_covered_by_client
+
+ALTER TABLE transactions
+ADD COLUMN bank_charges DECIMAL(10,2) DEFAULT 0.00,
+ADD COLUMN charges_covered_by_client BOOLEAN DEFAULT false;
+
+
+
+// Drop foreign key between transactions and transaction_groups
+ALTER TABLE transactions
+DROP FOREIGN KEY transactions_transaction_group_id_foreign,
+DROP COLUMN transaction_group_id;
+
+//lets edit the relation between the transaction and the invoice and bill models
+
+ALTER TABLE bills
+DROP FOREIGN KEY bills_transaction_group_id_foreign,
+ADD CONSTRAINT bills_transaction_id_foreign
+FOREIGN KEY (transaction_id) REFERENCES transactions(id);
+
+ALTER TABLE invoices
+DROP FOREIGN KEY invoices_transaction_group_id_foreign,
+ADD CONSTRAINT invoices_transaction_id_foreign
+FOREIGN KEY (transaction_id) REFERENCES transactions(id);
+
+
+//lets delete the transaction group table and model
+
+DROP TABLE transaction_groups;
+
+
+
+// lets make the related_id in the trasnactions table nullable
+
+ALTER TABLE transactions
+ALTER COLUMN related_id DROP NOT NULL;
 
 

@@ -234,6 +234,7 @@ class File extends Model
                 $file->patient->client->notifyClient('ask_client', $file);
             }else{
                 $file->patient->notifyPatient('file_created', $file);
+                $file->patient->client->notifyClient('file_created', $file);
             }
             app(GoogleDriveFolderService::class)->generateGoogleDriveFolder($file);
         });
@@ -243,13 +244,9 @@ class File extends Model
                 if (!$file->mga_reference) {
                     return;
                 }
+                // if the service type is '2' but make sure it isDirty()
+                //then call googleCalendar
 
-                // Check if status changed to 'Assisted' and service type is '2'
-                if ($file->status === 'Assisted' &&
-                    $file->isDirty('status') &&
-                    $file->service_type_id === 2) {
-                    $file->generateGoogleMeetLink();
-                }
 
                 match ($file->status) {
                     'Assisted' => $file->patient->client->notifyClient('file_assisted', $file),
