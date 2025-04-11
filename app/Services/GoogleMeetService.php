@@ -25,8 +25,11 @@ class GoogleMeetService
             return null;
         }
 
+        // Convert service_time to string if it's an array
+        $serviceTime = is_array($file->service_time) ? $file->service_time['time'] ?? '' : $file->service_time;
+
         $startDateTime = \Carbon\Carbon::parse($file->service_date)
-            ->setTimeFromTimeString($file->service_time);
+            ->setTimeFromTimeString($serviceTime);
         $endDateTime = $startDateTime->copy()->addMinutes(30);
 
         $meetLink = $this->createGoogleCalendarEvent($file, $startDateTime, $endDateTime);

@@ -159,6 +159,16 @@ class Client extends Model
         return $this->invoices()->sum('paid_amount');
     }
 
+    public function getInvoicesTotalNumberOutstandingAttribute()
+    {
+        return $this->invoices()->where('status', '!=', 'Paid')->count();
+    }
+
+    public function getInvoicesTotalNumberPaidAttribute()
+    {
+        return $this->invoices()->where('status', 'Paid')->count();
+    }
+
     public function getInvoicesTotalOutstandingAttribute()
     {
         return $this->invoices_total - $this->invoices_total_paid;

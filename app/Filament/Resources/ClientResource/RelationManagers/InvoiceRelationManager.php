@@ -35,11 +35,12 @@ class InvoiceRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
-                    'Draft' => 'warning',
+                    'Draft' => 'gray',
                     'Sent' => 'info',
                     'Overdue' => 'danger',
                     'Paid' => 'success',
                     'Posted' => 'primary',
+                    'Unpaid' => 'danger',
                 }),
                 Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
                 Tables\Columns\TextColumn::make('final_total')->sortable()->searchable()->money('EUR'),
@@ -53,10 +54,11 @@ class InvoiceRelationManager extends RelationManager
                 SelectFilter::make('status')
                     ->options([
                         'Draft' => 'Draft',
+                        'Posted' => 'Posted',
                         'Sent' => 'Sent',
+                        'Unpaid' => 'Unpaid',
                         'Overdue' => 'Overdue',
                         'Paid' => 'Paid',
-                        'Posted' => 'Posted',
                     ]),
                     // due date filter when true fetch invoices with due date before today
             ])->actions([

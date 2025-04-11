@@ -10,7 +10,6 @@ class Transaction extends Model
 {
     protected $fillable = [
         'name',
-        'transaction_group_id',
         'bank_account_id',
         'related_type',
         'related_id',
@@ -19,17 +18,16 @@ class Transaction extends Model
         'date',
         'notes',
         'attachment_path',
+        'bank_charges',
+        'charges_covered_by_client',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'date' => 'date',
+        'charges_covered_by_client' => 'boolean',
+        'bank_charges' => 'decimal:2',
     ];
-
-    public function transactionGroup(): BelongsTo
-    {
-        return $this->belongsTo(TransactionGroup::class);
-    }
 
     public function bankAccount(): BelongsTo
     {
@@ -39,5 +37,15 @@ class Transaction extends Model
     public function related(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function bills()
+    {
+        return $this->hasMany(Bill::class);
     }
 }
