@@ -76,7 +76,7 @@ class Appointment extends Model
                 // Get the service type name for telemedicine (ID 2)
 
                 if ($appointment->file->service_type_id == 2) {
-                    //$appointment->file->generateGoogleMeetLink();
+                    $appointment->file->generateGoogleMeetLink();
                 }
 
                 if($appointment->file->contact_patient === 'Client'){
