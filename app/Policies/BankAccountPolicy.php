@@ -11,7 +11,7 @@ class BankAccountPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can('view-any BankAccount');
+        return $user->can('view BankAccount');
     }
 
     public function view(User $user, BankAccount $bankAccount): bool
@@ -36,11 +36,11 @@ class BankAccountPolicy
 
     public function restore(User $user, BankAccount $bankAccount): bool
     {
-        return $user->can('restore BankAccount');
+        return false;
     }
 
     public function forceDelete(User $user, BankAccount $bankAccount): bool
     {
-        return $user->can('force-delete BankAccount');
+        return false;
     }
 }
