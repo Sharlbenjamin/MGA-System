@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ProviderResource\RelationManagers\BillRelationManager;
 use App\Filament\Resources\ProviderResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\ProviderResource\Pages;
 use App\Filament\Resources\ProviderResource\RelationManagers\ProviderBranchRelationManager;
@@ -28,7 +29,7 @@ class ProviderResource extends Resource
 
     protected static ?string $navigationGroup = 'PRM';
     protected static ?int $navigationSort = 1;
-    protected static ?string $navigationIcon = 'heroicon-o-truck'; // 🚚 Providers Icon
+    protected static ?string $navigationIcon = 'heroicon-o-truck';
 
     public static function form(Forms\Form $form): Forms\Form
 {
@@ -77,9 +78,17 @@ public static function table(Tables\Table $table): Tables\Table
                     'red' => 'Black List',
                 ])
                 ->sortable(),
-            TextColumn::make('type')->label('Provider Type')->sortable(),
-            TextColumn::make('leads_count')->label('Leads')->counts('leads'),
-            TextColumn::make('latestLead.last_contact_date')->label('Last Contact')->date('d-m-Y'),
+                TextColumn::make('filesCount')->label('Files')->sortable()->counts('files'),
+                TextColumn::make('filesCancelledCount')->label('Canceled')->sortable(),
+                TextColumn::make('filesAssistedCount')->label('Assisted')->sortable(),
+                TextColumn::make('billsTotalNumber')->label('Bills')->sortable(),
+                TextColumn::make('billsTotal')->label('Bills Amount')->sortable()->money('eur'),
+                TextColumn::make('billsTotalNumberPaid')->label('Paid Bills')->sortable(),
+                TextColumn::make('billsTotalPaid')->label('Paid Bills Amount')->sortable()->money('eur'),
+                TextColumn::make('billsTotalNumberOutstanding')->label('Unpaid Bills')->sortable(),
+                TextColumn::make('billsTotalOutstanding')->label('Unpaid Bills Amount')->sortable()->money('eur'),
+                TextColumn::make('transactionsLastDate')->label('Last Transaction Date')->date('d-m-Y')->sortable(),
+                TextColumn::make('transactionLastAmount')->label('Last Transaction Amount')->sortable()->money('eur'),
         ])
         ->filters([
             SelectFilter::make('status')->multiple()
@@ -95,6 +104,8 @@ public static function table(Tables\Table $table): Tables\Table
         ])
         ->actions([
             Tables\Actions\EditAction::make(),
+            Tables\Actions\Action::make('Overview')
+            ->url(fn (Provider $record) => ProviderResource::getUrl('overview', ['record' => $record]))->color('success'),
             Tables\Actions\DeleteAction::make(),
         ])
         ->bulkActions([
@@ -108,6 +119,7 @@ public static function table(Tables\Table $table): Tables\Table
             ProviderLeadRelationManager::class,
             ProviderBranchRelationManager::class,
             BankAccountRelationManager::class,
+            BillRelationManager::class,
         ];
     }
 
@@ -117,6 +129,7 @@ public static function table(Tables\Table $table): Tables\Table
             'index' => Pages\ListProviders::route('/'),
             'create' => Pages\CreateProvider::route('/create'),
             'edit' => Pages\EditProvider::route('/{record}/edit'),
+            'overview' => Pages\ProviderOverview::route('/{record}'),
         ];
     }
 }

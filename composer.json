@@ -21,6 +21,7 @@
         "phpmailer/phpmailer": "^6.9",
         "spatie/laravel-google-calendar": "^3.8",
         "spatie/laravel-permission": "^6.16",
+        "staudenmeir/eloquent-has-many-deep": "^1.20",
         "twilio/sdk": "^8.3"
     },
     "require-dev": {

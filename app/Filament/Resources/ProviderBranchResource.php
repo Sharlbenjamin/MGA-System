@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\BillRelationManager;
 use App\Filament\Resources\ProviderBranchResource\Pages;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\ContactRelationManager;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\BankAccountRelationManager;
@@ -141,6 +142,8 @@ class ProviderBranchResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('Overview')
+                ->url(fn (ProviderBranch $record) => ProviderBranchResource::getUrl('overview', ['record' => $record]))->color('success'),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -153,6 +156,7 @@ class ProviderBranchResource extends Resource
         return [
             ContactRelationManager::class,
             BankAccountRelationManager::class,
+            BillRelationManager::class,
         ];
     }
 
@@ -162,6 +166,7 @@ class ProviderBranchResource extends Resource
             'index' => Pages\ListProviderBranches::route('/'),
             'create' => Pages\CreateProviderBranch::route('/create'),
             'edit' => Pages\EditProviderBranch::route('/{record}/edit'),
+            'overview' => Pages\BranchOverView::route('/{record}'),
         ];
     }
 }

@@ -42,6 +42,16 @@ DROP TABLE transaction_groups;
 // lets make the related_id in the trasnactions table nullable
 
 ALTER TABLE transactions
-ALTER COLUMN related_id DROP NOT NULL;
+MODIFY COLUMN related_id BIGINT NULL;
 
 
+SELECT CONSTRAINT_NAME
+FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_NAME = 'invoices'
+AND COLUMN_NAME = 'transaction_id';
+
+ALTER TABLE invoices DROP FOREIGN KEY invoices_transaction_id_foreign;
+
+
+
+php artisan migrate

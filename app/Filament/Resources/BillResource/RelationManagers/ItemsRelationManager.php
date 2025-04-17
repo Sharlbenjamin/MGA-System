@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\InvoiceResource\RelationManagers;
+namespace App\Filament\Resources\BillResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -55,17 +55,17 @@ class ItemsRelationManager extends RelationManager
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->after(function ($record) {
-                        $record->invoice->calculateTotal();
+                        $record->bill->calculateTotal();
                     }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->after(function ($record) {
-                        $record->invoice->calculateTotal();
+                        $record->bill->calculateTotal();
                     }),
                 Tables\Actions\DeleteAction::make()
                     ->after(function ($record) {
-                        $record->invoice->calculateTotal();
+                        $record->bill->calculateTotal();
                     }),
             ])
             ->bulkActions([

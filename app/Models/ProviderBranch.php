@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+
 class ProviderBranch extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
@@ -105,5 +107,77 @@ class ProviderBranch extends Model
     public function branchCities()
     {
         return $this->hasMany(BranchCity::class);
+    }
+
+    public function files()
+    {
+        return $this->hasMany(File::class);
+    }
+
+    public function bills(): HasManyThrough
+    {
+        return $this->hasManyThrough(Bill::class, File::class);
+    }
+
+    public function transactions()
+    {
+        return Transaction::where('related_type', 'Branch')->where('related_id', $this->id);
+    }
+
+
+    // Calculated Attributes Calculated Attributes Calculated Attributes Calculated Attributes Calculated Attributes
+    public function getFilesCountAttribute()
+    {
+        return $this->files()->count();
+    }
+
+    public function getFilesCancelledCountAttribute()
+    {
+        return $this->files()->where('status', 'Cancelled')->count();
+    }
+
+    public function getFilesAssistedCountAttribute()
+    {
+        return $this->files()->where('status', 'Assisted')->count();
+    }
+
+    public function getBillsTotalNumberAttribute()
+    {
+        return $this->bills->count();
+    }
+
+    public function getBillsTotalAttribute()
+    {
+        return $this->bills->sum('total_amount');
+    }
+
+    public function getBillsTotalPaidAttribute()
+    {
+        return $this->bills->where('status', 'Paid')->sum('total_amount');
+    }
+
+    public function getBillsTotalNumberOutstandingAttribute()
+    {
+        return $this->bills_total - $this->bills_total_paid;
+    }
+
+    public function getBillsTotalNumberPaidAttribute()
+    {
+        return $this->bills->where('status', 'Paid')->count();
+    }
+
+    public function getBillsTotalOutstandingAttribute()
+    {
+        return $this->bills_total - $this->bills_total_paid;
+    }
+
+    public function getTransactionsLastDateAttribute()
+    {
+        return $this->transactions()->latest()->first()?->bill_date;
+    }
+
+    public function getTransactionLastAmountAttribute()
+    {
+        return $this->transactions()->latest()->first()?->total_amount;
     }
 }

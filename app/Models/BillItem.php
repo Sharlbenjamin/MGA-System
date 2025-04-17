@@ -25,4 +25,29 @@ class BillItem extends Model
     {
         return $this->belongsTo(Bill::class);
     }
+
+    public function getTotalAttribute(): float
+    {
+        return $this->amount - $this->discount + $this->tax;
+    }
+
+    public function getSubtotalAttribute(): float
+    {
+        return $this->amount - $this->discount;
+    }
+
+    protected static function booted()
+    {
+        static::created(function ($billItem) {
+            $billItem->bill->calculateTotal();
+        });
+
+        static::updated(function ($billItem) {
+            $billItem->bill->calculateTotal();
+        });
+
+        static::deleted(function ($billItem) {
+            $billItem->bill->calculateTotal();
+        });
+    }
 }

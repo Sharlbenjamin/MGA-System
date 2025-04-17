@@ -1,111 +1,240 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <title>Prescription</title>
     <style>
-        @page { size: A4 portrait; margin: 20px; }
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
-        .container {
-            width: 90%;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            min-height: 100vh;
-            position: relative;
-            padding-bottom: 150px; /* Space for footer */
+        @page {
+            size: A4;
+            margin: 0;
         }
-        .header { display: flex; align-items: center; justify-content: space-between; margin-top: 0; padding-top: 0; }
-        .header img { width: 80px; height: auto; }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            min-height: 297mm;
+            width: 210mm;
+        }
+
+        .page-wrapper {
+            position: relative;
+            min-height: 297mm;
+            padding: 20mm;
+            box-sizing: border-box;
+        }
+
+        .container {
+            position: relative;
+            background: transparent;
+            padding-bottom: 150px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header img {
+            width: 80px;
+            height: auto;
+        }
+
         .header h1 {
             flex: 1;
             text-align: center;
             font-size: 30px;
             text-transform: uppercase;
             color: #191970;
-            margin: 0 0 20px 0; /* Added bottom margin */
+            margin: 0;
         }
-        .doctor-info, .patient-info, .diagnosis-info { border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #f4f4f4; margin-bottom: 10px; }
-        .doctor-info { text-align: left; }
-        .section { display: flex; justify-content: space-between; margin-top: 10px; flex-direction: column; }
-        .bold { font-weight: bold; color: #303074; display: inline; }
-        .rx-section { display: flex; align-items: center; margin-top: 10px; }
+
+        /* Info Sections */
+        .doctor-info,
+        .patient-info,
+        .diagnosis-info {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background: transparent;
+            margin-bottom: 15px;
+        }
+
+        .section {
+            margin-bottom: 15px;
+        }
+
+        /* Update paragraph spacing */
+        .doctor-info p,
+        .patient-info p,
+        .diagnosis-info p {
+            margin: 5px 0;
+            line-height: 1.3;
+        }
+
+        /* RX Section */
+        .rx-section {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+        }
+
         .rx-symbol {
             font-size: 50px;
             font-weight: bold;
             color: #191970;
             font-family: 'Times New Roman', Times, serif;
             font-style: italic;
-            transform: skew(-15deg);  /* This adds extra slant to make it more italic */
+            transform: skew(-15deg);
+            margin-right: 20px;
         }
-        .rx-details { flex: 1; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        th { background-color: #253551; color: white; }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #253551;
+            color: white;
+        }
+
+        /* Watermark */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+            text-align: center;
+            width: 100%;
+        }
+
+        .watermark img {
+            width: 500px;
+            height: auto;
+        }
+
+        /* Footer */
         .footer {
             position: absolute;
-            bottom: 20px;
+            bottom: 10mm;
             left: 0;
-            right: 0;
-            text-align: center;
+            width: 100%;
+            text-align: left;
             font-size: 14px;
             color: #555;
-            border-top: 2px solid #191970;  /* Added horizontal line */
-            padding-top: 20px;  /* Added space between line and content */
+            padding-top: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 2;
         }
-        .signature { text-align: right; margin-top: 20px; }
-        .data { font-weight: bold; color: #01010b; display: inline; }
+
+        .footer ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 auto;
+            width: 80%;
+            border-top: 2px solid #191970;
+            padding-top: 15px;
+        }
+
+        .footer ul li {
+            margin: 5px 0;
+        }
+
+        /* Utility Classes */
+        .bold {
+            font-weight: bold;
+            color: #191970;
+        }
+
+        .data {
+            font-weight: bold;
+            color: #01010b;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <img src="{{ public_path('siglogo.png') }}" alt="Medical Logo">
-            <h1>PRESCRIPTION</h1>
+    <div class="page-wrapper">
+        <div class="watermark">
+            <img src="{{ public_path('siglogo.png') }}" alt="Watermark">
         </div>
-        <div class="doctor-info">
-            <p><span class="bold">Doctor: </span><span class="data">{{ $prescription->file->providerBranch->name }}</span></p>
-        </div>
-        <div class="section">
-            <div class="patient-info">
-                <p><span class="bold">Patient Name: </span><span class="data">{{ $prescription->file->patient->name }}</span></p>
-                <p><span class="bold">Gender: </span><span class="data">{{ $prescription->file->patient->gender }}</span></p>
-                <p><span class="bold">Date of Birth: </span><span class="data">{{ $prescription->file->patient->dob?->format('d/m/Y') }}</span></p>
+
+        <div class="container">
+            <div class="header">
+                <img src="{{ public_path('siglogo.png') }}" alt="Medical Logo">
+                <h1>PRESCRIPTION</h1>
             </div>
-            <div class="diagnosis-info">
-                <p class="bold">Diagnosis: </p> <span class="data">{{ $prescription->file->diagnosis }}</span>
+
+            <div class="doctor-info">
+                <p>
+                    <span class="bold">Doctor: </span>
+                    <span class="data">{{ $prescription->file->providerBranch->provider->name }}</span>
+                    <span style="float: right;">
+                        <span class="bold">Date: </span>
+                        <span class="data">{{ now()->format('d/m/Y') }}</span>
+                    </span>
+                </p>
             </div>
-        </div>
-        <div class="rx-section">
-            <div class="rx-symbol">Rx</div>
-            <div class="rx-details"></div>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Drug Name</th>
-                    <th>Pharm.</th>
-                    <th>Dosage</th>
-                    <th>Duration</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($prescription->drugs as $drug)
+
+            <div class="section">
+                <div class="patient-info">
+                    <p><span class="bold">Patient Name: </span><span class="data">{{ $prescription->file->patient->name }}</span></p>
+                    <p><span class="bold">Gender: </span><span class="data">{{ $prescription->file->patient->gender }}</span></p>
+                    <p><span class="bold">Date of Birth: </span><span class="data">{{ $prescription->file->patient->dob?->format('d/m/Y') }}</span></p>
+                </div>
+
+                <div class="diagnosis-info">
+                    <p class="bold">Diagnosis: </p>
+                    <span class="data">{{ $prescription->file->medicalreports->first()->diagnosis }}</span>
+                </div>
+            </div>
+
+            <div class="rx-section">
+                <div class="rx-symbol">Rx</div>
+            </div>
+
+            <table>
+                <thead>
                     <tr>
-                        <td>{{ $drug->name }}</td>
-                        <td>{{ $drug->pharmaceutical }}</td>
-                        <td>{{ $drug->dose }}</td>
-                        <td>{{ $drug->duration }}</td>
+                        <th>Drug Name</th>
+                        <th>Pharm.</th>
+                        <th>Dosage</th>
+                        <th>Duration</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach($prescription->drugs as $drug)
+                        <tr>
+                            <td>{{ $drug->name }}</td>
+                            <td>{{ $drug->pharmaceutical }}</td>
+                            <td>{{ $drug->dose }}</td>
+                            <td>{{ $drug->duration }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
         <div class="footer">
             <ul>
-                <li>Company Name: Med Guard Assistance</li>
-                <li>Email: mga.operation@medguarda.com</li>
-                <li>Phone: +34 634 070 722</li>
-                <li>Website: <a href="https://medguarda.com">medguarda.com</a></li>
+                <li><span class="bold">Company Name: </span>Med Guard Assistance</li>
+                <li><span class="bold">Email: </span>mga.operation@medguarda.com</li>
+                <li><span class="bold">Phone: </span>+34 634 070 722</li>
+                <li><span class="bold">Website: </span><a href="https://medguarda.com">medguarda.com</a></li>
             </ul>
         </div>
     </div>
