@@ -107,7 +107,7 @@ class InvoiceResource extends Resource
                         'secondary' => 'Partial',
                     ]),
 
-                Tables\Columns\TextColumn::make('final_total')
+                Tables\Columns\TextColumn::make('total_amount')
                     ->money('EUR')
                     ->sortable(),
 
@@ -115,7 +115,7 @@ class InvoiceResource extends Resource
                     ->money('EUR')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('remaining_amount')
+                Tables\Columns\TextColumn::make('Remaining_Amount')
                     ->money('EUR')
                     ->sortable(),
             ])
