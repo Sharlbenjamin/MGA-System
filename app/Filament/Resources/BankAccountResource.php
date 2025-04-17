@@ -24,8 +24,6 @@ class BankAccountResource extends Resource
     protected static ?string $navigationGroup = 'Finance';
     protected static ?int $navigationSort = 5;
 
-
-    protected static bool $shouldRegisterNavigation = false; // Hides it completely
     public static function form(Form $form): Form
     {
         return $form
