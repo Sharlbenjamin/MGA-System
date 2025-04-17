@@ -115,7 +115,7 @@ class InvoiceResource extends Resource
                     ->money('EUR')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('Remaining_Amount')->state(fn (Invoice $record) => $record->remainingAmount)
+                Tables\Columns\TextColumn::make('Remaining_Amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)
                     ->money('EUR')
                     ->sortable(),
             ])
