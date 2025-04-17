@@ -94,6 +94,8 @@ class InvoiceResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
+                // Client name
+                Tables\Columns\TextColumn::make('patient.client.company_name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('patient.name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
 
@@ -106,23 +108,13 @@ class InvoiceResource extends Resource
                         'primary' => 'Sent',
                         'secondary' => 'Partial',
                     ]),
-
-                Tables\Columns\TextColumn::make('total_amount')
-                    ->money('EUR')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('paid_amount')
-                    ->money('EUR')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('Remaining_Amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)
-                    ->money('EUR')
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable(),
+                Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable(),
+                Tables\Columns\TextColumn::make('Remaining_Amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->money('EUR')->sortable(),
             ])
             ->filters([
-
+                Tables\Filters\SelectFilter::make('client')->relationship('patient.client', 'company_name')->label('Client'),
                 Tables\Filters\SelectFilter::make('patient_id')->relationship('patient', 'name'),
-
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Draft' => 'Draft',
