@@ -129,7 +129,7 @@ public static function table(Tables\Table $table): Tables\Table
             'index' => Pages\ListProviders::route('/'),
             'create' => Pages\CreateProvider::route('/create'),
             'edit' => Pages\EditProvider::route('/{record}/edit'),
-            'overview' => Pages\ProviderOverview::route('/{record}'),
+            'overview' => Pages\ProviderOverView::route('/{record}'),
         ];
     }
 }
