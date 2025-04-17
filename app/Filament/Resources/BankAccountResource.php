@@ -22,6 +22,7 @@ class BankAccountResource extends Resource
     protected static ?string $model = BankAccount::class;
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
     protected static ?string $navigationGroup = 'Finance';
+    protected static ?int $navigationSort = 5;
 
 
     protected static bool $shouldRegisterNavigation = false; // Hides it completely
