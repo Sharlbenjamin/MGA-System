@@ -11,6 +11,7 @@ use Twilio\Rest\Client as TwilioClient;
 use Illuminate\Support\Facades\Log;
 use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Client extends Model
 {
@@ -62,6 +63,11 @@ class Client extends Model
             'id',
             'id'
         );
+    }
+
+    public function transactions()
+    {
+        return Transaction::where('related_type', 'Client')->where('related_id', $this->id);
     }
 
     public function tasks()
@@ -127,8 +133,6 @@ class Client extends Model
 
 
 
-
-
     public function getFilesCountAttribute()
     {
         return $this->files()->count();
@@ -174,6 +178,15 @@ class Client extends Model
         return $this->invoices_total - $this->invoices_total_paid;
     }
 
+    public function getTransactionsLastDateAttribute()
+    {
+        return $this->transactions()->latest()->first()?->date;
+    }
 
+
+    public function getTransactionLastAmountAttribute()
+    {
+        return $this->transactions()->latest()->first()?->amount;
+    }
 
 }

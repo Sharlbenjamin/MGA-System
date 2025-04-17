@@ -43,12 +43,15 @@ class InvoiceRelationManager extends RelationManager
                     'Unpaid' => 'danger',
                 }),
                 Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
-                Tables\Columns\TextColumn::make('final_total')->sortable()->searchable()->money('EUR'),
+                Tables\Columns\TextColumn::make('total_amount')->sortable()->searchable()->money('EUR'),
                 Tables\Columns\TextColumn::make('paid_amount')->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('remaining_amount')->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('invoice_google_link')->sortable()->searchable()->url(fn (Invoice $record) => $record->invoice_google_link)
+                Tables\Columns\TextColumn::make('Remaining_Amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->sortable()->searchable()->money('EUR'),
+                Tables\Columns\TextColumn::make('invoice_google_link')
+                    ->label('PDF')
+                    ->weight('underline')->color('info')
+                    ->state(fn (Invoice $record) => $record->invoice_google_link ? 'View Invoice' : '')
+                    ->url(fn (Invoice $record) => $record->invoice_google_link)
                     ->openUrlInNewTab(false),
-
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -183,6 +186,19 @@ class InvoiceRelationManager extends RelationManager
                     ->url(fn () => InvoiceResource::getUrl('create', [
                         'patient_id' => $this->ownerRecord->id
                     ])),
+                Action::make('ExportBalance')
+                    ->color('success')
+                    ->icon('heroicon-o-document-text')
+                    ->action(function () {
+                        // Export balance using the client directly
+                        $pdf = Pdf::loadView('pdf.client_balance', ['client' => $this->ownerRecord]);
+                        $content = $pdf->output();
+                        $fileName = $this->ownerRecord->name . '_balance.pdf';
+                        return response()->streamDownload(
+                            fn () => print($pdf->output()),
+                            $fileName
+                        );
+                    })
             ]);
     }
 }

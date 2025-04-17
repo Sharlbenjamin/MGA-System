@@ -53,18 +53,13 @@ class InvoiceResource extends Resource
                                 'Posted' => 'Posted',
                                 'Sent' => 'Sent',
                                 'Unpaid' => 'Unpaid',
-                                'Overdue' => 'Overdue',
+                                'Partial' => 'Partial',
                                 'Paid' => 'Paid',
                             ])->default('Draft')
                             ->required(),
 
-                        Forms\Components\TextInput::make('discount')
-                            ->numeric()->prefix('€')
-                            ->default(0)
-                            ->inputMode('decimal')
-                            ->step('0.01'),
-
                         ])->columnSpan(['lg' => 2]),
+
 
                 Forms\Components\Card::make()
                     ->schema([
@@ -78,15 +73,17 @@ class InvoiceResource extends Resource
 
                         Forms\Components\Placeholder::make('subtotal')
                             ->label('Subtotal')
-                            ->content(fn (?Invoice $record): string => $record ? number_format($record->subtotal, 2) : '0.00'),
+                            // lets add € sign before the subtotal
+                            ->content(fn (?Invoice $record): string => $record ? '€'.number_format($record->subtotal, 2) : '0.00'),
 
-                        Forms\Components\Placeholder::make('tax_amount')
-                            ->label('Tax Amount')
-                            ->content(fn (?Invoice $record): string => $record ? number_format($record->tax_amount, 2) : '0.00'),
+                        Forms\Components\Placeholder::make('discount')
+                            ->label('Discount')
+                            ->content(fn (?Invoice $record): string => $record ? '€'.number_format($record->discount, 2) : '0.00'),
 
-                        Forms\Components\Placeholder::make('final_total')
-                            ->label('Final Total')
-                            ->content(fn (?Invoice $record): string => $record ? number_format($record->final_total, 2) : '0.00'),
+                        Forms\Components\Placeholder::make('total_amount')
+                            ->label('Total Amount')
+                            ->content(fn (?Invoice $record): string => $record ? '€'.number_format($record->total_amount, 2) : '0.00'),
+
                     ])->columnSpan(['lg' => 1]),
             ])
             ->columns(3);
@@ -102,12 +99,12 @@ class InvoiceResource extends Resource
 
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
-                        'danger' => 'Overdue',
-                        'warning' => 'Unpaid',
+                        'danger' => 'Unpaid',
                         'gray' => 'Draft',
                         'info' => 'Posted',
                         'success' => 'Paid',
                         'primary' => 'Sent',
+                        'secondary' => 'Partial',
                     ]),
 
                 Tables\Columns\TextColumn::make('final_total')
@@ -132,8 +129,8 @@ class InvoiceResource extends Resource
                         'Posted' => 'Posted',
                         'Sent' => 'Sent',
                         'Unpaid' => 'Unpaid',
-                        'Overdue' => 'Overdue',
                         'Paid' => 'Paid',
+                        'Partial' => 'Partial',
                     ]),
 
                 Tables\Filters\Filter::make('due_date')

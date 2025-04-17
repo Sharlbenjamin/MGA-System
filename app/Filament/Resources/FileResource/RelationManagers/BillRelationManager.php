@@ -34,9 +34,8 @@ class BillRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge() ->badge()
                 ->color(fn (string $state): string => match ($state) {
                     'Paid' => 'success',
-                    'Pending' => 'warning',
-                    'Overdue' => 'danger',
-                    'Cancelled' => 'gray',
+                    'Unpaid' => 'warning',
+                    'Partial' => 'gray',
                 }),
                 Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
                 Tables\Columns\TextColumn::make('final_total')->sortable()->searchable()->money('EUR'),
@@ -46,9 +45,8 @@ class BillRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('status')
                     ->options([
-                        'Draft' => 'Draft',
-                        'Sent' => 'Sent',
-                        'Overdue' => 'Overdue',
+                        'Unpaid' => 'Unpaid',
+                        'Partial' => 'Partial',
                         'Paid' => 'Paid',
                     ]),
                     // due date filter when true fetch invoices with due date before today

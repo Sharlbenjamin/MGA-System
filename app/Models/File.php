@@ -99,7 +99,7 @@ class File extends Model
         return $this->hasManyThrough(Invoice::class, Patient::class, 'id', 'patient_id', 'id', 'id');
     }
 
-    public function bills(): HasMany
+    public function bills()
     {
         return $this->hasMany(Bill::class);
     }

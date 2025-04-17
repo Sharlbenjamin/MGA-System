@@ -62,8 +62,6 @@ class ClientResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('company_name')->sortable()->searchable(),
-                TextColumn::make('type')->sortable(),
-                //color the badges if searching red
                 TextColumn::make('status')
                 ->badge()->color(fn (string $state): string => match ($state) {
                         'Searching' => 'danger',
@@ -75,10 +73,18 @@ class ClientResource extends Resource
                         'Broker' => 'success',
                         'No Reply' => 'danger',
                 }),
-                TextColumn::make('initials'),
-                TextColumn::make('number_requests'),
-                TextColumn::make('leads_count')->label('Leads')->sortable()->counts('leads'),
-                TextColumn::make('latestLead.last_contact_date')->sortable()->label('Last Contact')->date('d-m-Y'),
+                TextColumn::make('filesCount')->label('Files')->sortable()->counts('files'),
+                TextColumn::make('filesCancelledCount')->label('Canceled')->sortable(),
+                TextColumn::make('filesAssistedCount')->label('Assisted')->sortable(),
+                TextColumn::make('invoicesTotalNumber')->label('Invoices')->sortable(),
+                TextColumn::make('invoicesTotal')->label('Invoices Amount')->sortable()->money('eur'),
+                TextColumn::make('invoicesTotalNumberPaid')->label('Paid Invoices')->sortable(),
+                TextColumn::make('invoicesTotalPaid')->label('Paid Invoices Amount')->sortable()->money('eur'),
+                TextColumn::make('invoicesTotalNumberOutstanding')->label('Unpaid Invoices')->sortable(),
+                TextColumn::make('invoicesTotalOutstanding')->label('Unpaid Invoices Amount')->sortable()->money('eur'),
+                TextColumn::make('transactionsLastDate')->label('Last Transaction Date')->date('d-m-Y')->sortable(),
+                TextColumn::make('transactionLastAmount')->label('Last Transaction Amount')->sortable()->money('eur'),
+
             ])->filters([
                 SelectFilter::make('status')->multiple()
                 ->options([
@@ -93,6 +99,9 @@ class ClientResource extends Resource
 
                 ])
                 ->label('Filter by Status')->attribute('status')
+            ])->actions([
+                Tables\Actions\Action::make('Overview')
+                ->url(fn (Client $record) => ClientResource::getUrl('overview', ['record' => $record]))->color('success'),
             ]);
     }
 

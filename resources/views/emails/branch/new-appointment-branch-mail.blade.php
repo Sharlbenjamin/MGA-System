@@ -10,7 +10,9 @@
     <ul>
     <li><strong>Date:</strong> {{ date('d-m-Y', strtotime($appointment->service_date)) }}</li>
     <li><strong>Time:</strong> {{ $appointment->service_time }}</li>
-    <li><strong>Location:</strong> {{ $appointment->providerBranch->primaryContact('Appointment')->address ?? 'N/A' }}</li>
+    @if($appointment->file->service_type_id != 2)
+    <li><strong>Location:</strong> {{ $appointment->file->address }}</li>
+    @endif
     </ul>
 
     @else

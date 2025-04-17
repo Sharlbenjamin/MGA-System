@@ -73,7 +73,6 @@ class FileResource extends Resource
             TextInput::make('address')->label('Address')->nullable(),
             Textarea::make('symptoms')->label('Symptoms')->nullable(),
             Textarea::make('diagnosis')->label('Diagnosis')->nullable(),
-            TextInput::make('google_drive_link')->label('Google Drive Link')->nullable(),
         ]);
     }
 

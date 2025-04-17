@@ -3,138 +3,159 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillResource\Pages;
+use App\Filament\Resources\BillResource\RelationManagers\ItemsRelationManager;
+use App\Models\BankAccount;
 use App\Models\Bill;
-use App\Models\File;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Table;
-use Google\Service\Forms\Option;
+use Filament\Tables;
 use Illuminate\Database\Eloquent\Builder;
 
 class BillResource extends Resource
 {
     protected static ?string $model = Bill::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-
+    protected static ?int $navigationSort = 1;
     protected static ?string $navigationGroup = 'Finance';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
+                Forms\Components\Card::make()
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->maxLength(255)
+                            ->disabled()
+                            ->dehydrated(),
 
-                Forms\Components\Select::make('file_id')
-                    ->relationship('file', 'id')
-                    ->options(function () {
-                        return File::all()->pluck('name', 'id');
-                    })
-                    ->required()
-                    ->searchable()
-                    ->default(fn () => request()->get('file_id')),
+                        Forms\Components\Select::make('file_id')
+                            ->relationship('file', 'name')
+                            ->required()
+                            ->searchable()
+                            ->default(fn () => request()->get('file_id')),
 
-                Forms\Components\Select::make('bank_account_id')
-                    ->relationship('bankAccount', 'name')
-                    ->searchable(),
+                        Forms\Components\Select::make('bank_account_id')
+                            ->relationship('bankAccount', 'beneficiary_name')
+                            ->options(function () {
+                                return BankAccount::where('type', 'internal')->pluck('beneficiary_name', 'id');
+                            })
+                            ->nullable(),
 
-                Forms\Components\DatePicker::make('bill_date')
-                    ->label('Bill Date'),
+                        Forms\Components\DatePicker::make('bill_date')
+                            ->default(now()->format('Y-m-d')),
 
-                Forms\Components\DatePicker::make('due_date'),
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                'Unpaid' => 'Unpaid',
+                                'Partial' => 'Partial',
+                                'Paid' => 'Paid',
+                            ])->default('Unpaid')
+                            ->required(),
 
-                Forms\Components\TextInput::make('total_amount')
-                    ->required()
-                    ->numeric()
-                    ->prefix('€'),
+                        ])->columnSpan(['lg' => 2]),
 
-                Forms\Components\TextInput::make('discount')
-                    ->numeric()
-                    ->default(0)
-                    ->prefix('€'),
 
-                Forms\Components\Select::make('status')
-                    ->options([
-                        'Pending' => 'Pending',
-                        'Paid' => 'Paid',
-                        'Overdue' => 'Overdue',
-                        'Cancelled' => 'Cancelled',
-                    ])
-                    ->required()
-                    ->default('Pending'),
+                Forms\Components\Card::make()
+                    ->schema([
+                        Forms\Components\Placeholder::make('created_at')
+                            ->label('Created at')
+                            ->content(fn (?Bill $record): string => $record ? $record->created_at->diffForHumans() : '-'),
 
-                Forms\Components\TextInput::make('bill_google_link'),
-            ]);
+                        Forms\Components\Placeholder::make('due_date')
+                            ->label('Due date')
+                            ->content(fn (?Bill $record): string => $record ? '(' . $record->due_date->format('d/m/Y') . ')' . ' - ' . abs((int)$record->due_date->diffInDays(now())) . ' days' : '-'),
+
+                        Forms\Components\Placeholder::make('subtotal')
+                            ->label('Subtotal')
+                            ->content(fn (?Bill $record): string => $record ? '€'.number_format($record->subtotal, 2) : '0.00'),
+
+                        Forms\Components\Placeholder::make('discount')
+                            ->label('Discount')
+                            ->content(fn (?Bill $record): string => $record ? '€'.number_format($record->discount, 2) : '0.00'),
+
+                        Forms\Components\Placeholder::make('total_amount')
+                            ->label('Total Amount')
+                            ->content(fn (?Bill $record): string => $record ? '€'.number_format($record->total_amount, 2) : '0.00'),
+
+                    ])->columnSpan(['lg' => 1]),
+            ])
+            ->columns(3);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('file.mga_reference')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
 
-                Tables\Columns\TextColumn::make('file.name')
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('bill_date')
-                    ->date()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('due_date')
-                    ->date()
-                    ->sortable(),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'danger' => 'Unpaid',
+                        'success' => 'Paid',
+                        'primary' => 'Partial',
+                    ]),
 
                 Tables\Columns\TextColumn::make('total_amount')
-                    ->money()
+                    ->money('EUR')
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Paid' => 'success',
-                        'Pending' => 'warning',
-                        'Overdue' => 'danger',
-                        'Cancelled' => 'gray',
-                    }),
 
                 Tables\Columns\TextColumn::make('paid_amount')
-                    ->money()
+                    ->money('EUR')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('remaining_amount')
+                    ->money('EUR')
+                    ->sortable(),
             ])
             ->filters([
+
+                Tables\Filters\SelectFilter::make('patient_id')->relationship('patient', 'name'),
+
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'Pending' => 'Pending',
+                        'Unpaid' => 'Unpaid',
                         'Paid' => 'Paid',
-                        'Overdue' => 'Overdue',
-                        'Cancelled' => 'Cancelled',
+                        'Partial' => 'Partial',
                     ]),
+
+                Tables\Filters\Filter::make('due_date')
+                    ->form([
+                        Forms\Components\DatePicker::make('due_from'),
+                        Forms\Components\DatePicker::make('due_until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['due_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('due_date', '>=', $date),
+                            )
+                            ->when(
+                                $data['due_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('due_date', '<=', $date),
+                            );
+                    })
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
+                Tables\Actions\Action::make('download')
+                    ->icon('heroicon-o-pencil')
+                    ->url(fn (Bill $record) => $record->draft_path)
+                    ->openUrlInNewTab(),
+            ])->headerActions([Tables\Actions\CreateAction::make()])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            ItemsRelationManager::class,
         ];
     }
 

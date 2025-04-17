@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToOneThrough;
@@ -56,16 +57,23 @@ class Invoice extends Model
             if (!$invoice->name) {
                 $invoice->name = static::generateInvoiceNumber($invoice);
             }
-
                 $invoice->invoice_date = now();
                 $invoice->due_date = now()->addDays(60);
         });
 
         static::updating(function ($invoice) {
             // If status is being changed to sent
-            if ($invoice->isDirty('status') && $invoice->status === 'sent') {
+            if ($invoice->isDirty('status') && $invoice->status === 'Sent') {
                 $invoice->invoice_date = now();
                 $invoice->due_date = now()->addDays(60);
+            }
+
+        });
+
+        static::updated(function ($invoice) {
+            if ($invoice->isDirty('paid_amount')) {
+                $invoice->checkStatus();
+                $invoice->transaction->calculateBankCharges();
             }
         });
     }
@@ -79,15 +87,19 @@ class Invoice extends Model
 
         // Get the latest invoice number and increment
         $latestInvoice = static::where('name', 'like', $prefix . $clientInitials . '-%')
-            ->orderByRaw('CAST(SUBSTRING(name, -3) AS UNSIGNED) DESC')
-            ->first();
+        ->orderByRaw('CAST(SUBSTRING(name, -3) AS UNSIGNED) DESC')
+        ->first();
 
         $number = $latestInvoice
-            ? (int)substr($latestInvoice->name, -3) + 1
-            : 1;
+        ? (int)substr($latestInvoice->name, -3) + 1
+        : 1;
 
         return $prefix . $clientInitials . '-' . str_pad($number, 3, '0', STR_PAD_LEFT);
     }
+
+    // relations      relations      relations       relations        relations        relations
+
+
 
     public function patient(): BelongsTo
     {
@@ -108,7 +120,7 @@ class Invoice extends Model
 
     public function statuses(): array
     {
-        return ['draft', 'sent', 'overdue', 'paid'];
+        return ['Draft', 'Sent', 'Paid', 'Unpaid', 'Partial'];
     }
 
     public function bankAccount(): BelongsTo
@@ -126,68 +138,89 @@ class Invoice extends Model
         return $this->hasMany(InvoiceItem::class);
     }
 
+
+    public function transactions()
+    {
+        return $this->belongsToMany(Transaction::class, 'invoice_transaction')
+            ->withPivot('amount_paid');
+    }
+
+    //                    calculatations             calculatations            calculatations
+
     public function calculateTotal()
     {
-        $items = $this->items;
-
-        $subtotal = $items->sum(function ($item) {
-            return $item->amount - $item->discount;
-        });
-
-        $this->total_amount = $subtotal;
-        $this->tax = $subtotal * 0.21; // 21% VAT
-
-        if ($this->discount > 0) {
-            $this->total_amount = $this->total_amount - $this->discount;
-        }
-
+        $this->subtotal;
+        $this->calculateDiscount();
+        $this->total_amount = $this->subtotal - $this->discount;
         $this->save();
     }
 
-    public function getRemainingAmountAttribute(): float
+    public function getRemaining_AmountAttribute(): float
     {
         return $this->total_amount - ($this->paid_amount ?? 0);
     }
 
-    public function getIsOverdueAttribute(): bool
-    {
-        if ($this->status === 'paid') {
-            return false;
-        }
-        return $this->due_date->isPast();
-    }
-
     public function getIsPaidAttribute(): bool
     {
-        return $this->status === 'paid';
+        return $this->status === 'Paid';
     }
 
-    public function markAsPaid()
+    public function calculateDiscount()
     {
-        $this->status = 'paid';
-        $this->payment_date = now();
-        $this->save();
+        $discount = $this->items->sum(function ($item) {
+            return $item->discount;
+        });
+        $this->discount = $discount;
     }
 
     public function getSubtotalAttribute(): float
     {
+
         return $this->items->sum(function ($item) {
-            return $item->amount - $item->discount;
+            return $item->amount;
         });
     }
 
-    public function getDiscountedSubtotalAttribute(): float
+    public function checkStatus()
     {
-        return $this->subtotal - ($this->discount ?? 0);
+        if($this->paid_amount < $this->total_amount && $this->paid_amount > 0) {
+            $this->markAsPartial();
+        }elseif ($this->paid_amount == $this->total_amount) {
+            $this->markAsPaid();
+        }elseif ($this->paid_amount == 0) {
+            $this->markAsUnpaid();
+        }
     }
 
-    public function getTaxAmountAttribute(): float
+    public function markAsPaid()
     {
-        return $this->discounted_subtotal * self::TAX_RATE;
+        $now = $this->transaction?->date ?? now();
+        $this->status = 'Paid';
+        $this->payment_date = $now;
+        $this->save();
     }
 
-    public function getFinalTotalAttribute(): float
+    public function markAsPartial()
     {
-        return $this->total_amount;
+        $now = $this->transaction?->date ?? now();
+        $this->status = 'Partial';
+        $this->payment_date = $now;
+        $this->save();
+    }
+
+    public function markAsUnpaid()
+    {
+        $this->status = 'Unpaid';
+        $this->payment_date = null;
+        $this->save();
+    }
+
+
+    public function getIsOverdueAttribute(): bool
+    {
+        if ($this->status === 'Paid') {
+            return false;
+        }
+        return $this->due_date->isPast();
     }
 }

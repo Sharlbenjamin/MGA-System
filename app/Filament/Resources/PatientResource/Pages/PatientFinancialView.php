@@ -52,7 +52,7 @@ class PatientFinancialView extends ViewRecord
                             Card::make()
                                 ->schema([
                                     TextEntry::make('files.mga_reference')->label('MGA Reference')->color('warning')->weight('bold')->size('lg'),
-                                    TextEntry::make('files.service_date')->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->format('d/m/Y'))->label('File Date')->color('warning'),
+                                    TextEntry::make('files.service_date')->label('File Date')->color('warning'),
                                     TextEntry::make('client.company_name')->label('Client Name')->weight('bold')->color('success')->url(fn ($record) => ClientResource::getUrl('overview', ['record' => $record->client_id]))->weight('underline'),
                                     TextEntry::make('filesCount')->label('Files')->weight('bold')->color('info'),
                                 ])->columns(4)->columnSpan(3),

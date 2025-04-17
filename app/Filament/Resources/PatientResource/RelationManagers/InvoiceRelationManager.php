@@ -41,6 +41,7 @@ class InvoiceRelationManager extends RelationManager
                     'Overdue' => 'danger',
                     'Paid' => 'success',
                     'Posted' => 'primary',
+                    'Unpaid' => 'danger',
                 }),
                 Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
                 Tables\Columns\TextColumn::make('final_total')->sortable()->searchable()->money('EUR'),
@@ -58,9 +59,22 @@ class InvoiceRelationManager extends RelationManager
                         'Overdue' => 'Overdue',
                         'Paid' => 'Paid',
                         'Posted' => 'Posted',
+                        'Unpaid' => 'Unpaid',
                     ]),
                     // due date filter when true fetch invoices with due date before today
             ])->actions([
+                Action::make('Export')
+                    ->color('info')
+                    ->icon('heroicon-o-document-text')
+                    ->action(function (Invoice $record) {
+                        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
+                        $fileName = $record->name . '.pdf';
+                        return response()->streamDownload(
+                            fn () => print($pdf->output()),
+                            $fileName
+                        );
+                    }),
+
                 Action::make('edit')->color('gray')->icon('heroicon-o-pencil')
                     ->url(fn ($record) => InvoiceResource::getUrl('edit', [
                         'record' => $record->id
