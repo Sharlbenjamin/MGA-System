@@ -53,6 +53,11 @@ class Client extends Model
         return $this->contacts()->where('name', 'like', '%Financial%')->first();
     }
 
+    public function patients(): HasMany
+    {
+        return $this->hasMany(Patient::class);
+    }
+
     public function files(): HasManyThrough
     {
         return $this->hasManyThrough(
