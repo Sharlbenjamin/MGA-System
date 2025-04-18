@@ -28,7 +28,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 
 class FileResource extends Resource
 {
@@ -80,14 +82,21 @@ class FileResource extends Resource
     public static function table(Table $table): Table
     {
         // sort by service_date
-        return $table
+        return $table->groups([
+            Group::make('patient.client.company_name')->collapsible(),
+            Group::make('status')->collapsible(),
+            Group::make('country.name')->collapsible(),
+            Group::make('city.name')->collapsible(),
+            Group::make('serviceType.name')->collapsible(),
+            Group::make('providerBranch.branch_name')->collapsible(),
+        ])
             ->modifyQueryUsing(fn ($query) => $query->withCount(['tasks as undone_tasks_count' => function ($query) {
                 $query->where('is_done', false);
             }]))
             ->defaultSort('created_at', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('patient.client.company_name')->label('Client')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable()->summarize(Count::make()),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'New' => 'success',
                     'Handling' => 'info',
