@@ -11,6 +11,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Illuminate\Database\Eloquent\Builder;
 
 class BillResource extends Resource
@@ -26,17 +27,8 @@ class BillResource extends Resource
             ->schema([
                 Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->maxLength(255)
-                            ->disabled()
-                            ->dehydrated(),
-
-                        Forms\Components\Select::make('file_id')
-                            ->relationship('file', 'name')
-                            ->required()
-                            ->searchable()
-                            ->default(fn () => request()->get('file_id')),
-
+                        Forms\Components\TextInput::make('name')->maxLength(255)->disabled()->dehydrated(),
+                        Forms\Components\Select::make('file_id')->relationship('file', 'name')->required()->searchable()->default(fn () => request()->get('file_id')),
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')
                             ->options(function () {
@@ -44,8 +36,7 @@ class BillResource extends Resource
                             })
                             ->nullable(),
 
-                        Forms\Components\DatePicker::make('bill_date')
-                            ->default(now()->format('Y-m-d')),
+                        Forms\Components\DatePicker::make('bill_date')->default(now()->format('Y-m-d')),
 
                         Forms\Components\Select::make('status')
                             ->options([
@@ -56,29 +47,13 @@ class BillResource extends Resource
                             ->required(),
 
                         ])->columnSpan(['lg' => 2]),
-
-
                 Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\Placeholder::make('created_at')
-                            ->label('Created at')
-                            ->content(fn (?Bill $record): string => $record ? $record->created_at->diffForHumans() : '-'),
-
-                        Forms\Components\Placeholder::make('due_date')
-                            ->label('Due date')
-                            ->content(fn (?Bill $record): string => $record ? '(' . $record->due_date->format('d/m/Y') . ')' . ' - ' . abs((int)$record->due_date->diffInDays(now())) . ' days' : '-'),
-
-                        Forms\Components\Placeholder::make('subtotal')
-                            ->label('Subtotal')
-                            ->content(fn (?Bill $record): string => $record ? '€'.number_format($record->subtotal, 2) : '0.00'),
-
-                        Forms\Components\Placeholder::make('discount')
-                            ->label('Discount')
-                            ->content(fn (?Bill $record): string => $record ? '€'.number_format($record->discount, 2) : '0.00'),
-
-                        Forms\Components\Placeholder::make('total_amount')
-                            ->label('Total Amount')
-                            ->content(fn (?Bill $record): string => $record ? '€'.number_format($record->total_amount, 2) : '0.00'),
+                        Forms\Components\Placeholder::make('created_at')->label('Created at')->content(fn (?Bill $record): string => $record ? $record->created_at->diffForHumans() : '-'),
+                        Forms\Components\Placeholder::make('due_date')->label('Due date')->content(fn (?Bill $record): string => $record ? '(' . $record->due_date->format('d/m/Y') . ')' . ' - ' . abs((int)$record->due_date->diffInDays(now())) . ' days' : '-'),
+                        Forms\Components\Placeholder::make('subtotal')->label('Subtotal')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->subtotal, 2) : '0.00'),
+                        Forms\Components\Placeholder::make('discount')->label('Discount')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->discount, 2) : '0.00'),
+                        Forms\Components\Placeholder::make('total_amount')->label('Total Amount')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->total_amount, 2) : '0.00'),
 
                     ])->columnSpan(['lg' => 1]),
             ])
@@ -87,35 +62,21 @@ class BillResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return $table->groups(['file.providerBranch.provider.name', 'file.providerBranch.branch_name'])
             ->columns([
+                Tables\Columns\TextColumn::make('file.providerBranch.provider.name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('file.providerBranch.branch_name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
-
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'danger' => 'Unpaid',
-                        'success' => 'Paid',
-                        'primary' => 'Partial',
-                    ]),
-
-                Tables\Columns\TextColumn::make('total_amount')
-                    ->money('EUR')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('paid_amount')
-                    ->money('EUR')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('remaining_amount')
-                    ->money('EUR')
-                    ->sortable(),
+                Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid','success' => 'Paid','primary' => 'Partial',]),
+                Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
+                Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
+                Tables\Columns\TextColumn::make('remaining_amount')->money('EUR')->sortable()->state(fn (Bill $record) => $record->total_amount - $record->paid_amount),
             ])
             ->filters([
-
-                Tables\Filters\SelectFilter::make('patient_id')->relationship('patient', 'name'),
-
+                Tables\Filters\SelectFilter::make('file.providerBranch.provider.name')->relationship('file.providerBranch.provider', 'name')->label('Provider')->searchable()->multiple(),
+                Tables\Filters\SelectFilter::make('file.providerBranch.branch_name')->relationship('file.providerBranch', 'branch_name')->label('Branch')->searchable()->multiple(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Unpaid' => 'Unpaid',

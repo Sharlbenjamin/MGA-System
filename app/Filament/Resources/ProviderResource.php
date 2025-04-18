@@ -19,8 +19,6 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Resources\Resource;
-use Filament\Forms\Get;
-use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Filters\SelectFilter;
 use App\Models\Contact;
 class ProviderResource extends Resource
