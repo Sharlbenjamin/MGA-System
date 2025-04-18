@@ -11,6 +11,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables;
+use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
+use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
 
 class InvoiceResource extends Resource
@@ -91,7 +94,10 @@ class InvoiceResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        return $table->groups([
+            Group::make('patient.client.company_name')->collapsible(),
+            Group::make('patient.name')->collapsible(),
+             ])
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 // Client name
@@ -108,13 +114,13 @@ class InvoiceResource extends Resource
                         'primary' => 'Sent',
                         'secondary' => 'Partial',
                     ]),
-                Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable(),
-                Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable(),
-                Tables\Columns\TextColumn::make('Remaining_Amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->money('EUR')->sortable(),
+                Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
+                Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
+                Tables\Columns\TextColumn::make('remaining_amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->money('EUR')->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('client')->relationship('patient.client', 'company_name')->label('Client'),
-                Tables\Filters\SelectFilter::make('patient_id')->relationship('patient', 'name'),
+                Tables\Filters\SelectFilter::make('client')->relationship('patient.client', 'company_name')->label('Client')->searchable()->multiple(),
+                Tables\Filters\SelectFilter::make('patient_id')->relationship('patient', 'name')->label('Patient')->searchable(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Draft' => 'Draft',
