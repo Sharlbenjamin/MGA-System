@@ -18,6 +18,12 @@ use App\Filament\Resources\PatientResource;
 use App\Filament\Resources\PrescriptionResource;
 use App\Filament\Resources\FileResource;
 use App\Filament\Resources\UserResource;
+use App\Filament\Widgets\FilesPerClient;
+use App\Filament\Widgets\FilesPerCountry;
+use App\Filament\Widgets\FilesPerMonth;
+use App\Filament\Widgets\FilesPerServiceType;
+use App\Filament\Widgets\FileStatsOverview;
+use App\Filament\Widgets\TotalFile;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -37,6 +43,9 @@ use Filament\Notifications\Notification;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Notifications\DatabaseNotification;
+use App\Models\File;
+use Filament\Widgets\AccountWidget;
+use Filament\Widgets\FilamentInfoWidget;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -49,52 +58,57 @@ class AdminPanelProvider extends PanelProvider
         ->id('admin')
         ->path('admin')
         ->login()
-            ->colors([
-                'primary' => Color::hex('#191970'),
-            ])->resources([
-                ClientResource::class,
-                CityResource::class,
-                ContactResource::class,
-                DraftMailResource::class,
-                LeadResource::class,
-                ProviderBranchResource::class,
-                ProviderLeadResource::class,
-                ProviderResource::class,
-                PatientResource::class,
-                FileResource::class,
-                MedicalReportResource::class,
-                GopResource::class,
-                PrescriptionResource::class,
-                DrugResource::class,
-            ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-            ->pages([
-                Pages\Dashboard::class,
-            ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
-            ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
-            ])
-            ->middleware([
-                EncryptCookies::class,
-                AddQueuedCookiesToResponse::class,
-                StartSession::class,
-                AuthenticateSession::class,
-                ShareErrorsFromSession::class,
-                VerifyCsrfToken::class,
-                SubstituteBindings::class,
-                DisableBladeIconComponents::class,
-                DispatchServingFilamentEvent::class,
-            ])
-            ->authMiddleware([
-                Authenticate::class,
-            ])->maxContentWidth('full')
-            ->brandName('MGA System')
-            ->brandLogo(asset('logo.png'))
-            ->favicon(asset('logo.png'));
+        ->colors([
+            'primary' => Color::hex('#191970'),
+        ])->resources([
+            ClientResource::class,
+            CityResource::class,
+            ContactResource::class,
+            DraftMailResource::class,
+            LeadResource::class,
+            ProviderBranchResource::class,
+            ProviderLeadResource::class,
+            ProviderResource::class,
+            PatientResource::class,
+            FileResource::class,
+            MedicalReportResource::class,
+            GopResource::class,
+            PrescriptionResource::class,
+            DrugResource::class,
+        ])
+        ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+        ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+        ->pages([
+            Pages\Dashboard::class,
+        ])
+        ->widgets([
+            AccountWidget::class,
+            FileStatsOverview::class,
+            FilesPerMonth::class,
+            TotalFile::class,
+            FilesPerCountry::class,
+            FilesPerClient::class,
+            FilesPerServiceType::class,
+        ])
+        ->middleware([
+            EncryptCookies::class,
+            AddQueuedCookiesToResponse::class,
+            StartSession::class,
+            AuthenticateSession::class,
+            ShareErrorsFromSession::class,
+            VerifyCsrfToken::class,
+            SubstituteBindings::class,
+            DisableBladeIconComponents::class,
+            DispatchServingFilamentEvent::class,
+        ])
+        ->authMiddleware([
+            Authenticate::class,
+        ])->maxContentWidth('full')
+        ->brandName('MGA System')
+        ->brandLogo(asset('logo.png'))
+        ->favicon(asset('logo.png'));
     }
+
 
 
 }

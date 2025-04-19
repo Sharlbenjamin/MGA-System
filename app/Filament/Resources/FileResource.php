@@ -38,7 +38,8 @@ class FileResource extends Resource
 
     protected static ?string $navigationGroup = 'Operation';
     protected static ?int $navigationSort = 2;
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list'; // 📋 Files Icon
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    protected static ?string $recordTitleAttribute = 'mga_reference';
 
     public static function form(Form $form): Form
     {

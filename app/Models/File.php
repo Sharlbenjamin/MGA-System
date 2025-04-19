@@ -59,11 +59,10 @@ class File extends Model
         return $this->belongsTo(City::class);
     }
 
-    public function serviceType(): BelongsTo
+    public function serviceType()
     {
         return $this->belongsTo(ServiceType::class);
     }
-
 
     public function providerBranch(): BelongsTo
     {
