@@ -17,7 +17,7 @@ class FileStatsOverview extends BaseWidget
         return [
             Stat::make('Assisted Files', $assistedFiles)
                 ->description($assistedFiles . ' out of ' . $totalFiles . ' files')
-                ->chart([0, 0, 0, 0, 0, 0, ($assistedFiles / $totalFiles) * 100])
+                ->chart([50, 50, 100, 200, 200, 2000, ($assistedFiles / $totalFiles) * 100])
                 ->color('success'),
 
             Stat::make('Cancelled Files', $cancelledFiles)
