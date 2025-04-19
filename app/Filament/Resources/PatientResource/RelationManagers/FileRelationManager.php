@@ -53,10 +53,9 @@ class FileRelationManager extends RelationManager
             TextInput::make('client_reference')->label('Client Reference')->nullable(),
             Select::make('country_id')->relationship('country', 'name')->label('Country')->preload()->searchable()->nullable()->live(),
             Select::make('city_id')->label('City')->searchable()->nullable()->options(fn ($get) => \App\Models\City::where('country_id', $get('country_id'))->pluck('name', 'id'))->reactive(),
-            Select::make('provider_branch_id')->label('Provider Branch')->searchable()->nullable()
-            ->options(fn ($get) => \App\Models\ProviderBranch::when($get('service_type_id') != 2, function ($query) use ($get) {
+            Select::make('provider_branch_id')->label('Provider Branch')->searchable()->nullable()->options(fn ($get) => \App\Models\ProviderBranch::when($get('service_type_id') != 2, function ($query) use ($get) {
                 return $query->where('city_id', $get('city_id'));
-            })->where('service_type_id', $get('service_type_id'))->orderBy('priority', 'asc')->pluck('branch_name', 'id'))->reactive(),
+            })->where('service_types', 'like', '%' . \App\Models\ServiceType::find($get('service_type_id'))?->name . '%')->orderBy('priority', 'asc')->pluck('branch_name', 'id'))->reactive(),
             DatePicker::make('service_date')->label('Service Date')->nullable(),
             TimePicker::make('service_time')->label('Service Time')->nullable(),
             TextInput::make('address')->label('Address')->nullable(),
