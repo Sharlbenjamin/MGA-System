@@ -40,15 +40,10 @@ class PrescriptionRelationManager extends RelationManager
                     ->modalHeading('Add Prescription')
                     ->modalButton('Create')
                     ->form([
-                        // Auto-fill file_id from the parent record
-                        Hidden::make('file_id')
-                            ->default(fn() => $this->ownerRecord->getKey()),
-                        TextInput::make('name')
-                            ->required(),
-                            Hidden::make('serial')
-                                ->default(fn() => $this->ownerRecord->mga_reference . '-' . ($this->ownerRecord->prescriptions()->count() + 1)),
-                        DatePicker::make('date')
-                            ->required(),
+                        Hidden::make('file_id')->default(fn() => $this->ownerRecord->getKey()),
+                        TextInput::make('name')->required(),
+                        Hidden::make('serial')->default(fn() => $this->ownerRecord->mga_reference . '-' . ($this->ownerRecord->prescriptions()->count() + 1)),
+                        DatePicker::make('date')->default(now())->required(),
                     ])
                     ->action(function (array $data): void {
                         $this->ownerRecord->prescriptions()->create($data);

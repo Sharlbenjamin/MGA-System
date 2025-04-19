@@ -196,11 +196,21 @@
                     <p><span class="bold">Gender: </span><span class="data">{{ $prescription->file->patient->gender }}</span></p>
                     <p><span class="bold">Date of Birth: </span><span class="data">{{ $prescription->file->patient->dob?->format('d/m/Y') }}</span></p>
                 </div>
-
-                <div class="diagnosis-info">
-                    <p class="bold">Diagnosis: </p>
-                    <span class="data">{{ $prescription->file->medicalreports->first()->diagnosis }}</span>
-                </div>
+                @php
+                    if($prescription->file->medicalreports->first()) {
+                        $diagnosis = $prescription->file->medicalreports->first()->diagnosis;
+                    } elseif($prescription->file->diagnosis) {
+                        $diagnosis = $prescription->file->diagnosis;
+                    }else{
+                        $diagnosis = null;
+                    }
+                @endphp
+                @if($diagnosis)
+                    <div class="diagnosis-info">
+                        <p class="bold">Diagnosis: </p>
+                        <span class="data">{{ $diagnosis }}</span>
+                    </div>
+                @endif
             </div>
 
             <div class="rx-section">
