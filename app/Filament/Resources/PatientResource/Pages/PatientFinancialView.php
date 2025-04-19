@@ -29,7 +29,6 @@ use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
-use App\Filament\Widgets\CommentsWidget;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\Heading;
 

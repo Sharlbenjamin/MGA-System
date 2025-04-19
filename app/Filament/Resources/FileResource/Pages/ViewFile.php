@@ -102,13 +102,6 @@ class ViewFile extends ViewRecord
                 ]);
     }
 
-    protected function getFooterWidgets(): array
-    {
-        return [
-            CommentsWidget::class,
-        ];
-    }
-
     protected function getHeaderActions(): array
     {
         return [
