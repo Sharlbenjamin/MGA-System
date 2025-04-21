@@ -27,7 +27,7 @@ class BillResource extends Resource
             ->schema([
                 Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\TextInput::make('name')->maxLength(255),
+                        Forms\Components\TextInput::make('name')->maxLength(255)->default(fn ($get) => $get('file.mga_reference') . ' - ' . $get('file.patient.name')),
                         Forms\Components\Select::make('file_id')->relationship('file', 'mga_reference')->required()->searchable()
                         ->default(fn () => request()->get('file_id'))
                         ->preload(),
