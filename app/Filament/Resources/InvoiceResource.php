@@ -37,7 +37,7 @@ class InvoiceResource extends Resource
                         Forms\Components\Select::make('patient_id')
                             ->relationship('patient', 'name')
                             ->required()
-                            ->searchable()
+                            ->searchable()->preload()
                             ->default(fn () => request()->get('patient_id')),
 
                         Forms\Components\Select::make('bank_account_id')

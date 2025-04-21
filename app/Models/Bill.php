@@ -79,10 +79,6 @@ class Bill extends Model
         parent::boot();
 
         static::creating(function ($bill) {
-            // Generate the bill number
-            if (!$bill->name) {
-                $bill->name = static::generateBillNumber($bill);
-            }
                 $bill->bill_date = now();
                 $bill->due_date = now()->addDays(60);
         });

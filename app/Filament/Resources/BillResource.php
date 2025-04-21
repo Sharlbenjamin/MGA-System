@@ -27,8 +27,10 @@ class BillResource extends Resource
             ->schema([
                 Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\TextInput::make('name')->maxLength(255)->disabled()->dehydrated(),
-                        Forms\Components\Select::make('file_id')->relationship('file', 'name')->required()->searchable()->default(fn () => request()->get('file_id')),
+                        Forms\Components\TextInput::make('name')->maxLength(255),
+                        Forms\Components\Select::make('file_id')->relationship('file', 'mga_reference')->required()->searchable()
+                        ->default(fn () => request()->get('file_id'))
+                        ->preload(),
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')
                             ->options(function () {
