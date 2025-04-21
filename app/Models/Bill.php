@@ -79,6 +79,9 @@ class Bill extends Model
         parent::boot();
 
         static::creating(function ($bill) {
+            if (!$bill->name) {
+                $bill->name = $bill->file->mga_reference . ' - ' . $bill->file->patient->name;
+            }
                 $bill->bill_date = now();
                 $bill->due_date = now()->addDays(60);
                 $bill->total_amount = 0;
