@@ -81,6 +81,9 @@ class Bill extends Model
         static::creating(function ($bill) {
                 $bill->bill_date = now();
                 $bill->due_date = now()->addDays(60);
+                $bill->total_amount = 0;
+                $bill->discount = 0;
+                $bill->paid_amount = 0;
         });
 
         static::updating(function ($bill) {
