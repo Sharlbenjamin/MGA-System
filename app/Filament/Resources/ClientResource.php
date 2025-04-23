@@ -35,7 +35,7 @@ class ClientResource extends Resource
                         'Assistance' => 'Assistance',
                         'Insurance' => 'Insurance',
                         'Agency' => 'Agency',
-                    ])->required(),
+                    ])->required()->default('Assistance'),
                 Select::make('status')
                     ->options([
                         'Searching' => 'Searching',
@@ -47,10 +47,10 @@ class ClientResource extends Resource
                         'Broker' => 'Broker',
                         'No Reply' => 'No Reply',
                     ])
-                    ->required(),
+                    ->required()->default('Searching'),
 
                 TextInput::make('initials')->maxLength(10)->required(),
-                TextInput::make('number_requests')->numeric()->required(),
+                TextInput::make('number_requests')->numeric()->required()->default(0),
                 Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
                 Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
                 Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
@@ -59,7 +59,7 @@ class ClientResource extends Resource
 
     public static function table(Tables\Table $table): Tables\Table
     {
-        return $table
+        return $table->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('company_name')->sortable()->searchable(),
                 TextColumn::make('status')

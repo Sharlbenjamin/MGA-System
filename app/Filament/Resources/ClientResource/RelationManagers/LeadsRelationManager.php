@@ -37,11 +37,11 @@ class LeadsRelationManager extends RelationManager
         return $form
             ->schema([
                 Select::make('status')->options($leadStatuses)->required()->preload()->searchable(),
-                TextInput::make('first_name')->required(),
+                TextInput::make('first_name')->required()->default('Team'),
                 TextInput::make('email')->email()->unique('leads', 'email', ignoreRecord: true)->required(),
                 TextInput::make('phone')->label('Phone')->nullable(),
                 TextInput::make('linked_in')->label('Linked In')->nullable(),
-                Select::make('contact_method')->options($methods)->preload()->searchable(),
+                Select::make('contact_method')->options($methods)->preload()->searchable()->default('Email'),
                 DatePicker::make('last_contact_date')->nullable(),
             ]);
     }
@@ -190,56 +190,56 @@ class LeadsRelationManager extends RelationManager
     public static function sendEmails($records)
     {
         $user = Auth::user();
-        
+
         if (!$user) {
             Log::error("No authenticated user found!");
             return;
         }
-    
+
         // Fetch updated user info from the database
         $user = \App\Models\User::find($user->id);
-    
+
         // Get SMTP credentials (use system default if user’s credentials are missing)
         $smtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
         $smtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
-    
+
         // Ensure SMTP credentials are set correctly
         if (!$smtpUsername || !$smtpPassword) {
             Log::error("SMTP credentials missing for user: {$user->id}");
             return;
         }
-    
+
         // Dynamically set the mail configuration
         Config::set('mail.mailers.smtp.username', $smtpUsername);
         Config::set('mail.mailers.smtp.password', $smtpPassword);
-    
+
         // Convert a single record into a collection for uniform processing
         $records = is_array($records) || $records instanceof \Illuminate\Support\Collection ? $records : collect([$records]);
-    
+
         foreach ($records as $record) {
             $draftMail = DraftMail::where('status', $record->status)->first();
-            
+
             if (!$draftMail) {
                 Log::error("No draft email found for status: {$record->status}");
                 continue;
             }
-    
+
             try {
                 // Send the email
                 Mail::to($record->email)->send(new CustomLeadEmail($record, $draftMail, $user));
-    
+
                 // Update the lead's status and last_contact_date
                 $record->update([
                     'status' => $draftMail->new_status,
                     'last_contact_date' => now()->toDateString(),
                 ]);
-    
+
                 Log::info("Email successfully sent to: {$record->email}");
             } catch (\Exception $e) {
                 Log::error("Email sending failed for {$record->email}: " . $e->getMessage());
             }
         }
-    
+
         // Send a notification only if multiple emails were sent (bulk)
         if ($records->count() > 1) {
             Notification::make()
