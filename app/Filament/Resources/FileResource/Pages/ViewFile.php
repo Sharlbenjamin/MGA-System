@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use App\Filament\Widgets\CommentsWidget;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 
 class ViewFile extends ViewRecord
@@ -105,6 +106,26 @@ class ViewFile extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('notifyClient')
+                ->label('Notify Client')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('warning')
+                ->modalHeading('Notify Client')
+                ->modalWidth('xl')
+                ->form([
+                    Select::make('status')->searchable()
+                        ->options(['New' => 'New',
+                        'Available' => 'Available',
+                        'Confirmed' => 'Confirmed',
+                        'Assisted' => 'Assisted',
+                        'Hold' => 'Hold',
+                        'Cancelled' => 'Cancelled',
+                        'Void' => 'Void',
+                        'Requesting GOP' => 'Requesting GOP',
+                        'Ask' => 'Ask',
+                        ])->required(),
+                ])->modalSubmitActionLabel('Send')
+                ->action(fn (array $data, $record) => $record->patient->client->notifyClient($data['status'], $record)),
             Action::make('viewFinancial')
                 ->label('Invocies & Bills')
                 ->icon('heroicon-o-document-currency-euro')

@@ -122,7 +122,7 @@ class ProviderBranchResource extends Resource
             ->columns([
                 TextColumn::make('branch_name')->label('Branch Name')->sortable()->searchable(),
                 TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
-                TextColumn::make('city.name')->label('City')->sortable()->searchable(),
+                TextColumn::make('cities.name')->label('Cities')->sortable()->searchable(),
                 TextColumn::make('service_types')->label('Service Types')->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state)->sortable(),
                 BadgeColumn::make('status')
                     ->colors([

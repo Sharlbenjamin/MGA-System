@@ -39,17 +39,17 @@ class NotifyClientMailable extends Mailable
         $username = Auth::user()->smtp_username;
 
         $view = match ($this->type) {
-            'file_created' => 'emails.client.file-created-client-mail',
-            'requesting_gop' => 'emails.client.requesting-gop-mail',
+            'New' => 'emails.client.file-created-client-mail',
+            'Requesting GOP' => 'emails.client.requesting-gop-mail',
             //'file_void' => 'emails.client.file-void-mail',
-            'file_cancelled' => 'emails.client.file-cancelled-mail',
-            'file_hold' => 'emails.client.file-hold-client-mail',
-            'file_available' => 'emails.client.available-appointments-mail',
-            'file_assisted' => 'emails.client.client-assisted-mail',
+            'Cancelled' => 'emails.client.file-cancelled-mail',
+            'Hold' => 'emails.client.file-hold-client-mail',
+            'Available' => 'emails.client.available-appointments-mail',
+            'Assisted' => 'emails.client.client-assisted-mail',
             'ask_client' => 'emails.client.ask-client-mail',
             //'appointment_reminder' => 'emails.client.appointment-reminder-mail',
             //'appointment_created' => 'emails.client.new-appointment-client-mail',
-            'appointment_confirmed' => 'emails.client.confirm-appointment-client-mail',
+            'Confirmed' => 'emails.client.confirm-appointment-client-mail',
             //'appointment_cancelled' => 'emails.client.cancel-appointment-client-mail',
             //'appointment_updated' => 'emails.client.update-appointment-client-mail',
         };
@@ -59,7 +59,7 @@ class NotifyClientMailable extends Mailable
         } else {
             $file = $this->data->file;
         }
-        $header = $file->patient->client->company_name. ' Reference '. $file->client_reference. ' File Reference - ' . $file->mga_reference;
+        $header = $file->mga_reference . ' | '. $file->patient->name . ' | '. $file->client_reference;
 
 
         return $this->view($view)

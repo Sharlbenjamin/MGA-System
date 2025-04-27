@@ -147,45 +147,52 @@ class File extends Model
     }
 
     public function availableBranches()
-    {
-        $serviceTypeName = $this->serviceType?->name;
+{
+    $serviceTypeName = $this->serviceType?->name;
 
-        // Get city-filtered branches
-        $cityBranches = \App\Models\ProviderBranch::query()
-            ->when($serviceTypeName, fn ($q) =>
-                $q->where('service_types', 'like', '%' . $serviceTypeName . '%')
-            )
-            ->when($this->service_type_id != 2 && $this->city, function ($q) {
-                $q->where(function($sq) {
-                    $sq->whereHas('branchCities', function ($bc) {
-                        $bc->where('city_id', $this->city_id);
-                    })->orWhere('all_country', true);
-                });
-            })
+    // If service type is 2, ignore country/city filters
+    if ($this->service_type_id == 2) {
+        $allBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
-            ->orderBy('priority', 'asc')
-            ->get();
-
-        // Get province-filtered branches
-        $provinceBranches = \App\Models\ProviderBranch::query()
-            ->when($serviceTypeName, fn ($q) =>
-                $q->where('service_types', 'like', '%' . $serviceTypeName . '%')
-            )
-            ->when($this->service_type_id != 2 && $this->city, function ($q) {
-                $q->where(function($sq) {
-                    $sq->where('province_id', $this->city->province_id)
-                        ->orWhere('all_country', true);
-                });
-            })
-            ->where('status', 'Active')
+            ->where('service_types', 'like', '%' . $serviceTypeName . '%')
             ->orderBy('priority', 'asc')
             ->get();
 
         return [
-            'cityBranches' => $cityBranches,
-            'allBranches' => $provinceBranches->merge($cityBranches)->unique('id')
+            'cityBranches' => $allBranches,
+            'allBranches' => $allBranches,
         ];
     }
+
+    // Filter branches by city (direct or via pivot) or all_country
+    $cityBranches = \App\Models\ProviderBranch::query()
+        ->where('status', 'Active')
+        ->where('service_types', 'like', '%' . $serviceTypeName . '%')
+        ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
+        ->where(function ($q) {
+            $q->where('all_country', true)
+              ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id));
+        })
+        ->orderBy('priority', 'asc')
+        ->get();
+
+    // Filter branches by province or all_country
+    $provinceBranches = \App\Models\ProviderBranch::query()
+        ->where('status', 'Active')
+        ->where('service_types', 'like', '%' . $serviceTypeName . '%')
+        ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
+        ->where(function ($q) {
+            $q->where('all_country', true)
+              ->orWhere('province_id', $this->city?->province_id);
+        })
+        ->orderBy('priority', 'asc')
+        ->get();
+
+    return [
+        'cityBranches' => $cityBranches,
+        'allBranches' => $provinceBranches->merge($cityBranches)->unique('id'),
+    ];
+}
 
     public function requestAppointments($file)
     {
@@ -227,14 +234,6 @@ class File extends Model
         });
 
         static::created(function ($file) {
-            if($file->contact_patient === 'Client'){
-                $file->patient->client->notifyClient('file_created', $file);
-            }elseif($file->contact_patient === 'Ask'){
-                $file->patient->client->notifyClient('ask_client', $file);
-            }else{
-                $file->patient->notifyPatient('file_created', $file);
-                $file->patient->client->notifyClient('file_created', $file);
-            }
             app(GoogleDriveFolderService::class)->generateGoogleDriveFolder($file);
         });
 
@@ -243,19 +242,6 @@ class File extends Model
                 if (!$file->mga_reference) {
                     return;
                 }
-                // if the service type is '2' but make sure it isDirty()
-                //then call googleCalendar
-
-
-                match ($file->status) {
-                    'Assisted' => $file->patient->client->notifyClient('file_assisted', $file),
-                    'Available' => $file->contact_patient === 'Client' ? $file->patient->client->notifyClient('file_available', $file) : $file->patient->notifyPatient('file_available', $file),
-                    'Hold' => $file->patient->client->notifyClient('file_hold', $file),
-                    'Cancelled' => $file->patient->client->notifyClient('file_cancelled', $file),
-                    'Requesting GOP' => $file->patient->client->notifyClient('requesting_gop', $file),
-                    //'Void' => $file->patient->client->notifyClient('file_void', $file),
-                    default => null,
-                };
             }
         });
     }

@@ -10,7 +10,7 @@
     <ul>
     <li><strong>Date:</strong> {{ date('d-m-Y', strtotime($file->service_date)) }}</li>
     <li><strong>Time:</strong> {{ $file->service_time }}</li>
-    <li><strong>Location:</strong> {{ $file->providerBranch->primaryContact('Appointment')->address ?? 'N/A' }}</li>
+    <li><strong>Location:</strong> {{ $file->providerBranch?->primaryContact('Appointment')->address ?? 'N/A' }}</li>
     </ul>
 
     @if($file->gop?->where('type', 'In')->first() && $file->gop?->where('type', 'Out')->first() && $file->gop?->where('type', 'In')->first()->amount < $file->gop?->where('type', 'Out')->first()->amount)

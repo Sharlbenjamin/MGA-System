@@ -31,13 +31,13 @@ class ContactRelationManager extends RelationManager
                 'GOP' => 'GOP',
                 'Appointment' => 'Appointment',
             ]),
-            TextInput::make('title')->label('Title')->nullable(),
+            TextInput::make('title')->label('Name')->nullable(),
             TextInput::make('email')->label('Email')->email()->unique('contacts', 'email', ignoreRecord: true)->nullable(),
             TextInput::make('second_email')->label('Second Email')->email()->nullable(),
             TextInput::make('phone_number')->label('Phone Number')->tel()->prefix('+')->mask('999999999999999')->placeholder('34612345678')->helperText('Enter country code + number without spaces (e.g., 34612345678)')->maxLength(15)->minLength(10)->nullable(),
-        TextInput::make('second_phone')->label('Second Phone')->tel()->prefix('+')->mask('999999999999999')->placeholder('34612345678')->helperText('Enter country code + number without spaces (e.g., 34612345678)')->maxLength(15)->minLength(10)->nullable(),
-            Select::make('country_id')->label('Country')->options(Country::pluck('name', 'id'))->reactive()->nullable(),
-            Select::make('city_id')->label('City')->options(fn ($get) => City::where('country_id', $get('country_id'))->pluck('name', 'id'))->reactive()->nullable(),
+            TextInput::make('second_phone')->label('Second Phone')->tel()->prefix('+')->mask('999999999999999')->placeholder('34612345678')->helperText('Enter country code + number without spaces (e.g., 34612345678)')->maxLength(15)->minLength(10)->nullable(),
+            Select::make('country_id')->label('Country')->options(Country::pluck('name', 'id'))->reactive()->nullable()->searchable(),
+            Select::make('city_id')->label('City')->options(fn ($get) => City::where('country_id', $get('country_id'))->pluck('name', 'id'))->reactive()->nullable()->searchable(),
             Textarea::make('address')->label('Address')->nullable(),
 
             Select::make('preferred_contact')

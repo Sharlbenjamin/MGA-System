@@ -34,7 +34,34 @@ class ProviderBranchRelationManager extends RelationManager
     return $form
         ->schema([
             TextInput::make('branch_name')->label('Branch Name')->required()->maxLength(255),
-            Select::make('city_id')->label('City')->options(fn ($get) => City::where('country_id', Provider::where('id',$this->getOwnerRecord()->id)->value('country_id'))->pluck('name', 'id'))->searchable()->reactive()->required(),
+            Select::make('cities')
+                    ->label('Branch Cities')
+                    ->multiple()
+                    ->options(function (callable $get) {
+                        $providerId = $this->getOwnerRecord()->id;
+                        if (!$providerId) return [];
+
+                        return City::query()
+                            ->whereIn('country_id', function($query) use ($providerId) {
+                                $query->select('country_id')
+                                    ->from('providers')
+                                    ->where('id', $providerId);
+                            })
+                            ->orderBy('name')
+                            ->pluck('name', 'id');
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->relationship('cities', 'name', function (Builder $query, callable $get) {
+                        $providerId = $this->getOwnerRecord()->id;
+                        if ($providerId) {
+                            $query->whereIn('country_id', function($subquery) use ($providerId) {
+                                $subquery->select('country_id')
+                                    ->from('providers')
+                                    ->where('id', $providerId);
+                            });
+                        }
+                    }),
             Select::make('province')->label('Province')->options(fn ($get) => Province::where('country_id', Provider::where('id', $this->getOwnerRecord()->id)->value('country_id'))->pluck('name', 'id'))->searchable()->reactive(),
             Select::make('status')->label('Status')->options(['Active' => 'Active','Hold' => 'Hold',])->required(),
             Select::make('priority')->label('Priority')->options([
@@ -81,7 +108,7 @@ class ProviderBranchRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('Branches')
             ->columns([
-            TextColumn::make('city.name')->label('City')->sortable()->searchable(),
+            TextColumn::make('cities.name')->label('City')->sortable()->searchable(),
             TextColumn::make('service_types')
                 ->label('Service Types')
                 ->badge()
