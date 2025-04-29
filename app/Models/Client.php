@@ -50,7 +50,7 @@ class Client extends Model
 
     public function financialContact()
     {
-        return $this->contacts()->where('name', 'like', '%Financial%')->first();
+        return $this->belongsTo(Contact::class, 'financial_contact_id');
     }
 
     public function patients(): HasMany

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Invoice Draft</title>
+    <title>{{ $invoice->name }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -218,7 +218,7 @@
             <div class="info-section">
                 <h3><span class="bold">Invoice To:</span>
                     @php
-                        $financialContact = $invoice->patient->client->financialContact();
+                        $financialContact = $invoice->patient->client->financialContact;
                         $billTo = $financialContact ? $financialContact->title : $invoice->patient->client->name;
                     @endphp
                     {{ $billTo }}

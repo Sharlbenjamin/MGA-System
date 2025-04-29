@@ -22,6 +22,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Auth;
 
 class InvoiceRelationManager extends RelationManager
 {
@@ -102,10 +103,10 @@ class InvoiceRelationManager extends RelationManager
                             $record->save();
 
                             // Send email
-                            if($record->patient->client->financialContact()->preferred_contact == 'Email'){
-                                Mail::to($record->patient->client->financialContact()->email)->send(new SendInvoice($record));
-                            }elseIf ($record->patient->client->financialContact()->preferred_contact == 'Second Email'){
-                                Mail::to($record->patient->client->financialContact()->second_email)->send(new SendInvoice($record));
+                            if($record->patient->client->financialContact->preferred_contact == 'Email'){
+                                Mail::to($record->patient->client->financialContact->email)->send(new SendInvoice($record, Auth::user()));
+                            }elseIf ($record->patient->client->financialContact->preferred_contact == 'Second Email'){
+                                Mail::to($record->patient->client->financialContact->second_email)->send(new SendInvoice($record, Auth::user()));
                             }else{
                                 Notification::make()->title("No Financial Contact Found")->body("No Financial Contact Found")->danger()->send();
                                 return;
