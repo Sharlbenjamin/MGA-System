@@ -279,7 +279,7 @@
                 <div class="footer-column">
                     <p><span class="bold">Company Name:</span>  Med Guard Assistance</p>
                     <p><span class="bold">Phone:</span>  +34 634 070 722</p>
-                    <p><span class="bold">Email:</span>  mga.operation@medguarda.com</p>
+                    <p><span class="bold">Email:</span>  mga.financial@medguarda.com</p>
                     <p><span class="bold">Website:</span>  <a href="https://medguarda.com">medguarda.com</a></p>
                 </div>
 
