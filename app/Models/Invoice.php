@@ -58,14 +58,14 @@ class Invoice extends Model
                 $invoice->name = static::generateInvoiceNumber($invoice);
             }
                 $invoice->invoice_date = now();
-                $invoice->due_date = now()->addDays(60);
+                $invoice->due_date = now()->addDays(45);
         });
 
         static::updating(function ($invoice) {
             // If status is being changed to sent
             if ($invoice->isDirty('status') && $invoice->status === 'Sent') {
                 $invoice->invoice_date = now();
-                $invoice->due_date = now()->addDays(60);
+                $invoice->due_date = now()->addDays(45);
             }
 
         });

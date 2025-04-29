@@ -49,6 +49,7 @@ class BankAccountResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('type')->searchable(),
                 Tables\Columns\TextColumn::make('owner_name')->label('Owner')->searchable(),
+                Tables\Columns\TextColumn::make('beneficiary_name')->label('Name')->searchable(),
                 Tables\Columns\TextColumn::make('iban')->label('IBAN')->searchable(),
                 Tables\Columns\TextColumn::make('swift')->label('SWIFT')->searchable(),
                 Tables\Columns\TextColumn::make('balance')->money('EUR')->sortable(),
