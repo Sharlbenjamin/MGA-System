@@ -237,7 +237,7 @@
                         </div>
                         <div class="info-details-column">
                             <p><span class="bold">Client Reference:</span> {{ $invoice->file->client_reference }}</p>
-                            <p><span class="bold">Date:</span> {{ $invoice->created_at?->format('d/m/Y') }}</p>
+                            <p><span class="bold">Date:</span> {{ $invoice->invoice_date?->format('d/m/Y') }}</p>
                             <p><span class="bold">Due Date:</span> {{ $invoice->due_date?->format('d/m/Y') }}</p>
                             <p><span class="bold">Country:</span> {{ $invoice->file->country->name }}</p>
                         </div>
