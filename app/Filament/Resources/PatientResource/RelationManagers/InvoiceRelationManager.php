@@ -63,18 +63,6 @@ class InvoiceRelationManager extends RelationManager
                     ]),
                     // due date filter when true fetch invoices with due date before today
             ])->actions([
-                Action::make('Export')
-                    ->color('info')
-                    ->icon('heroicon-o-document-text')
-                    ->action(function (Invoice $record) {
-                        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
-                        $fileName = $record->name . '.pdf';
-                        return response()->streamDownload(
-                            fn () => print($pdf->output()),
-                            $fileName
-                        );
-                    }),
-
                 Action::make('edit')->color('gray')->icon('heroicon-o-pencil')
                     ->url(fn ($record) => InvoiceResource::getUrl('edit', [
                         'record' => $record->id
@@ -135,58 +123,10 @@ class InvoiceRelationManager extends RelationManager
                         }
                     }),
                 // generate pdf onliy appear if the status is Posted
-                Action::make('generate')
-                    ->color('info')
-                    ->icon('heroicon-o-document-text')
-                    ->hidden(fn (Invoice $record) => $record->status !== 'Posted')
-                    ->action(function (Invoice $record) {
-                        try {
-                            // First generate PDF
-                            $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
-                            $content = $pdf->output();
-                            $fileName = $record->name . '.pdf';
-
-                            $uploader = app(UploadInvoiceToGoogleDrive::class);
-                            $result = $uploader->uploadInvoiceToGoogleDrive(
-                                $content,
-                                $fileName,
-                                $record
-                            );
-
-                            if ($result === false) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Upload failed')
-                                    ->body('Check logs for more details')
-                                    ->send();
-                                return;
-                            }
-
-                            // Update invoice with Google Drive link
-                            $record->invoice_google_link = $result['webViewLink'];
-                            $record->save();
-
-                            Notification::make()
-                                ->success()
-                                ->title('Invoice uploaded successfully')
-                                ->send();
-
-                            // Return PDF download response
-                            return response()->streamDownload(
-                                fn () => print($pdf->output()),
-                                $fileName
-                            );
-
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Error occurred')
-                                ->body($e->getMessage())
-                                ->send();
-                            return;
-                        }
-                    })
-                    ->requiresConfirmation()
+                Tables\Actions\Action::make('view')
+                ->icon('heroicon-o-eye')
+                ->url(fn (Invoice $record) => route('invoice.view', $record))
+                ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

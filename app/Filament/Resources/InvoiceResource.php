@@ -103,6 +103,7 @@ class InvoiceResource extends Resource
                 // Client name
                 Tables\Columns\TextColumn::make('patient.client.company_name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('patient.name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('invoice_date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
 
                 Tables\Columns\BadgeColumn::make('status')
@@ -150,10 +151,10 @@ class InvoiceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('download')
-                    ->icon('heroicon-o-pencil')
-                    ->url(fn (Invoice $record) => $record->draft_path)
-                    ->openUrlInNewTab(),
+                Tables\Actions\Action::make('view')
+                ->icon('heroicon-o-eye')
+                ->url(fn (Invoice $record) => route('invoice.view', $record))
+                ->openUrlInNewTab(),
             ])->headerActions([Tables\Actions\CreateAction::make()])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

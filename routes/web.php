@@ -8,10 +8,12 @@ use Filament\Http\Middleware\Authenticate as FilamentAuthenticate;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use App\Http\Middleware\PasswordProtect;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\GopController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PrescriptionController;
 use Google\Client as Google_Client;
 use Google\Service\Calendar;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\GopController;
 
 // ✅ Step 1: Check for site password unless already logged in
 Route::get('/', function () {
@@ -93,3 +95,5 @@ Route::get('/google/callback', function (Request $request) {
 // Route::post('/api/create-meet', ...);
 
 Route::get('/gop/{gop}', [GopController::class, 'view'])->name('gop.view');
+Route::get('/invoice/{invoice}', [InvoiceController::class, 'view'])->name('invoice.view');
+Route::get('/prescription/{prescription}', [PrescriptionController::class, 'view'])->name('prescription.view');
