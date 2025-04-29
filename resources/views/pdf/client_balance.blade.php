@@ -143,8 +143,8 @@
 
     <p><span class="bold">Invoice To:</span>
         @php
-            $financialContact = $client->financialContact();
-            $billTo = $financialContact ? $financialContact->title : $client->name;
+            $financialContact = $client->financialContact;
+            $billTo = $financialContact ? $financialContact->title : $client->company_name;
         @endphp
         {{ $billTo }}
     </p>
