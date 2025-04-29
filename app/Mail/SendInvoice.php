@@ -5,14 +5,13 @@ namespace App\Mail;
 use App\Models\Invoice;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Attachment;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Mail\Mailables\Address;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class SendInvoice extends Mailable
 {
@@ -34,50 +33,44 @@ class SendInvoice extends Mailable
 
     public function build()
     {
-        // Use user SMTP credentials if available, otherwise use system default
-        Config::set('mail.mailers.smtp.username', $this->user->smtp_username ?? Config::get('mail.mailers.smtp.username'));
-        Config::set('mail.mailers.smtp.password', $this->user->smtp_password ?? Config::get('mail.mailers.smtp.password'));
+        // Fetch updated user info from the database
+        $user = \App\Models\User::find($this->user->id);
+
+        // Get SMTP credentials (use system default if user's credentials are missing)
+        $smtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
+        $smtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
+
+        // Ensure SMTP credentials are set correctly
+        if (!$smtpUsername || !$smtpPassword) {
+            Log::error("SMTP credentials missing for user: {$user->id}");
+            return;
+        }
+
+        // Dynamically set the mail configuration
+        Config::set('mail.mailers.smtp.username', $smtpUsername);
+        Config::set('mail.mailers.smtp.password', $smtpPassword);
+
+        // Generate PDF
+        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $this->invoice]);
+        $pdfContent = $pdf->output();
+
+        // Log final email details
+        Log::info('SendInvoice - Final email details', [
+            'from' => $user->email,
+            'from_name' => $user->name,
+            'subject' => '# Invoice' . $this->invoice->name,
+            'view' => 'emails.financial.send-invoice',
+            'attachment' => $this->invoice->name . '.pdf',
+            'current_mail_config' => Config::get('mail')
+        ]);
 
         return $this->view('emails.financial.send-invoice')
-                   ->from($this->user->smtp_username, $this->user->name)
-                   ->subject('# Invoice' . $this->invoice->name);
-    }
-
-    /**
-     * Get the message envelope.
-     */
-    public function envelope(): Envelope
-    {
-        return new Envelope(
-            from: new Address($this->user->smtp_username, $this->user->name),
-            subject: '# Invoice' . $this->invoice->name,
-        );
-    }
-
-    /**
-     * Get the message content definition.
-     */
-    public function content(): Content
-    {
-        return new Content(
-            view: 'emails.financial.send-invoice',
-        );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $this->invoice]);
-
-        return [
-            Attachment::fromData(
-                fn () => $pdf->output(),
-                $this->invoice->name . '.pdf'
-            )->withMime('application/pdf'),
-        ];
+                   ->from($user->email, $user->name)
+                   ->subject('Invoice #' . $this->invoice->name)
+                   ->attachData(
+                       $pdfContent,
+                       $this->invoice->name . '.pdf',
+                       ['mime' => 'application/pdf']
+                   );
     }
 }

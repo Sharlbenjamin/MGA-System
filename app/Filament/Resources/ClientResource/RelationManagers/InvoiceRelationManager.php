@@ -23,6 +23,8 @@ use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceRelationManager extends RelationManager
 {
@@ -102,11 +104,35 @@ class InvoiceRelationManager extends RelationManager
                             $record->status = 'Sent';
                             $record->save();
 
+                            // Get the authenticated user
+                            $user = Auth::user();
+                            if (!$user) {
+                                Log::error("No authenticated user found!");
+                                return;
+                            }
+
+                            // Fetch updated user info from the database
+                            $user = \App\Models\User::find($user->id);
+
+                            // Get SMTP credentials (use system default if user's credentials are missing)
+                            $smtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
+                            $smtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
+
+                            // Ensure SMTP credentials are set correctly
+                            if (!$smtpUsername || !$smtpPassword) {
+                                Log::error("SMTP credentials missing for user: {$user->id}");
+                                return;
+                            }
+
+                            // Dynamically set the mail configuration
+                            Config::set('mail.mailers.smtp.username', $smtpUsername);
+                            Config::set('mail.mailers.smtp.password', $smtpPassword);
+
                             // Send email
                             if($record->patient->client->financialContact->preferred_contact == 'Email'){
-                                Mail::to($record->patient->client->financialContact->email)->send(new SendInvoice($record, Auth::user()));
+                                Mail::to($record->patient->client->financialContact->email)->send(new SendInvoice($record, $user));
                             }elseIf ($record->patient->client->financialContact->preferred_contact == 'Second Email'){
-                                Mail::to($record->patient->client->financialContact->second_email)->send(new SendInvoice($record, Auth::user()));
+                                Mail::to($record->patient->client->financialContact->second_email)->send(new SendInvoice($record, $user));
                             }else{
                                 Notification::make()->title("No Financial Contact Found")->body("No Financial Contact Found")->danger()->send();
                                 return;
