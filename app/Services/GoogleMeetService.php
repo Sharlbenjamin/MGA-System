@@ -10,18 +10,13 @@ use Google\Service\Calendar\CreateConferenceRequest;
 use Google\Service\Calendar\ConferenceSolutionKey;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MeetingLinkCreated;
-use Filament\Notifications\Notification;
+use App\Models\Contact;
 
 class GoogleMeetService
 {
     public function generateMeetLink(File $file)
     {
         if (!$file->service_date || !$file->service_time) {
-            Notification::make()
-                ->warning()
-                ->title('Missing Information')
-                ->body('Service date and time are required.')
-                ->send();
             return null;
         }
 
@@ -68,14 +63,28 @@ class GoogleMeetService
             );
 
             if (!$createdEvent->getHangoutLink()) {
-                Notification::make()->danger()->title('Meet Link Generation Failed')->body('Failed to generate Google Meet link.')->send();
                 return null;
             }
 
             return $createdEvent->getHangoutLink();
         } catch (\Exception $e) {
-            Notification::make()->danger()->title('Calendar Event Creation Failed')->body($e->getMessage())->send();
             return null;
+        }
+    }
+
+    private function getPreferredEmail(Contact $contact): ?string
+    {
+        if (!$contact) {
+            return null;
+        }
+
+        switch ($contact->preferred_contact) {
+            case 'First Email':
+                return $contact->email;
+            case 'Second Email':
+                return $contact->second_email;
+            default:
+                return $contact->email ?? $contact->second_email;
         }
     }
 
@@ -84,31 +93,44 @@ class GoogleMeetService
         $recipients = collect();
         $hasOperationContacts = false;
 
-        // Check provider primary contact
-        if (!$file->providerBranch) {
-            Notification::make()->warning()->title('Provider Not Found')->body('No provider found for this file.')->send();
-        } else {
-            $providerOperationContact = $file->providerBranch->primaryContact('Appointment');
+        // Get provider operation contact
+        if ($file->providerBranch && $file->providerBranch->provider) {
+            $providerOperationContact = $file->providerBranch->provider->operationContact;
             if ($providerOperationContact) {
-                $recipients->push($providerOperationContact->email);
-                $hasOperationContacts = true;
+                $email = $this->getPreferredEmail($providerOperationContact);
+                if ($email) {
+                    $recipients->push($email);
+                    $hasOperationContacts = true;
+                }
             }
         }
 
-        // Check branch primary contact
-        if (!$file->providerBranch) {
-            Notification::make()->warning()->title('Provider Branch Not Found')->body('No provider branch found for this file.')->send();
-        } else {
-            $branchOperationContact = $file->providerBranch->primaryContact('Appointment');
+        // Get branch operation contact
+        if ($file->providerBranch) {
+            $branchOperationContact = $file->providerBranch->operationContact;
             if ($branchOperationContact) {
-                $recipients->push($branchOperationContact->email);
-                $hasOperationContacts = true;
+                $email = $this->getPreferredEmail($branchOperationContact);
+                if ($email) {
+                    $recipients->push($email);
+                    $hasOperationContacts = true;
+                }
             }
         }
 
-        // If no operation contacts found, notify and use default
+        // Get patient operation contact
+        if ($file->patient) {
+            $patientOperationContact = $file->patient->operationContact;
+            if ($patientOperationContact) {
+                $email = $this->getPreferredEmail($patientOperationContact);
+                if ($email) {
+                    $recipients->push($email);
+                    $hasOperationContacts = true;
+                }
+            }
+        }
+
+        // If no operation contacts found, use default
         if (!$hasOperationContacts) {
-            Notification::make()->warning()->title('No primary operation contacts found')->body('Meeting link will be sent to MGA operations.')->send();
             $recipients->push('mga.operation@medguarda.com');
         }
 
@@ -121,11 +143,9 @@ class GoogleMeetService
                     ->cc($recipients->slice(1)->all())
                     ->send(new MeetingLinkCreated($file, $meetLink));
             } catch (\Exception $e) {
-                Notification::make()->danger()->title('Email Sending Failed')->body('Failed to send meeting link notifications.')->send();
-                //Notification::make()->danger()->title('Email Sending Failed')->body($e->getMessage())->send();
+                // Silent fail on email sending
             }
-        } else {
-            Notification::make()->danger()->title('No Recipients')->body('No recipients found for meeting link notification.')->send();
         }
     }
 }
+
