@@ -4,20 +4,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Mailer
-    |--------------------------------------------------------------------------
-    |
-    | This option controls the default mailer that is used to send all email
-    | messages unless another mailer is explicitly specified when sending
-    | the message. All additional mailers can be configured within the
-    | "mailers" array. Examples of each type of mailer are provided.
-    |
-    */
-
-    'default' => env('MAIL_MAILER', 'log'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------
     |
@@ -47,6 +33,21 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
+        'financial' => [
+            'transport' => 'smtp',
+            'host' => env('FINANCIAL_MAIL_HOST', 'smtp.gmail.com'),
+            'port' => env('FINANCIAL_MAIL_PORT', 587),
+            'username' => env('FINANCIAL_MAIL_USERNAME'),
+            'password' => env('FINANCIAL_MAIL_PASSWORD'),
+            'encryption' => env('FINANCIAL_MAIL_ENCRYPTION', 'tls'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            'from' => [
+                'address' => env('FINANCIAL_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+                'name' => env('FINANCIAL_MAIL_FROM_NAME', env('MAIL_FROM_NAME', 'Example')),
+            ],
         ],
 
         'ses' => [

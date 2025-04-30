@@ -33,40 +33,12 @@ class SendInvoice extends Mailable
 
     public function build()
     {
-        // Fetch updated user info from the database
-        $user = \App\Models\User::find($this->user->id);
-
-        // Get SMTP credentials (use system default if user's credentials are missing)
-        $smtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
-        $smtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
-
-        // Ensure SMTP credentials are set correctly
-        if (!$smtpUsername || !$smtpPassword) {
-            Log::error("SMTP credentials missing for user: {$user->id}");
-            return;
-        }
-
-        // Dynamically set the mail configuration
-        Config::set('mail.mailers.smtp.username', $smtpUsername);
-        Config::set('mail.mailers.smtp.password', $smtpPassword);
-
         // Generate PDF
         $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $this->invoice]);
         $pdfContent = $pdf->output();
 
-        // Log final email details
-        Log::info('SendInvoice - Final email details', [
-            'from' => $user->email,
-            'from_name' => $user->name,
-            'subject' => '# Invoice' . $this->invoice->name,
-            'view' => 'emails.financial.send-invoice',
-            'attachment' => $this->invoice->name . '.pdf',
-            'current_mail_config' => Config::get('mail')
-        ]);
-
         return $this->view('emails.financial.send-invoice')
-                   ->from($user->email, $user->name)
-                   ->subject('Invoice #' . $this->invoice->name)
+                   ->subject('Invoice ' . $this->invoice->name . 'from MedGuard')
                    ->attachData(
                        $pdfContent,
                        $this->invoice->name . '.pdf',
