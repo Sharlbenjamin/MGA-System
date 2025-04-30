@@ -13,6 +13,7 @@ use Filament\Tables\Actions\ViewAction;
 use Illuminate\Support\Facades\Mail;
 use App\Filament\Resources\FileResource;
 use App\Filament\Resources\FileResource\Pages;
+use App\Mail\SendBalance;
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Invoice;
@@ -22,6 +23,8 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
@@ -134,6 +137,42 @@ class InvoiceRelationManager extends RelationManager
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
+                BulkAction::make('SendBalanceUpdate')
+                    ->label('Send Balance Update')
+                    ->color('success')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->modalHeading('Send Balance Update')
+                    ->modalSubmitActionLabel('Send')
+                    ->form([
+                        TextInput::make('msg')
+                            ->label('Message')
+                            ->placeholder('Enter message')
+                            ->required()
+                    ])
+                    ->action(function ($data) {
+                        // selected invoices
+                        $invoices = $this->getSelectedTableRecords();
+                        // Fetch updated user info from the database
+                        $user = \App\Models\User::find(Auth::user()->id);
+                        // Set mailer based on user's role and SMTP credentials
+                        $mailer = 'financial';
+                        $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
+
+                        if($user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
+                            Config::set('mail.mailers.financial.username', $user->smtp_username);
+                            Config::set('mail.mailers.financial.password', $user->smtp_password);
+                        }
+                         // Send email
+                         if($invoices->first()->patient->client->financialContact->preferred_contact == 'Email'){
+                             Mail::mailer($mailer)->to($invoices->first()->patient->client->financialContact->email)->send(new SendBalance('Balance', $invoices, $data['msg']));
+                         }elseIf ($invoices->first()->patient->client->financialContact->preferred_contact == 'Second Email'){
+                             Mail::mailer($mailer)->to($invoices->first()->patient->client->financialContact->second_email)->send(new SendBalance('Balance', $invoices, $data['msg']));
+                         }else{
+                             Notification::make()->title("No Financial Contact Found")->body("No Financial Contact Found")->danger()->send();
+                             return;
+                         }
+                         Notification::make()->success()->title('Invoice generated and sent successfully')->send();
+                    })
             ])->headerActions([
                 Action::make('createInvoice')
                     ->openUrlInNewTab(false)
