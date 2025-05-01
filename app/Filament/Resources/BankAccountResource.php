@@ -2,7 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BankDetailResource\Pages;
+use App\Filament\Resources\BankAccountResource\RelationManagers\TransactionRelationManager;
+use App\Filament\Resources\BankAccountResource\Pages;
 use App\Models\BankAccount;
 use App\Models\Client;
 use App\Models\Country;
@@ -53,8 +54,6 @@ class BankAccountResource extends Resource
                 Tables\Columns\TextColumn::make('iban')->label('IBAN')->searchable(),
                 Tables\Columns\TextColumn::make('swift')->label('SWIFT')->searchable(),
                 Tables\Columns\TextColumn::make('balance')->money('EUR')->sortable(),
-                //Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
-                //Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('country')->relationship('country', 'name'),
@@ -74,7 +73,7 @@ class BankAccountResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //RelationManagers\TransactionsRelationManager::class,
+            TransactionRelationManager::class,
             //RelationManagers\InvoicesRelationManager::class,
             //RelationManagers\BillsRelationManager::class,
         ];

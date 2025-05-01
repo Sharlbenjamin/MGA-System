@@ -42,6 +42,7 @@ class BankAccount extends Model
         return $relation ? ($this->$relation?->name ?? '') : '';
     }
 
+    // Relations   Relations    Relations    Relations    Relations    Relations   Relations  Relations
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
@@ -110,5 +111,22 @@ class BankAccount extends Model
         ];
 
         return $idField !== ($typeToId[$type] ?? null);
+    }
+
+    // Calculations   Calculations    Calculations    Calculations    Calculations    Calculations   Calculations  Calculations
+
+    public static function boot()
+    {
+        parent::boot();
+        static::updating(function ($model) {
+            $model->calculateBalance();
+        });
+    }
+    public function calculateBalance()
+    {
+        $totalIncome = $this->transactions()->where('type', 'Income')->sum('amount');
+        $totalOutflow = $this->transactions()->whereIn('type', ['Outflow', 'Expense'])->sum('amount');
+        $this->balance = $totalIncome - $totalOutflow;
+        $this->saveQuietly();
     }
 }

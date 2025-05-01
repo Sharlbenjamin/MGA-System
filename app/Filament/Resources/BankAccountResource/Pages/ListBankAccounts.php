@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Filament\Resources\BankDetailResource\Pages;
+namespace App\Filament\Resources\BankAccountResource\Pages;
 
 use App\Filament\Resources\BankAccountResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\ListRecords;
 
-class EditBankAccount extends EditRecord
+class ListBankAccounts extends ListRecords
 {
     protected static string $resource = BankAccountResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\CreateAction::make(),
         ];
     }
 }

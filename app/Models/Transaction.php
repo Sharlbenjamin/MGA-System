@@ -38,6 +38,15 @@ class Transaction extends Model
         parent::boot();
 
 
+        static::updated(function ($transaction) {
+            $transaction->bankAccount->calculateBalance();
+        });
+
+        static::created(function ($transaction) {
+            $transaction->bankAccount->calculateBalance();
+        });
+
+
         static::deleting(function ($transaction) {
             // un pay all the invoices or bills related to this transaction
             if ($transaction->related_type === 'Invoice') {

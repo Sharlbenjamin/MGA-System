@@ -111,9 +111,7 @@ class TransactionResource extends Resource
                         $record->attachBills($state);
                     }
                 }),
-
-            ])
-            ;
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -121,7 +119,7 @@ class TransactionResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable(),
-                Tables\Columns\TextColumn::make('bankAccount.id')->numeric()->sortable(),
+                Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')->sortable(),
                 Tables\Columns\TextColumn::make('related_type')->searchable(),
                 Tables\Columns\TextColumn::make('related_id')->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('amount')->numeric()->sortable(),
@@ -129,9 +127,7 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('attachment_path')->searchable(),
                 Tables\Columns\TextColumn::make('bank_charges')->money()->sortable(),
-                Tables\Columns\IconColumn::make('charges_covered_by_client')->boolean()->sortable(),
-                Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable(),
+                Tables\Columns\IconColumn::make('charges_covered_by_client')->label('Covered')->boolean()->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense']),
