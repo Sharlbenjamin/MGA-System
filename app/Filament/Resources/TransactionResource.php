@@ -123,14 +123,7 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')->sortable(),
                 Tables\Columns\TextColumn::make('related_type')->searchable(),
                 Tables\Columns\TextColumn::make('related_id')->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('amount')
-                ->numeric()
-                ->sortable()
-                ->summarize([
-                    Tables\Columns\Summarizers\Sum::make()
-                    ->money('EUR')
-                    ->label('Monthly Total')
-                ]),
+                Tables\Columns\TextColumn::make('amount'),
                 Tables\Columns\TextColumn::make('type')->searchable()
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
@@ -140,6 +133,7 @@ class TransactionResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
+                Tables\Filters\SelectFilter::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->multiple()->preload(),
             ])
             ->groups([
                 Tables\Grouping\Group::make('date')
@@ -149,7 +143,6 @@ class TransactionResource extends Resource
                     ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y'))
                     ->orderQueryUsing(fn (Builder $query, string $direction) => $query->orderBy('date', 'desc')),
             ])
-            ->defaultGroup('date')
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])

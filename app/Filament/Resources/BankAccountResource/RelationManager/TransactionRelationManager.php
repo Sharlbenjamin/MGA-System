@@ -30,14 +30,7 @@ class TransactionRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')->sortable(),
                 Tables\Columns\TextColumn::make('related_type')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('related_id')->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('amount')->numeric()->sortable()
-                ->numeric()
-                ->sortable()
-                ->summarize([
-                    Tables\Columns\Summarizers\Sum::make()
-                        ->money('EUR')
-                        ->label('Monthly Total')
-                ]),
+                Tables\Columns\TextColumn::make('amount'),
                 Tables\Columns\TextColumn::make('type')->searchable()->sortable()
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
