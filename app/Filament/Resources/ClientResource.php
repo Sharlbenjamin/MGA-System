@@ -13,10 +13,10 @@ use Filament\Tables;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Navigation\NavigationItem;
 use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
 use Filament\Tables\Filters\SelectFilter;
 use App\Models\Contact;
+
 class ClientResource extends Resource
 {
     protected static ?string $model = Client::class;
@@ -106,14 +106,14 @@ class ClientResource extends Resource
     }
 
     public static function getRelations(): array
-{
-    return [
-        LeadsRelationManager::class,
-        ContactRelationManager::class,
-        BankAccountRelationManager::class,
-        InvoiceRelationManager::class,
-    ];
-}
+    {
+        return [
+            LeadsRelationManager::class,
+            ContactRelationManager::class,
+            BankAccountRelationManager::class,
+            InvoiceRelationManager::class,
+        ];
+    }
 
     public static function getPages(): array
     {
@@ -124,5 +124,4 @@ class ClientResource extends Resource
             'overview' => Pages\ClientOverview::route('/{record}'),
         ];
     }
-
 }

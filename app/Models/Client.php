@@ -194,4 +194,14 @@ class Client extends Model
         return $this->transactions()->latest()->first()?->amount;
     }
 
+
+    public function getLeadsCountAttribute()
+    {
+        return $this->leads()->count();
+    }
+
+    public function getLeadsLastContactDateAttribute()
+    {
+        return $this->leads()->latest()->first()?->last_contact_date;
+    }
 }

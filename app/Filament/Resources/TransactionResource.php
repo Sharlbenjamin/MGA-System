@@ -117,21 +117,39 @@ class TransactionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable(),
                 Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')->sortable(),
                 Tables\Columns\TextColumn::make('related_type')->searchable(),
                 Tables\Columns\TextColumn::make('related_id')->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('amount')->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('type')->searchable(),
+                Tables\Columns\TextColumn::make('amount')
+                ->numeric()
+                ->sortable()
+                ->summarize([
+                    Tables\Columns\Summarizers\Sum::make()
+                    ->money('EUR')
+                    ->label('Monthly Total')
+                ]),
+                Tables\Columns\TextColumn::make('type')->searchable()
+                ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('attachment_path')->searchable(),
                 Tables\Columns\TextColumn::make('bank_charges')->money()->sortable(),
                 Tables\Columns\IconColumn::make('charges_covered_by_client')->label('Covered')->boolean()->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense']),
+                Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
             ])
+            ->groups([
+                Tables\Grouping\Group::make('date')
+                    ->label('Month')
+                    ->date()
+                    ->collapsible()
+                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y'))
+                    ->orderQueryUsing(fn (Builder $query, string $direction) => $query->orderBy('date', 'desc')),
+            ])
+            ->defaultGroup('date')
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])

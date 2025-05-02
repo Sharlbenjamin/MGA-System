@@ -40,7 +40,7 @@ class BankAccountResource extends Resource
                 Forms\Components\TextInput::make('swift')->label('SWIFT')->maxLength(255),
                 Forms\Components\TextInput::make('bank_name')->maxLength(255),
                 Forms\Components\Textarea::make('beneficiary_address')->maxLength(65535)->columnSpanFull(),
-                Forms\Components\TextInput::make('balance')->numeric()->prefix('€')->default(0),
+                Forms\Components\TextInput::make('balance')->prefix('€')->default(0),
             ]);
     }
 
@@ -74,8 +74,6 @@ class BankAccountResource extends Resource
     {
         return [
             TransactionRelationManager::class,
-            //RelationManagers\InvoicesRelationManager::class,
-            //RelationManagers\BillsRelationManager::class,
         ];
     }
 
