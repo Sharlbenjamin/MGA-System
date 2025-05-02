@@ -33,7 +33,7 @@ class SendInvoice extends Mailable
         $pdfContent = $pdf->output();
 
         return $this->view('emails.financial.send-invoice')
-                   ->subject('Invoice ' . $this->invoice->name . 'from MedGuard')
+                   ->subject('MedGuard Invoice ' . $this->invoice->name)
                    ->attachData(
                        $pdfContent,
                        $this->invoice->name . '.pdf',

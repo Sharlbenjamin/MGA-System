@@ -76,9 +76,22 @@ class InvoiceRelationManager extends RelationManager
                         'record' => $record->id
                     ])),
                 Action::make('send')
+                    ->form([
+                        Forms\Components\Select::make('email_type')->options([
+                            'Financial Email' => 'Financial Email',
+                            'Custom' => 'Custom',
+                        ])->default('Financial Email')->live()
+                        ->required(),
+                        Forms\Components\TextInput::make('email_to')
+                            ->label('Send To')->email()
+                            ->visible(fn ($get) => $get('email_type') == 'Custom')
+                            ->required()
+                    ])
+                    ->modalHeading('Send Invoice')
+                    ->modalSubmitActionLabel('Send')
                     ->color('success')
                     ->icon('heroicon-o-paper-airplane')
-                    ->action(function (Invoice $record) {
+                    ->action(function (Invoice $record, array $data) {
                             // First generate PDF
                             $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
                             $content = $pdf->output();
@@ -119,6 +132,7 @@ class InvoiceRelationManager extends RelationManager
                             }
 
                             // Send email
+                        if($data['email_type'] == 'Financial Email'){
                             if($record->patient->client->financialContact->preferred_contact == 'Email'){
                                 Mail::mailer($mailer)->to($record->patient->client->financialContact->email)->send(new SendInvoice($record, $user));
                             }elseIf ($record->patient->client->financialContact->preferred_contact == 'Second Email'){
@@ -127,6 +141,9 @@ class InvoiceRelationManager extends RelationManager
                                 Notification::make()->title("No Financial Contact Found")->body("No Financial Contact Found")->danger()->send();
                                 return;
                             }
+                        }else{
+                            Mail::mailer($mailer)->to($data['email_to'])->send(new SendInvoice($record, $user));
+                        }
                             Notification::make()->success()->title('Invoice generated and sent successfully')->send();
 
                     }),
@@ -147,6 +164,15 @@ class InvoiceRelationManager extends RelationManager
                         TextInput::make('msg')
                             ->label('Message')
                             ->placeholder('Enter message')
+                            ->required(),
+                        Forms\Components\Select::make('email_type')->options([
+                            'Financial Email' => 'Financial Email',
+                            'Custom' => 'Custom',
+                        ])->default('Financial Email')->live()
+                        ->required(),
+                        Forms\Components\TextInput::make('email_to')
+                            ->label('Send To')->email()
+                            ->visible(fn ($get) => $get('email_type') == 'Custom')
                             ->required()
                     ])
                     ->action(function ($data) {
@@ -163,14 +189,18 @@ class InvoiceRelationManager extends RelationManager
                             Config::set('mail.mailers.financial.password', $user->smtp_password);
                         }
                          // Send email
-                         if($invoices->first()->patient->client->financialContact->preferred_contact == 'Email'){
-                             Mail::mailer($mailer)->to($invoices->first()->patient->client->financialContact->email)->send(new SendBalance('Balance', $invoices, $data['msg']));
-                         }elseIf ($invoices->first()->patient->client->financialContact->preferred_contact == 'Second Email'){
-                             Mail::mailer($mailer)->to($invoices->first()->patient->client->financialContact->second_email)->send(new SendBalance('Balance', $invoices, $data['msg']));
-                         }else{
-                             Notification::make()->title("No Financial Contact Found")->body("No Financial Contact Found")->danger()->send();
-                             return;
-                         }
+                        if($data['email_type'] == 'Financial Email'){
+                            if($invoices->first()->patient->client->financialContact->preferred_contact == 'Email'){
+                                Mail::mailer($mailer)->to($invoices->first()->patient->client->financialContact->email)->send(new SendBalance('Balance', $invoices, $data['msg']));
+                            }elseIf ($invoices->first()->patient->client->financialContact->preferred_contact == 'Second Email'){
+                                Mail::mailer($mailer)->to($invoices->first()->patient->client->financialContact->second_email)->send(new SendBalance('Balance', $invoices, $data['msg']));
+                            }else{
+                                Notification::make()->title("No Financial Contact Found")->body("No Financial Contact Found")->danger()->send();
+                                return;
+                            }
+                        }else{
+                            Mail::mailer($mailer)->to($data['email_to'])->send(new SendBalance('Balance', $invoices, $data['msg']));
+                        }
                          Notification::make()->success()->title('Invoice generated and sent successfully')->send();
                     })
             ])->headerActions([
