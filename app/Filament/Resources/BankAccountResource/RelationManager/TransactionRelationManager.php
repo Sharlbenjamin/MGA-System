@@ -20,8 +20,6 @@ class TransactionRelationManager extends RelationManager
 {
     protected static string $relationship = 'transactions';
 
-
-
     public function table(Table $table): Table
     {
         return $table
@@ -30,7 +28,7 @@ class TransactionRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')->sortable(),
                 Tables\Columns\TextColumn::make('related_type')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('related_id')->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('amount'),
+                Tables\Columns\TextColumn::make('amount')->money('EUR')->sortable(),
                 Tables\Columns\TextColumn::make('type')->searchable()->sortable()
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
@@ -43,8 +41,8 @@ class TransactionRelationManager extends RelationManager
                     ->label('Month')
                     ->date()
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y'))
-                    ->orderQueryUsing(fn (Builder $query, string $direction) => $query->orderBy('date', 'desc')),
+                    ->getTitleFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y'))
+                    ->getDescriptionFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y') . ' Balance: ' . $record->bankAccount->monthlyBalance($record->date)),
             ])
             ->defaultGroup('date')
             ->filters([

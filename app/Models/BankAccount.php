@@ -129,4 +129,23 @@ class BankAccount extends Model
         $this->balance = $totalIncome - $totalOutflow;
         $this->saveQuietly();
     }
+
+    public function monthlyBalance($month)
+    {
+        // Ensure $month is a Carbon instance
+        if (is_string($month)) {
+            $month = \Carbon\Carbon::parse($month);
+        }
+
+        $transactions = $this->transactions()
+            ->whereDate('date', '>=', $month->startOfMonth())
+            ->whereDate('date', '<=', $month->endOfMonth())
+            ->get();
+
+        $totalIncome = $transactions->where('type', 'Income')->sum('amount');
+        $totalOutflow = $transactions->where('type', 'Outflow')->sum('amount');
+        $totalExpenses = $transactions->where('type', 'Expense')->sum('amount');
+        $balance = $totalIncome - $totalOutflow - $totalExpenses;
+        return number_format($balance, 2, '.', ',') . '€';
+    }
 }

@@ -140,8 +140,7 @@ class TransactionResource extends Resource
                     ->label('Month')
                     ->date()
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y'))
-                    ->orderQueryUsing(fn (Builder $query, string $direction) => $query->orderBy('date', 'desc')),
+                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y')),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
