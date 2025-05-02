@@ -140,7 +140,9 @@ class TransactionResource extends Resource
                     ->label('Month')
                     ->date()
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y')),
+                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y'))
+                    ->getDescriptionFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y') . ' Balance: ' . $record->bankAccount->monthlyBalance($record->date)),
+
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

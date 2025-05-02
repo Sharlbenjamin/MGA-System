@@ -138,7 +138,6 @@ class BankAccount extends Model
         }
 
         $transactions = $this->transactions()
-            ->whereDate('date', '>=', $month->startOfMonth())
             ->whereDate('date', '<=', $month->endOfMonth())
             ->get();
 
