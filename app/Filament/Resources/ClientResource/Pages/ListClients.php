@@ -8,6 +8,9 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Livewire\Attributes\Reactive;
 
 class ListClients extends ListRecords
@@ -47,19 +50,14 @@ class ListClients extends ListRecords
                         ->whereNot('status', 'Active')
                 )
                 ->columns([
-                    TextColumn::make('company_name')
-                        ->searchable()
-                        ->sortable()
-                        ->label('Company Name'),
-                    TextColumn::make('type')
-                        ->badge()
+                    TextColumn::make('company_name')->searchable()->sortable()->label('Client Name')->sortable(),
+                    TextColumn::make('type')->badge()->sortable()
                         ->color(fn (string $state): string => match ($state) {
                             'Assistance' => 'success',
                             'Insurance' => 'warning',
                             'Agency' => 'info',
                         }),
-                    TextColumn::make('status')
-                        ->badge()
+                    TextColumn::make('status')->badge()->sortable()
                         ->color(fn (string $state): string => match ($state) {
                             'Searching' => 'danger',
                             'Interested' => 'warning',
@@ -69,11 +67,19 @@ class ListClients extends ListRecords
                             'Broker' => 'success',
                             'No Reply' => 'danger',
                         }),
-                    TextColumn::make('leadsCount')
-                        ->label('Leads'),
-                    TextColumn::make('leadsLastContactDate')
-                        ->label('Last Contact')
-                        ->date('d-m-Y'),
+                    TextColumn::make('leadsCount')->label('Leads')->sortable(),
+                    TextColumn::make('leadsLastContactDate')->label('Last Contact')->date('d-m-Y')->sortable(),
+                ])->filters([
+                    SelectFilter::make('status')->options([
+                        'Searching' => 'Searching',
+                        'Interested' => 'Interested',
+                        'Sent' => 'Sent',
+                        'Rejected' => 'Rejected',
+                        'On Hold' => 'On Hold',
+                        'Broker' => 'Broker',
+                        'No Reply' => 'No Reply',
+                    ])->multiple(),
+
                 ])
                 ->defaultSort('company_name', 'asc');
         }
