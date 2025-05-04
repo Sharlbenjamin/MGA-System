@@ -98,6 +98,7 @@ class InvoiceResource extends Resource
             Group::make('patient.client.company_name')->collapsible(),
             Group::make('patient.name')->collapsible(),
              ])
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 // Client name

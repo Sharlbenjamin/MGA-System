@@ -4,7 +4,6 @@ namespace App\Filament\Widgets;
 
 use App\Models\File;
 use Filament\Widgets\ChartWidget;
-use App\Models\ServiceType;
 
 class FilesPerServiceType extends ChartWidget
 {

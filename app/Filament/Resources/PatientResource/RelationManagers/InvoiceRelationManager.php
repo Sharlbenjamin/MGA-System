@@ -22,6 +22,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SendInvoice;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 
 class InvoiceRelationManager extends RelationManager
 {
@@ -67,11 +69,23 @@ class InvoiceRelationManager extends RelationManager
                     ->url(fn ($record) => InvoiceResource::getUrl('edit', [
                         'record' => $record->id
                     ])),
-                Action::make('send')
+                    Action::make('send')
+                    ->form([
+                        Forms\Components\Select::make('email_type')->options([
+                            'Financial Email' => 'Financial Email',
+                            'Custom' => 'Custom',
+                        ])->default('Financial Email')->live()
+                        ->required(),
+                        Forms\Components\TextInput::make('email_to')
+                            ->label('Send To')->email()
+                            ->visible(fn ($get) => $get('email_type') == 'Custom')
+                            ->required()
+                    ])
+                    ->modalHeading('Send Invoice')
+                    ->modalSubmitActionLabel('Send')
                     ->color('success')
                     ->icon('heroicon-o-paper-airplane')
-                    ->action(function (Invoice $record) {
-                        try {
+                    ->action(function (Invoice $record, array $data) {
                             // First generate PDF
                             $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
                             $content = $pdf->output();
@@ -99,30 +113,34 @@ class InvoiceRelationManager extends RelationManager
                             $record->status = 'Sent';
                             $record->save();
 
+                            // Fetch updated user info from the database
+                            $user = \App\Models\User::find(Auth::user()->id);
+
+                            // Set mailer based on user's role and SMTP credentials
+                            $mailer = 'financial';
+                            $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
+
+                            if($user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
+                                Config::set('mail.mailers.financial.username', $user->smtp_username);
+                                Config::set('mail.mailers.financial.password', $user->smtp_password);
+                            }
+
                             // Send email
-                            if($record->patient->client->financialContact()->preferred_contact == 'Email'){
-                                Mail::to($record->patient->client->financialContact()->email)->send(new SendInvoice($record));
-                            }elseIf ($record->patient->client->financialContact()->preferred_contact == 'Second Email'){
-                                Mail::to($record->patient->client->financialContact()->second_email)->send(new SendInvoice($record));
+                        if($data['email_type'] == 'Financial Email'){
+                            if($record->patient->client->financialContact->preferred_contact == 'Email'){
+                                Mail::mailer($mailer)->to($record->patient->client->financialContact->email)->send(new SendInvoice($record, $user));
+                            }elseIf ($record->patient->client->financialContact->preferred_contact == 'Second Email'){
+                                Mail::mailer($mailer)->to($record->patient->client->financialContact->second_email)->send(new SendInvoice($record, $user));
                             }else{
                                 Notification::make()->title("No Financial Contact Found")->body("No Financial Contact Found")->danger()->send();
                                 return;
                             }
-
-                            Notification::make()
-                                ->success()
-                                ->title('Invoice generated and sent successfully')
-                                ->send();
-
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Error occurred')
-                                ->body($e->getMessage())
-                                ->send();
+                        }else{
+                            Mail::mailer($mailer)->to($data['email_to'])->send(new SendInvoice($record, $user));
                         }
+                            Notification::make()->success()->title('Invoice generated and sent successfully')->send();
+
                     }),
-                // generate pdf onliy appear if the status is Posted
                 Tables\Actions\Action::make('view')
                 ->icon('heroicon-o-eye')
                 ->url(fn (Invoice $record) => route('invoice.view', $record))

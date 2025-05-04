@@ -22,6 +22,7 @@ use App\Filament\Widgets\FilesPerClient;
 use App\Filament\Widgets\FilesPerCountry;
 use App\Filament\Widgets\FilesPerMonth;
 use App\Filament\Widgets\FilesPerServiceType;
+use App\Filament\Widgets\FilesPerStatus;
 use App\Filament\Widgets\FileStatsOverview;
 use App\Filament\Widgets\TotalFile;
 use Filament\Http\Middleware\Authenticate;
@@ -86,6 +87,7 @@ class AdminPanelProvider extends PanelProvider
             FileStatsOverview::class,
             FilesPerMonth::class,
             TotalFile::class,
+            FilesPerStatus::class,
             FilesPerCountry::class,
             FilesPerClient::class,
             FilesPerServiceType::class,
