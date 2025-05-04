@@ -10,12 +10,12 @@ use Illuminate\Support\Facades\DB;
 class TotalFile extends ChartWidget
 {
     protected static ?string $heading = 'Total Files';
-    protected static string $color = 'warning';
+    protected static string $color = 'info';
     protected static ?string $maxHeight = '300px';
 
     protected function getData(): array
     {
-        $data = File::selectRaw('COUNT(*) as count, DATE_FORMAT(created_at, "%Y-%m") as month')
+        $data = File::whereNotIn('status', ['Cancelled', 'Void', 'Hold'])->selectRaw('COUNT(*) as count, DATE_FORMAT(created_at, "%Y-%m") as month')
             ->groupBy('month')
             ->orderBy('month')
             ->get();
