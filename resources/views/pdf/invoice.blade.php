@@ -219,7 +219,7 @@
                 <h3><span class="bold">Invoice To:</span>
                     @php
                         $financialContact = $invoice->patient->client->financialContact;
-                        $billTo = $financialContact ? $financialContact->title : $invoice->patient->client->name;
+                        $billTo = $financialContact ? $financialContact->title : $invoice->patient->client->company_name;
                     @endphp
                     {{ $billTo }}
                 </h3>
