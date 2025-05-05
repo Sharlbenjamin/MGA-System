@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\ClientResource\Pages;
 
 use App\Filament\Resources\ClientResource;
+use App\Models\Client;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\Action;
@@ -127,6 +129,9 @@ class ListClients extends ListRecords
                     ->label('Last Transaction')
                     ->date('d-m-Y')
                     ->sortable(),
+            ])->actions([
+                Tables\Actions\Action::make('Overview')
+                ->url(fn (Client $record) => ClientResource::getUrl('overview', ['record' => $record]))->color('success'),
             ])
             ->defaultSort('company_name', 'asc');
     }

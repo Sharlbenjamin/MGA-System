@@ -25,6 +25,7 @@ use App\Filament\Widgets\FilesPerServiceType;
 use App\Filament\Widgets\FilesPerStatus;
 use App\Filament\Widgets\FileStatsOverview;
 use App\Filament\Widgets\TotalFile;
+use App\Filament\Widgets\CasesPerMonthStatus;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -91,6 +92,7 @@ class AdminPanelProvider extends PanelProvider
             FilesPerCountry::class,
             FilesPerClient::class,
             FilesPerServiceType::class,
+            CasesPerMonthStatus::class,
         ])
         ->middleware([
             EncryptCookies::class,
