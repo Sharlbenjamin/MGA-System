@@ -86,13 +86,13 @@ class AdminPanelProvider extends PanelProvider
         ->widgets([
             AccountWidget::class,
             FileStatsOverview::class,
-            FilesPerMonth::class,
-            TotalFile::class,
+            CasesPerMonthStatus::class,
             FilesPerStatus::class,
+            TotalFile::class,
+            FilesPerMonth::class,
             FilesPerCountry::class,
             FilesPerClient::class,
             FilesPerServiceType::class,
-            CasesPerMonthStatus::class,
         ])
         ->middleware([
             EncryptCookies::class,
