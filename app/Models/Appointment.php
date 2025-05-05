@@ -80,7 +80,7 @@ class Appointment extends Model
                 }
 
                 if($appointment->file->contact_patient === 'Client'){
-                    $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment);
+                    $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment, '');
                 }else{
                     $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
                 }

@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
 use App\Filament\Widgets\CommentsWidget;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 
 class ViewFile extends ViewRecord
@@ -108,6 +109,7 @@ class ViewFile extends ViewRecord
         return [
             Action::make('notifyClient')
                 ->label('Notify Client')
+                ->slideOver()
                 ->icon('heroicon-o-paper-airplane')
                 ->color('warning')
                 ->modalHeading('Notify Client')
@@ -123,9 +125,11 @@ class ViewFile extends ViewRecord
                         'Void' => 'Void',
                         'Requesting GOP' => 'Requesting GOP',
                         'Ask' => 'Ask',
-                        ])->required(),
+                        'Custom' => 'Custom'
+                        ])->required()->live(),
+                    Textarea::make('message')->visible(fn ($get) => $get('status') == 'Custom')
                 ])->modalSubmitActionLabel('Send')
-                ->action(fn (array $data, $record) => $record->patient->client->notifyClient($data['status'], $record)),
+                ->action(fn (array $data, $record) => $record->patient->client->notifyClient($data['status'], $record, $data['message'])),
             Action::make('viewFinancial')
                 ->label('Invocies & Bills')
                 ->icon('heroicon-o-document-currency-euro')

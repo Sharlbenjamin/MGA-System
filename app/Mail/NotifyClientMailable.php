@@ -18,14 +18,16 @@ class NotifyClientMailable extends Mailable
 
     public $type;
     public $data;
+    public $message;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($type, $data)
+    public function __construct($type, $data, $message = null)
     {
         $this->type = $type;
         $this->data = $data;
+        $this->message = $message;
     }
 
     public function build()
@@ -41,17 +43,14 @@ class NotifyClientMailable extends Mailable
         $view = match ($this->type) {
             'New' => 'emails.client.file-created-client-mail',
             'Requesting GOP' => 'emails.client.requesting-gop-mail',
-            //'file_void' => 'emails.client.file-void-mail',
+            'Void' => 'emails.client.file-void-mail',
             'Cancelled' => 'emails.client.file-cancelled-mail',
             'Hold' => 'emails.client.file-hold-client-mail',
             'Available' => 'emails.client.available-appointments-mail',
             'Assisted' => 'emails.client.client-assisted-mail',
+            'Custom' => 'emails.client.custom-client-mail',
             'ask_client' => 'emails.client.ask-client-mail',
-            //'appointment_reminder' => 'emails.client.appointment-reminder-mail',
-            //'appointment_created' => 'emails.client.new-appointment-client-mail',
             'Confirmed' => 'emails.client.confirm-appointment-client-mail',
-            //'appointment_cancelled' => 'emails.client.cancel-appointment-client-mail',
-            //'appointment_updated' => 'emails.client.update-appointment-client-mail',
         };
 
         if ($this->data instanceof File) {
@@ -61,11 +60,16 @@ class NotifyClientMailable extends Mailable
         }
         $header = $file->mga_reference . ' | '. $file->patient->name . ' | '. $file->client_reference;
 
+        // Ensure message is a string
+        $message = $this->message;
 
         return $this->view($view)
                     ->from($username, Auth::user()->name)
                     ->subject($header)
-                    ->with(['file' => $file]);
+                    ->with([
+                        'file' => $file,
+                        'the_message' => $message
+                    ]);
     }
 
 }

@@ -217,11 +217,7 @@
 
             <div class="info-section">
                 <h3><span class="bold">Invoice To:</span>
-                    @php
-                        $financialContact = $invoice->patient->client->financialContact;
-                        $billTo = $financialContact ? $financialContact->title : $invoice->patient->client->company_name;
-                    @endphp
-                    {{ $billTo }}
+                    {{ $billTo = $invoice->patient->client->company_name }}
                 </h3>
             </div>
 

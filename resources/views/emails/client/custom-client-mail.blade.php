@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <body>
-    <p>{{$message}}</p>
+    <p>{{$the_message}}</p>
 
     @include('draftsignature', ['signature' => auth()->user()->signature])
 </body>

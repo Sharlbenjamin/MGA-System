@@ -80,10 +80,10 @@ class Client extends Model
         return $this->morphMany(Task::class, 'taskable');
     }
 
-    public function notifyClient($type, $data)
+    public function notifyClient($type, $data, $message = null)
     {
         $reason = $this->detectNotificationReason($data);
-        $this->sendNotification($reason, $type, $data, 'Client');
+        $this->sendNotification($reason, $type, $data, 'Client', $message);
     }
 
     public function contacts()

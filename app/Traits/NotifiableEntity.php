@@ -36,7 +36,7 @@ trait NotifiableEntity
         };
     }
 
-    public function sendNotification($reason, $status, $data, $parent = null)
+    public function sendNotification($reason, $status, $data, $parent = null, $message = null)
     {
         $contact = $this->primaryContact($reason);
         if (!$contact) {
@@ -46,7 +46,7 @@ trait NotifiableEntity
 
         match ($contact->preferred_contact) {
             'Phone', 'Second Phone' => $this->notifyByPhone($data, $status),
-            'Email', 'Second Email' => $this->notifyByEmail($reason, $status, $data, $parent),
+            'Email', 'Second Email' => $this->notifyByEmail($reason, $status, $data, $parent, $message),
             'First Whatsapp', 'Second Whatsapp' => $this->notifyByWhatsapp($data),
             'First SMS', 'Second SMS' => $this->notifyBySms($data),
         };
@@ -75,11 +75,11 @@ trait NotifiableEntity
         Mail::to('mga.operation@medguarda.com')->send(new NotifyUsMailable($status, $data));
     }
 
-    private function notifyByEmail($reason, $type, $data, $parent)
+    private function notifyByEmail($reason, $type, $data, $parent, $message = null)
     {
         $mailable = match ($parent) {
             'Branch' => new NotifyBranchMailable($type, $data),
-            'Client' => new NotifyClientMailable($type, $data),
+            'Client' => new NotifyClientMailable($type, $data, $message),
             'Patient' => new NotifyPatientMailable($type, $data),
         };
 
