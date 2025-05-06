@@ -36,9 +36,9 @@ class FileStatsOverview extends BaseWidget
         $monthExpenses  = Bill::whereMonth('bill_date', now()->month)->sum('total_amount');
         $monthProfit  = $monthRevenue - $monthExpenses;
 
-        $totalFiles = File::where('created_at', '>=', now()->subMonths(1))->count();
-        $assistedFiles = File::where('status', 'assisted')->where('created_at', '>=', now()->subMonths(1))->count();
-        $cancelledFiles = File::where('status', 'cancelled')->where('created_at', '>=', now()->subMonths(1))->count();
+        $totalFiles = File::whereMonth('created_at', '>=', now()->subMonths(1)->month)->count();
+        $assistedFiles = File::where('status', 'Assisted')->whereMonth('created_at', '>=', now()->subMonths(1)->month)->count();
+        $cancelledFiles = File::where('status', 'Cancelled')->whereMonth('created_at', '>=', now()->subMonths(1)->month)->count();
 
 
         return [

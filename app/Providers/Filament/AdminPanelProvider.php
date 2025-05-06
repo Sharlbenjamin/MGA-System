@@ -26,6 +26,7 @@ use App\Filament\Widgets\FilesPerStatus;
 use App\Filament\Widgets\FileStatsOverview;
 use App\Filament\Widgets\TotalFile;
 use App\Filament\Widgets\CasesPerMonthStatus;
+use App\Filament\Widgets\MonthlyProfit;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -87,6 +88,7 @@ class AdminPanelProvider extends PanelProvider
             AccountWidget::class,
             FileStatsOverview::class,
             CasesPerMonthStatus::class,
+            MonthlyProfit::class,
             FilesPerStatus::class,
             TotalFile::class,
             FilesPerMonth::class,
