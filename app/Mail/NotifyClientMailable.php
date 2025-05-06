@@ -60,16 +60,19 @@ class NotifyClientMailable extends Mailable
         }
         $header = $file->mga_reference . ' | '. $file->patient->name . ' | '. $file->client_reference;
 
-        // Ensure message is a string
-        $message = $this->message;
+        $viewData = [
+            'file' => $file
+        ];
+
+        // Only add message to view data if this is a custom notification
+        if ($this->type === 'Custom' && $this->message) {
+            $viewData['the_message'] = $this->message;
+        }
 
         return $this->view($view)
                     ->from($username, Auth::user()->name)
                     ->subject($header)
-                    ->with([
-                        'file' => $file,
-                        'the_message' => $message
-                    ]);
+                    ->with($viewData);
     }
 
 }

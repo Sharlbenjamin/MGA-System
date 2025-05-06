@@ -79,7 +79,7 @@ trait NotifiableEntity
     {
         $mailable = match ($parent) {
             'Branch' => new NotifyBranchMailable($type, $data),
-            'Client' => new NotifyClientMailable($type, $data, $message),
+            'Client' => new NotifyClientMailable($type, $data, $type === 'Custom' ? $message : null),
             'Patient' => new NotifyPatientMailable($type, $data),
         };
 

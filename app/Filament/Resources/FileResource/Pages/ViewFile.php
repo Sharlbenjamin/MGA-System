@@ -129,7 +129,10 @@ class ViewFile extends ViewRecord
                         ])->required()->live(),
                     Textarea::make('message')->visible(fn ($get) => $get('status') == 'Custom')
                 ])->modalSubmitActionLabel('Send')
-                ->action(fn (array $data, $record) => $record->patient->client->notifyClient($data['status'], $record, $data['message'])),
+                ->action(function (array $data, $record) {
+                    $message = $data['status'] === 'Custom' ? ($data['message'] ?? null) : null;
+                    $record->patient->client->notifyClient($data['status'], $record, $message);
+                }),
             Action::make('viewFinancial')
                 ->label('Invocies & Bills')
                 ->icon('heroicon-o-document-currency-euro')
