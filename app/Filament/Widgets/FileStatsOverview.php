@@ -32,14 +32,22 @@ class FileStatsOverview extends BaseWidget
         // Calculate total profit
         $totalProfit = $totalRevenue - $totalExpenses;
 
+        $monthRevenue  = Invoice::whereMonth('invoice_date', now()->month)->sum('total_amount');
+        $monthExpenses  = Bill::whereMonth('bill_date', now()->month)->sum('total_amount');
+        $monthProfit  = $monthRevenue - $monthExpenses;
+
         $totalFiles = File::where('created_at', '>=', now()->subMonths(1))->count();
         $assistedFiles = File::where('status', 'assisted')->where('created_at', '>=', now()->subMonths(1))->count();
         $cancelledFiles = File::where('status', 'cancelled')->where('created_at', '>=', now()->subMonths(1))->count();
+
 
         return [
             Stat::make('Revenue', '€'.number_format($totalRevenue, 0))->description('Revenue this year')->color('success'),
             Stat::make('Expenses', '€'.number_format($totalExpenses, 0))->description('Expenses this year')->color('danger'),
             Stat::make('Profit', '€'.number_format($totalProfit, 0))->description('Profit this year')->color('info'),
+            Stat::make('Revenue', '€'.number_format($monthRevenue, 0))->description('Revenue this year')->color('success'),
+            Stat::make('Expenses', '€'.number_format($monthExpenses, 0))->description('Expenses this year')->color('danger'),
+            Stat::make('Profit', '€'.number_format($monthProfit, 0))->description('Profit this year')->color('info'),
             Stat::make('Assisted Files', $assistedFiles)->description('Assisted Files this month')->color('success'),
             Stat::make('Cancelled Files', $cancelledFiles)->description('Cancelled Files this month')->color('danger'),
             Stat::make('Total Files', $totalFiles)->description('Total Files this month')->color('info'),
