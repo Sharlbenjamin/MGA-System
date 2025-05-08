@@ -270,6 +270,11 @@
             </div>
         </div>
 
+        <div style="text-align: left; font-size: 0.8em; margin-bottom: 10px; position: absolute; bottom: 85px; width: 100%; padding-left: 5%;">
+            <p>
+                For online payment, <a href="{{$invoice->payment_link}}" style="color: #0000FF; text-decoration: none;">click here</a> to access the payment page
+            </p>
+        </div>
         <div class="footer">
             <div class="footer-grid">
                 <div class="footer-column">

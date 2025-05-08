@@ -39,8 +39,8 @@ class CasesPerMonthStatus extends ChartWidget
             $monthFiles = $files->get($monthKey, collect());
 
             // Count cases by status
-            $activeCases[$i] = $monthFiles->whereNotIn('status', ['Cancelled', 'Void', 'Hold'])->count();
-            $cancelledCases[$i] = $monthFiles->whereIn('status', ['Cancelled', 'Void', 'Hold'])->count();
+            $activeCases[$i] = $monthFiles->where('status', 'Assisted')->count();
+            $cancelledCases[$i] = $monthFiles->where('status', 'Cancelled')->count();
             $totalCases[$i] = $monthFiles->count();
 
             $labels[] = $currentMonth->format('M Y');
@@ -50,14 +50,14 @@ class CasesPerMonthStatus extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Active Cases',
-                    'data' => $activeCases,
-                    'backgroundColor' => '#22c55e', // Green
-                ],
-                [
                     'label' => 'Total Cases',
                     'data' => $totalCases,
                     'backgroundColor' => '#3b82f6', // Blue
+                ],
+                [
+                    'label' => 'Active Cases',
+                    'data' => $activeCases,
+                    'backgroundColor' => '#22c55e', // Green
                 ],
                 [
                     'label' => 'Cancelled Cases',

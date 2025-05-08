@@ -27,6 +27,7 @@ class Invoice extends Model
         'paid_amount',
         'draft_path',
         'invoice_date',
+        'payment_link',
     ];
 
     protected $attributes = [
@@ -57,8 +58,8 @@ class Invoice extends Model
             if (!$invoice->name) {
                 $invoice->name = static::generateInvoiceNumber($invoice);
             }
-                $invoice->invoice_date = now();
-                $invoice->due_date = now()->addDays(45);
+            $invoice->invoice_date = now();
+            $invoice->due_date = now()->addDays(45);
         });
 
         static::updating(function ($invoice) {
@@ -74,6 +75,14 @@ class Invoice extends Model
             if ($invoice->isDirty('paid_amount')) {
                 $invoice->checkStatus();
                 $invoice->transaction->calculateBankCharges();
+            }
+
+            if($invoice->isDirty('status') && $invoice->status === 'Posted')
+            {
+                // Generate payment link if not provided
+                if (!$invoice->payment_link) {
+                    $invoice->generatePaymentLink();
+                }
             }
         });
     }
@@ -222,5 +231,49 @@ class Invoice extends Model
             return false;
         }
         return $this->due_date->isPast();
+    }
+
+    public function generatePaymentLink()
+    {
+        \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+
+        $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+        // First create a price
+        $price = $stripe->prices->create([
+            'unit_amount' => (int)($this->total_amount * 100),
+            'currency' => 'eur',
+            'product_data' => [
+                'name' => "Invoice {$this->name}",
+                'metadata' => [
+                    'items_count' => $this->items->count(),
+                    'discount' => number_format($this->discount, 2),
+                    'tax' => number_format($this->tax, 2),
+                ],
+            ],
+        ]);
+
+        // Then create the payment link with the price
+        $paymentLink = $stripe->paymentLinks->create([
+            'line_items' => [[
+                'price' => $price->id,
+                'quantity' => 1,
+            ]],
+            'after_completion' => [
+                'type' => 'redirect',
+                'redirect' => [
+                    'url' => config('app.url') . '/payment/success',
+                ],
+            ],
+            'metadata' => [
+                'invoice_id' => $this->id,
+                'invoice_number' => $this->name,
+            ],
+        ]);
+
+        $this->payment_link = $paymentLink->url;
+        $this->save();
+
+        return $this->payment_link;
     }
 }

@@ -130,7 +130,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->color('success'),
 
             Stat::make('Cancelled', $CancelledFiles)
-                ->description("Outflow this $filter")
+                ->description("Cancelled Files this $filter")
                 ->color('danger'),
 
             Stat::make('Total Files', $TotalFiles)
