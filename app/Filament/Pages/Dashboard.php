@@ -24,7 +24,15 @@ class Dashboard extends BaseDashboard
             ->schema([
                 Section::make()
                     ->schema([
-                        Select::make('monthYearFilder')->label('Filter Stats per ')->options(['Month' => 'Month', 'Year' => 'Year'])->default('Month')
+                        Select::make('monthYearFilder')
+                            ->label('Filter Stats per ')
+                            ->options([
+                                'Month' => 'Month',
+                                'Year' => 'Year'
+                            ])
+                            ->required()
+                            ->default('Month')
+                            ->searchable()
                     ])
                     ->columns(3),
             ]);

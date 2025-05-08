@@ -25,7 +25,9 @@ class FileStatsOverview extends  StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $filter = $this->filters['monthYearFilder'] ?? null;
+        if($this->filters['monthYearFilder'] == null){
+            $filter = 'Month';
+        }
 
         $Revenue = Invoice::when($filter === 'Month', function($query){
             $query->whereMonth('invoice_date', now()->month);
@@ -101,28 +103,28 @@ class FileStatsOverview extends  StatsOverviewWidget
         $TotalFiles = $this->queryFilter(File::query())->count();
 
         return [
-            Stat::make('Revenue', '€' . number_format($Revenue))
-                ->description("Revenue this $filter")->chart($RevenueChart)
+            Stat::make('Revenue this '.$filter, '€' . number_format($Revenue))
+                ->description("Sum of all Invoices  this ".$filter)->chart($RevenueChart)
                 ->color('success'),
 
-            Stat::make('Income', '€' . number_format($Income))
-                ->description("Income this $filter")->chart($IncomeChart)
+            Stat::make('Income this '.$filter, '€' . number_format($Income))
+                ->description("Revenue after removing the cost")->chart($IncomeChart)
                 ->color('success'),
 
-            Stat::make('Profit', '€' . number_format($Profit))
-                ->description("Profit this $filter")->chart($ProfitChart)
+            Stat::make('Profit this '.$filter, '€' . number_format($Profit))
+                ->description("Profit after removing all Provider Cost and Expenses")->chart($ProfitChart)
                 ->color('success'),
 
-            Stat::make('Cost', '€' . number_format($Cost))
-                ->description("Cost this $filter")->chart($CostChart)
+            Stat::make('Cost this '.$filter, '€' . number_format($Cost))
+                ->description("Provider Cost this ".$filter)->chart($CostChart)
                 ->color('warning'),
 
-            Stat::make('Expenses', '€' . number_format($Expenses))
-                ->description("Expenses this $filter")->chart($ExpensesChart)
+            Stat::make('Expenses this '.$filter, '€' . number_format($Expenses))
+                ->description("Utilities, Salaries and Lawyer")->chart($ExpensesChart)
                 ->color('info'),
 
-            Stat::make('Outflow', '€' . number_format($Outflow))
-                ->description("Outflow this $filter")->chart($OutflowChart)
+            Stat::make('Outflow this '.$filter, '€' . number_format($Outflow))
+                ->description("Cost and Expenses")->chart($OutflowChart)
                 ->color('danger'),
 
             Stat::make('Active Files', $ActiveFiles)
