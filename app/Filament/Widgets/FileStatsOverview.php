@@ -25,9 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
 
     protected function getStats(): array
     {
-        if($this->filters['monthYearFilder'] == null){
-            $filter = 'Month';
-        }
+        $filter = $this->filters['monthYearFilder'] ?? 'Month';
 
         $Revenue = Invoice::when($filter === 'Month', function($query){
             $query->whereMonth('invoice_date', now()->month);
