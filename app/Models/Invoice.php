@@ -239,21 +239,16 @@ class Invoice extends Model
 
         $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
 
-        // First create a price
+        // Create a simple price with just the total amount
         $price = $stripe->prices->create([
             'unit_amount' => (int)($this->total_amount * 100),
             'currency' => 'eur',
             'product_data' => [
                 'name' => "Invoice {$this->name}",
-                'metadata' => [
-                    'items_count' => $this->items->count(),
-                    'discount' => number_format($this->discount, 2),
-                    'tax' => number_format($this->tax, 2),
-                ],
             ],
         ]);
 
-        // Then create the payment link with the price
+        // Create the payment link with just the price
         $paymentLink = $stripe->paymentLinks->create([
             'line_items' => [[
                 'price' => $price->id,
@@ -264,10 +259,6 @@ class Invoice extends Model
                 'redirect' => [
                     'url' => config('app.url') . '/payment/success',
                 ],
-            ],
-            'metadata' => [
-                'invoice_id' => $this->id,
-                'invoice_number' => $this->name,
             ],
         ]);
 
