@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class TotalFile extends ChartWidget
 {
+    protected static ?int $sort = 5;
+
     protected static ?string $heading = 'Active Files per Month';
     protected static string $color = 'info';
     protected static ?string $maxHeight = '300px';

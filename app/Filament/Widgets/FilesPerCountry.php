@@ -7,6 +7,8 @@ use Filament\Widgets\ChartWidget;
 
 class FilesPerCountry extends ChartWidget
 {
+    protected static ?int $sort = 8;
+
     protected static ?string $heading = 'Files per Country';
     protected static ?string $maxHeight = '300px';
     protected function getData(): array

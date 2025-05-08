@@ -8,6 +8,8 @@ use App\Models\ServiceType;
 
 class FilesPerStatus extends ChartWidget
 {
+    protected static ?int $sort = 4;
+
     protected static ?string $heading = 'Files per Status';
     protected static ?string $maxHeight = '300px';
 

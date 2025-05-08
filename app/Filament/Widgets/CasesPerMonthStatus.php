@@ -8,6 +8,8 @@ use Illuminate\Support\Carbon;
 
 class CasesPerMonthStatus extends ChartWidget
 {
+    protected static ?int $sort = 2;
+
     protected static ?string $heading = 'Cases per Month by Status';
     protected static ?string $maxHeight = '300px';
 

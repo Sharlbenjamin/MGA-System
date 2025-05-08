@@ -7,6 +7,8 @@ use Filament\Widgets\ChartWidget;
 
 class FilesPerClient extends ChartWidget
 {
+    protected static ?int $sort = 9;
+
     protected static ?string $heading = 'Files per Client';
     protected static ?string $maxHeight = '300px';
 

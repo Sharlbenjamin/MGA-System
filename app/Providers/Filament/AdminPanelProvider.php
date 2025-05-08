@@ -81,21 +81,7 @@ class AdminPanelProvider extends PanelProvider
         ])
         ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
         ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-        ->pages([
-            Pages\Dashboard::class,
-        ])
-        ->widgets([
-            AccountWidget::class,
-            FileStatsOverview::class,
-            CasesPerMonthStatus::class,
-            MonthlyProfit::class,
-            FilesPerStatus::class,
-            TotalFile::class,
-            FilesPerMonth::class,
-            FilesPerCountry::class,
-            FilesPerClient::class,
-            FilesPerServiceType::class,
-        ])
+        ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
         ->middleware([
             EncryptCookies::class,
             AddQueuedCookiesToResponse::class,
