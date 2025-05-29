@@ -34,11 +34,6 @@ class File extends Model
         return $this->belongsTo(Patient::class);
     }
 
-    public function getNameAttribute()
-    {
-        return $this->mga_reference . ' - ' . $this->patient->name;
-    }
-
     public function bankAccounts(): HasMany
     {
         return $this->hasMany(BankAccount::class, 'file_id', 'id');
@@ -267,5 +262,22 @@ class File extends Model
         if (!$patient || !$patient->client) return 'MG000XXX';
 
         return sprintf('MG%03d%s', $patient->client->files()->count() + 1, $patient->client->initials ?? '');
+    }
+
+    // Attributes   Attributes   Attributes   Attributes   Attributes   Attributes   Attributes   Attributes
+
+    public function getNameAttribute()
+    {
+        return $this->mga_reference . ' - ' . $this->patient->name;
+    }
+
+    public function getInvoiceAmountAttribute()
+    {
+        return $this->patient->invoices()->sum('total_amount');
+    }
+
+    public function getBillAmountAttribute()
+    {
+        return $this->bills()->sum('total_amount');
     }
 }

@@ -9,6 +9,7 @@ use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManag
 use App\Models\Bill;
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Models\Patient;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\Transaction;
@@ -43,9 +44,10 @@ class TransactionResource extends Resource
                 ])->required(),
                 Forms\Components\Select::make('related_type')->options(fn ($get) => Self::relatedTypes($get('type')))->required()->searchable()->reactive(),
                     // I want to select an invoice if realted_type is Client
-                Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client'),
-                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider'),
-                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch'),
+                Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client')->searchable(),
+                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider')->searchable(),
+                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch')->searchable(),
+                Forms\Components\Select::make('related_id')->label('Patient')->required()->options(Patient::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Patient')->searchable(),
                 Forms\Components\Select::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->required(),
                 Forms\Components\TextInput::make('name')->required()->maxLength(255),
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€'),
@@ -226,12 +228,16 @@ class TransactionResource extends Resource
                 'Utilities' => 'Utilities',
                 'Maintenance' => 'Maintenance',
             ];
+        }elseif($get === 'Outflow'){
+            return [
+                'Provider' => 'Provider',
+                'Branch' => 'Branch',
+                'Patient' => 'Patient',
+            ];
+        }elseif($get === 'Income'){
+            return [
+                'Client' => 'Client',
+            ];
         }
-
-        return [
-            'Client' => 'Client',
-            'Provider' => 'Provider',
-            'Branch' => 'Branch',
-        ];
     }
 }

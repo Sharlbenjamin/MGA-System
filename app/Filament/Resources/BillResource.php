@@ -18,7 +18,7 @@ class BillResource extends Resource
 {
     protected static ?string $model = Bill::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 2;
     protected static ?string $navigationGroup = 'Finance';
 
     public static function form(Form $form): Form
@@ -28,18 +28,14 @@ class BillResource extends Resource
                 Forms\Components\Card::make()
                     ->schema([
                         Forms\Components\TextInput::make('name')->maxLength(255),
-                        Forms\Components\Select::make('file_id')->relationship('file', 'mga_reference')->required()->searchable()
-                        ->default(fn () => request()->get('file_id'))
-                        ->preload(),
+                        Forms\Components\Select::make('file_id')->relationship('file', 'mga_reference')->required()->searchable()->default(fn () => request()->get('file_id'))->preload(),
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')
                             ->options(function () {
                                 return BankAccount::where('type', 'internal')->pluck('beneficiary_name', 'id');
                             })
                             ->nullable(),
-
                         Forms\Components\DatePicker::make('bill_date')->default(now()->format('Y-m-d')),
-
                         Forms\Components\Select::make('status')
                             ->options([
                                 'Unpaid' => 'Unpaid',
