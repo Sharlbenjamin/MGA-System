@@ -25,7 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $filter = $this->filters['monthYearFilder'] ?? 'Month';
+        $filter = $this->filters['monthYearFilter'] ?? 'Month';
 
         $Revenue = Invoice::when($filter === 'Month', function($query){
             $query->whereMonth('invoice_date', now()->month);
@@ -145,7 +145,7 @@ class FileStatsOverview extends  StatsOverviewWidget
 
     public function queryFilter($query)
     {
-        $filter = $this->filters['monthYearFilder'] ?? 'Month';
+        $filter = $this->filters['monthYearFilter'] ?? 'Month';
         if($filter == 'Month'){
             return $query->whereMonth('created_at', now()->month);
         }else{
@@ -155,7 +155,7 @@ class FileStatsOverview extends  StatsOverviewWidget
 
     public function groupFilter($query)
     {
-        $filter = $this->filters['monthYearFilder'] ?? 'Month';
+        $filter = $this->filters['monthYearFilter'] ?? 'Month';
         if($filter == 'Month'){
             return $query->selectRaw('DATE_FORMAT(created_at, "%Y-%m-%d") as period, SUM(total_amount) as total')
                         ->whereMonth('invoice_date', now()->month)

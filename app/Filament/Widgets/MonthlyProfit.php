@@ -26,15 +26,15 @@ class MonthlyProfit extends ChartWidget
 
             // Get total invoices for this month
             $monthInvoices = DB::table('invoices')
-                ->whereYear('created_at', $currentMonth->year)
-                ->whereMonth('created_at', $currentMonth->month)
+                ->whereYear('invoice_date', $currentMonth->year)
+                ->whereMonth('invoice_date', $currentMonth->month)
                 ->sum('total_amount');
             $invoices[] = $monthInvoices;
 
             // Get total bills for this month
             $monthBills = DB::table('bills')
-                ->whereYear('created_at', $currentMonth->year)
-                ->whereMonth('created_at', $currentMonth->month)
+                ->whereYear('bill_date', $currentMonth->year)
+                ->whereMonth('bill_date', $currentMonth->month)
                 ->sum('total_amount');
             $bills[] = $monthBills;
 

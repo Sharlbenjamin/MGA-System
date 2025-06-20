@@ -24,7 +24,7 @@ class Dashboard extends BaseDashboard
             ->schema([
                 Section::make()
                     ->schema([
-                        Select::make('monthYearFilder')
+                        Select::make('monthYearFilter')
                             ->label('Filter Stats per ')
                             ->options([
                                 'Month' => 'Month',
@@ -32,9 +32,30 @@ class Dashboard extends BaseDashboard
                             ])
                             ->required()
                             ->default('Month')
+                            ->searchable(),
+                            Select::make('monthFilter')
+                            ->label('Select Month')
+                            ->options([
+                                'Jan' => 'Jan' ,
+                                'Feb' => 'Feb' ,
+                                'Mar' => 'Mar' ,
+                                'Apr' => 'Apr' ,
+                                'May' => 'May' ,
+                                'Jun' => 'Jun' ,
+                                'Jul' => 'Jul' ,
+                                'Aug' => 'Aug' ,
+                                'Sep' => 'Sep' ,
+                                'Oct' => 'Oct' ,
+                                'Nov' => 'Nov' ,
+                                'Dec' => 'Dec' ,
+                            ])
+                            ->required()
+                            ->default('Month')
                             ->searchable()
+                            ->visible(fn ($get) => $get('monthYearFilter') === 'Month')
                     ])
                     ->columns(3),
+                    
             ]);
     }
 
