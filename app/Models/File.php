@@ -88,9 +88,9 @@ class File extends Model
         $invoice->status = 'Draft';
         $invoice->save();
     }
-    public function invoices(): HasManyThrough
+    public function invoices(): HasMany
     {
-        return $this->hasManyThrough(Invoice::class, Patient::class, 'id', 'patient_id', 'id', 'id');
+        return $this->hasMany(Invoice::class);
     }
 
     public function bills()
@@ -273,7 +273,7 @@ class File extends Model
 
     public function getInvoiceAmountAttribute()
     {
-        return $this->patient->invoices()->sum('total_amount');
+        return $this->invoices()->sum('total_amount');
     }
 
     public function getBillAmountAttribute()

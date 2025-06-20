@@ -15,6 +15,7 @@ class Invoice extends Model
 {
     protected $fillable = [
         'name',
+        'file_id',
         'patient_id',
         'bank_account_id',
         'due_date',
@@ -115,11 +116,9 @@ class Invoice extends Model
         return $this->belongsTo(Patient::class);
     }
 
-    public function file(): HasOne
+    public function file(): BelongsTo
     {
-        return $this->hasOne(File::class, 'patient_id', 'patient_id')
-            ->oldest()
-            ->limit(1);
+        return $this->belongsTo(File::class);
     }
 
     public function client(): HasOneThrough

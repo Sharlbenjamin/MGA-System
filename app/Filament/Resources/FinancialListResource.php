@@ -44,19 +44,15 @@ class FinancialListResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where('status', 'Assisted')
-            ->where(function ($query) {
-                $query->doesntHave('bills')
-                    ->orDoesntHave('invoices');
-            });
+            ->withSum('invoices as invoices_total', 'total_amount')
+            ->havingRaw('COALESCE(invoices_total, 0) = 0');
     }
 
     public static function getNavigationBadge(): ?string
     {
         //we need to sum  the total_amount of invocies and make sure it is bigger than the bills sum
-        return static::getModel()::where('status', 'Assisted')->where(function ($query) {
-            $query->doesntHave('bills')
-                ->orDoesntHave('invoices');
-        })->count();
+        return static::getModel()::where('status', 'Assisted')->withSum('invoices as invoices_total', 'total_amount')
+        ->havingRaw('COALESCE(invoices_total, 0) = 0')->count();
     }
 
     public static function getNavigationBadgeColor(): ?string

@@ -37,6 +37,7 @@ class InvoiceRelationManager extends RelationManager
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('file.name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'Draft' => 'warning',
                     'Sent' => 'info',

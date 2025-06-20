@@ -8,6 +8,7 @@ use App\Models\BankAccount;
 use App\Models\Invoice;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables;
@@ -33,11 +34,16 @@ class InvoiceResource extends Resource
                             ->maxLength(255)
                             ->disabled()
                             ->dehydrated(),
+                        Forms\Components\Select::make('file_id')
+                            ->relationship('file', 'mga_reference', fn (Builder $query, Get $get) => $query->where('patient_id', $get('patient_id')))
+                            ->required()
+                            ->searchable()->preload(),
 
                         Forms\Components\Select::make('patient_id')
                             ->relationship('patient', 'name')
                             ->required()
                             ->searchable()->preload()
+                            ->live()
                             ->default(fn () => request()->get('patient_id')),
 
                         Forms\Components\Select::make('bank_account_id')
