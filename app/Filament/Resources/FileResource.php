@@ -12,10 +12,12 @@ use App\Filament\Resources\FileResource\RelationManagers\AppointmentsRelationMan
 use App\Filament\Resources\FileResource\RelationManagers\TaskRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\BillRelationManager;
+use App\Models\Client;
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Patient;
 use Filament\Forms;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -54,6 +56,8 @@ class FileResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            Checkbox::make('new_patient')->label('New Patient')->default(true)->live()
+                ->disabled(fn ($context) => $context === 'edit'),
             Select::make('patient_id')
                 ->relationship(
                     'patient',
@@ -69,8 +73,13 @@ class FileResource extends Resource
                 ->disabled(fn ($context) => $context === 'edit')
                 ->dehydrated()
                 ->afterStateUpdated(function ($state, callable $set) {
-                    $set('mga_reference', File::generateMGAReference($state));
-                }),
+                    $set('mga_reference', File::generateMGAReference($state, 'patient'));
+                })->hidden(fn ($get) => $get('new_patient') == true),
+            TextInput::make('patient_name')->label('Patient Name')->required()->hidden(fn ($get) => $get('new_patient') == false),
+            Select::make('client_id')->options(Client::where('status', 'Active')->pluck('company_name', 'id'))->searchable()->preload()->required()->live()->afterStateUpdated(function ($state, callable $set) {
+                    $set('mga_reference', File::generateMGAReference($state, 'client'));
+                })
+                ->hidden(fn ($get) => !$get('new_patient')),
             TextInput::make('mga_reference')->label('MGA Reference')->required()->readOnly()->unique(ignoreRecord: true)->helperText('Auto-generated based on the patient'),
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
             Select::make('status')->options(['New' => 'New','Handling' => 'Handling','Available' => 'Available', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required(),

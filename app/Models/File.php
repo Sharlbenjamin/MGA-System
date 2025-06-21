@@ -254,14 +254,21 @@ class File extends Model
         return app(GoogleMeetService::class)->generateMeetLink($this);
     }
 
-    public static function generateMGAReference($patientId)
+    public static function generateMGAReference($id, $type)
     {
-        if (!$patientId) return 'MG000XXX';
+        if (!$id) return 'MG000XXX';
 
-        $patient = Patient::find($patientId);
-        if (!$patient || !$patient->client) return 'MG000XXX';
+        if ($type == 'client') {
+            $client = Client::find($id);
+            if (!$client) return 'MG000XXX';
 
-        return sprintf('MG%03d%s', $patient->client->files()->count() + 1, $patient->client->initials ?? '');
+            return sprintf('MG%03d%s', $client->files()->count() + 1, $client->initials ?? '');
+        } else {
+            $patient = Patient::find($id);
+            if (!$patient) return 'MG000XXX';
+
+            return sprintf('MG%03d%s', $patient->files()->count() + 1, $patient->client->initials ?? '');
+        }
     }
 
     // Attributes   Attributes   Attributes   Attributes   Attributes   Attributes   Attributes   Attributes
