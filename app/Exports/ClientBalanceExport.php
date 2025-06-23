@@ -103,8 +103,7 @@ class ClientBalanceExport implements FromCollection, WithHeadings, WithMapping, 
         ]);
 
         // Add client information at the top
-        $financialContact = $this->client->financialContact;
-        $billTo = $financialContact ? $financialContact->title : $this->client->company_name;
+        $billTo = $this->client->company_name;
         
         $sheet->insertNewRowBefore(1, 3);
         $sheet->setCellValue('A1', 'BALANCE STATEMENT');
