@@ -45,7 +45,7 @@ class FileRelationManager extends RelationManager
                 ->label('MGA Reference')
                 ->required()
                 ->readOnly()
-                ->default(fn () => File::generateMGAReference($this->ownerRecord->id))
+                ->default(fn () => File::generateMGAReference($this->ownerRecord->id, 'patient'))
                 ->unique(ignoreRecord: true)
                 ->helperText('Auto-generated based on the patient'),
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
