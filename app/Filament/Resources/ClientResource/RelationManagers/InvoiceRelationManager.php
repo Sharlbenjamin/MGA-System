@@ -28,6 +28,8 @@ use Filament\Tables\Actions\BulkAction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
+use App\Exports\ClientBalanceExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InvoiceRelationManager extends RelationManager
 {
@@ -210,18 +212,26 @@ class InvoiceRelationManager extends RelationManager
                     ->url(fn () => InvoiceResource::getUrl('create', [
                         'patient_id' => $this->ownerRecord->id
                     ])),
-                Action::make('ExportBalance')
-                    ->color('success')
+                Action::make('ExportBalance')->label('Export Balance PDF')
+                    ->color('info')
                     ->icon('heroicon-o-document-text')
                     ->action(function () {
                         // Export balance using the client directly
                         $pdf = Pdf::loadView('pdf.client_balance', ['client' => $this->ownerRecord]);
                         $content = $pdf->output();
-                        $fileName = $this->ownerRecord->name . '_balance.pdf';
+                        $fileName = $this->ownerRecord->name . ' Balance.pdf';
                         return response()->streamDownload(
                             fn () => print($pdf->output()),
                             $fileName
                         );
+                    }),
+                Action::make('ExportBalanceExcel')->label('Export Balance Excel')
+                    ->color('success')
+                    ->icon('heroicon-o-table-cells')
+                    ->action(function () {
+                        // Export balance to Excel using the client directly
+                        $fileName = $this->ownerRecord->name . ' Balance.xlsx';
+                        return Excel::download(new ClientBalanceExport($this->ownerRecord), $fileName);
                     })
             ]);
     }
