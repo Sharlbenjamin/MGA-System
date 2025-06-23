@@ -168,6 +168,12 @@ class FileResource extends Resource
                         'Cancelled' => 'danger',
                         'Void' => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('gops_count')
+                    ->label('GOP')
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
+                    ->formatStateUsing(fn ($state) => $state > 0 ? '✓' : '✗')
+                    ->counts('gops', fn ($query) => $query->where('type', 'In')),
             ])
             ->filters([
                 // Filter by status
