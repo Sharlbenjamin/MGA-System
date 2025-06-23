@@ -72,9 +72,13 @@ class InvoiceResource extends Resource
 
                 Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\Placeholder::make('created_at')
-                            ->label('Created at')
-                            ->content(fn (?Invoice $record): string => $record ? $record->created_at->diffForHumans() : '-'),
+                        Forms\Components\Placeholder::make('gop_in_total')
+                            ->label('GOP In Total')
+                            ->content(fn (?Invoice $record): string => $record ? '€'.number_format($record->file->gopInTotal(), 2) : '0.00'),
+
+                        Forms\Components\Placeholder::make('bills_total')
+                            ->label('Bills Total')
+                            ->content(fn (?Invoice $record): string => $record ? '€'.number_format($record->file->billsTotal(), 2) : '0.00'),
 
                         Forms\Components\Placeholder::make('due_date')
                             ->label('Due date')
@@ -107,7 +111,7 @@ class InvoiceResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                // Client name
+                Tables\Columns\TextColumn::make('file.mga_reference')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('patient.client.company_name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('patient.name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('invoice_date')->date()->sortable(),
@@ -159,9 +163,8 @@ class InvoiceResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('view')
-                ->icon('heroicon-o-eye')
                 ->url(fn (Invoice $record) => route('invoice.view', $record))
-                ->openUrlInNewTab(),
+                ->icon('heroicon-o-eye'),
             ])->headerActions([Tables\Actions\CreateAction::make()])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

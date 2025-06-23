@@ -32,6 +32,7 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Grouping\Group;
 
 class FileResource extends Resource
@@ -141,6 +142,9 @@ class FileResource extends Resource
             ])
             ->filters([
                 // Filter by status
+                Filter::make('is_active')->label('Opened Cases')->default(true)->query(function (Builder $query) {
+                    return $query->whereIn('status', ['New', 'Handling', 'Available', 'Confirmed']);
+                }),
                 SelectFilter::make('status')
                     ->options([
                         'New' => 'New',
@@ -152,6 +156,7 @@ class FileResource extends Resource
                         'Cancelled' => 'Cancelled',
                         'Void' => 'Void',
                     ]),
+                //isActive
                 SelectFilter::make('country_id')->options(\App\Models\Country::pluck('name', 'id'))->label('Country'),
                 SelectFilter::make('city_id')->options(\App\Models\City::pluck('name', 'id'))->label('City'),
                 SelectFilter::make('service_type_id')->options(\App\Models\ServiceType::pluck('name', 'id'))->label('Service Type'),

@@ -85,7 +85,8 @@ class ViewFile extends ViewRecord
                             ->schema([
                                 TextEntry::make('serviceType.name')->label('Service Type')->weight('bold')->color('info')->color('info'),
                                 TextEntry::make('status')->label('Status')->badge(),
-                                TextEntry::make('providerBranch.branch_name')->label('Branch Name')->color('info'),
+                                TextEntry::make('providerBranch.provider.name')->label('Provider Name')->color('info')->url(fn ($record) => $record->providerBranch ? route('filament.admin.resources.providers.edit', $record->providerBranch->provider->id) : null),
+                                TextEntry::make('providerBranch.branch_name')->label('Branch Name')->color('info')->url(fn ($record) => $record->providerBranch ? route('filament.admin.resources.provider-branches.edit', $record->providerBranch->id) : null),
                                 TextEntry::make('service_date')->label('Service Date')->date()->color('info'),
                                 TextEntry::make('service_time')->label('Service Time')->time()->color('info'),
                                 TextEntry::make('country.name')->label('Country')->color('info'),

@@ -74,6 +74,11 @@ class File extends Model
         return $this->hasMany(Gop::class);
     }
 
+    public function gopInTotal()
+    {
+        return $this->gops()->sum('amount');
+    }
+
     public function prescriptions(): HasMany
     {
         return $this->hasMany(Prescription::class);
@@ -96,6 +101,11 @@ class File extends Model
     public function bills()
     {
         return $this->hasMany(Bill::class);
+    }
+
+    public function billsTotal()
+    {
+        return $this->bills()->sum('total_amount');
     }
 
     public function provider(): HasOneThrough

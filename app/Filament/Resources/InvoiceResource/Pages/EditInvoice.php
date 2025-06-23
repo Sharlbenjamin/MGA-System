@@ -17,7 +17,18 @@ class EditInvoice extends EditRecord
             Actions\Action::make('file')
                 ->label('View File')
                 ->url(FileResource::getUrl('view', ['record' => $this->record->file_id]))
-                ->icon('heroicon-o-document-text')->color('success'),
+                ->icon('heroicon-o-document-text')->color('primary'),
+
+                Actions\Action::make('transaction')
+                ->label('Invoice Paid')
+                ->color('success')
+                ->action(function () {
+                    \Filament\Notifications\Notification::make()
+                        ->title('Payment processing')
+                        ->body('This functionality is not yet implemented.')
+                        ->info()
+                        ->send();
+                }),
             Actions\DeleteAction::make(),
         ];
     }

@@ -1,10 +1,7 @@
 <?php
 
 return [
-    'auth' => [
-    'guard' => 'web',
-    'user' => App\Models\User::class,
-    ],
+
     /*
     |--------------------------------------------------------------------------
     | Broadcasting
@@ -34,9 +31,6 @@ return [
 
     ],
 
-    'providers' => [
-        App\Providers\Filament\AdminPanelProvider::class,
-    ],
     /*
     |--------------------------------------------------------------------------
     | Default Filesystem Disk

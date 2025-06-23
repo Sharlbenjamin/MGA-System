@@ -28,7 +28,49 @@ class BillResource extends Resource
                 Forms\Components\Card::make()
                     ->schema([
                         Forms\Components\TextInput::make('name')->maxLength(255),
-                        Forms\Components\Select::make('file_id')->relationship('file', 'mga_reference')->required()->searchable()->default(fn () => request()->get('file_id'))->preload(),
+                        Forms\Components\Select::make('file_id')
+                            ->relationship('file', 'mga_reference')
+                            ->required()
+                            ->searchable()
+                            ->default(fn () => request()->get('file_id'))
+                            ->preload()
+                            ->live(),
+                        Forms\Components\Select::make('provider_id')
+                            ->relationship('provider', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->disabled()
+                            ->live()
+                            ->dehydrated()
+                            ->reactive()
+                            ->afterStateHydrated(function ($state, $set, $get) {
+                                $fileId = $get('file_id');
+                                if ($fileId) {
+                                    $file = \App\Models\File::find($fileId);
+                                    if ($file && $file->providerBranch) {
+                                        $set('provider_id', $file->providerBranch->provider_id);
+                                    }
+                                }
+                            }),
+                        Forms\Components\Select::make('branch_id')
+                            ->relationship('branch', 'branch_name')
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->disabled()
+                            ->live()
+                            ->dehydrated()
+                            ->reactive()
+                            ->afterStateHydrated(function ($state, $set, $get) {
+                                $fileId = $get('file_id');
+                                if ($fileId) {
+                                    $file = \App\Models\File::find($fileId);
+                                    if ($file) {
+                                        $set('branch_id', $file->provider_branch_id);
+                                    }
+                                }
+                            }),
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')
                             ->options(function () {
@@ -60,10 +102,10 @@ class BillResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->groups(['file.providerBranch.provider.name', 'file.providerBranch.branch_name'])
+        return $table->groups(['provider.name', 'branch.branch_name'])
             ->columns([
-                Tables\Columns\TextColumn::make('file.providerBranch.provider.name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('file.providerBranch.branch_name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
+                Tables\Columns\TextColumn::make('branch.branch_name')->searchable()->sortable()->label('Branch'),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
@@ -73,8 +115,8 @@ class BillResource extends Resource
                 Tables\Columns\TextColumn::make('remaining_amount')->money('EUR')->sortable()->state(fn (Bill $record) => $record->total_amount - $record->paid_amount),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('file.providerBranch.provider.name')->relationship('file.providerBranch.provider', 'name')->label('Provider')->searchable()->multiple(),
-                Tables\Filters\SelectFilter::make('file.providerBranch.branch_name')->relationship('file.providerBranch', 'branch_name')->label('Branch')->searchable()->multiple(),
+                Tables\Filters\SelectFilter::make('provider.name')->relationship('provider', 'name')->label('Provider')->searchable()->multiple(),
+                Tables\Filters\SelectFilter::make('branch.branch_name')->relationship('branch', 'branch_name')->label('Branch')->searchable()->multiple(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Unpaid' => 'Unpaid',

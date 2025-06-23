@@ -14,6 +14,8 @@ class Bill extends Model
     protected $fillable = [
         'name',
         'file_id',
+        'provider_id',
+        'branch_id',
         'bank_account_id',
         'due_date',
         'total_amount',
@@ -42,14 +44,14 @@ class Bill extends Model
         return $this->belongsTo(File::class);
     }
 
-    public function branch()
+    public function branch(): BelongsTo
     {
-        return $this->file->providerBranch;
+        return $this->belongsTo(ProviderBranch::class, 'branch_id');
     }
 
-    public function provider()
+    public function provider(): BelongsTo
     {
-        return $this->branch->provider;
+        return $this->belongsTo(Provider::class);
     }
 
     public function patient(): BelongsTo
@@ -87,6 +89,12 @@ class Bill extends Model
                 $bill->total_amount = 0;
                 $bill->discount = 0;
                 $bill->paid_amount = 0;
+                
+                // Auto-populate provider_id and branch_id from file
+                if ($bill->file && $bill->file->providerBranch && $bill->file->providerBranch->provider) {
+                    $bill->provider_id = $bill->file->providerBranch->provider_id;
+                    $bill->branch_id = $bill->file->provider_branch_id;
+                }
         });
 
         static::updating(function ($bill) {
