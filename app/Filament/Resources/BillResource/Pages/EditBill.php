@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BillResource\Pages;
 
 use App\Filament\Resources\BillResource;
 use App\Filament\Resources\FileResource;
+use App\Filament\Resources\TransactionResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -20,12 +21,31 @@ class EditBill extends EditRecord
             Actions\Action::make('pay_bill')
                 ->label('Pay Bill')
                 ->color('success')
-                ->action(function () {
-                    \Filament\Notifications\Notification::make()
-                        ->title('Payment processing')
-                        ->body('This functionality is not yet implemented.')
-                        ->info()
-                        ->send();
+                ->url(function () {
+                    $bill = $this->record;
+                    $params = [
+                        'type' => 'Outflow',
+                        'amount' => $bill->total_amount,
+                        'name' => 'Payment for ' . $bill->name. ' on ' . now()->format('d/m/Y'),
+                        'date' => now()->format('Y-m-d'),
+                        'bill_id' => $bill->id,
+                    ];
+                    
+                    // Determine related type and ID based on bill relationships
+                    if ($bill->branch_id) {
+                        $params['related_type'] = 'Branch';
+                        $params['related_id'] = $bill->branch_id;
+                    } elseif ($bill->provider_id) {
+                        $params['related_type'] = 'Provider';
+                        $params['related_id'] = $bill->provider_id;
+                    }
+                    
+                    // Add bank account if available
+                    if ($bill->bank_account_id) {
+                        $params['bank_account_id'] = $bill->bank_account_id;
+                    }
+                    
+                    return TransactionResource::getUrl('create', $params);
                 }),
             Actions\DeleteAction::make(),
         ];

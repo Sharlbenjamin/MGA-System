@@ -173,7 +173,7 @@ class FileResource extends Resource
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
                     ->formatStateUsing(fn ($state) => $state > 0 ? '✓' : '✗')
-                    ->counts('gops', fn ($query) => $query->where('type', 'In')),
+                    ->counts('gops', fn ($query) => $query->where('type', 'In')->where('status', '=', 'Sent')),
             ])
             ->filters([
                 // Filter by status

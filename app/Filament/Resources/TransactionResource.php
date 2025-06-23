@@ -41,17 +41,17 @@ class TransactionResource extends Resource
                     'Income' => 'Income',
                     'Outflow' => 'Outflow',
                     'Expense' => 'Expense',
-                ])->required(),
-                Forms\Components\Select::make('related_type')->options(fn ($get) => Self::relatedTypes($get('type')))->required()->searchable()->reactive(),
+                ])->required()->default(fn () => request()->get('type')),
+                Forms\Components\Select::make('related_type')->options(fn ($get) => Self::relatedTypes($get('type')))->required()->searchable()->reactive()->default(fn () => request()->get('related_type')),
                     // I want to select an invoice if realted_type is Client
-                Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client')->searchable(),
-                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider')->searchable(),
-                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch')->searchable(),
-                Forms\Components\Select::make('related_id')->label('Patient')->required()->options(Patient::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Patient')->searchable(),
-                Forms\Components\Select::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->required(),
-                Forms\Components\TextInput::make('name')->required()->maxLength(255),
-                Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€'),
-                Forms\Components\DatePicker::make('date')->required()->default(now()),
+                Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client')->searchable()->default(fn () => request()->get('related_id')),
+                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider')->searchable()->default(fn () => request()->get('related_id')),
+                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch')->searchable()->default(fn () => request()->get('related_id')),
+                Forms\Components\Select::make('related_id')->label('Patient')->required()->options(Patient::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Patient')->searchable()->default(fn () => request()->get('related_id')),
+                Forms\Components\Select::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->required()->default(fn () => request()->get('bank_account_id')),
+                Forms\Components\TextInput::make('name')->required()->maxLength(255)->default(fn () => request()->get('name')),
+                Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
+                Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
                 Forms\Components\TextInput::make('attachment_path')->maxLength(255),
                 Forms\Components\TextInput::make('bank_charges')
@@ -73,6 +73,7 @@ class TransactionResource extends Resource
                     ->preload()
                     ->live()
                     ->visible(fn ($get) => $get('related_type') === 'Client')
+                    ->default(fn () => request()->get('invoice_id') ? [request()->get('invoice_id')] : [])
                     ->options(function (callable $get) {
                         $clientId = $get('related_id');
                         if (!$clientId) return [];
@@ -99,6 +100,7 @@ class TransactionResource extends Resource
                 ->preload()
                 ->live()
                 ->visible(fn ($get) => $get('related_type') === 'Provider' || $get('related_type') === 'Branch')
+                ->default(fn () => request()->get('bill_id') ? [request()->get('bill_id')] : [])
                 ->options(function (callable $get) {
                     $relatedType = $get('related_type');
                     $relatedId = $get('related_id');
