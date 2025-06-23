@@ -143,7 +143,7 @@ class FileResource extends Resource
             ->filters([
                 // Filter by status
                 Filter::make('is_active')->label('Opened Cases')->default(true)->query(function (Builder $query) {
-                    return $query->whereIn('status', ['New', 'Handling', 'Available', 'Confirmed']);
+                    return $query->whereIn('status', ['New', 'Handling', 'Available', 'Confirmed', 'Hold']);
                 }),
                 SelectFilter::make('status')
                     ->options([
