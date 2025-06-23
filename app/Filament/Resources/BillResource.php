@@ -7,10 +7,12 @@ use App\Filament\Resources\BillResource\RelationManagers\ItemsRelationManager;
 use App\Models\BankAccount;
 use App\Models\Bill;
 use Filament\Forms;
+use Filament\Tables\Grouping\Group;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables;
+use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -102,14 +104,17 @@ class BillResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->groups(['provider.name', 'branch.branch_name'])
+        return $table->groups([
+            Group::make('provider.name')->label('Provider')->collapsible(),
+            Group::make('branch.branch_name')->label('Branch')->collapsible(),
+        ])
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
                 Tables\Columns\TextColumn::make('branch.branch_name')->searchable()->sortable()->label('Branch'),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
-                Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid','success' => 'Paid','primary' => 'Partial',]),
+                Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid','success' => 'Paid','primary' => 'Partial',])->summarize(Count::make('status')->label('Number of Bills')),
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('remaining_amount')->money('EUR')->sortable()->state(fn (Bill $record) => $record->total_amount - $record->paid_amount),

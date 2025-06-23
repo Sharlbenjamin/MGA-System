@@ -116,29 +116,58 @@ class FileResource extends Resource
             }]))
             ->defaultSort('created_at', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('patient.client.company_name')->label('Client')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable()->summarize(Count::make()),
-                Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
-                    'New' => 'success',
-                    'Handling' => 'info',
-                    'Available' => 'info',
-                    'Confirmed' => 'success',
-                    'Assisted' => 'success',
-                    'Hold' => 'warning',
-                    'Cancelled' => 'danger',
-                    'Void' => 'gray',
-                }),
-                // Relationship columns
-                Tables\Columns\TextColumn::make('patient.name')->label('Patient')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('city.name')->label('City')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('serviceType.name')->label('Service Type')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('providerBranch.branch_name')->label('Provider Branch')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('contact_patient')->label('Contact Patient')->sortable()->searchable(),
-                // Date & Time columns
-                Tables\Columns\TextColumn::make('service_date')->date()->sortable(),
-                // count undone tasks
-                Tables\Columns\TextColumn::make('undone_tasks_count')->label('Undone Tasks')->badge()->color('warning')->sortable(),
+                // Combined Client & Client Reference
+                Tables\Columns\TextColumn::make('patient.client.company_name')
+                    ->label('Client')
+                    ->description(fn ($record) => $record->client_reference ? "Ref: {$record->client_reference}" : null)
+                    ->sortable()
+                    ->searchable(),
+                
+                // Combined Patient Name & MGA Reference
+                Tables\Columns\TextColumn::make('patient.name')
+                    ->label('Patient')
+                    ->description(fn ($record) => $record->mga_reference)
+                    ->sortable()
+                    ->searchable(),
+                
+                // Combined Country & City
+                Tables\Columns\TextColumn::make('country.name')
+                    ->label('Location')
+                    ->description(fn ($record) => $record->city?->name)
+                    ->sortable()
+                    ->searchable(),
+                
+                // Combined Service Date, Time & Type
+                Tables\Columns\TextColumn::make('service_date')
+                    ->label('Service')
+                    ->description(fn ($record) => 
+                        ($record->service_time ? \Carbon\Carbon::parse($record->service_time)->format('H:i') . ' - ' : '') . 
+                        $record->serviceType?->name
+                    )
+                    ->date()
+                    ->sortable(),
+                
+                // Combined Provider Branch & Provider Name
+                Tables\Columns\TextColumn::make('providerBranch.branch_name')
+                    ->label('Provider')
+                    ->description(fn ($record) => $record->providerBranch?->provider?->name)
+                    ->sortable()
+                    ->searchable(),
+                
+                Tables\Columns\TextColumn::make('status')
+                    ->sortable()
+                    ->searchable()
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'New' => 'success',
+                        'Handling' => 'info',
+                        'Available' => 'info',
+                        'Confirmed' => 'success',
+                        'Assisted' => 'success',
+                        'Hold' => 'warning',
+                        'Cancelled' => 'danger',
+                        'Void' => 'gray',
+                    }),
             ])
             ->filters([
                 // Filter by status
@@ -179,6 +208,7 @@ class FileResource extends Resource
     {
         return [
             GopRelationManager::class,
+            BillRelationManager::class,
             MedicalReportRelationManager::class,
             PrescriptionRelationManager::class,
             PatientRelationManager::class,
@@ -186,7 +216,6 @@ class FileResource extends Resource
             AppointmentsRelationManager::class,
             TaskRelationManager::class,
             BankAccountRelationManager::class,
-            BillRelationManager::class,
         ];
     }
 
