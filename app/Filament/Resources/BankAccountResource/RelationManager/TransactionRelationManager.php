@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\BankAccountResource\RelationManagers;
+namespace App\Filament\Resources\BankAccountResource\RelationManager;
 
 use App\Models\Client;
 use App\Models\Invoice;
