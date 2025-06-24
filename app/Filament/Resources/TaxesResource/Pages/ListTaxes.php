@@ -298,6 +298,7 @@ class ListTaxes extends ListRecords
         // Query invoices for the selected period
         $invoices = Invoice::query()
             ->whereBetween('invoice_date', [$startDate, $endDate])
+            ->where('status', 'Paid')
             ->select([
                 'id',
                 'name as document_number',

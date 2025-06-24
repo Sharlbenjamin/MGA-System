@@ -32,7 +32,9 @@ class TaxSummaryWidget extends BaseWidget
         }
 
         // Calculate totals
-        $invoiceTotal = Invoice::whereBetween('invoice_date', [$startDate, $endDate])->sum('total_amount');
+        $invoiceTotal = Invoice::whereBetween('invoice_date', [$startDate, $endDate])
+            ->where('status', 'Paid')
+            ->sum('total_amount');
         $billTotal = Bill::whereBetween('bill_date', [$startDate, $endDate])->sum('total_amount');
         $expenseTotal = DB::table('transactions')
             ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')

@@ -29,7 +29,9 @@ class TaxesExportController extends Controller
         }
 
         // Calculate totals
-        $invoiceTotal = Invoice::whereBetween('invoice_date', [$startDate, $endDate])->sum('total_amount');
+        $invoiceTotal = Invoice::whereBetween('invoice_date', [$startDate, $endDate])
+            ->where('status', 'Paid')
+            ->sum('total_amount');
         $billTotal = Bill::whereBetween('bill_date', [$startDate, $endDate])->sum('total_amount');
         $expenseTotal = DB::table('transactions')
             ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
@@ -44,6 +46,7 @@ class TaxesExportController extends Controller
         // Get filtered data
         $invoices = Invoice::query()
             ->whereBetween('invoice_date', [$startDate, $endDate])
+            ->where('status', 'Paid')
             ->select([
                 'id',
                 'name as document_number',

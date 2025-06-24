@@ -24,6 +24,15 @@ class InvoiceResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Finance';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereIn('status', ['Draft', 'Posted'])->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
     public static function form(Form $form): Form
     {
         return $form
@@ -142,6 +151,19 @@ class InvoiceResource extends Resource
                         'Paid' => 'Paid',
                         'Partial' => 'Partial',
                     ]),
+
+                Tables\Filters\Filter::make('draft_or_posted')
+                    ->form([
+                        Forms\Components\Checkbox::make('show_draft_posted')
+                            ->label('Show Draft & Posted Invoices Only')
+                            ->default(true),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['show_draft_posted'] ?? true,
+                            fn (Builder $query): Builder => $query->whereIn('status', ['Draft', 'Posted']),
+                        );
+                    }),
 
                 Tables\Filters\Filter::make('due_date')
                     ->form([
