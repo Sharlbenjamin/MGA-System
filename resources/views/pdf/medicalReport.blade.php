@@ -197,7 +197,7 @@
             <div class="section">
                 <div class="patient-info">
                     <p><span class="bold">Patient Name: </span><span class="data">{{ $medicalReport->file->patient->name }}</span></p>
-                    <p><span class="bold">Gender: </span><span class="data">{{ $medicalReport->file->patient->gender }}</span></p>
+                    <p><span class="bold">Gender: </span><span class="data">{{ ucfirst($medicalReport->file->patient->gender) }}</span></p>
                     <p><span class="bold">Date of Birth: </span><span class="data">{{ $medicalReport->file->patient->dob?->format('d/m/Y') }}</span></p>
                 </div>
 
@@ -218,7 +218,7 @@
                 @if($medicalReport->temperature || $medicalReport->blood_pressure || $medicalReport->pulse)
                     <div class="vital-signs">
                         @if($medicalReport->temperature)
-                            <p><span class="bold">Temperature: </span><span class="data">{{ $medicalReport->temperature }}°C</span></p>
+                            <p><span class="bold">Temperature: </span><span class="data">{{ $medicalReport->temperature }}</span></p>
                         @endif
                         @if($medicalReport->blood_pressure)
                             <p><span class="bold">Blood Pressure: </span><span class="data">{{ $medicalReport->blood_pressure }}</span></p>

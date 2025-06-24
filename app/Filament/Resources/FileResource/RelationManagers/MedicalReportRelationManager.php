@@ -77,7 +77,7 @@ class MedicalReportRelationManager extends RelationManager
                 ->action(function ($record) {
                     $medicalReport = $record;
                     $pdf = Pdf::loadView('pdf.medicalReport', ['medicalReport' => $medicalReport]);
-                    $fileName = 'Medical_Report_' . $medicalReport->file->patient->name . '_' . ($medicalReport->date?->format('Y-m-d') ?? now()->format('Y-m-d')) . '.pdf';
+                    $fileName = $medicalReport->file->patient->name . ' Medical_Report ' . $medicalReport->file->mga_reference . '.pdf';
                     
                     return response()->streamDownload(
                         fn () => print($pdf->output()),
