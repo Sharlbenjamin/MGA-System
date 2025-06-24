@@ -11,9 +11,12 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\GopController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PrescriptionController;
+use App\Http\Controllers\TaxesExportController;
 use Google\Client as Google_Client;
 use Google\Service\Calendar;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 // ✅ Step 1: Check for site password unless already logged in
 Route::get('/', function () {
@@ -59,6 +62,9 @@ Route::get('/redirect-after-login', function () {
 // Filament Admin Panel Routes
 Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, DispatchServingFilamentEvent::class])->group(function () {
     // Filament registers its own routes automatically.
+    
+    // Taxes Export Route
+    Route::get('/taxes/export', [TaxesExportController::class, 'export'])->name('taxes.export');
 });
 
 // Google Meet Route

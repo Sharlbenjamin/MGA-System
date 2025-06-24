@@ -21,6 +21,7 @@ class EditBill extends EditRecord
             Actions\Action::make('pay_bill')
                 ->label('Pay Bill')
                 ->color('success')
+                ->hidden(fn ($record) => $record->status === 'Paid')
                 ->url(function () {
                     $bill = $this->record;
                     $params = [

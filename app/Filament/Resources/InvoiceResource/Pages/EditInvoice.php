@@ -23,6 +23,7 @@ class EditInvoice extends EditRecord
             Actions\Action::make('transaction')
                 ->label('Invoice Paid')
                 ->color('success')
+                ->hidden(fn ($record) => $record->status === 'Paid')
                 ->url(function () {
                     $invoice = $this->record;
                     $params = [
