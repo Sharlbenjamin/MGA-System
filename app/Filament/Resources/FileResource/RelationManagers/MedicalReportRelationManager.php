@@ -14,6 +14,8 @@ use Filament\Forms\Components\TextInput;
 use App\Filament\Resources\MedicalReportResource;
 use Filament\Forms\Components\Grid;
 use App\Models\MedicalReport;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Tables\Actions;
 
 class MedicalReportRelationManager extends RelationManager
 {
@@ -68,6 +70,20 @@ class MedicalReportRelationManager extends RelationManager
                     ->successNotificationTitle('Medical Report Created'),
             ])
             ->actions([
+                Actions\Action::make('export')
+                ->label('Export PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('success')
+                ->action(function ($record) {
+                    $medicalReport = $record;
+                    $pdf = Pdf::loadView('pdf.medicalReport', ['medicalReport' => $medicalReport]);
+                    $fileName = 'Medical_Report_' . $medicalReport->file->patient->name . '_' . ($medicalReport->date?->format('Y-m-d') ?? now()->format('Y-m-d')) . '.pdf';
+                    
+                    return response()->streamDownload(
+                        fn () => print($pdf->output()),
+                        $fileName
+                    );
+                }),
                 \Filament\Tables\Actions\Action::make('editMR')
                     ->label('Edit')
                     ->modalHeading('Edit Medical Report')
