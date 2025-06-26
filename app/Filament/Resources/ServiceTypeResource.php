@@ -14,10 +14,11 @@ class ServiceTypeResource extends Resource
 {
     protected static ?string $model = ServiceType::class;
 
-    protected static ?string $navigationGroup = null; // Removes it from any group
-    protected static ?int $navigationSort = null; // Ensures it's not sorted
-    protected static ?string $navigationIcon = null; // Hides from sidebar
-    protected static bool $shouldRegisterNavigation = false; // Hides it completely
+    protected static ?string $navigationGroup = 'Maps';
+    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list'; // Hides from sidebar
+
+
 
     public static function form(Forms\Form $form): Forms\Form
     {
