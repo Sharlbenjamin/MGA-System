@@ -6,6 +6,7 @@ use App\Filament\Resources\InvoiceResource;
 use App\Filament\Resources\TransactionResource;
 use Filament\Resources\Pages\EditRecord;
 use App\Filament\Resources\FileResource;
+use App\Models\Invoice;
 use Filament\Actions;
 
 class EditInvoice extends EditRecord
@@ -19,6 +20,9 @@ class EditInvoice extends EditRecord
                 ->label('View File')
                 ->url(FileResource::getUrl('view', ['record' => $this->record->file_id]))
                 ->icon('heroicon-o-document-text')->color('primary'),
+            Actions\Action::make('view')
+                ->url(fn (Invoice $record) => route('invoice.view', $record))
+                ->icon('heroicon-o-eye')->color('primary'),
 
             Actions\Action::make('transaction')
                 ->label('Invoice Paid')

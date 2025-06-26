@@ -138,6 +138,16 @@ class InvoiceResource extends Resource
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('remaining_amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->money('EUR')->sortable(),
+                Tables\Columns\TextColumn::make('file.status')->label('File Status')->badge()->color(fn (string $state): string => match ($state) {
+                    'New' => 'gray',
+                    'Handling' => 'info',
+                    'Available' => 'info',
+                    'Confirmed' => 'success',
+                    'Assisted' => 'success',
+                    'Hold' => 'warning',
+                    'Cancelled' => 'danger',
+                    'Void' => 'gray',
+                }),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('client')->relationship('patient.client', 'company_name')->label('Client')->searchable()->multiple(),
@@ -184,9 +194,6 @@ class InvoiceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('view')
-                ->url(fn (Invoice $record) => route('invoice.view', $record))
-                ->icon('heroicon-o-eye'),
             ])->headerActions([Tables\Actions\CreateAction::make()])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
