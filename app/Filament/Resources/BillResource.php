@@ -108,6 +108,7 @@ class BillResource extends Resource
             Group::make('provider.name')->label('Provider')->collapsible(),
             Group::make('branch.branch_name')->label('Branch')->collapsible(),
         ])
+            ->defaultSort('bill_date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
                 Tables\Columns\TextColumn::make('branch.branch_name')->searchable()->sortable()->label('Branch'),
@@ -118,6 +119,7 @@ class BillResource extends Resource
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('remaining_amount')->money('EUR')->sortable()->state(fn (Bill $record) => $record->total_amount - $record->paid_amount),
+                Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('provider.name')->relationship('provider', 'name')->label('Provider')->searchable()->multiple(),
