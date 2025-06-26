@@ -46,7 +46,7 @@ class FileResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        return static::getModel()::whereIn('status', ['New', 'Handling', 'Available', 'Confirmed', 'Hold'])->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
