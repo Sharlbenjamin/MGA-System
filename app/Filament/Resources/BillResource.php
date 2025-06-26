@@ -87,6 +87,10 @@ class BillResource extends Resource
                                 'Paid' => 'Paid',
                             ])->default('Unpaid')
                             ->required(),
+                        Forms\Components\TextInput::make('bill_google_link')
+                            ->label('Google Drive Link')
+                            ->url()
+                            ->helperText('Google Drive link for this bill'),
 
                         ])->columnSpan(['lg' => 2]),
                 Forms\Components\Card::make()
