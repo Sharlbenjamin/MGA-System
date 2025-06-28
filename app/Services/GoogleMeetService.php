@@ -8,28 +8,57 @@ use Google\Service\Calendar\Event;
 use Google\Service\Calendar\ConferenceData;
 use Google\Service\Calendar\CreateConferenceRequest;
 use Google\Service\Calendar\ConferenceSolutionKey;
+use Google\Service\Calendar\EventAttendee;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use App\Mail\MeetingLinkCreated;
 use App\Models\Contact;
+use App\Services\GoogleCalendar;
 
 class GoogleMeetService
 {
     public function generateMeetLink(File $file)
     {
         if (!$file->service_date || !$file->service_time) {
+            Log::warning('Telemedicine meeting creation failed: Missing service date or time', [
+                'file_id' => $file->id,
+                'service_date' => $file->service_date,
+                'service_time' => $file->service_time
+            ]);
             return null;
         }
 
         // Convert service_time to string if it's an array
         $serviceTime = is_array($file->service_time) ? $file->service_time['time'] ?? '' : $file->service_time;
 
-        $startDateTime = \Carbon\Carbon::parse($file->service_date)
-            ->setTimeFromTimeString($serviceTime);
+        // Create the start datetime by combining the date and time properly
+        // service_date is already a Carbon instance (cast as 'date')
+        // service_time is a string in format like "14:30:00"
+        $startDateTime = $file->service_date->copy()->setTimeFromTimeString($serviceTime);
         $endDateTime = $startDateTime->copy()->addMinutes(30);
+
+        Log::info('Creating telemedicine meeting', [
+            'file_id' => $file->id,
+            'patient_name' => $file->patient->name,
+            'service_date' => $file->service_date->toDateString(),
+            'service_time' => $serviceTime,
+            'start_time' => $startDateTime->toDateTimeString(),
+            'end_time' => $endDateTime->toDateTimeString(),
+            'timezone' => $startDateTime->timezone->getName(),
+            'file_email' => $file->email
+        ]);
 
         $meetLink = $this->createGoogleCalendarEvent($file, $startDateTime, $endDateTime);
         if ($meetLink) {
             $this->sendNotifications($file, $meetLink);
+            Log::info('Telemedicine meeting created successfully', [
+                'file_id' => $file->id,
+                'meet_link' => $meetLink
+            ]);
+        } else {
+            Log::error('Failed to create telemedicine meeting', [
+                'file_id' => $file->id
+            ]);
         }
 
         return $meetLink;
@@ -37,37 +66,115 @@ class GoogleMeetService
 
     private function createGoogleCalendarEvent(File $file, $startDateTime, $endDateTime)
     {
-        $conferenceRequest = new CreateConferenceRequest();
-        $conferenceRequest->setRequestId(uniqid());
-        $conferenceRequest->setConferenceSolutionKey(new ConferenceSolutionKey(['type' => 'hangoutsMeet']));
-
-        $conferenceData = new ConferenceData();
-        $conferenceData->setCreateRequest($conferenceRequest);
-
-        $event = new Event([
-            'summary' => "Telemedicine Consultation - {$file->patient->name}",
-            'description' => "Medical consultation for file reference: {$file->mga_reference}",
-            'start' => ['dateTime' => $startDateTime->toRfc3339String()],
-            'end' => ['dateTime' => $endDateTime->toRfc3339String()],
-            'conferenceData' => $conferenceData
-        ]);
-
         try {
+            $conferenceRequest = new CreateConferenceRequest();
+            $conferenceRequest->setRequestId(uniqid());
+            $conferenceRequest->setConferenceSolutionKey(new ConferenceSolutionKey(['type' => 'hangoutsMeet']));
+
+            $conferenceData = new ConferenceData();
+            $conferenceData->setCreateRequest($conferenceRequest);
+
+            // Prepare attendees array
+            $attendees = [];
+            
+            // Add doctor's email (from provider branch operation contact)
+            if ($file->providerBranch) {
+                $branchOperationContact = $file->providerBranch->operationContact;
+                if ($branchOperationContact) {
+                    $doctorEmail = $this->getPreferredEmail($branchOperationContact);
+                    if ($doctorEmail) {
+                        $attendees[] = new EventAttendee([
+                            'email' => $doctorEmail,
+                            'displayName' => $file->providerBranch->branch_name . ' Doctor'
+                        ]);
+                        Log::info('Added doctor as attendee', [
+                            'file_id' => $file->id,
+                            'doctor_email' => $doctorEmail
+                        ]);
+                    }
+                }
+            }
+
+            // Add patient's email (from file->email)
+            if ($file->email) {
+                $attendees[] = new EventAttendee([
+                    'email' => $file->email,
+                    'displayName' => $file->patient->name . ' (Patient)'
+                ]);
+                Log::info('Added patient as attendee', [
+                    'file_id' => $file->id,
+                    'patient_email' => $file->email
+                ]);
+            } else {
+                Log::warning('No patient email available for calendar event', [
+                    'file_id' => $file->id
+                ]);
+            }
+
+            // Add provider's email (from provider operation contact)
+            if ($file->providerBranch && $file->providerBranch->provider) {
+                $providerOperationContact = $file->providerBranch->provider->operationContact;
+                if ($providerOperationContact) {
+                    $providerEmail = $this->getPreferredEmail($providerOperationContact);
+                    if ($providerEmail) {
+                        $attendees[] = new EventAttendee([
+                            'email' => $providerEmail,
+                            'displayName' => $file->providerBranch->provider->name . ' (Provider)'
+                        ]);
+                        Log::info('Added provider as attendee', [
+                            'file_id' => $file->id,
+                            'provider_email' => $providerEmail
+                        ]);
+                    }
+                }
+            }
+
+            $event = new Event([
+                'summary' => "Telemedicine Consultation - {$file->patient->name}",
+                'description' => "Medical consultation for file reference: {$file->mga_reference}\n\nPatient: {$file->patient->name}\nSymptoms: {$file->symptoms}\nProvider: {$file->providerBranch->branch_name}",
+                'start' => ['dateTime' => $startDateTime->toRfc3339String()],
+                'end' => ['dateTime' => $endDateTime->toRfc3339String()],
+                'conferenceData' => $conferenceData,
+                'attendees' => $attendees
+            ]);
+
             $client = GoogleCalendar::getClient();
             $calendarService = new Calendar($client);
+
+            Log::info('Creating Google Calendar event', [
+                'file_id' => $file->id,
+                'attendees_count' => count($attendees),
+                'calendar_id' => 'mga.operation@medguarda.com'
+            ]);
 
             $createdEvent = $calendarService->events->insert(
                 'mga.operation@medguarda.com',
                 $event,
-                ['conferenceDataVersion' => 1]
+                ['conferenceDataVersion' => 1, 'sendUpdates' => 'all']
             );
 
             if (!$createdEvent->getHangoutLink()) {
+                Log::error('Google Calendar event created but no Hangout link generated', [
+                    'file_id' => $file->id,
+                    'event_id' => $createdEvent->getId()
+                ]);
                 return null;
             }
 
+            Log::info('Google Calendar event created successfully', [
+                'file_id' => $file->id,
+                'event_id' => $createdEvent->getId(),
+                'hangout_link' => $createdEvent->getHangoutLink()
+            ]);
+
             return $createdEvent->getHangoutLink();
+
         } catch (\Exception $e) {
+            Log::error('Failed to create Google Calendar event', [
+                'file_id' => $file->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return null;
         }
     }
@@ -93,6 +200,20 @@ class GoogleMeetService
         $recipients = collect();
         $hasOperationContacts = false;
 
+        // Add file email (patient's email) as primary recipient
+        if ($file->email) {
+            $recipients->push($file->email);
+            $hasOperationContacts = true;
+            Log::info('Added patient email to recipients', [
+                'file_id' => $file->id,
+                'patient_email' => $file->email
+            ]);
+        } else {
+            Log::warning('No patient email found in file', [
+                'file_id' => $file->id
+            ]);
+        }
+
         // Get provider operation contact
         if ($file->providerBranch && $file->providerBranch->provider) {
             $providerOperationContact = $file->providerBranch->provider->operationContact;
@@ -101,11 +222,15 @@ class GoogleMeetService
                 if ($email) {
                     $recipients->push($email);
                     $hasOperationContacts = true;
+                    Log::info('Added provider email to recipients', [
+                        'file_id' => $file->id,
+                        'provider_email' => $email
+                    ]);
                 }
             }
         }
 
-        // Get branch operation contact
+        // Get branch operation contact (doctor's email)
         if ($file->providerBranch) {
             $branchOperationContact = $file->providerBranch->operationContact;
             if ($branchOperationContact) {
@@ -113,18 +238,10 @@ class GoogleMeetService
                 if ($email) {
                     $recipients->push($email);
                     $hasOperationContacts = true;
-                }
-            }
-        }
-
-        // Get patient operation contact
-        if ($file->patient) {
-            $patientOperationContact = $file->patient->operationContact;
-            if ($patientOperationContact) {
-                $email = $this->getPreferredEmail($patientOperationContact);
-                if ($email) {
-                    $recipients->push($email);
-                    $hasOperationContacts = true;
+                    Log::info('Added doctor email to recipients', [
+                        'file_id' => $file->id,
+                        'doctor_email' => $email
+                    ]);
                 }
             }
         }
@@ -132,18 +249,35 @@ class GoogleMeetService
         // If no operation contacts found, use default
         if (!$hasOperationContacts) {
             $recipients->push('mga.operation@medguarda.com');
+            Log::info('No contacts found, using default email', [
+                'file_id' => $file->id
+            ]);
         }
 
         // Remove duplicates and send email
         $recipients = $recipients->unique();
+
+        Log::info('Sending telemedicine meeting notifications', [
+            'file_id' => $file->id,
+            'recipients' => $recipients->toArray(),
+            'total_recipients' => $recipients->count()
+        ]);
 
         if ($recipients->isNotEmpty()) {
             try {
                 Mail::to($recipients->first())
                     ->cc($recipients->slice(1)->all())
                     ->send(new MeetingLinkCreated($file, $meetLink));
+                
+                Log::info('Telemedicine meeting notifications sent successfully', [
+                    'file_id' => $file->id,
+                    'recipients_count' => $recipients->count()
+                ]);
             } catch (\Exception $e) {
-                // Silent fail on email sending
+                Log::error('Failed to send telemedicine meeting notifications', [
+                    'file_id' => $file->id,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
     }

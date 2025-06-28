@@ -77,6 +77,8 @@ class FileResource extends Resource
                     $set('mga_reference', File::generateMGAReference($state, 'patient'));
                 })->hidden(fn ($get) => $get('new_patient') == true),
             TextInput::make('patient_name')->label('Patient Name')->required()->hidden(fn ($get) => $get('new_patient') == false),
+            DatePicker::make('patient_dob')->label('Date of Birth')->nullable()->hidden(fn ($get) => $get('new_patient') == false),
+            Select::make('patient_gender')->label('Gender')->options(['Male' => 'Male', 'Female' => 'Female'])->nullable()->hidden(fn ($get) => $get('new_patient') == false),
             Select::make('client_id')->options(Client::where('status', 'Active')->pluck('company_name', 'id'))->searchable()->preload()->required()->live()->afterStateUpdated(function ($state, callable $set) {
                     $set('mga_reference', File::generateMGAReference($state, 'client'));
                 })
@@ -128,7 +130,11 @@ class FileResource extends Resource
                 // Combined Patient Name & MGA Reference
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('Patient')
-                    ->description(fn ($record) => $record->mga_reference)
+                    ->description(fn ($record) => 
+                        $record->mga_reference . 
+                        ($record->patient?->dob ? ' | DOB: ' . $record->patient->dob->format('d/m/Y') : '') .
+                        ($record->patient?->gender ? ' | ' . $record->patient->gender : '')
+                    )
                     ->sortable()
                     ->searchable(),
                 
@@ -205,6 +211,12 @@ class FileResource extends Resource
                 SelectFilter::make('country_id')->options(\App\Models\Country::pluck('name', 'id'))->label('Country'),
                 SelectFilter::make('city_id')->options(\App\Models\City::pluck('name', 'id'))->label('City'),
                 SelectFilter::make('service_type_id')->options(\App\Models\ServiceType::pluck('name', 'id'))->label('Service Type'),
+                SelectFilter::make('patient_gender')
+                    ->label('Gender')
+                    ->options(['Male' => 'Male', 'Female' => 'Female'])
+                    ->query(fn (Builder $query, $state) =>
+                        $state ? $query->whereHas('patient', fn ($q) => $q->where('gender', $state)) : $query
+                    ),
             ])
             ->actions([
                 Tables\Actions\Action::make('View')
