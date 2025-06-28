@@ -107,58 +107,20 @@ class FileResource extends Resource
     public static function table(Table $table): Table
     {
         // sort by service_date
-        return $table->groups([
-            Group::make('patient.client.company_name')->collapsible(),
-            Group::make('status')->collapsible(),
-            Group::make('country.name')->collapsible(),
-            Group::make('city.name')->collapsible(),
-            Group::make('serviceType.name')->collapsible(),
-            Group::make('providerBranch.branch_name')->collapsible(),
-        ])
-            ->modifyQueryUsing(fn ($query) => $query->withCount(['tasks as undone_tasks_count' => function ($query) {
-                $query->where('is_done', false);
-            }]))
+        return $table
+            ->modifyQueryUsing(fn ($query) => $query->with([
+                'patient'
+            ]))
             ->defaultSort('created_at', 'desc')
             ->columns([
-                // Combined Client & Client Reference
-                Tables\Columns\TextColumn::make('patient.client.company_name')
-                    ->label('Client')
-                    ->description(fn ($record) => $record->client_reference ? "Ref: {$record->client_reference}" : null)
+                // Basic columns to test
+                Tables\Columns\TextColumn::make('mga_reference')
+                    ->label('MGA Reference')
                     ->sortable()
                     ->searchable(),
                 
-                // Combined Patient Name & MGA Reference
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('Patient')
-                    ->description(fn ($record) => 
-                        $record->mga_reference . 
-                        ($record->patient?->dob ? ' | DOB: ' . $record->patient->dob->format('d/m/Y') : '') .
-                        ($record->patient?->gender ? ' | ' . $record->patient->gender : '')
-                    )
-                    ->sortable()
-                    ->searchable(),
-                
-                // Combined Country & City
-                Tables\Columns\TextColumn::make('country.name')
-                    ->label('Location')
-                    ->description(fn ($record) => $record->city?->name)
-                    ->sortable()
-                    ->searchable(),
-                
-                // Combined Service Date, Time & Type
-                Tables\Columns\TextColumn::make('service_date')
-                    ->label('Service')
-                    ->description(fn ($record) => 
-                        ($record->service_time ? \Carbon\Carbon::parse($record->service_time)->format('H:i') . ' - ' : '') . 
-                        $record->serviceType?->name
-                    )
-                    ->date()
-                    ->sortable(),
-                
-                // Combined Provider Branch & Provider Name
-                Tables\Columns\TextColumn::make('providerBranch.branch_name')
-                    ->label('Provider')
-                    ->description(fn ($record) => $record->providerBranch?->provider?->name)
                     ->sortable()
                     ->searchable(),
                 
@@ -176,12 +138,12 @@ class FileResource extends Resource
                         'Cancelled' => 'danger',
                         'Void' => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('gops_count')
-                    ->label('GOP')
-                    ->badge()
-                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
-                    ->formatStateUsing(fn ($state) => $state > 0 ? '✓' : '✗')
-                    ->counts('gops', fn ($query) => $query->where('type', 'In')->where('status', '=', 'Sent')),
+                
+                Tables\Columns\TextColumn::make('service_date')
+                    ->label('Service Date')
+                    ->date()
+                    ->sortable(),
+                
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
                     ->searchable()
@@ -192,11 +154,20 @@ class FileResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // Filter by status
-                Filter::make('is_active')->label('Opened Cases')->default(true)->query(function (Builder $query) {
-                    return $query->whereIn('status', ['New', 'Handling', 'Available', 'Confirmed', 'Hold']);
-                }),
+                Filter::make('opened_cases')
+                    ->label('Opened Cases Only')
+                    ->default(true)
+                    ->query(function (Builder $query) {
+                        return $query->whereIn('status', ['New', 'Handling', 'Available', 'Confirmed', 'Hold']);
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        if ($data['opened_cases'] ?? false) {
+                            return 'Opened Cases Only';
+                        }
+                        return null;
+                    }),
                 SelectFilter::make('status')
+                    ->label('Status')
                     ->options([
                         'New' => 'New',
                         'Handling' => 'Handling',
@@ -207,16 +178,15 @@ class FileResource extends Resource
                         'Cancelled' => 'Cancelled',
                         'Void' => 'Void',
                     ]),
-                //isActive
-                SelectFilter::make('country_id')->options(\App\Models\Country::pluck('name', 'id'))->label('Country'),
-                SelectFilter::make('city_id')->options(\App\Models\City::pluck('name', 'id'))->label('City'),
-                SelectFilter::make('service_type_id')->options(\App\Models\ServiceType::pluck('name', 'id'))->label('Service Type'),
-                SelectFilter::make('patient_gender')
-                    ->label('Gender')
-                    ->options(['Male' => 'Male', 'Female' => 'Female'])
-                    ->query(fn (Builder $query, $state) =>
-                        $state ? $query->whereHas('patient', fn ($q) => $q->where('gender', $state)) : $query
-                    ),
+                SelectFilter::make('country_id')
+                    ->label('Country')
+                    ->options(\App\Models\Country::pluck('name', 'id')),
+                SelectFilter::make('city_id')
+                    ->label('City')
+                    ->options(\App\Models\City::pluck('name', 'id')),
+                SelectFilter::make('service_type_id')
+                    ->label('Service Type')
+                    ->options(\App\Models\ServiceType::pluck('name', 'id')),
             ])
             ->actions([
                 Tables\Actions\Action::make('View')
