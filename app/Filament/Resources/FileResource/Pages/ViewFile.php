@@ -567,32 +567,88 @@ class ViewFile extends ViewRecord
         // Properly escape the text for JavaScript, preserving newlines
         $escapedText = json_encode($text, JSON_HEX_APOS | JSON_HEX_QUOT);
         
-        // Return JavaScript to copy to clipboard
+        // Return JavaScript to copy to clipboard with improved mobile support
         $this->js("
-            navigator.clipboard.writeText(" . $escapedText . ").then(function() {
-                console.log('Text copied to clipboard');
-            }).catch(function(err) {
-                console.error('Failed to copy text: ', err);
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = " . $escapedText . ";
-                textArea.style.top = '0';
-                textArea.style.left = '0';
-                textArea.style.position = 'fixed';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                
-                try {
-                    const successful = document.execCommand('copy');
-                    if (successful) {
-                        console.log('Text copied to clipboard (fallback)');
-                    }
-                } catch (err) {
-                    console.error('Fallback copy failed: ', err);
+            // Function to copy text to clipboard
+            function copyTextToClipboard(text) {
+                // Try modern clipboard API first
+                if (navigator.clipboard && window.isSecureContext) {
+                    return navigator.clipboard.writeText(text).then(function() {
+                        console.log('Text copied to clipboard (modern API)');
+                        return true;
+                    }).catch(function(err) {
+                        console.error('Modern clipboard API failed: ', err);
+                        return false;
+                    });
                 }
                 
-                document.body.removeChild(textArea);
+                // Fallback for older browsers and mobile devices
+                return new Promise(function(resolve) {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    
+                    // Make the textarea invisible but keep it in the DOM
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    textArea.style.opacity = '0';
+                    textArea.style.pointerEvents = 'none';
+                    textArea.style.zIndex = '-1';
+                    
+                    document.body.appendChild(textArea);
+                    
+                    // For mobile devices, we need to focus and select
+                    if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                        // Mobile-specific handling
+                        textArea.focus();
+                        textArea.select();
+                        
+                        // Try to copy using execCommand
+                        try {
+                            const successful = document.execCommand('copy');
+                            if (successful) {
+                                console.log('Text copied to clipboard (mobile fallback)');
+                                resolve(true);
+                            } else {
+                                console.error('execCommand copy failed');
+                                resolve(false);
+                            }
+                        } catch (err) {
+                            console.error('execCommand copy error: ', err);
+                            resolve(false);
+                        }
+                    } else {
+                        // Desktop fallback
+                        textArea.focus();
+                        textArea.select();
+                        
+                        try {
+                            const successful = document.execCommand('copy');
+                            if (successful) {
+                                console.log('Text copied to clipboard (desktop fallback)');
+                                resolve(true);
+                            } else {
+                                console.error('execCommand copy failed');
+                                resolve(false);
+                            }
+                        } catch (err) {
+                            console.error('execCommand copy error: ', err);
+                            resolve(false);
+                        }
+                    }
+                    
+                    // Clean up
+                    document.body.removeChild(textArea);
+                });
+            }
+            
+            // Execute the copy
+            copyTextToClipboard(" . $escapedText . ").then(function(success) {
+                if (!success) {
+                    console.warn('Copy to clipboard failed on all methods');
+                    // Show a fallback message to user
+                    alert('Copy failed. Please manually select and copy the text.');
+                }
             });
         ");
     }
