@@ -42,11 +42,6 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\Notifications\Notification;
-use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Notifications\DatabaseNotification;
-use App\Models\File;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 
@@ -54,53 +49,52 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        //dd(Filament::auth()->user());
         return $panel
-        ->topNavigation()
-        ->default()
-        ->id('admin')
-        ->path('admin')
-        ->login()
-        ->colors([
-            'primary' => Color::hex('#191970'),
-        ])->resources([
-            ClientResource::class,
-            CityResource::class,
-            ContactResource::class,
-            DraftMailResource::class,
-            LeadResource::class,
-            ProviderBranchResource::class,
-            ProviderLeadResource::class,
-            ProviderResource::class,
-            PatientResource::class,
-            FileResource::class,
-            MedicalReportResource::class,
-            GopResource::class,
-            PrescriptionResource::class,
-            DrugResource::class,
-        ])->databaseNotifications()
-        ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-        ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-        ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
-        ->middleware([
-            EncryptCookies::class,
-            AddQueuedCookiesToResponse::class,
-            StartSession::class,
-            AuthenticateSession::class,
-            ShareErrorsFromSession::class,
-            VerifyCsrfToken::class,
-            SubstituteBindings::class,
-            DisableBladeIconComponents::class,
-            DispatchServingFilamentEvent::class,
-        ])
-        ->authMiddleware([
-            Authenticate::class,
-        ])->maxContentWidth('full')
-        ->brandName('MGA System')
-        ->brandLogo(asset('logo.png'))
-        ->favicon(asset('logo.png'));
+            ->default()
+            ->id('admin')
+            ->path('admin')
+            ->login()
+            ->topNavigation()
+            ->colors([
+                'primary' => Color::hex('#191970'),
+            ])
+            ->resources([
+                ClientResource::class,
+                CityResource::class,
+                ContactResource::class,
+                DraftMailResource::class,
+                LeadResource::class,
+                ProviderBranchResource::class,
+                ProviderLeadResource::class,
+                ProviderResource::class,
+                PatientResource::class,
+                FileResource::class,
+                MedicalReportResource::class,
+                GopResource::class,
+                PrescriptionResource::class,
+                DrugResource::class,
+            ])
+            ->databaseNotifications()
+            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->middleware([
+                EncryptCookies::class,
+                AddQueuedCookiesToResponse::class,
+                StartSession::class,
+                AuthenticateSession::class,
+                ShareErrorsFromSession::class,
+                VerifyCsrfToken::class,
+                SubstituteBindings::class,
+                DisableBladeIconComponents::class,
+                DispatchServingFilamentEvent::class,
+            ])
+            ->authMiddleware([
+                Authenticate::class,
+            ])
+            ->maxContentWidth('full')
+            ->brandName('MGA System')
+            ->brandLogo(asset('logo.png'))
+            ->favicon(asset('logo.png'));
     }
-
-
-
 }

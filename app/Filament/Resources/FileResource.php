@@ -107,20 +107,57 @@ class FileResource extends Resource
     public static function table(Table $table): Table
     {
         // sort by service_date
-        return $table
+        return $table->groups([
+            Group::make('patient.client.company_name')->collapsible()->label('Client'),
+            Group::make('status')->collapsible(),
+            Group::make('country.name')->collapsible()->label('Country'),
+            Group::make('serviceType.name')->collapsible()->label('Service Type'),
+        ])
             ->modifyQueryUsing(fn ($query) => $query->with([
-                'patient'
+                'patient.client',
+                'country',
+                'city',
+                'serviceType',
+                'providerBranch.provider',
+                'gops'
             ]))
             ->defaultSort('created_at', 'desc')
             ->columns([
-                // Basic columns to test
-                Tables\Columns\TextColumn::make('mga_reference')
-                    ->label('MGA Reference')
+                // Enhanced columns
+                Tables\Columns\TextColumn::make('patient.client.company_name')
+                    ->label('Client')
+                    ->description(fn ($record) => $record->client_reference ? "Ref: {$record->client_reference}" : null)
                     ->sortable()
                     ->searchable(),
                 
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('Patient')
+                    ->description(fn ($record) => 
+                        $record->mga_reference . 
+                        ($record->patient?->dob ? ' | DOB: ' . $record->patient->dob->format('d/m/Y') : '') .
+                        ($record->patient?->gender ? ' | ' . $record->patient->gender : '')
+                    )
+                    ->sortable()
+                    ->searchable(),
+                
+                Tables\Columns\TextColumn::make('country.name')
+                    ->label('Location')
+                    ->description(fn ($record) => $record->city?->name)
+                    ->sortable()
+                    ->searchable(),
+                
+                Tables\Columns\TextColumn::make('service_date')
+                    ->label('Service')
+                    ->description(fn ($record) => 
+                        ($record->service_time ? \Carbon\Carbon::parse($record->service_time)->format('H:i') . ' - ' : '') . 
+                        $record->serviceType?->name
+                    )
+                    ->date()
+                    ->sortable(),
+                
+                Tables\Columns\TextColumn::make('providerBranch.branch_name')
+                    ->label('Provider')
+                    ->description(fn ($record) => $record->providerBranch?->provider?->name)
                     ->sortable()
                     ->searchable(),
                 
@@ -139,10 +176,12 @@ class FileResource extends Resource
                         'Void' => 'gray',
                     }),
                 
-                Tables\Columns\TextColumn::make('service_date')
-                    ->label('Service Date')
-                    ->date()
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('gops_count')
+                    ->label('GOP')
+                    ->badge()
+                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
+                    ->formatStateUsing(fn ($state) => $state > 0 ? '✓' : '✗')
+                    ->counts('gops', fn ($query) => $query->where('type', 'In')->where('status', '=', 'Sent')),
                 
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')

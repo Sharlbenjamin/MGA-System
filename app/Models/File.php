@@ -140,7 +140,7 @@ class File extends Model
 
         return \App\Models\ProviderBranch::query()
             ->when($serviceTypeName, fn ($query) =>
-                $query->where('service_types', 'like', '%' . $serviceTypeName . '%')
+                $query->whereJsonContains('service_types', $serviceTypeName)
             )
             ->when($this->city_id, fn ($query) =>
                 $query->where('city_id', $this->city_id)
@@ -152,72 +152,106 @@ class File extends Model
     }
 
     public function availableBranches()
-{
-    $serviceTypeName = $this->serviceType?->name;
+    {
+        $serviceTypeName = $this->serviceType?->name;
 
-    // If service type is 2, ignore country/city filters
-    if ($this->service_type_id == 2) {
-        $allBranches = \App\Models\ProviderBranch::query()
+        // If service type is 2, ignore country/city filters
+        if ($this->service_type_id == 2) {
+            $allBranches = \App\Models\ProviderBranch::query()
+                ->where('status', 'Active')
+                ->whereJsonContains('service_types', $serviceTypeName)
+                ->orderBy('priority', 'asc')
+                ->get();
+
+            return [
+                'cityBranches' => $allBranches,
+                'allBranches' => $allBranches,
+            ];
+        }
+
+        // If no country is assigned, show all branches with matching service type
+        if (!$this->country_id) {
+            $allBranches = \App\Models\ProviderBranch::query()
+                ->where('status', 'Active')
+                ->whereJsonContains('service_types', $serviceTypeName)
+                ->orderBy('priority', 'asc')
+                ->get();
+
+            return [
+                'cityBranches' => $allBranches,
+                'allBranches' => $allBranches,
+            ];
+        }
+
+        // Filter branches by city (direct or via pivot) or all_country
+        $cityBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
-            ->where('service_types', 'like', '%' . $serviceTypeName . '%')
+            ->whereJsonContains('service_types', $serviceTypeName)
+            ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
+            ->where(function ($q) {
+                $q->where('all_country', true)
+                  ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id));
+            })
+            ->orderBy('priority', 'asc')
+            ->get();
+
+        // Filter branches by province or all_country
+        $provinceBranches = \App\Models\ProviderBranch::query()
+            ->where('status', 'Active')
+            ->whereJsonContains('service_types', $serviceTypeName)
+            ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
+            ->where(function ($q) {
+                $q->where('all_country', true)
+                  ->orWhere('province_id', $this->city?->province_id);
+            })
             ->orderBy('priority', 'asc')
             ->get();
 
         return [
-            'cityBranches' => $allBranches,
-            'allBranches' => $allBranches,
+            'cityBranches' => $cityBranches,
+            'allBranches' => $provinceBranches->merge($cityBranches)->unique('id'),
         ];
     }
 
-    // Filter branches by city (direct or via pivot) or all_country
-    $cityBranches = \App\Models\ProviderBranch::query()
-        ->where('status', 'Active')
-        ->where('service_types', 'like', '%' . $serviceTypeName . '%')
-        ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
-        ->where(function ($q) {
-            $q->where('all_country', true)
-              ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id));
-        })
-        ->orderBy('priority', 'asc')
-        ->get();
-
-    // Filter branches by province or all_country
-    $provinceBranches = \App\Models\ProviderBranch::query()
-        ->where('status', 'Active')
-        ->where('service_types', 'like', '%' . $serviceTypeName . '%')
-        ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
-        ->where(function ($q) {
-            $q->where('all_country', true)
-              ->orWhere('province_id', $this->city?->province_id);
-        })
-        ->orderBy('priority', 'asc')
-        ->get();
-
-    return [
-        'cityBranches' => $cityBranches,
-        'allBranches' => $provinceBranches->merge($cityBranches)->unique('id'),
-    ];
-}
-
     public function requestAppointments($file)
     {
-        foreach ($file->appointments as $appointment) {
-            if ($appointment->status === 'Cancelled') {
-                $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
-                continue;
-            }
+        $processedCount = 0;
+        $errorCount = 0;
 
-            if ($appointment->isUpdated()) {
-                $appointment->providerBranch->notifyBranch('appointment_updated', $appointment);
-            } else {
-                $appointment->providerBranch->notifyBranch('appointment_created', $appointment);
+        foreach ($file->appointments as $appointment) {
+            try {
+                if ($appointment->status === 'Cancelled') {
+                    $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
+                    $processedCount++;
+                    continue;
+                }
+
+                if ($appointment->isUpdated()) {
+                    $appointment->providerBranch->notifyBranch('appointment_updated', $appointment);
+                } else {
+                    $appointment->providerBranch->notifyBranch('appointment_created', $appointment);
+                }
+                $processedCount++;
+            } catch (\Exception $e) {
+                $errorCount++;
+                \Log::error('Failed to process appointment notification', [
+                    'appointment_id' => $appointment->id,
+                    'file_id' => $file->id,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
+
         // Log in comments
         $file->comments()->create([
             'user_id' => Auth::id(),
-            'content' => "Appointment requests processed for file."
+            'content' => "Appointment requests processed for file. Processed: {$processedCount}, Errors: {$errorCount}"
         ]);
+
+        return [
+            'processed' => $processedCount,
+            'errors' => $errorCount
+        ];
     }
 
     protected static function boot()

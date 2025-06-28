@@ -5,25 +5,42 @@ namespace App\Mail;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Appointment;
+use App\Models\File;
+use App\Models\ProviderBranch;
 
 class AppointmentRequestMail extends Mailable
 {
     use SerializesModels;
 
-    public Appointment $appointment;
+    public File $file;
+    public ?ProviderBranch $providerBranch;
+    public ?string $customEmail;
 
-    public function __construct(Appointment $appointment) // ✅ Ensure this expects an Appointment model
+    public function __construct(File $file, ?ProviderBranch $providerBranch = null, ?string $customEmail = null)
     {
-        $this->appointment = $appointment;
+        $this->file = $file;
+        $this->providerBranch = $providerBranch;
+        $this->customEmail = $customEmail;
     }
 
     public function build()
     {
-        return $this->subject('New Appointment Request')
-            ->view('emails.appointment_request')
+        $subject = 'New Appointment Request';
+        $view = 'emails.appointment_request';
+        
+        if ($this->providerBranch) {
+            $subject .= ' - ' . $this->providerBranch->branch_name;
+        } elseif ($this->customEmail) {
+            $subject .= ' - Custom Notification';
+        }
+
+        return $this->subject($subject)
+            ->view($view)
             ->with([
-                'providerBranch' => $this->appointment->providerBranch->name,
-                'serviceDate' => $this->appointment->service_date,
+                'file' => $this->file,
+                'providerBranch' => $this->providerBranch,
+                'customEmail' => $this->customEmail,
+                'isCustomEmail' => !is_null($this->customEmail),
             ]);
     }
 }

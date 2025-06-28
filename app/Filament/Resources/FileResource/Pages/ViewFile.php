@@ -424,6 +424,7 @@ class ViewFile extends ViewRecord
                                 'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
                             ])->toArray());
                         }),
+                    
                     Repeater::make('selected_branches')
                         ->label('Available Branches')
                         ->schema([
@@ -445,6 +446,22 @@ class ViewFile extends ViewRecord
                                 'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
                             ])->toArray();
                         }),
+                    
+                    Repeater::make('custom_emails')
+                        ->label('Custom Email Addresses')
+                        ->schema([
+                            TextInput::make('email')
+                                ->label('Email Address')
+                                ->email()
+                                ->required()
+                                ->placeholder('Enter email address'),
+                        ])
+                        ->columns(1)
+                        ->default([])
+                        ->addActionLabel('Add Custom Email')
+                        ->reorderable(false)
+                        ->collapsible()
+                        ->collapsed(),
                 ])
                 ->modalButton('Send Requests')
                 ->action(fn (array $data, $record) => $this->bulkSendRequests($data, $record)),
@@ -461,27 +478,40 @@ class ViewFile extends ViewRecord
     {
         $selectedBranches = collect($data['selected_branches'] ?? [])
             ->filter(fn ($branch) => $branch['selected'])
-            ->pluck('id');
+            ->pluck('id')
+            ->toArray();
 
+        $customEmails = collect($data['custom_emails'] ?? [])
+            ->pluck('email')
+            ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->toArray();
+
+        // If no branches or custom emails selected, show warning
+        if (empty($selectedBranches) && empty($customEmails)) {
+            Notification::make()
+                ->title('No Recipients Selected')
+                ->body('Please select at least one provider branch or add a custom email address.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        // Send notifications and emails
+        $successfulBranches = [];
         $skippedBranches = [];
         $updatedAppointments = [];
         $newAppointments = [];
 
-        DB::transaction(function () use ($selectedBranches, $record, &$skippedBranches, &$updatedAppointments, &$newAppointments) {
+        // Create/update appointments in a transaction
+        DB::transaction(function () use ($selectedBranches, $record, &$updatedAppointments, &$newAppointments) {
             foreach ($selectedBranches as $branchId) {
                 $providerBranch = \App\Models\ProviderBranch::find($branchId);
-
+                
                 if (!$providerBranch) {
                     continue;
                 }
 
-                $contact = $providerBranch->primaryContact('Appointment');
-                if (!$contact) {
-                    $skippedBranches[] = $providerBranch->branch_name;
-                    continue;
-                }
-
-                // ✅ Check if an appointment already exists
+                // Check if an appointment already exists
                 $existingAppointment = $record->appointments()
                     ->where('provider_branch_id', $branchId)
                     ->first();
@@ -498,7 +528,7 @@ class ViewFile extends ViewRecord
                     continue;
                 }
 
-                // ✅ Ensure a new appointment is created
+                // Create new appointment
                 $appointment = new \App\Models\Appointment([
                     'file_id' => $record->id,
                     'provider_branch_id' => $branchId,
@@ -508,10 +538,9 @@ class ViewFile extends ViewRecord
                 ]);
 
                 if ($appointment->save()) {
-                    // ✅ Track newly created appointments
                     $newAppointments[] = $providerBranch->branch_name;
 
-                    // ✅ Create a task for the new appointment
+                    // Create a task for the new appointment
                     \App\Models\Task::create([
                         'taskable_id' => $appointment->id,
                         'taskable_type' => \App\Models\Appointment::class,
@@ -526,17 +555,106 @@ class ViewFile extends ViewRecord
             }
         });
 
-        // ✅ Notify user of results
+        // Process provider branch notifications
+        foreach ($selectedBranches as $branchId) {
+            $providerBranch = \App\Models\ProviderBranch::find($branchId);
+            
+            if (!$providerBranch) {
+                continue;
+            }
+
+            $contact = $providerBranch->primaryContact('Appointment');
+            if (!$contact) {
+                $skippedBranches[] = $providerBranch->branch_name;
+                continue;
+            }
+
+            // Send notification to the branch contact
+            if ($contact->email) {
+                try {
+                    \Mail::to($contact->email)->send(new \App\Mail\AppointmentRequestMail($record, $providerBranch));
+                    $successfulBranches[] = $providerBranch->branch_name;
+                } catch (\Exception $e) {
+                    $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
+                }
+            }
+        }
+
+        // Send to custom emails
+        foreach ($customEmails as $email) {
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                try {
+                    \Mail::to($email)->send(new \App\Mail\AppointmentRequestMail($record, null, $email));
+                    $successfulBranches[] = "Custom: {$email}";
+                } catch (\Exception $e) {
+                    $skippedBranches[] = "Custom: {$email} (Email failed)";
+                }
+            }
+        }
+
+        // Notify the user who created the request using Filament notifications
+        if (Auth::check()) {
+            $user = Auth::user();
+            $title = 'Appointment Requests Sent';
+            $body = "Successfully sent appointment requests for file {$record->mga_reference}";
+            
+            if (!empty($skippedBranches)) {
+                $body .= "\n\nSome requests failed: " . implode(', ', $skippedBranches);
+            }
+
+            $notification = \Filament\Notifications\Notification::make()
+                ->title($title)
+                ->body($body);
+
+            // Set notification type based on results
+            if (empty($skippedBranches)) {
+                $notification->success();
+            } elseif (empty($successfulBranches)) {
+                $notification->danger();
+            } else {
+                $notification->warning();
+            }
+
+            $notification->actions([
+                \Filament\Notifications\Actions\Action::make('view')
+                    ->label('View File')
+                    ->url(route('filament.admin.resources.files.view', $record->id))
+                    ->button()
+            ])
+            ->sendToDatabase($user);
+        }
+
+        // Show immediate feedback notifications
         if (!empty($skippedBranches)) {
-            Notification::make()->title('Some Requests Skipped')->body('The following branches were skipped due to missing contact: ' . implode(', ', $skippedBranches))->warning()->send();
+            Notification::make()
+                ->title('Some Requests Skipped')
+                ->body('The following recipients were skipped: ' . implode(', ', $skippedBranches))
+                ->warning()
+                ->send();
         }
 
         if (!empty($updatedAppointments)) {
-            Notification::make()->title('Appointments Updated')->body('Appointments updated for: ' . implode(', ', $updatedAppointments))->info()->send();
+            Notification::make()
+                ->title('Appointments Updated')
+                ->body('Appointments updated for: ' . implode(', ', $updatedAppointments))
+                ->info()
+                ->send();
         }
 
         if (!empty($newAppointments)) {
-            Notification::make()->title('Appointments Created')->body('Appointments created for: ' . implode(', ', $newAppointments))->success()->send();
+            Notification::make()
+                ->title('Appointments Created')
+                ->body('Appointments created for: ' . implode(', ', $newAppointments))
+                ->success()
+                ->send();
+        }
+
+        if (!empty($successfulBranches)) {
+            Notification::make()
+                ->title('Notifications Sent')
+                ->body("Successfully sent notifications to: " . implode(', ', $successfulBranches))
+                ->success()
+                ->send();
         }
     }
 
