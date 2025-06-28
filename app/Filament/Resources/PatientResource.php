@@ -32,7 +32,7 @@ class PatientResource extends Resource
                 Forms\Components\TextInput::make('name')->required(),
                 Forms\Components\Select::make('client_id')->relationship('client', 'company_name', fn ($query) => $query->where('status', 'Active'))->searchable()->preload()->required(),
                 Forms\Components\DatePicker::make('dob')->nullable(),
-                Forms\Components\Select::make('gender')->options(['male' => 'Male','female' => 'Female','other' => 'Other',])->nullable(),
+                Forms\Components\Select::make('gender')->options(['Male' => 'Male','Female' => 'Female','Other' => 'Other',])->nullable(),
                 Forms\Components\Select::make('country_id')->relationship('country', 'name')->label('Country')->searchable()->nullable(),
                 Forms\Components\Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
                 Forms\Components\Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),

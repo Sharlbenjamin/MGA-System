@@ -25,7 +25,7 @@ class PatientFactory extends Factory
             'name' => fake()->name(),
             'client_id' => Client::factory(),
             'dob' => fake()->date(),
-            'gender' => fake()->word(),
+            'gender' => fake()->randomElement(['Male', 'Female']),
             'country' => fake()->country(),
         ];
     }

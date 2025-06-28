@@ -197,7 +197,7 @@
             <div class="section">
                 <div class="patient-info">
                     <p><span class="bold">Patient Name: </span><span class="data">{{ $medicalReport->file->patient->name }}</span></p>
-                    <p><span class="bold">Gender: </span><span class="data">{{ ucfirst($medicalReport->file->patient->gender) }}</span></p>
+                    <p><span class="bold">Gender: </span><span class="data">{{ $medicalReport->file->patient->gender }}</span></p>
                     <p><span class="bold">Date of Birth: </span><span class="data">{{ $medicalReport->file->patient->dob?->format('d/m/Y') }}</span></p>
                 </div>
 
