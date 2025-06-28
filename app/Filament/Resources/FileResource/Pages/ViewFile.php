@@ -570,79 +570,123 @@ class ViewFile extends ViewRecord
         // Return JavaScript to copy to clipboard
         $this->js("
             (function() {
+                console.log('=== COPY TO CLIPBOARD DEBUG ===');
+                console.log('Text to copy:', " . $escapedText . ");
+                console.log('User agent:', navigator.userAgent);
+                console.log('Is secure context:', window.isSecureContext);
+                console.log('Clipboard API available:', !!navigator.clipboard);
+                
                 var textToCopy = " . $escapedText . ";
                 
                 // Try modern clipboard API first
                 if (navigator.clipboard && window.isSecureContext) {
+                    console.log('Trying modern clipboard API...');
                     navigator.clipboard.writeText(textToCopy).then(function() {
-                        console.log('Text copied successfully (modern API)');
+                        console.log('✅ Text copied successfully (modern API)');
                     }).catch(function(err) {
-                        console.error('Modern clipboard API failed:', err);
+                        console.error('❌ Modern clipboard API failed:', err);
                         fallbackCopy();
                     });
                 } else {
+                    console.log('Modern clipboard API not available, using fallback...');
                     fallbackCopy();
                 }
                 
                 function fallbackCopy() {
-                    var textArea = document.createElement('textarea');
-                    textArea.value = textToCopy;
-                    textArea.style.position = 'fixed';
-                    textArea.style.left = '-9999px';
-                    textArea.style.top = '-9999px';
-                    textArea.style.opacity = '0';
-                    textArea.style.pointerEvents = 'none';
-                    textArea.style.zIndex = '-1';
+                    console.log('Trying input fallback...');
                     
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
+                    // Create a temporary input element (works better on iOS than textarea)
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = textToCopy;
+                    input.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1px; height: 1px; opacity: 0.01; z-index: 9999; background: transparent; border: none; outline: none;';
                     
-                    try {
-                        var successful = document.execCommand('copy');
-                        if (successful) {
-                            console.log('Text copied successfully (fallback)');
-                        } else {
-                            console.error('execCommand copy failed');
-                            // Try one more time with a visible textarea for iOS
-                            iosFallbackCopy();
-                        }
-                    } catch (err) {
-                        console.error('execCommand copy error:', err);
-                        // Try one more time with a visible textarea for iOS
-                        iosFallbackCopy();
-                    }
+                    document.body.appendChild(input);
+                    console.log('Input element added to DOM');
                     
-                    document.body.removeChild(textArea);
-                }
-                
-                function iosFallbackCopy() {
-                    // For iOS devices, create a temporary visible textarea
-                    var textArea = document.createElement('textarea');
-                    textArea.value = textToCopy;
-                    textArea.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1px; height: 1px; opacity: 0.01; z-index: 9999;';
-                    
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
+                    // For iOS, we need to focus and select
+                    input.focus();
+                    input.select();
+                    input.setSelectionRange(0, input.value.length);
+                    console.log('Input focused and selected');
                     
                     try {
                         var successful = document.execCommand('copy');
+                        console.log('execCommand result:', successful);
                         if (successful) {
-                            console.log('Text copied successfully (iOS fallback)');
+                            console.log('✅ Text copied successfully (input fallback)');
                         } else {
-                            console.error('iOS fallback copy failed');
+                            console.error('❌ execCommand copy failed');
+                            // Try with textarea as last resort
+                            textareaFallback();
                         }
                     } catch (err) {
-                        console.error('iOS fallback copy error:', err);
+                        console.error('❌ execCommand copy error:', err);
+                        // Try with textarea as last resort
+                        textareaFallback();
                     }
                     
-                    // Remove the textarea after a short delay
+                    // Remove the input after a short delay
                     setTimeout(function() {
-                        if (document.body.contains(textArea)) {
-                            document.body.removeChild(textArea);
+                        if (document.body.contains(input)) {
+                            document.body.removeChild(input);
+                            console.log('Input element removed');
                         }
                     }, 100);
+                }
+                
+                function textareaFallback() {
+                    console.log('Trying textarea fallback...');
+                    
+                    // Last resort: use textarea with iOS-specific handling
+                    var textArea = document.createElement('textarea');
+                    textArea.value = textToCopy;
+                    textArea.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 2px; opacity: 0.01; z-index: 9999; background: white; border: 1px solid #ccc;';
+                    
+                    document.body.appendChild(textArea);
+                    console.log('Textarea element added to DOM');
+                    
+                    // iOS-specific: focus, select, and try to copy
+                    textArea.focus();
+                    textArea.select();
+                    console.log('Textarea focused and selected');
+                    
+                    // Try multiple times for iOS
+                    var attempts = 0;
+                    var maxAttempts = 3;
+                    
+                    function tryCopy() {
+                        attempts++;
+                        console.log('Copy attempt ' + attempts + ' of ' + maxAttempts);
+                        
+                        try {
+                            var successful = document.execCommand('copy');
+                            console.log('execCommand result (attempt ' + attempts + '):', successful);
+                            
+                            if (successful) {
+                                console.log('✅ Text copied successfully (textarea fallback, attempt ' + attempts + ')');
+                                document.body.removeChild(textArea);
+                                return;
+                            } else if (attempts < maxAttempts) {
+                                console.log('Retrying in 50ms...');
+                                // Try again after a short delay
+                                setTimeout(tryCopy, 50);
+                            } else {
+                                console.error('❌ All copy attempts failed');
+                                document.body.removeChild(textArea);
+                            }
+                        } catch (err) {
+                            console.error('❌ Copy attempt ' + attempts + ' failed:', err);
+                            if (attempts < maxAttempts) {
+                                console.log('Retrying in 50ms...');
+                                setTimeout(tryCopy, 50);
+                            } else {
+                                document.body.removeChild(textArea);
+                            }
+                        }
+                    }
+                    
+                    tryCopy();
                 }
             })();
         ");
