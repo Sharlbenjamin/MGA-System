@@ -557,125 +557,95 @@ class ViewFile extends ViewRecord
 
     public function copyToClipboard($text, $label): void
     {
-        // Check if it's an iOS device
-        $isIOS = request()->header('User-Agent') && 
-                 (strpos(request()->header('User-Agent'), 'iPhone') !== false || 
-                  strpos(request()->header('User-Agent'), 'iPad') !== false || 
-                  strpos(request()->header('User-Agent'), 'iPod') !== false);
+        // Show success notification
+        Notification::make()
+            ->title("Copied to clipboard")
+            ->body("'{$label}' has been copied to your clipboard")
+            ->success()
+            ->send();
+            
+        // Properly escape the text for JavaScript, preserving newlines
+        $escapedText = json_encode($text, JSON_HEX_APOS | JSON_HEX_QUOT);
         
-        if ($isIOS) {
-            // For iOS devices, show the text in a modal for manual copying
-            $this->js("
-                // Create modal for iOS devices
-                var modal = document.createElement('div');
-                modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;';
+        // Return JavaScript to copy to clipboard
+        $this->js("
+            (function() {
+                var textToCopy = " . $escapedText . ";
                 
-                var modalContent = document.createElement('div');
-                modalContent.style.cssText = 'background: white; padding: 20px; border-radius: 8px; max-width: 90%; max-height: 80%; overflow: auto; position: relative;';
-                
-                var closeBtn = document.createElement('button');
-                closeBtn.innerHTML = '×';
-                closeBtn.style.cssText = 'position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666;';
-                closeBtn.onclick = function() { document.body.removeChild(modal); };
-                
-                var title = document.createElement('h3');
-                title.innerHTML = 'Copy to Clipboard';
-                title.style.cssText = 'margin: 0 0 15px 0; color: #333;';
-                
-                var textArea = document.createElement('textarea');
-                textArea.value = " . json_encode($text, JSON_HEX_APOS | JSON_HEX_QUOT) . ";
-                textArea.style.cssText = 'width: 100%; min-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 14px; resize: vertical;';
-                textArea.readOnly = true;
-                
-                var instructions = document.createElement('p');
-                instructions.innerHTML = 'Select the text above and copy it manually (Cmd+C or long press → Copy)';
-                instructions.style.cssText = 'margin: 10px 0 0 0; color: #666; font-size: 14px;';
-                
-                modalContent.appendChild(closeBtn);
-                modalContent.appendChild(title);
-                modalContent.appendChild(textArea);
-                modalContent.appendChild(instructions);
-                modal.appendChild(modalContent);
-                
-                document.body.appendChild(modal);
-                
-                // Focus and select the text
-                textArea.focus();
-                textArea.select();
-                
-                // Close modal when clicking outside
-                modal.onclick = function(e) {
-                    if (e.target === modal) {
-                        document.body.removeChild(modal);
-                    }
-                };
-            ");
-            
-            // Show notification for iOS
-            Notification::make()
-                ->title("Text ready for copying")
-                ->body("The text has been opened in a modal. Please select and copy it manually.")
-                ->info()
-                ->send();
-        } else {
-            // For non-iOS devices, use the regular clipboard API
-            Notification::make()
-                ->title("Copied to clipboard")
-                ->body("'{$label}' has been copied to your clipboard")
-                ->success()
-                ->send();
-                
-            // Properly escape the text for JavaScript, preserving newlines
-            $escapedText = json_encode($text, JSON_HEX_APOS | JSON_HEX_QUOT);
-            
-            // Return JavaScript to copy to clipboard
-            $this->js("
-                (function() {
-                    var textToCopy = " . $escapedText . ";
-                    
-                    // Try modern clipboard API first
-                    if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(textToCopy).then(function() {
-                            console.log('Text copied successfully (modern API)');
-                        }).catch(function(err) {
-                            console.error('Modern clipboard API failed:', err);
-                            fallbackCopy();
-                        });
-                    } else {
+                // Try modern clipboard API first
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(textToCopy).then(function() {
+                        console.log('Text copied successfully (modern API)');
+                    }).catch(function(err) {
+                        console.error('Modern clipboard API failed:', err);
                         fallbackCopy();
+                    });
+                } else {
+                    fallbackCopy();
+                }
+                
+                function fallbackCopy() {
+                    var textArea = document.createElement('textarea');
+                    textArea.value = textToCopy;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    textArea.style.top = '-9999px';
+                    textArea.style.opacity = '0';
+                    textArea.style.pointerEvents = 'none';
+                    textArea.style.zIndex = '-1';
+                    
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    
+                    try {
+                        var successful = document.execCommand('copy');
+                        if (successful) {
+                            console.log('Text copied successfully (fallback)');
+                        } else {
+                            console.error('execCommand copy failed');
+                            // Try one more time with a visible textarea for iOS
+                            iosFallbackCopy();
+                        }
+                    } catch (err) {
+                        console.error('execCommand copy error:', err);
+                        // Try one more time with a visible textarea for iOS
+                        iosFallbackCopy();
                     }
                     
-                    function fallbackCopy() {
-                        var textArea = document.createElement('textarea');
-                        textArea.value = textToCopy;
-                        textArea.style.position = 'fixed';
-                        textArea.style.left = '-9999px';
-                        textArea.style.top = '-9999px';
-                        textArea.style.opacity = '0';
-                        textArea.style.pointerEvents = 'none';
-                        
-                        document.body.appendChild(textArea);
-                        textArea.focus();
-                        textArea.select();
-                        
-                        try {
-                            var successful = document.execCommand('copy');
-                            if (successful) {
-                                console.log('Text copied successfully (fallback)');
-                            } else {
-                                console.error('execCommand copy failed');
-                                alert('Copy failed. Please manually select and copy the text.');
-                            }
-                        } catch (err) {
-                            console.error('execCommand copy error:', err);
-                            alert('Copy failed. Please manually select and copy the text.');
+                    document.body.removeChild(textArea);
+                }
+                
+                function iosFallbackCopy() {
+                    // For iOS devices, create a temporary visible textarea
+                    var textArea = document.createElement('textarea');
+                    textArea.value = textToCopy;
+                    textArea.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 1px; height: 1px; opacity: 0.01; z-index: 9999;';
+                    
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    
+                    try {
+                        var successful = document.execCommand('copy');
+                        if (successful) {
+                            console.log('Text copied successfully (iOS fallback)');
+                        } else {
+                            console.error('iOS fallback copy failed');
                         }
-                        
-                        document.body.removeChild(textArea);
+                    } catch (err) {
+                        console.error('iOS fallback copy error:', err);
                     }
-                })();
-            ");
-        }
+                    
+                    // Remove the textarea after a short delay
+                    setTimeout(function() {
+                        if (document.body.contains(textArea)) {
+                            document.body.removeChild(textArea);
+                        }
+                    }, 100);
+                }
+            })();
+        ");
     }
 
     public function formatCaseInfo($record): string
