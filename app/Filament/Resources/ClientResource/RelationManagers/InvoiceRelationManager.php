@@ -78,77 +78,46 @@ class InvoiceRelationManager extends RelationManager
                     ->url(fn ($record) => InvoiceResource::getUrl('edit', [
                         'record' => $record->id
                     ])),
-                Action::make('send')
-                    ->form([
-                        Forms\Components\Select::make('email_type')->options([
-                            'Financial Email' => 'Financial Email',
-                            'Custom' => 'Custom',
-                        ])->default('Financial Email')->live()
-                        ->required(),
-                        Forms\Components\TextInput::make('email_to')
-                            ->label('Send To')->email()
-                            ->visible(fn ($get) => $get('email_type') == 'Custom')
-                            ->required()
-                    ])
-                    ->modalHeading('Send Invoice')
-                    ->modalSubmitActionLabel('Send')
+                Action::make('generate')
+                    ->modalHeading('Generate Invoice')
+                    ->modalSubmitActionLabel('Generate')
                     ->color('success')
-                    ->icon('heroicon-o-paper-airplane')
-                    ->action(function (Invoice $record, array $data) {
-                            // First generate PDF
-                            $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
-                            $content = $pdf->output();
-                            $fileName = $record->name . '.pdf';
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->requiresConfirmation()
+                    ->modalDescription('This will generate and upload the invoice to Google Drive.')
+                    ->action(function (Invoice $record) {
+                        // First generate PDF
+                        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
+                        $content = $pdf->output();
+                        $fileName = $record->name . '.pdf';
 
-                            // Upload to Google Drive
-                            $uploader = app(UploadInvoiceToGoogleDrive::class);
-                            $result = $uploader->uploadInvoiceToGoogleDrive(
-                                $content,
-                                $fileName,
-                                $record
-                            );
+                        // Upload to Google Drive
+                        $uploader = app(UploadInvoiceToGoogleDrive::class);
+                        $result = $uploader->uploadInvoiceToGoogleDrive(
+                            $content,
+                            $fileName,
+                            $record
+                        );
 
-                            if ($result === false) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Upload failed')
-                                    ->body('Check logs for more details')
-                                    ->send();
-                                return;
-                            }
-
-                            // Update invoice with new Google Drive link
-                            $record->invoice_google_link = $result['webViewLink'];
-                            $record->status = 'Sent';
-                            $record->save();
-
-                            // Fetch updated user info from the database
-                            $user = \App\Models\User::find(Auth::user()->id);
-
-                            // Set mailer based on user's role and SMTP credentials
-                            $mailer = 'financial';
-                            $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
-
-                            if($user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
-                                Config::set('mail.mailers.financial.username', $user->smtp_username);
-                                Config::set('mail.mailers.financial.password', $user->smtp_password);
-                            }
-
-                            // Send email
-                        if($data['email_type'] == 'Financial Email'){
-                            if($record->patient->client->financialContact->preferred_contact == 'Email'){
-                                Mail::mailer($mailer)->to($record->patient->client->financialContact->email)->send(new SendInvoice($record, $user));
-                            }elseIf ($record->patient->client->financialContact->preferred_contact == 'Second Email'){
-                                Mail::mailer($mailer)->to($record->patient->client->financialContact->second_email)->send(new SendInvoice($record, $user));
-                            }else{
-                                Notification::make()->title("No Financial Contact Found")->body("No Financial Contact Found")->danger()->send();
-                                return;
-                            }
-                        }else{
-                            Mail::mailer($mailer)->to($data['email_to'])->send(new SendInvoice($record, $user));
+                        if ($result === false) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload failed')
+                                ->body('Check logs for more details')
+                                ->send();
+                            return;
                         }
-                            Notification::make()->success()->title('Invoice generated and sent successfully')->send();
 
+                        // Update invoice with new Google Drive link
+                        $record->invoice_google_link = $result['webViewLink'];
+                        $record->status = 'Sent';
+                        $record->save();
+
+                        Notification::make()
+                            ->success()
+                            ->title('Invoice generated and uploaded successfully')
+                            ->body('Invoice has been uploaded to Google Drive.')
+                            ->send();
                     }),
                 Tables\Actions\Action::make('view')
                 ->icon('heroicon-o-eye')

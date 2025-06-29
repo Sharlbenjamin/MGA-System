@@ -24,6 +24,9 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 use Filament\Forms\Components\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
+use App\Services\UploadTransactionToGoogleDrive;
+use Filament\Notifications\Notification;
+use Filament\Tables\Actions\Action as TableAction;
 
 class TransactionResource extends Resource
 {
@@ -53,7 +56,11 @@ class TransactionResource extends Resource
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
-                Forms\Components\TextInput::make('attachment_path')->maxLength(255),
+                Forms\Components\FileUpload::make('attachment_path')
+                    ->label('Upload Transaction Document')
+                    ->acceptedFileTypes(['application/pdf', 'image/*'])
+                    ->maxSize(10240) // 10MB
+                    ->helperText('Upload the transaction document (PDF or image)'),
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
                 ->prefix('€')
@@ -62,7 +69,6 @@ class TransactionResource extends Resource
 
                 Forms\Components\Toggle::make('charges_covered_by_client')
                 ->default(false),
-
 
                 // I want to have a table to select the related invoice or bill
                 Forms\Components\Select::make('invoices')
@@ -150,6 +156,63 @@ class TransactionResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                TableAction::make('upload_to_google_drive')
+                    ->label('Upload to Google Drive')
+                    ->icon('heroicon-o-cloud-arrow-up')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Upload Transaction to Google Drive')
+                    ->modalDescription('This will upload the transaction document to the Google Drive folder associated with this transaction.')
+                    ->modalSubmitActionLabel('Upload')
+                    ->action(function (Transaction $record) {
+                        // Check if there's an attachment
+                        if (!$record->attachment_path) {
+                            Notification::make()
+                                ->danger()
+                                ->title('No attachment found')
+                                ->body('Please upload a document first before uploading to Google Drive.')
+                                ->send();
+                            return;
+                        }
+
+                        // Get the file content
+                        $filePath = storage_path('app/public/' . $record->attachment_path);
+                        if (!file_exists($filePath)) {
+                            Notification::make()
+                                ->danger()
+                                ->title('File not found')
+                                ->body('The uploaded file could not be found.')
+                                ->send();
+                            return;
+                        }
+
+                        $fileContent = file_get_contents($filePath);
+                        $fileName = basename($record->attachment_path);
+
+                        // Upload to Google Drive
+                        $uploader = app(UploadTransactionToGoogleDrive::class);
+                        $result = $uploader->uploadTransactionToGoogleDrive(
+                            $fileContent,
+                            $fileName,
+                            $record
+                        );
+
+                        if ($result === false) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload failed')
+                                ->body('Failed to upload to Google Drive. Check logs for more details.')
+                                ->send();
+                            return;
+                        }
+
+                        Notification::make()
+                            ->success()
+                            ->title('Upload successful')
+                            ->body('Transaction has been uploaded to Google Drive successfully.')
+                            ->send();
+                    })
+                    ->visible(fn (Transaction $record) => $record->attachment_path && !str_contains($record->attachment_path, 'drive.google.com')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -200,46 +263,36 @@ class TransactionResource extends Resource
                         $branchQuery->where('provider_branches.provider_id', $relatedId);
                     });
                 })
-                ->where('bills.status', '!=', 'Paid')
                 ->whereDoesntHave('transactions')
                 ->get();
         } elseif ($relatedType === 'Branch') {
             $bills = Bill::query()
                 ->whereHas('file', function ($query) use ($relatedId) {
-                    $query->where('files.provider_branch_id', $relatedId);
+                    $query->where('provider_branch_id', $relatedId);
                 })
-                ->where('bills.status', '!=', 'Paid')
                 ->whereDoesntHave('transactions')
                 ->get();
         }
+
         return $bills;
     }
 
-    public static function relatedTypes($get)
+    public static function relatedTypes($type)
     {
-        if ($get === null) {
-            return [];
-        }
-
-        if ($get === 'Expense') {
-            return [
-                'Taxes' => 'Taxes',
-                'Salaries' => 'Salaries',
-                'Bonuses' => 'Bonuses',
-                'Installments' => 'Installments',
-                'Utilities' => 'Utilities',
-                'Maintenance' => 'Maintenance',
-            ];
-        }elseif($get === 'Outflow'){
-            return [
+        return match ($type) {
+            'Income' => [
+                'Client' => 'Client',
+                'Patient' => 'Patient',
+            ],
+            'Outflow' => [
                 'Provider' => 'Provider',
                 'Branch' => 'Branch',
-                'Patient' => 'Patient',
-            ];
-        }elseif($get === 'Income'){
-            return [
-                'Client' => 'Client',
-            ];
-        }
+            ],
+            'Expense' => [
+                'Provider' => 'Provider',
+                'Branch' => 'Branch',
+            ],
+            default => [],
+        };
     }
 }

@@ -1,29 +1,19 @@
 <?php
 
-namespace App\Filament\Resources\PatientResource\RelationManagers;
+namespace App\Filament\Resources\FileResource\RelationManagers;
 
-use App\Filament\Resources\FileResource;
-use App\Filament\Resources\FileResource\Pages;
 use App\Filament\Resources\InvoiceResource;
-use App\Models\Country;
-use App\Models\File;
 use App\Models\Invoice;
-use App\Models\Patient;
 use App\Services\UploadInvoiceToGoogleDrive;
-use Filament\Tables\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
-use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\SendInvoice;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Config;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoiceRelationManager extends RelationManager
 {
@@ -31,15 +21,14 @@ class InvoiceRelationManager extends RelationManager
 
     protected static ?string $model = Invoice::class;
 
-
     public function table(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('file.name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
-                    'Draft' => 'warning',
+                    'Draft' => 'gray',
                     'Sent' => 'info',
                     'Overdue' => 'danger',
                     'Paid' => 'success',
@@ -47,25 +36,28 @@ class InvoiceRelationManager extends RelationManager
                     'Unpaid' => 'danger',
                 }),
                 Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
-                Tables\Columns\TextColumn::make('final_total')->sortable()->searchable()->money('EUR'),
+                Tables\Columns\TextColumn::make('total_amount')->sortable()->searchable()->money('EUR'),
                 Tables\Columns\TextColumn::make('paid_amount')->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('remaining_amount')->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('invoice_google_link')->sortable()->searchable()->url(fn (Invoice $record) => $record->invoice_google_link)
+                Tables\Columns\TextColumn::make('remaining_amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->sortable()->searchable()->money('EUR'),
+                Tables\Columns\TextColumn::make('invoice_google_link')
+                    ->label('PDF')
+                    ->weight('underline')->color('info')
+                    ->state(fn (Invoice $record) => $record->invoice_google_link ? 'View Invoice' : '')
+                    ->url(fn (Invoice $record) => $record->invoice_google_link)
                     ->openUrlInNewTab(false),
-
             ])
             ->filters([
                 SelectFilter::make('status')
                     ->options([
                         'Draft' => 'Draft',
+                        'Posted' => 'Posted',
                         'Sent' => 'Sent',
+                        'Unpaid' => 'Unpaid',
                         'Overdue' => 'Overdue',
                         'Paid' => 'Paid',
-                        'Posted' => 'Posted',
-                        'Unpaid' => 'Unpaid',
                     ]),
-                    // due date filter when true fetch invoices with due date before today
-            ])->actions([
+            ])
+            ->actions([
                 Action::make('edit')->color('gray')->icon('heroicon-o-pencil')
                     ->url(fn ($record) => InvoiceResource::getUrl('edit', [
                         'record' => $record->id
@@ -112,19 +104,19 @@ class InvoiceRelationManager extends RelationManager
                             ->send();
                     }),
                 Tables\Actions\Action::make('view')
-                ->icon('heroicon-o-eye')
-                ->url(fn (Invoice $record) => route('invoice.view', $record))
-                ->openUrlInNewTab(),
+                    ->icon('heroicon-o-eye')
+                    ->url(fn (Invoice $record) => route('invoice.view', $record))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-            ])->headerActions([
+            ])
+            ->headerActions([
                 Action::make('createInvoice')
                     ->openUrlInNewTab(false)
                     ->url(fn () => InvoiceResource::getUrl('create', [
-                        'patient_id' => $this->ownerRecord->id
+                        'file_id' => $this->ownerRecord->id
                     ])),
             ]);
     }
-
-}
+} 

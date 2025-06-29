@@ -12,6 +12,7 @@ use App\Filament\Resources\FileResource\RelationManagers\AppointmentsRelationMan
 use App\Filament\Resources\FileResource\RelationManagers\TaskRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\BillRelationManager;
+use App\Filament\Resources\FileResource\RelationManagers\InvoiceRelationManager;
 use App\Models\Client;
 use App\Models\Country;
 use App\Models\File;
@@ -253,6 +254,7 @@ class FileResource extends Resource
             AppointmentsRelationManager::class,
             TaskRelationManager::class,
             BankAccountRelationManager::class,
+            InvoiceRelationManager::class,
         ];
     }
 

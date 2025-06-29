@@ -34,6 +34,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
+use Illuminate\Support\Str;
 
 class ViewFile extends ViewRecord
 {
@@ -570,6 +571,7 @@ class ViewFile extends ViewRecord
             }
 
             // Send notification to the branch contact
+            /*
             if ($contact->email) {
                 try {
                     \Mail::to($contact->email)->send(new \App\Mail\AppointmentRequestMail($record, $providerBranch));
@@ -578,9 +580,11 @@ class ViewFile extends ViewRecord
                     $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
                 }
             }
+            */
         }
 
         // Send to custom emails
+        /*
         foreach ($customEmails as $email) {
             if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 try {
@@ -591,6 +595,7 @@ class ViewFile extends ViewRecord
                 }
             }
         }
+        */
 
         // Notify the user who created the request using Filament notifications
         if (Auth::check()) {
@@ -615,13 +620,31 @@ class ViewFile extends ViewRecord
                 $notification->warning();
             }
 
-            $notification->actions([
-                \Filament\Notifications\Actions\Action::make('view')
-                    ->label('View File')
-                    ->url(route('filament.admin.resources.files.view', $record->id))
-                    ->button()
-            ])
-            ->sendToDatabase($user);
+            \Log::info('Sending Filament notification for appointment request', [
+                'user_id' => $user->id,
+                'file_id' => $record->id,
+                'title' => $title,
+            ]);
+            $notification->send(); // popup
+            $notification->sendToDatabase($user); // persistent
+
+            // Workaround for Filament v3.3.0 bug: manually set notification as unread
+            try {
+                $latestNotification = $user->notifications()
+                    ->where('type', 'Filament\Notifications\DatabaseNotification')
+                    ->latest()
+                    ->first();
+                
+                if ($latestNotification && $latestNotification->read_at) {
+                    $latestNotification->update(['read_at' => null]);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to fix notification read status', [
+                    'error' => $e->getMessage(),
+                    'user_id' => $user->id,
+                    'file_id' => $record->id
+                ]);
+            }
         }
 
         // Show immediate feedback notifications
