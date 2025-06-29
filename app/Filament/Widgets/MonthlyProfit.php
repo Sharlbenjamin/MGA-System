@@ -33,16 +33,23 @@ class MonthlyProfit extends ChartWidget
                 // Get total invoices for this hour
                 $hourInvoices = DB::table('invoices')
                     ->whereDate('invoice_date', $dateRange['current']['start'])
-                    ->whereHour('invoice_date', $hour)
+                    ->whereRaw('HOUR(invoice_date) = ?', [$hour])
                     ->sum('total_amount');
                 
                 // Get total bills for this hour
                 $hourBills = DB::table('bills')
                     ->whereDate('bill_date', $dateRange['current']['start'])
-                    ->whereHour('bill_date', $hour)
+                    ->whereRaw('HOUR(bill_date) = ?', [$hour])
                     ->sum('total_amount');
                 
-                $profits[] = $hourInvoices - $hourBills;
+                // Get total expenses for this hour
+                $hourExpenses = DB::table('transactions')
+                    ->where('type', 'Expense')
+                    ->whereDate('date', $dateRange['current']['start'])
+                    ->whereRaw('HOUR(date) = ?', [$hour])
+                    ->sum('amount');
+                
+                $profits[] = $hourInvoices - ($hourBills + $hourExpenses);
             }
         } elseif ($filters['duration'] === 'Month') {
             // For monthly view, show daily data for the selected month
@@ -65,7 +72,13 @@ class MonthlyProfit extends ChartWidget
                     ->whereDate('bill_date', $currentDate)
                     ->sum('total_amount');
                 
-                $profits[] = $dayInvoices - $dayBills;
+                // Get total expenses for this day
+                $dayExpenses = DB::table('transactions')
+                    ->where('type', 'Expense')
+                    ->whereDate('date', $currentDate)
+                    ->sum('amount');
+                
+                $profits[] = $dayInvoices - ($dayBills + $dayExpenses);
                 
                 $currentDate->addDay();
             }
@@ -92,7 +105,14 @@ class MonthlyProfit extends ChartWidget
                     ->whereMonth('bill_date', $currentMonth->month)
                     ->sum('total_amount');
                 
-                $profits[] = $monthInvoices - $monthBills;
+                // Get total expenses for this month
+                $monthExpenses = DB::table('transactions')
+                    ->where('type', 'Expense')
+                    ->whereYear('date', $currentMonth->year)
+                    ->whereMonth('date', $currentMonth->month)
+                    ->sum('amount');
+                
+                $profits[] = $monthInvoices - ($monthBills + $monthExpenses);
                 
                 $currentMonth->addMonth();
             }

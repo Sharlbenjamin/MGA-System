@@ -27,9 +27,14 @@ class DashboardFilterWidget extends Widget
         if (!in_array($this->selectedDuration, ['Day', 'Month', 'Year'])) {
             $this->selectedDuration = 'Month';
         }
+        
+        // Ensure all values are properly typed
+        $this->selectedMonth = is_string($this->selectedMonth) ? $this->selectedMonth : Carbon::now()->format('Y-m');
+        $this->selectedYear = is_numeric($this->selectedYear) ? (int)$this->selectedYear : Carbon::now()->year;
+        $this->selectedDate = is_string($this->selectedDate) ? $this->selectedDate : Carbon::now()->format('Y-m-d');
     }
 
-    public function getDurationOptions(): array
+    public function getDurationOptionsProperty(): array
     {
         return [
             'Day' => 'Day',
@@ -38,7 +43,7 @@ class DashboardFilterWidget extends Widget
         ];
     }
 
-    public function getMonthOptions(): array
+    public function getMonthOptionsProperty(): array
     {
         $currentYear = Carbon::now()->year;
         $months = [];
@@ -59,7 +64,7 @@ class DashboardFilterWidget extends Widget
         return $months;
     }
 
-    public function getYearOptions(): array
+    public function getYearOptionsProperty(): array
     {
         $currentYear = Carbon::now()->year;
         $years = [];
@@ -118,6 +123,11 @@ class DashboardFilterWidget extends Widget
     public function getSelectedDateRange(): array
     {
         if ($this->selectedDuration === 'Day') {
+            // Validate that selectedDate is a valid date string
+            if (empty($this->selectedDate) || !is_string($this->selectedDate)) {
+                $this->selectedDate = Carbon::now()->format('Y-m-d');
+            }
+            
             $selectedDate = Carbon::createFromFormat('Y-m-d', $this->selectedDate);
             $startDate = $selectedDate->copy()->startOfDay();
             $endDate = $selectedDate->copy()->endOfDay();
@@ -126,6 +136,11 @@ class DashboardFilterWidget extends Widget
             $previousStartDate = $startDate->copy()->subDay()->startOfDay();
             $previousEndDate = $startDate->copy()->subDay()->endOfDay();
         } elseif ($this->selectedDuration === 'Month') {
+            // Validate that selectedMonth is a valid month string
+            if (empty($this->selectedMonth) || !is_string($this->selectedMonth)) {
+                $this->selectedMonth = Carbon::now()->format('Y-m');
+            }
+            
             $selectedDate = Carbon::createFromFormat('Y-m', $this->selectedMonth);
             $startDate = $selectedDate->copy()->startOfMonth();
             $endDate = $selectedDate->copy()->endOfMonth();
@@ -134,6 +149,11 @@ class DashboardFilterWidget extends Widget
             $previousStartDate = $startDate->copy()->subMonth()->startOfMonth();
             $previousEndDate = $startDate->copy()->subMonth()->endOfMonth();
         } else {
+            // Validate that selectedYear is a valid year
+            if (empty($this->selectedYear) || !is_numeric($this->selectedYear)) {
+                $this->selectedYear = Carbon::now()->year;
+            }
+            
             $selectedDate = Carbon::createFromDate($this->selectedYear, 1, 1);
             $startDate = $selectedDate->copy()->startOfYear();
             $endDate = $selectedDate->copy()->endOfYear();

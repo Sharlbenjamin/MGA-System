@@ -38,6 +38,11 @@ trait HasDashboardFilters
         $filters = $this->getDashboardFilters();
         
         if ($filters['duration'] === 'Day') {
+            // Validate that selectedDate is a valid date string
+            if (empty($filters['selectedDate']) || !is_string($filters['selectedDate'])) {
+                $filters['selectedDate'] = Carbon::now()->format('Y-m-d');
+            }
+            
             $selectedDate = Carbon::createFromFormat('Y-m-d', $filters['selectedDate']);
             $startDate = $selectedDate->copy()->startOfDay();
             $endDate = $selectedDate->copy()->endOfDay();
@@ -46,6 +51,11 @@ trait HasDashboardFilters
             $previousStartDate = $startDate->copy()->subDay()->startOfDay();
             $previousEndDate = $startDate->copy()->subDay()->endOfDay();
         } elseif ($filters['duration'] === 'Month') {
+            // Validate that selectedMonth is a valid month string
+            if (empty($filters['selectedMonth']) || !is_string($filters['selectedMonth'])) {
+                $filters['selectedMonth'] = Carbon::now()->format('Y-m');
+            }
+            
             $selectedDate = Carbon::createFromFormat('Y-m', $filters['selectedMonth']);
             $startDate = $selectedDate->copy()->startOfMonth();
             $endDate = $selectedDate->copy()->endOfMonth();
@@ -54,6 +64,11 @@ trait HasDashboardFilters
             $previousStartDate = $startDate->copy()->subMonth()->startOfMonth();
             $previousEndDate = $startDate->copy()->subMonth()->endOfMonth();
         } else {
+            // Validate that selectedYear is a valid year
+            if (empty($filters['selectedYear']) || !is_numeric($filters['selectedYear'])) {
+                $filters['selectedYear'] = Carbon::now()->year;
+            }
+            
             $selectedDate = Carbon::createFromDate($filters['selectedYear'], 1, 1);
             $startDate = $selectedDate->copy()->startOfYear();
             $endDate = $selectedDate->copy()->endOfYear();
@@ -85,17 +100,62 @@ trait HasDashboardFilters
             ];
         }
 
-        $percentage = (($currentValue - $previousValue) / $previousValue) * 100;
+        $percentage = (($currentValue - $previousValue) / abs($previousValue)) * 100;
+        
+        // For profit/loss scenarios, determine trend based on business logic
+        $trend = 'neutral';
+        if ($previousValue < 0 && $currentValue >= 0) {
+            // Going from loss to profit or break-even is improvement
+            $trend = 'up';
+        } elseif ($previousValue >= 0 && $currentValue < 0) {
+            // Going from profit/break-even to loss is decline
+            $trend = 'down';
+        } elseif ($previousValue >= 0 && $currentValue >= 0) {
+            // Both positive - use percentage
+            $trend = $percentage > 0 ? 'up' : ($percentage < 0 ? 'down' : 'neutral');
+        } elseif ($previousValue < 0 && $currentValue < 0) {
+            // Both negative - less negative is improvement
+            $trend = $currentValue > $previousValue ? 'up' : ($currentValue < $previousValue ? 'down' : 'neutral');
+        }
         
         return [
             'percentage' => round($percentage, 1),
-            'trend' => $percentage > 0 ? 'up' : ($percentage < 0 ? 'down' : 'neutral'),
-            'description' => $percentage > 0 
-                ? '+' . round($percentage, 1) . '% from previous period'
-                : ($percentage < 0 
-                    ? round($percentage, 1) . '% from previous period'
-                    : 'No change from previous period'),
+            'trend' => $trend,
+            'description' => $this->getComparisonDescription($currentValue, $previousValue, $percentage, $trend),
         ];
+    }
+
+    protected function getComparisonDescription($currentValue, $previousValue, $percentage, $trend): string
+    {
+        if ($previousValue == 0) {
+            return $currentValue > 0 ? 'New data' : 'No change';
+        }
+
+        if ($previousValue < 0 && $currentValue >= 0) {
+            return 'Recovered from loss';
+        } elseif ($previousValue >= 0 && $currentValue < 0) {
+            return 'Declined to loss';
+        } elseif ($previousValue >= 0 && $currentValue >= 0) {
+            // Both positive
+            if ($percentage > 0) {
+                return '+' . round($percentage, 1) . '% from previous period';
+            } elseif ($percentage < 0) {
+                return round($percentage, 1) . '% from previous period';
+            } else {
+                return 'No change from previous period';
+            }
+        } elseif ($previousValue < 0 && $currentValue < 0) {
+            // Both negative
+            if ($currentValue > $previousValue) {
+                return 'Loss reduced by ' . round(abs($percentage), 1) . '%';
+            } elseif ($currentValue < $previousValue) {
+                return 'Loss increased by ' . round(abs($percentage), 1) . '%';
+            } else {
+                return 'No change from previous period';
+            }
+        }
+
+        return 'No change from previous period';
     }
 
     protected function formatComparisonDescription($comparison): string
