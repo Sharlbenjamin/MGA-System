@@ -13,6 +13,9 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use App\Services\UploadGopToGoogleDrive;
+use Filament\Notifications\Notification;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class GopRelationManager extends RelationManager
 {
@@ -67,6 +70,83 @@ class GopRelationManager extends RelationManager
                     ->icon('heroicon-o-eye')
                     ->url(fn ($record) => route('gop.view', $record))
                     ->openUrlInNewTab(),
+                Action::make('generate')
+                    ->label(fn ($record) => $record->type === 'Out' ? 'GOP Generate' : 'GOP Upload')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn ($record) => $record->type === 'Out' ? 'Generate GOP' : 'Upload GOP')
+                    ->modalDescription(fn ($record) => $record->type === 'Out' 
+                        ? 'This will generate and upload the GOP document to Google Drive.'
+                        : 'This will upload the GOP document to Google Drive.')
+                    ->modalSubmitActionLabel(fn ($record) => $record->type === 'Out' ? 'Generate' : 'Upload')
+                    ->form(fn ($record) => $record->type === 'In' ? [
+                        Forms\Components\FileUpload::make('document')
+                            ->label('Upload GOP Document')
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                            ->maxSize(10240) // 10MB
+                            ->required()
+                            ->helperText('Upload the GOP document (PDF or image)'),
+                    ] : [])
+                    ->action(function ($record, array $data = []) {
+                        if ($record->type === 'Out') {
+                            // Generate PDF for Out type
+                            $pdf = Pdf::loadView('pdf.gop_out', ['gop' => $record]);
+                            $content = $pdf->output();
+                            $fileName = 'GOP Out ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.pdf';
+                        } else {
+                            // Upload existing document for In type
+                            if (!isset($data['document'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('No document uploaded')
+                                    ->body('Please upload a document first.')
+                                    ->send();
+                                return;
+                            }
+
+                            $filePath = storage_path('app/public/' . $data['document']);
+                            if (!file_exists($filePath)) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('File not found')
+                                    ->body('The uploaded file could not be found.')
+                                    ->send();
+                                return;
+                            }
+
+                            $content = file_get_contents($filePath);
+                            $fileName = basename($data['document']);
+                        }
+
+                        // Upload to Google Drive
+                        $uploader = app(UploadGopToGoogleDrive::class);
+                        $result = $uploader->uploadGopToGoogleDrive(
+                            $content,
+                            $fileName,
+                            $record
+                        );
+
+                        if ($result === false) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload failed')
+                                ->body('Check logs for more details')
+                                ->send();
+                            return;
+                        }
+
+                        // Update GOP status
+                        $record->status = 'Sent';
+                        $record->save();
+
+                        $actionType = $record->type === 'Out' ? 'generated and uploaded' : 'uploaded';
+                        Notification::make()
+                            ->success()
+                            ->title("GOP {$actionType} successfully")
+                            ->body('GOP has been uploaded to Google Drive.')
+                            ->send();
+                    }),
                 // Add this new action before existing actions
                 Action::make('sendToBranch')
                     ->label('Send')

@@ -620,7 +620,7 @@ class ViewFile extends ViewRecord
                 $notification->warning();
             }
 
-            \Log::info('Sending Filament notification for appointment request', [
+            Log::info('Sending Filament notification for appointment request', [
                 'user_id' => $user->id,
                 'file_id' => $record->id,
                 'title' => $title,
@@ -630,16 +630,16 @@ class ViewFile extends ViewRecord
 
             // Workaround for Filament v3.3.0 bug: manually set notification as unread
             try {
-                $latestNotification = $user->notifications()
+                $latestNotification = $user->notifications
                     ->where('type', 'Filament\Notifications\DatabaseNotification')
-                    ->latest()
+                    ->sortByDesc('created_at')
                     ->first();
                 
                 if ($latestNotification && $latestNotification->read_at) {
                     $latestNotification->update(['read_at' => null]);
                 }
             } catch (\Exception $e) {
-                \Log::error('Failed to fix notification read status', [
+                Log::error('Failed to fix notification read status', [
                     'error' => $e->getMessage(),
                     'user_id' => $user->id,
                     'file_id' => $record->id

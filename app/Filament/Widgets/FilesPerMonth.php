@@ -6,30 +6,69 @@ use App\Models\File;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Filament\Widgets\Traits\HasDashboardFilters;
 
 class FilesPerMonth extends ChartWidget
 {
+    use HasDashboardFilters;
+
     protected static ?int $sort = 7;
 
-    protected static ?string $heading = 'Files per Month';
+    protected static ?string $heading = 'Files Trend';
     protected static string $color = 'warning';
     protected static ?string $maxHeight = '300px';
 
     protected function getData(): array
     {
-        $data = File::selectRaw('COUNT(*) as count, DATE_FORMAT(created_at, "%Y-%m") as month')
-            ->where('created_at', '>=', now()->subYears(1))
+        $filters = $this->getDashboardFilters();
+        $dateRange = $this->getDateRange();
+        
+        if ($filters['duration'] === 'Month') {
+            // For monthly view, show daily data for the selected month
+            $data = File::whereBetween('created_at', [
+                $dateRange['current']['start'],
+                $dateRange['current']['end']
+            ])
+            ->selectRaw('COUNT(*) as count, DATE(created_at) as day')
+            ->groupBy('day')
+            ->orderBy('day')
+            ->get();
+
+            $labels = [];
+            $counts = [];
+            
+            $currentDate = $dateRange['current']['start']->copy();
+            $endDate = $dateRange['current']['end'];
+            
+            while ($currentDate <= $endDate) {
+                $labels[] = $currentDate->format('M d');
+                $dayData = $data->where('day', $currentDate->format('Y-m-d'))->first();
+                $counts[] = $dayData ? $dayData->count : 0;
+                $currentDate->addDay();
+            }
+        } else {
+            // For yearly view, show monthly data for the selected year
+            $data = File::whereBetween('created_at', [
+                $dateRange['current']['start'],
+                $dateRange['current']['end']
+            ])
+            ->selectRaw('COUNT(*) as count, DATE_FORMAT(created_at, "%Y-%m") as month')
             ->groupBy('month')
             ->orderBy('month')
             ->get();
 
-        // Initialize counts array with zeros for all months
-        $counts = array_fill(0, 12, 0);
-
-        // Map the data to the correct month index (0 for Jan, 11 for Dec)
-        foreach ($data as $record) {
-            $monthIndex = (int)now()->parse($record->month)->format('n') - 1; // n gives 1-12, so subtract 1 for 0-11
-            $counts[$monthIndex] = $record->count;
+            $labels = [];
+            $counts = [];
+            
+            $currentMonth = $dateRange['current']['start']->copy();
+            $endMonth = $dateRange['current']['end'];
+            
+            while ($currentMonth <= $endMonth) {
+                $labels[] = $currentMonth->format('M Y');
+                $monthData = $data->where('month', $currentMonth->format('Y-m'))->first();
+                $counts[] = $monthData ? $monthData->count : 0;
+                $currentMonth->addMonth();
+            }
         }
 
         return [
@@ -38,15 +77,32 @@ class FilesPerMonth extends ChartWidget
                     'label' => 'Files',
                     'data' => $counts,
                     'backgroundColor' => '#197070',
+                    'borderColor' => '#197070',
+                    'tension' => 0.3,
                 ],
             ],
-            'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            'labels' => $labels,
         ];
     }
-
 
     protected function getType(): string
     {
         return 'line';
+    }
+
+    protected function getOptions(): array
+    {
+        return [
+            'scales' => [
+                'y' => [
+                    'beginAtZero' => true,
+                ],
+            ],
+            'plugins' => [
+                'legend' => [
+                    'display' => false,
+                ],
+            ],
+        ];
     }
 }

@@ -10,11 +10,12 @@ use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Bill;
 use App\Models\Transaction;
+use App\Filament\Widgets\Traits\HasDashboardFilters;
 use Carbon\Carbon;
 
 class FileStatsOverview extends  StatsOverviewWidget
 {
-    use InteractsWithPageFilters;
+    use InteractsWithPageFilters, HasDashboardFilters;
 
     public ?string $filter = 'Month';
 
@@ -25,149 +26,213 @@ class FileStatsOverview extends  StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $filter = $this->filters['monthYearFilter'] ?? 'Month';
+        $filters = $this->getDashboardFilters();
+        $dateRange = $this->getDateRange();
+        
+        // Current period calculations
+        $revenue = Invoice::whereBetween('invoice_date', [
+            $dateRange['current']['start'],
+            $dateRange['current']['end']
+        ])->sum('total_amount');
+        
+        $cost = Bill::whereBetween('bill_date', [
+            $dateRange['current']['start'],
+            $dateRange['current']['end']
+        ])->sum('total_amount');
+        
+        $expenses = Transaction::where('type', 'Expense')
+            ->whereBetween('date', [
+                $dateRange['current']['start'],
+                $dateRange['current']['end']
+            ])->sum('amount');
 
-        $Revenue = Invoice::when($filter === 'Month', function($query){
-            $query->whereMonth('invoice_date', now()->month);
-        })->when($filter === 'Year', function($query){
-            $query->whereYear('invoice_date', now()->year);
-        })->sum('total_amount');
-        $Cost = Bill::when($filter === 'Month', function($query){
-            $query->whereMonth('bill_date', now()->month);
-        })->when($filter === 'Year', function($query){
-            $query->whereYear('bill_date', now()->year);
-        })->sum('total_amount') ;
-        $Expenses = Transaction::where('type', 'Expense')->when($filter === 'Month', function($query){
-            $query->whereMonth('date', now()->month);
-        })->when($filter === 'Year', function($query){
-            $query->whereYear('date', now()->year);
-        })->sum('amount');
+        $income = $revenue - $cost;
+        $outflow = $cost + $expenses;
+        $profit = $revenue - $outflow;
 
-        $Income = $Revenue - $Cost ;
-        $Outflow = $Cost + $Expenses;
-        $Profit = $Revenue - $Outflow ;
+        // Previous period calculations for comparison
+        $previousRevenue = Invoice::whereBetween('invoice_date', [
+            $dateRange['previous']['start'],
+            $dateRange['previous']['end']
+        ])->sum('total_amount');
+        
+        $previousCost = Bill::whereBetween('bill_date', [
+            $dateRange['previous']['start'],
+            $dateRange['previous']['end']
+        ])->sum('total_amount');
+        
+        $previousExpenses = Transaction::where('type', 'Expense')
+            ->whereBetween('date', [
+                $dateRange['previous']['start'],
+                $dateRange['previous']['end']
+            ])->sum('amount');
 
-        $RevenueChart = Invoice::when($filter === 'Month', function($query){
-            $query->selectRaw('DATE(invoice_date) as date, SUM(total_amount) as total')
-                  ->whereMonth('invoice_date', now()->month)
-                  ->whereYear('invoice_date', now()->year)
-                  ->groupBy('date')
-                  ->orderBy('date');
-        })->when($filter === 'Year', function($query){
-            $query->selectRaw('DATE_FORMAT(invoice_date, "%Y-%m") as date, SUM(total_amount) as total')
-                  ->whereYear('invoice_date', now()->year)
-                  ->groupBy('date')
-                  ->orderBy('date');
-        })->pluck('total')->toArray();
+        $previousIncome = $previousRevenue - $previousCost;
+        $previousOutflow = $previousCost + $previousExpenses;
+        $previousProfit = $previousRevenue - $previousOutflow;
 
-        $CostChart = Bill::when($filter === 'Month', function($query){
-            $query->selectRaw('DATE(bill_date) as date, SUM(total_amount) as total')
-                  ->whereMonth('bill_date', now()->month)
-                  ->whereYear('bill_date', now()->year)
-                  ->groupBy('date')
-                  ->orderBy('date');
-        })->when($filter === 'Year', function($query){
-            $query->selectRaw('DATE_FORMAT(bill_date, "%Y-%m") as date, SUM(total_amount) as total')
-                  ->whereYear('bill_date', now()->year)
-                  ->groupBy('date')
-                  ->orderBy('date');
-        })->pluck('total')->toArray();
+        // Calculate comparisons
+        $revenueComparison = $this->calculateComparison($revenue, $previousRevenue);
+        $incomeComparison = $this->calculateComparison($income, $previousIncome);
+        $profitComparison = $this->calculateComparison($profit, $previousProfit);
+        $costComparison = $this->calculateComparison($cost, $previousCost);
+        $expensesComparison = $this->calculateComparison($expenses, $previousExpenses);
+        $outflowComparison = $this->calculateComparison($outflow, $previousOutflow);
 
-        $ExpensesChart = Transaction::when($filter === 'Month', function($query){
-            $query->selectRaw('DATE(date) as date, SUM(amount) as total')
-                  ->whereMonth('date', now()->month)
-                  ->whereYear('date', now()->year)
-                  ->groupBy('date')
-                  ->orderBy('date');
-        })->when($filter === 'Year', function($query){
-            $query->selectRaw('DATE_FORMAT(date, "%Y-%m") as date, SUM(amount) as total')
-                  ->whereYear('date', now()->year)
-                  ->groupBy('date')
-                  ->orderBy('date');
-        })->pluck('total')->toArray();
+        // Chart data
+        $revenueChart = $this->getChartData('invoices', 'invoice_date', 'total_amount');
+        $costChart = $this->getChartData('bills', 'bill_date', 'total_amount');
+        $expensesChart = $this->getChartData('transactions', 'date', 'amount', ['type' => 'Expense']);
 
-        $IncomeChart = array_map(function($RevenueChart, $CostChart) {
-            return $RevenueChart - $CostChart;
-        }, $RevenueChart, $CostChart);
-        $OutflowChart = array_map(function($CostChart, $ExpensesChart) {
-            return $CostChart + $ExpensesChart;
-        }, $CostChart, $ExpensesChart);
-        $ProfitChart = array_map(function($RevenueChart, $OutflowChart) {
-            return $RevenueChart - $OutflowChart;
-        }, $RevenueChart, $OutflowChart);
+        $incomeChart = array_map(function($revenueChart, $costChart) {
+            return $revenueChart - $costChart;
+        }, $revenueChart, $costChart);
+        
+        $outflowChart = array_map(function($costChart, $expensesChart) {
+            return $costChart + $expensesChart;
+        }, $costChart, $expensesChart);
+        
+        $profitChart = array_map(function($revenueChart, $outflowChart) {
+            return $revenueChart - $outflowChart;
+        }, $revenueChart, $outflowChart);
 
-        $ActiveFiles = $this->queryFilter( File::where('status', 'Assisted'))->count();
-        $CancelledFiles = $this->queryFilter( File::where('status', 'Cancelled'))->count();
-        $TotalFiles = $this->queryFilter(File::query())->count();
+        // File statistics
+        $activeFiles = File::where('status', 'Assisted')
+            ->whereBetween('created_at', [
+                $dateRange['current']['start'],
+                $dateRange['current']['end']
+            ])->count();
+            
+        $cancelledFiles = File::where('status', 'Cancelled')
+            ->whereBetween('created_at', [
+                $dateRange['current']['start'],
+                $dateRange['current']['end']
+            ])->count();
+            
+        $totalFiles = File::whereBetween('created_at', [
+            $dateRange['current']['start'],
+            $dateRange['current']['end']
+        ])->count();
+
+        // Previous period file statistics
+        $previousActiveFiles = File::where('status', 'Assisted')
+            ->whereBetween('created_at', [
+                $dateRange['previous']['start'],
+                $dateRange['previous']['end']
+            ])->count();
+            
+        $previousCancelledFiles = File::where('status', 'Cancelled')
+            ->whereBetween('created_at', [
+                $dateRange['previous']['start'],
+                $dateRange['previous']['end']
+            ])->count();
+            
+        $previousTotalFiles = File::whereBetween('created_at', [
+            $dateRange['previous']['start'],
+            $dateRange['previous']['end']
+        ])->count();
+
+        // File comparisons
+        $activeFilesComparison = $this->calculateComparison($activeFiles, $previousActiveFiles);
+        $cancelledFilesComparison = $this->calculateComparison($cancelledFiles, $previousCancelledFiles);
+        $totalFilesComparison = $this->calculateComparison($totalFiles, $previousTotalFiles);
+
+        $periodLabel = $filters['duration'] === 'Month' ? 'Month' : 'Year';
 
         return [
-            Stat::make('Revenue this '.$filter, '€' . number_format($Revenue))
-                ->description("Sum of all Invoices  this ".$filter)->chart($RevenueChart)
-                ->color('success'),
+            Stat::make("Revenue this {$periodLabel}", '€' . number_format($revenue))
+                ->description($this->formatComparisonDescription($revenueComparison))
+                ->descriptionIcon($revenueComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($revenueComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($revenueComparison))
+                ->chart($revenueChart),
 
-            Stat::make('Income this '.$filter, '€' . number_format($Income))
-                ->description("Revenue after removing the cost")->chart($IncomeChart)
-                ->color('success'),
+            Stat::make("Income this {$periodLabel}", '€' . number_format($income))
+                ->description($this->formatComparisonDescription($incomeComparison))
+                ->descriptionIcon($incomeComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($incomeComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($incomeComparison))
+                ->chart($incomeChart),
 
-            Stat::make('Profit this '.$filter, '€' . number_format($Profit))
-                ->description("Profit after removing all Provider Cost and Expenses")->chart($ProfitChart)
-                ->color('success'),
+            Stat::make("Profit this {$periodLabel}", '€' . number_format($profit))
+                ->description($this->formatComparisonDescription($profitComparison))
+                ->descriptionIcon($profitComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($profitComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($profitComparison))
+                ->chart($profitChart),
 
-            Stat::make('Cost this '.$filter, '€' . number_format($Cost))
-                ->description("Provider Cost this ".$filter)->chart($CostChart)
-                ->color('warning'),
+            Stat::make("Cost this {$periodLabel}", '€' . number_format($cost))
+                ->description($this->formatComparisonDescription($costComparison))
+                ->descriptionIcon($costComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($costComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($costComparison))
+                ->chart($costChart),
 
-            Stat::make('Expenses this '.$filter, '€' . number_format($Expenses))
-                ->description("Utilities, Salaries and Lawyer")->chart($ExpensesChart)
-                ->color('info'),
+            Stat::make("Expenses this {$periodLabel}", '€' . number_format($expenses))
+                ->description($this->formatComparisonDescription($expensesComparison))
+                ->descriptionIcon($expensesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($expensesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($expensesComparison))
+                ->chart($expensesChart),
 
-            Stat::make('Outflow this '.$filter, '€' . number_format($Outflow))
-                ->description("Cost and Expenses")->chart($OutflowChart)
-                ->color('danger'),
+            Stat::make("Outflow this {$periodLabel}", '€' . number_format($outflow))
+                ->description($this->formatComparisonDescription($outflowComparison))
+                ->descriptionIcon($outflowComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($outflowComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($outflowComparison))
+                ->chart($outflowChart),
 
-            Stat::make('Active Files', $ActiveFiles)
-                ->description("Active Files this $filter")
-                ->color('success'),
+            Stat::make('Active Files', $activeFiles)
+                ->description($this->formatComparisonDescription($activeFilesComparison))
+                ->descriptionIcon($activeFilesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($activeFilesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($activeFilesComparison)),
 
-            Stat::make('Cancelled', $CancelledFiles)
-                ->description("Cancelled Files this $filter")
-                ->color('danger'),
+            Stat::make('Cancelled', $cancelledFiles)
+                ->description($this->formatComparisonDescription($cancelledFilesComparison))
+                ->descriptionIcon($cancelledFilesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($cancelledFilesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($cancelledFilesComparison)),
 
-            Stat::make('Total Files', $TotalFiles)
-                ->description("Total Files this $filter")
-                ->color('info'),
+            Stat::make('Total Files', $totalFiles)
+                ->description($this->formatComparisonDescription($totalFilesComparison))
+                ->descriptionIcon($totalFilesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($totalFilesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
+                ->color($this->getComparisonColor($totalFilesComparison)),
         ];
     }
+
+    protected function getChartData($table, $dateField, $amountField, $additionalConditions = []): array
+    {
+        $filters = $this->getDashboardFilters();
+        $dateRange = $this->getDateRange();
+        
+        $query = \DB::table($table)
+            ->whereBetween($dateField, [
+                $dateRange['current']['start'],
+                $dateRange['current']['end']
+            ]);
+            
+        foreach ($additionalConditions as $field => $value) {
+            $query->where($field, $value);
+        }
+        
+        if ($filters['duration'] === 'Day') {
+            $data = $query->selectRaw('HOUR(' . $dateField . ') as hour, SUM(' . $amountField . ') as total')
+                ->groupBy('hour')
+                ->orderBy('hour')
+                ->pluck('total')
+                ->toArray();
+        } elseif ($filters['duration'] === 'Month') {
+            $data = $query->selectRaw('DATE(' . $dateField . ') as date, SUM(' . $amountField . ') as total')
+                ->groupBy('date')
+                ->orderBy('date')
+                ->pluck('total')
+                ->toArray();
+        } else {
+            $data = $query->selectRaw('DATE_FORMAT(' . $dateField . ', "%Y-%m") as date, SUM(' . $amountField . ') as total')
+                ->groupBy('date')
+                ->orderBy('date')
+                ->pluck('total')
+                ->toArray();
+        }
+        
+        return $data;
+    }
+
     protected function hasFiltersForm(): bool
     {
         return true;
     }
-
-    public function queryFilter($query)
-    {
-        $filter = $this->filters['monthYearFilter'] ?? 'Month';
-        if($filter == 'Month'){
-            return $query->whereMonth('created_at', now()->month);
-        }else{
-            return $query->whereYear('created_at', now()->year);
-        }
-    }
-
-    public function groupFilter($query)
-    {
-        $filter = $this->filters['monthYearFilter'] ?? 'Month';
-        if($filter == 'Month'){
-            return $query->selectRaw('DATE_FORMAT(created_at, "%Y-%m-%d") as period, SUM(total_amount) as total')
-                        ->whereMonth('invoice_date', now()->month)
-                        ->whereYear('invoice_date', now()->year)
-                        ->groupBy('period')
-                        ->orderBy('period');
-        }else{
-            return $query->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as period, SUM(total_amount) as total')
-                        ->whereYear('invoice_date', now()->year)
-                        ->groupBy('period')
-                        ->orderBy('period');
-        }
-    }
-
 }
