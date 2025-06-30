@@ -171,30 +171,29 @@ class BillResource extends Resource
                     ->modalDescription('This will upload a bill document to the Google Drive folder associated with this file.')
                     ->modalSubmitActionLabel('Upload')
                     ->form([
-                        Forms\Components\FileUpload::make('document')
+                        Forms\Components\TextInput::make('document')
                             ->label('Upload Bill Document')
-                            ->acceptedFileTypes(['application/pdf', 'image/*'])
-                            ->maxSize(10240) // 10MB
+                            ->type('file')
                             ->required()
-                            ->disk('public')
-                            ->directory('bills')
-                            ->visibility('public')
                             ->helperText('Upload the bill document (PDF or image)'),
                     ])
                     ->action(function (Bill $record, array $data) {
-                        // Get the file content using the public disk
-                        $filePath = storage_path('app/public/bills/' . basename($data['document']));
-                        if (!file_exists($filePath)) {
+                        // Handle file upload manually
+                        if (!isset($data['document']) || !$data['document']->isValid()) {
                             Notification::make()
                                 ->danger()
-                                ->title('File not found')
-                                ->body('The uploaded file could not be found.')
+                                ->title('Invalid file')
+                                ->body('Please select a valid file.')
                                 ->send();
                             return;
                         }
 
-                        $fileContent = file_get_contents($filePath);
-                        $fileName = basename($data['document']);
+                        $file = $data['document'];
+                        $fileName = time() . '_' . $file->getClientOriginalName();
+                        $filePath = $file->storeAs('bills', $fileName, 'public');
+
+                        // Get the file content
+                        $fileContent = file_get_contents(storage_path('app/public/' . $filePath));
 
                         // Upload to Google Drive
                         $uploader = app(UploadBillToGoogleDrive::class);
