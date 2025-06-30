@@ -86,6 +86,9 @@ class GopRelationManager extends RelationManager
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
                             ->required()
+                            ->disk('public')
+                            ->directory('gops')
+                            ->visibility('public')
                             ->helperText('Upload the GOP document (PDF or image)'),
                     ] : [])
                     ->action(function ($record, array $data = []) {
@@ -105,7 +108,7 @@ class GopRelationManager extends RelationManager
                                 return;
                             }
 
-                            $filePath = storage_path('app/public/' . $data['document']);
+                            $filePath = storage_path('app/public/gops/' . basename($data['document']));
                             if (!file_exists($filePath)) {
                                 Notification::make()
                                     ->danger()

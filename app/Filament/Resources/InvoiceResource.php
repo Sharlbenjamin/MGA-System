@@ -6,6 +6,7 @@ use App\Filament\Resources\InvoiceResource\Pages;
 use App\Filament\Resources\InvoiceResource\RelationManagers\ItemsRelationManager;
 use App\Models\BankAccount;
 use App\Models\Invoice;
+use App\Services\UploadInvoiceToGoogleDrive;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -15,6 +16,9 @@ use Filament\Tables;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Grouping\Group;
+use Filament\Tables\Actions\Action;
+use Filament\Notifications\Notification;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 
 class InvoiceResource extends Resource
@@ -194,6 +198,47 @@ class InvoiceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Action::make('generate')
+                    ->modalHeading('Generate Invoice')
+                    ->modalSubmitActionLabel('Generate')
+                    ->color('success')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->requiresConfirmation()
+                    ->modalDescription('This will generate and upload the invoice to Google Drive.')
+                    ->action(function (Invoice $record) {
+                        // First generate PDF
+                        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
+                        $content = $pdf->output();
+                        $fileName = $record->name . '.pdf';
+
+                        // Upload to Google Drive
+                        $uploader = app(UploadInvoiceToGoogleDrive::class);
+                        $result = $uploader->uploadInvoiceToGoogleDrive(
+                            $content,
+                            $fileName,
+                            $record
+                        );
+
+                        if ($result === false) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload failed')
+                                ->body('Check logs for more details')
+                                ->send();
+                            return;
+                        }
+
+                        // Update invoice with new Google Drive link
+                        $record->invoice_google_link = $result['webViewLink'];
+                        $record->status = 'Sent';
+                        $record->save();
+
+                        Notification::make()
+                            ->success()
+                            ->title('Invoice generated and uploaded successfully')
+                            ->body('Invoice has been uploaded to Google Drive.')
+                            ->send();
+                    }),
             ])->headerActions([Tables\Actions\CreateAction::make()])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

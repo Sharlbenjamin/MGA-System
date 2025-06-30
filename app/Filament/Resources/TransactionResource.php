@@ -60,6 +60,9 @@ class TransactionResource extends Resource
                     ->label('Upload Transaction Document')
                     ->acceptedFileTypes(['application/pdf', 'image/*'])
                     ->maxSize(10240) // 10MB
+                    ->disk('public')
+                    ->directory('transactions')
+                    ->visibility('public')
                     ->helperText('Upload the transaction document (PDF or image)'),
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
@@ -175,8 +178,8 @@ class TransactionResource extends Resource
                             return;
                         }
 
-                        // Get the file content
-                        $filePath = storage_path('app/public/' . $record->attachment_path);
+                        // Get the file content using the public disk
+                        $filePath = storage_path('app/public/transactions/' . basename($record->attachment_path));
                         if (!file_exists($filePath)) {
                             Notification::make()
                                 ->danger()

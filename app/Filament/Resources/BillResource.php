@@ -176,11 +176,14 @@ class BillResource extends Resource
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
                             ->required()
+                            ->disk('public')
+                            ->directory('bills')
+                            ->visibility('public')
                             ->helperText('Upload the bill document (PDF or image)'),
                     ])
                     ->action(function (Bill $record, array $data) {
-                        // Get the file content
-                        $filePath = storage_path('app/public/' . $data['document']);
+                        // Get the file content using the public disk
+                        $filePath = storage_path('app/public/bills/' . basename($data['document']));
                         if (!file_exists($filePath)) {
                             Notification::make()
                                 ->danger()
