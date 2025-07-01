@@ -42,6 +42,8 @@ class BillResource extends Resource
         return 'warning';
     }
 
+
+
     public static function form(Form $form): Form
     {
         return $form

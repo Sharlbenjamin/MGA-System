@@ -34,7 +34,17 @@ class TransactionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Finance';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 5;
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = static::getModel()::query()
+            ->where('type', 'Outflow')
+            ->whereNull('attachment_path')
+            ->count();
+            
+        return $count > 0 ? (string) $count : null;
+    }
 
     public static function form(Form $form): Form
     {
@@ -147,6 +157,29 @@ class TransactionResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
                 Tables\Filters\SelectFilter::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->multiple()->preload(),
+                Tables\Filters\Filter::make('missing_documents')
+                    ->label('Missed Documents')
+                    ->form([
+                        Forms\Components\Checkbox::make('show_missing_documents')
+                            ->label('Missing Documents')
+                            ->default(true)
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['show_missing_documents'] ?? true,
+                                fn (Builder $query): Builder => $query->where('type', 'Outflow')->whereNull('attachment_path')
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        
+                        if ($data['show_missing_documents'] ?? true) {
+                            $indicators['missing_documents'] = 'Missed Documents (Outflow)';
+                        }
+                        
+                        return $indicators;
+                    }),
             ])
             ->groups([
                 Tables\Grouping\Group::make('date')
