@@ -187,102 +187,12 @@ class PriceListResource extends Resource
                                             }),
                                     ]),
 
-                                // Auto-suggest buttons
-                                Action::make('suggest_prices')
-                                    ->label('Auto-suggest Prices (25% markup)')
-                                    ->icon('heroicon-o-light-bulb')
-                                    ->color('warning')
-                                    ->action(function (Get $get, Set $set) {
-                                        $providerBranchId = $get('provider_branch_id');
-                                        $markup = $get('suggested_markup') ?: 1.25;
-                                        
-                                        if ($providerBranchId) {
-                                            $branch = ProviderBranch::find($providerBranchId);
-                                            if ($branch) {
-                                                if ($branch->day_cost) {
-                                                    $set('day_price', round($branch->day_cost * $markup, 2));
-                                                }
-                                                if ($branch->weekend_cost) {
-                                                    $set('weekend_price', round($branch->weekend_cost * $markup, 2));
-                                                }
-                                                if ($branch->night_cost) {
-                                                    $set('night_weekday_price', round($branch->night_cost * $markup, 2));
-                                                }
-                                                if ($branch->weekend_night_cost) {
-                                                    $set('night_weekend_price', round($branch->weekend_night_cost * $markup, 2));
-                                                }
-                                                
-                                                Notification::make()
-                                                    ->title('Prices suggested successfully')
-                                                    ->success()
-                                                    ->send();
-                                            }
-                                        } else {
-                                            // Use average costs
-                                            $countryId = $get('country_id');
-                                            $cityId = $get('city_id');
-                                            $serviceTypeId = $get('service_type_id');
-                                            
-                                            if ($countryId && $cityId && $serviceTypeId) {
-                                                $serviceTypeName = ServiceType::find($serviceTypeId)?->name;
-                                                
-                                                $branches = ProviderBranch::query()
-                                                    ->where('city_id', $cityId)
-                                                    ->where('status', 'Active')
-                                                    ->whereJsonContains('service_types', $serviceTypeName)
-                                                    ->get();
-                                                
-                                                if ($branches->isNotEmpty()) {
-                                                    $avgDayCost = round($branches->avg('day_cost'), 2);
-                                                    $avgWeekendCost = round($branches->avg('weekend_cost'), 2);
-                                                    $avgNightCost = round($branches->avg('night_cost'), 2);
-                                                    $avgWeekendNightCost = round($branches->avg('weekend_night_cost'), 2);
-                                                    
-                                                    if ($avgDayCost > 0) {
-                                                        $set('day_price', round($avgDayCost * $markup, 2));
-                                                    }
-                                                    if ($avgWeekendCost > 0) {
-                                                        $set('weekend_price', round($avgWeekendCost * $markup, 2));
-                                                    }
-                                                    if ($avgNightCost > 0) {
-                                                        $set('night_weekday_price', round($avgNightCost * $markup, 2));
-                                                    }
-                                                    if ($avgWeekendNightCost > 0) {
-                                                        $set('night_weekend_price', round($avgWeekendNightCost * $markup, 2));
-                                                    }
-                                                    
-                                                    Notification::make()
-                                                        ->title('Prices suggested based on average provider costs')
-                                                        ->success()
-                                                        ->send();
-                                                }
-                                            }
-                                        }
-                                    })
-                                    ->requiresConfirmation()
-                                    ->modalHeading('Auto-suggest Prices')
-                                    ->modalDescription('This will calculate suggested prices based on provider costs with the specified markup. Current prices will be overwritten.')
-                                    ->modalSubmitActionLabel('Suggest Prices'),
-
-                                Action::make('clear_prices')
-                                    ->label('Clear All Prices')
-                                    ->icon('heroicon-o-trash')
-                                    ->color('danger')
-                                    ->action(function (Set $set) {
-                                        $set('day_price', null);
-                                        $set('weekend_price', null);
-                                        $set('night_weekday_price', null);
-                                        $set('night_weekend_price', null);
-                                        
-                                        Notification::make()
-                                            ->title('All prices cleared')
-                                            ->success()
-                                            ->send();
-                                    })
-                                    ->requiresConfirmation()
-                                    ->modalHeading('Clear All Prices')
-                                    ->modalDescription('This will clear all price fields. This action cannot be undone.')
-                                    ->modalSubmitActionLabel('Clear Prices'),
+                                // Note: Auto-suggest functionality moved to form actions
+                                TextInput::make('helper_text')
+                                    ->label('Helper')
+                                    ->disabled()
+                                    ->default('Use the "Auto-suggest Prices" action in the form header to calculate prices based on provider costs.')
+                                    ->dehydrated(false),
                             ])
                             ->columnSpan(1),
                     ]),
@@ -297,6 +207,103 @@ class PriceListResource extends Resource
                     ])
                     ->collapsible()
                     ->collapsed(),
+            ])
+            ->headerActions([
+                \Filament\Forms\Components\Actions\Action::make('suggest_prices')
+                    ->label('Auto-suggest Prices')
+                    ->icon('heroicon-o-light-bulb')
+                    ->color('warning')
+                    ->action(function (Get $get, Set $set) {
+                        $providerBranchId = $get('provider_branch_id');
+                        $markup = $get('suggested_markup') ?: 1.25;
+                        
+                        if ($providerBranchId) {
+                            $branch = ProviderBranch::find($providerBranchId);
+                            if ($branch) {
+                                if ($branch->day_cost) {
+                                    $set('day_price', round($branch->day_cost * $markup, 2));
+                                }
+                                if ($branch->weekend_cost) {
+                                    $set('weekend_price', round($branch->weekend_cost * $markup, 2));
+                                }
+                                if ($branch->night_cost) {
+                                    $set('night_weekday_price', round($branch->night_cost * $markup, 2));
+                                }
+                                if ($branch->weekend_night_cost) {
+                                    $set('night_weekend_price', round($branch->weekend_night_cost * $markup, 2));
+                                }
+                                
+                                Notification::make()
+                                    ->title('Prices suggested successfully')
+                                    ->success()
+                                    ->send();
+                            }
+                        } else {
+                            // Use average costs
+                            $countryId = $get('country_id');
+                            $cityId = $get('city_id');
+                            $serviceTypeId = $get('service_type_id');
+                            
+                            if ($countryId && $cityId && $serviceTypeId) {
+                                $serviceTypeName = ServiceType::find($serviceTypeId)?->name;
+                                
+                                $branches = ProviderBranch::query()
+                                    ->where('city_id', $cityId)
+                                    ->where('status', 'Active')
+                                    ->whereJsonContains('service_types', $serviceTypeName)
+                                    ->get();
+                                
+                                if ($branches->isNotEmpty()) {
+                                    $avgDayCost = round($branches->avg('day_cost'), 2);
+                                    $avgWeekendCost = round($branches->avg('weekend_cost'), 2);
+                                    $avgNightCost = round($branches->avg('night_cost'), 2);
+                                    $avgWeekendNightCost = round($branches->avg('weekend_night_cost'), 2);
+                                    
+                                    if ($avgDayCost > 0) {
+                                        $set('day_price', round($avgDayCost * $markup, 2));
+                                    }
+                                    if ($avgWeekendCost > 0) {
+                                        $set('weekend_price', round($avgWeekendCost * $markup, 2));
+                                    }
+                                    if ($avgNightCost > 0) {
+                                        $set('night_weekday_price', round($avgNightCost * $markup, 2));
+                                    }
+                                    if ($avgWeekendNightCost > 0) {
+                                        $set('night_weekend_price', round($avgWeekendNightCost * $markup, 2));
+                                    }
+                                    
+                                    Notification::make()
+                                        ->title('Prices suggested based on average provider costs')
+                                        ->success()
+                                        ->send();
+                                }
+                            }
+                        }
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Auto-suggest Prices')
+                    ->modalDescription('This will calculate suggested prices based on provider costs with the specified markup. Current prices will be overwritten.')
+                    ->modalSubmitActionLabel('Suggest Prices'),
+
+                \Filament\Forms\Components\Actions\Action::make('clear_prices')
+                    ->label('Clear All Prices')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->action(function (Set $set) {
+                        $set('day_price', null);
+                        $set('weekend_price', null);
+                        $set('night_weekday_price', null);
+                        $set('night_weekend_price', null);
+                        
+                        Notification::make()
+                            ->title('All prices cleared')
+                            ->success()
+                            ->send();
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Clear All Prices')
+                    ->modalDescription('This will clear all price fields. This action cannot be undone.')
+                    ->modalSubmitActionLabel('Clear Prices'),
             ]);
     }
 
