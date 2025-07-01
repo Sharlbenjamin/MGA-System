@@ -186,18 +186,24 @@ class BillResource extends Resource
                             );
                     }),
 
-                Tables\Filters\TernaryFilter::make('has_google_link')
-                    ->label('Google Drive Link')
-                    ->placeholder('All bills')
-                    ->trueLabel('With Google Drive link')
-                    ->falseLabel('Without Google Drive link')
+                Tables\Filters\Filter::make('missing_document')
+                    ->label('Missing Document')
+                    ->form([
+                        Forms\Components\Checkbox::make('missing_document')
+                            ->label('Show only bills without Google Drive links')
+                            ->default(true)
+                    ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
-                            $data['value'] !== null,
-                            fn (Builder $query): Builder => $data['value'] 
-                                ? $query->whereNotNull('bill_google_link')->where('bill_google_link', '!=', '')
-                                : $query->whereNull('bill_google_link')->orWhere('bill_google_link', '=', '')
+                            $data['missing_document'] ?? false,
+                            fn (Builder $query): Builder => $query->whereNull('bill_google_link')->orWhere('bill_google_link', '=', '')
                         );
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        if ($data['missing_document'] ?? false) {
+                            return 'Missing Document';
+                        }
+                        return null;
                     })
             ])
             ->actions([
@@ -213,7 +219,7 @@ class BillResource extends Resource
                     ->label('Missing Google Links')
                     ->icon('heroicon-o-exclamation-triangle')
                     ->color('warning')
-                    ->url(fn () => request()->fullUrlWithQuery(['tableFilters[has_google_link][value]' => '0']))
+                    ->url(fn () => request()->fullUrlWithQuery(['tableFilters[missing_document][missing_document]' => '1']))
                     ->badge(fn () => static::getModel()::whereNull('bill_google_link')->orWhere('bill_google_link', '=', '')->count())
                     ->badgeColor('warning')
             ])
