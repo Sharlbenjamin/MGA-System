@@ -95,16 +95,16 @@ class BillResource extends Resource
                             ->label('Google Drive Link')
                             ->url()
                             ->helperText('Google Drive link for this bill'),
-                        Forms\Components\FileUpload::make('document')
-                            ->label('Bill Document')
-                            ->acceptedFileTypes(['application/pdf', 'image/*'])
-                            ->maxSize(10240) // 10MB
-                            ->disk('public')
-                            ->directory('bills')
-                            ->visibility('public')
-                            ->helperText('Upload the bill document (PDF or image)')
-                            ->downloadable()
-                            ->previewable(),
+                        // Forms\Components\FileUpload::make('document')
+                        //     ->label('Bill Document')
+                        //     ->acceptedFileTypes(['application/pdf', 'image/*'])
+                        //     ->maxSize(10240) // 10MB
+                        //     ->disk('public')
+                        //     ->directory('bills')
+                        //     ->visibility('public')
+                        //     ->helperText('Upload the bill document (PDF or image)')
+                        //     ->downloadable()
+                        //     ->previewable(),
                     ])->columnSpan(['lg' => 2]),
                 Forms\Components\Card::make()
                     ->schema([
