@@ -30,8 +30,12 @@ class Appointment extends Model
 
         // When an appointment is created, log a comment and notify the branch
         static::creating(function ($appointment) {
-            if (!$appointment->providerBranch->primaryContact('Appointment')) {
-                return false; // Skip appointment creation if no contact exists
+            // Check if provider has email directly, or if branch has operation contact
+            $providerHasEmail = $appointment->providerBranch->provider && $appointment->providerBranch->provider->email;
+            $branchHasContact = $appointment->providerBranch->primaryContact('Appointment');
+            
+            if (!$providerHasEmail && !$branchHasContact) {
+                return false; // Skip appointment creation if no email contact exists
             }
 
             // Check if an appointment already exists for this branch and date

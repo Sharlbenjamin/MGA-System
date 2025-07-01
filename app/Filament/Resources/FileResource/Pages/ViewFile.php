@@ -422,6 +422,7 @@ class ViewFile extends ViewRecord
                                 'selected' => false,
                                 'name' => $branch->branch_name,
                                 'provider' => $branch->provider->name ?? 'N/A',
+                                'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
                                 'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
                             ])->toArray());
                         }),
@@ -432,9 +433,10 @@ class ViewFile extends ViewRecord
                             Checkbox::make('selected')->label('Select')->default(false),
                             TextInput::make('name')->label('Branch Name')->disabled(),
                             TextInput::make('provider')->label('Provider Name')->disabled(),
+                            TextInput::make('day_cost')->label('Day Cost (€)')->disabled(),
                             TextInput::make('preferred_contact')->label('Preferred Contact')->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')->disabled(),
                         ])
-                        ->columns(4)
+                        ->columns(5)
                         ->default(function ($get, $record) {
                             $branches = $record->availableBranches();
                             $selectedBranches = $branches['cityBranches']; // Start with city branches
@@ -444,6 +446,7 @@ class ViewFile extends ViewRecord
                                 'selected' => false,
                                 'name' => $branch->branch_name,
                                 'provider' => $branch->provider->name ?? 'N/A',
+                                'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
                                 'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
                             ])->toArray();
                         }),
@@ -467,8 +470,8 @@ class ViewFile extends ViewRecord
                 ->modalButton('Send Requests')
                 ->action(fn (array $data, $record) => $this->bulkSendRequests($data, $record)),
 
-            Action::make('Update Request')
-                ->label('Update Request')
+            Action::make('Update File')
+                ->label('Update File')
                 ->icon('heroicon-o-pencil')
                 ->url(fn ($record) => route('filament.admin.resources.files.edit', $record))
                 ->openUrlInNewTab(false)
@@ -564,23 +567,33 @@ class ViewFile extends ViewRecord
                 continue;
             }
 
+            // Check if provider has email directly
+            if ($providerBranch->provider && $providerBranch->provider->email) {
+                try {
+                    Mail::to($providerBranch->provider->email)->send(new AppointmentRequestMail($record, $providerBranch));
+                    $successfulBranches[] = $providerBranch->branch_name . ' (Provider Email)';
+                } catch (\Exception $e) {
+                    $skippedBranches[] = $providerBranch->branch_name . ' (Provider Email failed)';
+                }
+                continue;
+            }
+
+            // Fallback to branch contact if provider doesn't have email
             $contact = $providerBranch->primaryContact('Appointment');
             if (!$contact) {
-                $skippedBranches[] = $providerBranch->branch_name;
+                $skippedBranches[] = $providerBranch->branch_name . ' (No contact)';
                 continue;
             }
 
             // Send notification to the branch contact
-            /*
             if ($contact->email) {
                 try {
-                    \Mail::to($contact->email)->send(new \App\Mail\AppointmentRequestMail($record, $providerBranch));
-                    $successfulBranches[] = $providerBranch->branch_name;
+                    Mail::to($contact->email)->send(new AppointmentRequestMail($record, $providerBranch));
+                    $successfulBranches[] = $providerBranch->branch_name . ' (Branch Contact)';
                 } catch (\Exception $e) {
-                    $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
+                    $skippedBranches[] = $providerBranch->branch_name . ' (Branch Email failed)';
                 }
             }
-            */
         }
 
         // Send to custom emails

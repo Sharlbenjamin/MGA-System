@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Filament\Notifications\Notification;
 use App\Mail\NotifyBranchMailable;
 use App\Mail\NotifyUsMailable;
@@ -97,6 +98,66 @@ class ProviderBranch extends Model
     {
         $reason = $this->detectNotificationReason($data);
         $this->sendNotification($reason, $type, $data, 'Branch');
+    }
+
+    /**
+     * Override sendNotification to use provider email directly if available
+     */
+    public function sendNotification($reason, $status, $data, $parent = null, $message = null)
+    {
+        // First, try to use provider's email directly
+        if ($this->provider && $this->provider->email) {
+            $this->sendNotificationToProviderEmail($reason, $status, $data, $parent, $message);
+            return;
+        }
+
+        // Fallback to the original contact-based notification system
+        $contact = $this->primaryContact($reason);
+        if (!$contact) {
+            Notification::make()->title("No ".$parent." Contact Found")->body("No {$reason} contact found")->danger()->send();
+            return;
+        }
+
+        match ($contact->preferred_contact) {
+            'Phone', 'Second Phone' => $this->notifyByPhone($data, $status),
+            'Email', 'Second Email' => $this->notifyByEmail($reason, $status, $data, $parent, $message),
+            'First Whatsapp', 'Second Whatsapp' => $this->notifyByWhatsapp($data),
+            'First SMS', 'Second SMS' => $this->notifyBySms($data),
+        };
+    }
+
+    /**
+     * Send notification directly to provider's email
+     */
+    private function sendNotificationToProviderEmail($reason, $status, $data, $parent, $message = null)
+    {
+        $mailable = new NotifyBranchMailable($status, $data);
+        
+        try {
+            Mail::to($this->provider->email)->send($mailable);
+            
+            // Log successful notification
+            Log::info('Appointment notification sent to provider email', [
+                'provider_id' => $this->provider->id,
+                'provider_email' => $this->provider->email,
+                'branch_id' => $this->id,
+                'appointment_id' => $data->id ?? null,
+                'status' => $status
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to send notification to provider email', [
+                'provider_id' => $this->provider->id,
+                'provider_email' => $this->provider->email,
+                'error' => $e->getMessage()
+            ]);
+            
+            Notification::make()
+                ->title("Email Notification Failed")
+                ->body("Failed to send email to provider: {$this->provider->email}")
+                ->danger()
+                ->send();
+        }
     }
 
     public function cities()
