@@ -129,9 +129,24 @@ class GoogleMeetService
                 }
             }
 
+            // Build description with phone numbers
+            $description = "Medical consultation for file reference: {$file->mga_reference}\n\nPatient: {$file->patient->name}";
+            
+            // Add patient phone if available
+            if ($file->phone) {
+                $description .= "\nPatient Phone: {$file->phone}";
+            }
+            
+            $description .= "\nSymptoms: {$file->symptoms}\nProvider: {$file->providerBranch->branch_name}";
+            
+            // Add provider phone if available
+            if ($file->providerBranch && $file->providerBranch->provider && $file->providerBranch->provider->phone) {
+                $description .= "\nProvider Phone: {$file->providerBranch->provider->phone}";
+            }
+
             $event = new Event([
                 'summary' => "Telemedicine Consultation - {$file->patient->name}",
-                'description' => "Medical consultation for file reference: {$file->mga_reference}\n\nPatient: {$file->patient->name}\nSymptoms: {$file->symptoms}\nProvider: {$file->providerBranch->branch_name}",
+                'description' => $description,
                 'start' => ['dateTime' => $startDateTime->toRfc3339String()],
                 'end' => ['dateTime' => $endDateTime->toRfc3339String()],
                 'conferenceData' => $conferenceData,

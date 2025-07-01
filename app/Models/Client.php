@@ -17,7 +17,7 @@ class Client extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
 
-    protected $fillable = ['company_name','type','status','initials','number_requests','gop_contact_id','operation_contact_id','financial_contact_id',];
+    protected $fillable = ['company_name','type','status','initials','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email',];
 
     protected $casts = [
         'id' => 'integer',

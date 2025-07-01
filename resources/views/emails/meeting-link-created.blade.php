@@ -11,7 +11,13 @@
     <ul>
         <li><strong>File Reference:</strong> {{ $file->mga_reference }}</li>
         <li><strong>Patient Name:</strong> {{ $file->patient->name }}</li>
+        @if($file->phone)
+        <li><strong>Patient Phone:</strong> {{ $file->phone }}</li>
+        @endif
         <li><strong>Provider:</strong> {{ $file->providerBranch->branch_name ?? 'N/A' }}</li>
+        @if($file->providerBranch && $file->providerBranch->provider && $file->providerBranch->provider->phone)
+        <li><strong>Provider Phone:</strong> {{ $file->providerBranch->provider->phone }}</li>
+        @endif
         <li><strong>Date:</strong> {{ $file->service_date->format('d M Y') }}</li>
         <li><strong>Time:</strong> {{ $file->service_time }}</li>
         <li><strong>Symptoms:</strong> {{ $file->symptoms ?? 'N/A' }}</li>
