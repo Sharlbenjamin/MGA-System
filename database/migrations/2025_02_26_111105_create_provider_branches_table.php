@@ -22,9 +22,9 @@ return new class extends Migration
             $table->enum('status', ["Active","Hold"]);
             $table->integer('priority');
             $table->string('service_types')->nullable();
-            $table->uuid('gop_contact_id')->nullable();
-            $table->uuid('operation_contact_id')->nullable();
-            $table->uuid('financial_contact_id')->nullable();
+            $table->foreignId('gop_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('operation_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('financial_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
             $table->string('communication_method', 50)->nullable();
             $table->decimal('day_cost', 8, 2)->nullable();
             $table->decimal('night_cost', 8, 2)->nullable();

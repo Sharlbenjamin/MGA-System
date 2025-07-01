@@ -20,9 +20,9 @@ return new class extends Migration
             $table->date('dob')->nullable();
             $table->string('gender')->nullable();
             $table->foreignId('country_id')->nullable()->constrained();
-            $table->uuid('gop_contact_id')->nullable();
-            $table->uuid('operation_contact_id')->nullable();
-            $table->uuid('financial_contact_id')->nullable();
+            $table->foreignId('gop_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('operation_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('financial_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
             $table->timestamps();
         });
 

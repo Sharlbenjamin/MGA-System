@@ -20,9 +20,9 @@ return new class extends Migration
             $table->integer('payment_due')->nullable();
             $table->enum('payment_method', ["Online Link", "Bank Transfer", "AEAT"])->nullable();
             $table->text('comment')->nullable();
-            $table->uuid('gop_contact_id')->nullable();
-            $table->uuid('operation_contact_id')->nullable();
-            $table->uuid('financial_contact_id')->nullable();
+            $table->foreignId('gop_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('operation_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('financial_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
             $table->timestamps();
         });
     }

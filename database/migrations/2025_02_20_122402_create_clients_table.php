@@ -18,9 +18,9 @@ return new class extends Migration
             $table->enum('status', ["Searching","Interested","Sent","Rejected","Active","On Hold", "Closed", "Broker", "No Reply"]);
             $table->string('initials', 10);
             $table->integer('number_requests');
-            $table->uuid('gop_contact_id')->nullable();
-            $table->uuid('operation_contact_id')->nullable();
-            $table->uuid('financial_contact_id')->nullable();
+            $table->foreignId('gop_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('operation_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
+            $table->foreignId('financial_contact_id')->nullable()->constrained('contacts')->onDelete('set null');
             $table->timestamps();
         });
     }
