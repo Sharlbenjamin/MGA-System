@@ -26,7 +26,6 @@ class Bill extends Model
         'paid_amount',
         'bill_google_link',
         'bill_date',
-        'document',
     ];
 
     protected $casts = [

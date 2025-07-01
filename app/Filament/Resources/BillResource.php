@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Services\UploadBillToGoogleDrive;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
-use Illuminate\Support\Facades\Storage;
+
 
 class BillResource extends Resource
 {
@@ -94,11 +94,6 @@ class BillResource extends Resource
                         Forms\Components\TextInput::make('bill_google_link')
                             ->label('Google Drive Link')
                             ->helperText('Google Drive link for this bill'),
-                        Forms\Components\FileUpload::make('document')
-                            ->label('Bill Document')
-                            ->disk('public')
-                            ->directory('bills')
-                            ->helperText('Upload the bill document'),
                     ])->columnSpan(['lg' => 2]),
                 Forms\Components\Card::make()
                     ->schema([
@@ -136,11 +131,7 @@ class BillResource extends Resource
                     ->url(fn (Bill $record) => $record->bill_google_link)
                     ->openUrlInNewTab()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('document')
-                    ->label('Document')
-                    ->url(fn (Bill $record) => $record->document ? Storage::disk('public')->url($record->document) : null)
-                    ->openUrlInNewTab()
-                    ->toggleable(isToggledHiddenByDefault: true),
+
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('provider.name')->relationship('provider', 'name')->label('Provider')->searchable()->multiple(),
@@ -171,64 +162,7 @@ class BillResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Action::make('upload_to_google_drive')
-                    ->label('Upload')
-                    ->icon('heroicon-o-cloud-arrow-up')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Upload Bill to Google Drive')
-                    ->modalDescription('This will upload a bill document to the Google Drive folder associated with this file.')
-                    ->modalSubmitActionLabel('Upload')
-                    ->form([
-                        Forms\Components\FileUpload::make('document')
-                            ->label('Upload Bill Document')
-                            ->acceptedFileTypes(['application/pdf', 'image/*'])
-                            ->maxSize(10240) // 10MB
-                            ->required()
-                            ->disk('public')
-                            ->directory('bills')
-                            ->visibility('public')
-                            ->helperText('Upload the bill document (PDF or image)'),
-                    ])
-                    ->action(function (Bill $record, array $data) {
-                        // Get the file content using the public disk
-                        $filePath = storage_path('app/public/bills/' . basename($data['document']));
-                        if (!file_exists($filePath)) {
-                            Notification::make()
-                                ->danger()
-                                ->title('File not found')
-                                ->body('The uploaded file could not be found.')
-                                ->send();
-                            return;
-                        }
 
-                        $fileContent = file_get_contents($filePath);
-                        $fileName = basename($data['document']);
-
-                        // Upload to Google Drive
-                        $uploader = app(UploadBillToGoogleDrive::class);
-                        $result = $uploader->uploadBillToGoogleDrive(
-                            $fileContent,
-                            $fileName,
-                            $record
-                        );
-
-                        if ($result === false) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Upload failed')
-                                ->body('Failed to upload to Google Drive. Check logs for more details.')
-                                ->send();
-                            return;
-                        }
-
-                        Notification::make()
-                            ->success()
-                            ->title('Upload successful')
-                            ->body('Bill has been uploaded to Google Drive successfully.')
-                            ->send();
-                    })
-                    ->visible(fn (Bill $record) => !$record->bill_google_link),
                 Tables\Actions\Action::make('download')
                     ->icon('heroicon-o-pencil')
                     ->url(fn (Bill $record) => $record->draft_path)
