@@ -134,7 +134,12 @@ class BillResource extends Resource
                 Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
                 Tables\Columns\TextColumn::make('branch.branch_name')->searchable()->sortable()->label('Branch'),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('file.mga_reference')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('file.mga_reference')
+                    ->searchable()
+                    ->sortable()
+                    ->url(fn (Bill $record) => $record->file?->google_drive_link)
+                    ->openUrlInNewTab()
+                    ->color(fn (Bill $record) => $record->file?->google_drive_link ? 'primary' : 'gray'),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
                 Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid','success' => 'Paid','primary' => 'Partial',])->summarize(Count::make('status')->label('Number of Bills')),
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
@@ -146,7 +151,7 @@ class BillResource extends Resource
                     ->url(fn (Bill $record) => $record->bill_google_link)
                     ->openUrlInNewTab()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\BadgeColumn::make('google_drive_status')
+                Tables\Columns\BadgeColumn::make('bill_google_link')
                     ->label('Google Drive')
                     ->state(fn (Bill $record): string => $record->bill_google_link ? 'Linked' : 'Missing')
                     ->color(fn (Bill $record): string => $record->bill_google_link ? 'success' : 'danger')
