@@ -207,6 +207,14 @@ class ViewFile extends ViewRecord
                                 TextEntry::make('providerBranch.branch_name')
                                     ->label('Branch Name')
                                     ->color('info')
+                                    ->formatStateUsing(function ($state, $record) {
+                                        $branchName = $state;
+                                        $dayCost = $record->providerBranch->day_cost ?? null;
+                                        if ($dayCost) {
+                                            return $branchName . ' (€' . number_format($dayCost, 2) . ')';
+                                        }
+                                        return $branchName;
+                                    })
                                     ->url(fn ($record) => $record->providerBranch ? route('filament.admin.resources.provider-branches.edit', $record->providerBranch->id) : null)
                                     ->suffixAction(
                                         InfolistAction::make('copy_branch_name')

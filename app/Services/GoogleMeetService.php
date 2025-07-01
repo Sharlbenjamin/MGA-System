@@ -111,21 +111,43 @@ class GoogleMeetService
                 ]);
             }
 
-            // Add provider's email (from provider operation contact)
+            // Add provider's email directly (priority) or from provider operation contact (fallback)
             if ($file->providerBranch && $file->providerBranch->provider) {
-                $providerOperationContact = $file->providerBranch->provider->operationContact;
-                if ($providerOperationContact) {
-                    $providerEmail = $this->getPreferredEmail($providerOperationContact);
-                    if ($providerEmail) {
-                        $attendees[] = new EventAttendee([
-                            'email' => $providerEmail,
-                            'displayName' => $file->providerBranch->provider->name . ' (Provider)'
-                        ]);
-                        Log::info('Added provider as attendee', [
+                $providerEmail = null;
+                
+                // First, try to use provider's email directly
+                if ($file->providerBranch->provider->email) {
+                    $providerEmail = $file->providerBranch->provider->email;
+                    Log::info('Using provider email directly', [
+                        'file_id' => $file->id,
+                        'provider_email' => $providerEmail
+                    ]);
+                } else {
+                    // Fallback to provider operation contact
+                    $providerOperationContact = $file->providerBranch->provider->operationContact;
+                    if ($providerOperationContact) {
+                        $providerEmail = $this->getPreferredEmail($providerOperationContact);
+                        Log::info('Using provider operation contact email', [
                             'file_id' => $file->id,
                             'provider_email' => $providerEmail
                         ]);
                     }
+                }
+                
+                if ($providerEmail) {
+                    $attendees[] = new EventAttendee([
+                        'email' => $providerEmail,
+                        'displayName' => $file->providerBranch->provider->name . ' (Provider)'
+                    ]);
+                    Log::info('Added provider as attendee', [
+                        'file_id' => $file->id,
+                        'provider_email' => $providerEmail
+                    ]);
+                } else {
+                    Log::warning('No provider email available for calendar event', [
+                        'file_id' => $file->id,
+                        'provider_id' => $file->providerBranch->provider->id
+                    ]);
                 }
             }
 
@@ -229,31 +251,53 @@ class GoogleMeetService
             ]);
         }
 
-        // Get provider operation contact
+        // Get provider email directly (priority) or from provider operation contact (fallback)
         if ($file->providerBranch && $file->providerBranch->provider) {
-            $providerOperationContact = $file->providerBranch->provider->operationContact;
-            if ($providerOperationContact) {
-                $email = $this->getPreferredEmail($providerOperationContact);
-                if ($email) {
-                    $recipients->push($email);
-                    $hasOperationContacts = true;
-                    Log::info('Added provider email to recipients', [
+            $providerEmail = null;
+            
+            // First, try to use provider's email directly
+            if ($file->providerBranch->provider->email) {
+                $providerEmail = $file->providerBranch->provider->email;
+                Log::info('Using provider email directly for notifications', [
+                    'file_id' => $file->id,
+                    'provider_email' => $providerEmail
+                ]);
+            } else {
+                // Fallback to provider operation contact
+                $providerOperationContact = $file->providerBranch->provider->operationContact;
+                if ($providerOperationContact) {
+                    $providerEmail = $this->getPreferredEmail($providerOperationContact);
+                    Log::info('Using provider operation contact email for notifications', [
                         'file_id' => $file->id,
-                        'provider_email' => $email
+                        'provider_email' => $providerEmail
                     ]);
                 }
             }
+            
+            if ($providerEmail) {
+                $recipients->push($providerEmail);
+                $hasOperationContacts = true;
+                Log::info('Added provider email to recipients', [
+                    'file_id' => $file->id,
+                    'provider_email' => $providerEmail
+                ]);
+            } else {
+                Log::warning('No provider email available for notifications', [
+                    'file_id' => $file->id,
+                    'provider_id' => $file->providerBranch->provider->id
+                ]);
+            }
         }
 
-        // Get branch operation contact (doctor's email)
-        if ($file->providerBranch) {
+        // Get branch operation contact (doctor's email) - only if provider email is not already added
+        if ($file->providerBranch && !$hasOperationContacts) {
             $branchOperationContact = $file->providerBranch->operationContact;
             if ($branchOperationContact) {
                 $email = $this->getPreferredEmail($branchOperationContact);
                 if ($email) {
                     $recipients->push($email);
                     $hasOperationContacts = true;
-                    Log::info('Added doctor email to recipients', [
+                    Log::info('Added doctor email to recipients (fallback)', [
                         'file_id' => $file->id,
                         'doctor_email' => $email
                     ]);
