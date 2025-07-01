@@ -38,8 +38,13 @@ class BillRelationManager extends RelationManager
                     'Partial' => 'gray',
                 }),
                 Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
-                Tables\Columns\TextColumn::make('final_total')->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('remaining_amount')->sortable()->searchable()->money('EUR'),
+                Tables\Columns\TextColumn::make('total_amount')->sortable()->searchable()->money('EUR'),
+                Tables\Columns\TextColumn::make('remaining_amount')
+                    ->label('Remaining Amount')
+                    ->money('EUR')
+                    ->state(fn ($record) => $record->total_amount - $record->paid_amount)
+                    ->sortable()
+                    ->searchable(),
 
             ])
             ->filters([
