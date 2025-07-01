@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Filament\Tables;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\BadgeColumn;
 use Illuminate\Database\Eloquent\Builder;
 use App\Services\UploadBillToGoogleDrive;
 use Filament\Notifications\Notification;
@@ -26,6 +27,20 @@ class BillResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationGroup = 'Finance';
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = static::getModel()::whereNull('bill_google_link')
+            ->orWhere('bill_google_link', '=', '')
+            ->count();
+        
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
 
     public static function form(Form $form): Form
     {
@@ -131,6 +146,12 @@ class BillResource extends Resource
                     ->url(fn (Bill $record) => $record->bill_google_link)
                     ->openUrlInNewTab()
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\BadgeColumn::make('google_drive_status')
+                    ->label('Google Drive')
+                    ->state(fn (Bill $record): string => $record->bill_google_link ? 'Linked' : 'Missing')
+                    ->color(fn (Bill $record): string => $record->bill_google_link ? 'success' : 'danger')
+                    ->summarize(Count::make('google_drive_status')->label('Total Bills'))
+                    ->toggleable(isToggledHiddenByDefault: false),
 
             ])
             ->filters([
@@ -158,6 +179,20 @@ class BillResource extends Resource
                                 $data['due_until'],
                                 fn (Builder $query, $date): Builder => $query->whereDate('due_date', '<=', $date),
                             );
+                    }),
+
+                Tables\Filters\TernaryFilter::make('has_google_link')
+                    ->label('Google Drive Link')
+                    ->placeholder('All bills')
+                    ->trueLabel('With Google Drive link')
+                    ->falseLabel('Without Google Drive link')
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'] !== null,
+                            fn (Builder $query): Builder => $data['value'] 
+                                ? $query->whereNotNull('bill_google_link')->where('bill_google_link', '!=', '')
+                                : $query->whereNull('bill_google_link')->orWhere('bill_google_link', '=', '')
+                        );
                     })
             ])
             ->actions([
@@ -167,7 +202,16 @@ class BillResource extends Resource
                     ->icon('heroicon-o-pencil')
                     ->url(fn (Bill $record) => $record->draft_path)
                     ->openUrlInNewTab(),
-            ])->headerActions([Tables\Actions\CreateAction::make()])
+            ])->headerActions([
+                Tables\Actions\CreateAction::make(),
+                Tables\Actions\Action::make('missing_google_links')
+                    ->label('Missing Google Links')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->color('warning')
+                    ->url(fn () => request()->fullUrlWithQuery(['tableFilters[has_google_link][value]' => '0']))
+                    ->badge(fn () => static::getModel()::whereNull('bill_google_link')->orWhere('bill_google_link', '=', '')->count())
+                    ->badgeColor('warning')
+            ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
