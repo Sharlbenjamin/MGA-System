@@ -150,7 +150,7 @@ class BillResource extends Resource
                     ->label('Google Drive')
                     ->state(fn (Bill $record): string => $record->bill_google_link ? 'Linked' : 'Missing')
                     ->color(fn (Bill $record): string => $record->bill_google_link ? 'success' : 'danger')
-                    ->summarize(Count::make('google_drive_status')->label('Total Bills'))
+                    ->summarize(Count::make('bill_google_link')->label('Total Bills'))
                     ->toggleable(isToggledHiddenByDefault: false),
 
             ])
