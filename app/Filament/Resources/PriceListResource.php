@@ -388,12 +388,7 @@ class PriceListResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('country_id')
-            ->groupedRecordsTriggerAction(
-                fn (Tables\Actions\Action $action) => $action
-                    ->button()
-                    ->label('Group records'),
-            );
+            ->defaultSort('country_id');
     }
 
     public static function getRelations(): array
