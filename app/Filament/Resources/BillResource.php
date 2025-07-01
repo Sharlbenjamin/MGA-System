@@ -190,7 +190,7 @@ class BillResource extends Resource
                     ->label('Missing Document')
                     ->form([
                         Forms\Components\Checkbox::make('missing_document')
-                            ->label('Show only bills without Google Drive links')
+                            ->label('Missing Document')
                             ->default(true)
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -213,16 +213,7 @@ class BillResource extends Resource
                     ->icon('heroicon-o-pencil')
                     ->url(fn (Bill $record) => $record->draft_path)
                     ->openUrlInNewTab(),
-            ])->headerActions([
-                Tables\Actions\CreateAction::make(),
-                Tables\Actions\Action::make('missing_google_links')
-                    ->label('Missing Google Links')
-                    ->icon('heroicon-o-exclamation-triangle')
-                    ->color('warning')
-                    ->url(fn () => request()->fullUrlWithQuery(['tableFilters[missing_document][missing_document]' => '1']))
-                    ->badge(fn () => static::getModel()::whereNull('bill_google_link')->orWhere('bill_google_link', '=', '')->count())
-                    ->badgeColor('warning')
-            ])
+            ])->headerActions([Tables\Actions\CreateAction::make()])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
