@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Services\UploadBillToGoogleDrive;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Storage;
 
 class BillResource extends Resource
 {
@@ -94,8 +95,17 @@ class BillResource extends Resource
                             ->label('Google Drive Link')
                             ->url()
                             ->helperText('Google Drive link for this bill'),
-
-                        ])->columnSpan(['lg' => 2]),
+                        Forms\Components\FileUpload::make('document')
+                            ->label('Bill Document')
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                            ->maxSize(10240) // 10MB
+                            ->disk('public')
+                            ->directory('bills')
+                            ->visibility('public')
+                            ->helperText('Upload the bill document (PDF or image)')
+                            ->downloadable()
+                            ->previewable(),
+                    ])->columnSpan(['lg' => 2]),
                 Forms\Components\Card::make()
                     ->schema([
                         Forms\Components\Placeholder::make('created_at')->label('Created at')->content(fn (?Bill $record): string => $record ? $record->created_at->diffForHumans() : '-'),
@@ -130,6 +140,11 @@ class BillResource extends Resource
                 Tables\Columns\TextColumn::make('bill_google_link')
                     ->label('Google Drive')
                     ->url(fn (Bill $record) => $record->bill_google_link)
+                    ->openUrlInNewTab()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('document')
+                    ->label('Document')
+                    ->url(fn (Bill $record) => $record->document ? Storage::disk('public')->url($record->document) : null)
                     ->openUrlInNewTab()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
