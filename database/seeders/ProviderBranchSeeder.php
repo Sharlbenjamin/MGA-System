@@ -19,7 +19,7 @@ class ProviderBranchSeeder extends Seeder
             'city_id' => 11,
             'status' => 'Active',
             'priority' => 1,
-            'service_type_id' => 1,
+            'service_types' => json_encode(['General Practice']),
         ]);
     }
 }

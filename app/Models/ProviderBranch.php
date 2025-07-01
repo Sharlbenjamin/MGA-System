@@ -94,6 +94,11 @@ class ProviderBranch extends Model
         return $this->hasMany(Contact::class, 'branch_id', 'id')->where('type', 'Branch');
     }
 
+    public function priceLists(): HasMany
+    {
+        return $this->hasMany(PriceList::class);
+    }
+
     public function notifyBranch($type, $data)
     {
         $reason = $this->detectNotificationReason($data);

@@ -32,4 +32,9 @@ class ServiceType extends Model
     {
         return $this->hasMany(File::class);
     }
+
+    public function priceLists(): HasMany
+    {
+        return $this->hasMany(PriceList::class);
+    }
 }
