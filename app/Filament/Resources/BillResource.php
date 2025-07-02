@@ -234,6 +234,7 @@ class BillResource extends Resource
             'index' => Pages\ListBills::route('/'),
             'create' => Pages\CreateBill::route('/create'),
             'edit' => Pages\EditBill::route('/{record}/edit'),
+            'paid-without-transactions' => Pages\ListPaidBillsWithoutTransactions::route('/paid-without-transactions'),
         ];
     }
 }
