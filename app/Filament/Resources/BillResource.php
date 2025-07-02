@@ -25,8 +25,8 @@ class BillResource extends Resource
 {
     protected static ?string $model = Bill::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?int $navigationSort = 2;
-    protected static ?string $navigationGroup = 'Finance';
+    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationGroup = 'Operation';
 
     public static function getNavigationBadge(): ?string
     {

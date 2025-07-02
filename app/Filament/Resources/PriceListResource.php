@@ -348,8 +348,7 @@ class PriceListResource extends Resource
                                                         $html .= '</div>';
                                                         
                                                         return $html;
-                                                    })
-                                                    ->dehydrated(false),
+                                                    }),
                                             ])
                                             ->collapsible()
                                             ->collapsed(),
@@ -359,8 +358,7 @@ class PriceListResource extends Resource
                                 TextInput::make('helper_text')
                                     ->label('Helper')
                                     ->disabled()
-                                    ->default('Use the "Auto-suggest Prices" action in the form header to calculate prices based on provider costs.')
-                                    ->dehydrated(false),
+                                    ->default('Use the "Auto-suggest Prices" action in the form header to calculate prices based on provider costs.'),
                             ])
                             ->columnSpan(1),
                     ]),

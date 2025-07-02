@@ -22,18 +22,12 @@ class ShouldBePaidResource extends Resource
     protected static ?string $navigationGroup = 'Finance';
     protected static ?int $navigationSort = 4; // After Invoices (3), before Transactions (5)
     protected static ?string $navigationLabel = 'Should Be Paid';
-    protected static ?string $modelLabel = 'Bill with Paid Invoice';
-    protected static ?string $pluralModelLabel = 'Bills with Paid Invoices';
+    protected static ?string $modelLabel = 'Bill';
+    protected static ?string $pluralModelLabel = 'Bills';
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereIn('status', ['Unpaid', 'Partial'])
-            ->whereHas('file', function ($query) {
-                $query->whereHas('invoices', function ($invoiceQuery) {
-                    $invoiceQuery->where('status', 'Paid');
-                });
-            })
-            ->count();
+        $count = static::getModel()::whereIn('status', ['Unpaid', 'Partial'])->count();
         return $count > 0 ? (string) $count : null;
     }
 
@@ -45,15 +39,7 @@ class ShouldBePaidResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->whereHas('file', function (Builder $query) {
-                $query->whereHas('invoices', function (Builder $invoiceQuery) {
-                    $invoiceQuery->where('status', 'Paid');
-                });
-            })
-            ->where(function (Builder $query) {
-                $query->where('status', 'Unpaid')
-                    ->orWhere('status', 'Partial');
-            })
+            ->whereIn('status', ['Unpaid', 'Partial'])
             ->orderBy('due_date', 'asc');
     }
 
@@ -104,13 +90,39 @@ class ShouldBePaidResource extends Resource
                         'Unpaid' => 'Unpaid',
                         'Partial' => 'Partial',
                     ]),
-                Tables\Filters\Filter::make('overdue')
-                    ->label('Overdue Bills')
+                // 1. Overdue Bills with status unpaid
+                Tables\Filters\Filter::make('overdue_unpaid')
+                    ->label('Overdue Bills (Unpaid)')
                     ->query(function (Builder $query): Builder {
-                        return $query->where('due_date', '<', now());
+                        return $query->where('due_date', '<', now())
+                                   ->where('status', 'Unpaid');
                     })
                     ->indicateUsing(function (): array {
-                        return ['overdue' => 'Overdue Bills'];
+                        return ['overdue_unpaid' => 'Overdue Bills (Unpaid)'];
+                    }),
+                // 2. BK Received Bills - Unpaid bills with files that have paid invoices
+                Tables\Filters\Filter::make('bk_received')
+                    ->label('BK Received Bills')
+                    ->query(function (Builder $query): Builder {
+                        return $query->where('status', 'Unpaid')
+                                   ->whereHas('file', function (Builder $fileQuery) {
+                                       $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
+                                           $invoiceQuery->where('status', 'Paid');
+                                       });
+                                   });
+                    })
+                    ->indicateUsing(function (): array {
+                        return ['bk_received' => 'BK Received Bills'];
+                    }),
+                // 3. Missing Documents - Bills without bill_google_link
+                Tables\Filters\Filter::make('missing_documents')
+                    ->label('Missing Documents')
+                    ->query(function (Builder $query): Builder {
+                        return $query->whereNull('bill_google_link')
+                                   ->orWhere('bill_google_link', '');
+                    })
+                    ->indicateUsing(function (): array {
+                        return ['missing_documents' => 'Missing Documents'];
                     }),
             ])
             ->actions([
