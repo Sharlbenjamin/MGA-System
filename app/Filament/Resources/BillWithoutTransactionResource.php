@@ -193,7 +193,7 @@ class BillWithoutTransactionResource extends Resource
                     ->form([
                         Forms\Components\Checkbox::make('missing_document')
                             ->label('Missing Document')
-                            ->default(true)
+                            ->default(false)
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
