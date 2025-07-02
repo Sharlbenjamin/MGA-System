@@ -31,8 +31,13 @@ class Gop extends Model
         parent::boot();
 
         static::updating(function ($gop) {
-            // Check if the model is dirty (has changes) and if status was previously 'Sent'
-            if ($gop->isDirty() && $gop->getOriginal('status') === 'Sent') {
+            // Only automatically change status to 'Updated' if:
+            // 1. The original status was 'Sent'
+            // 2. The status field is not being explicitly changed by the user
+            // 3. Other fields are being updated (not just status)
+            if ($gop->getOriginal('status') === 'Sent' && 
+                !$gop->isDirty('status') && 
+                $gop->isDirty()) {
                 $gop->status = 'Updated';
             }
         });

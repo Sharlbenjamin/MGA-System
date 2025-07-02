@@ -145,6 +145,10 @@ class BillWithoutTransactionResource extends Resource
                     ->url(fn (Bill $record) => $record->file?->google_drive_link)
                     ->openUrlInNewTab()
                     ->color(fn (Bill $record) => $record->file?->google_drive_link ? 'primary' : 'gray'),
+                Tables\Columns\TextColumn::make('file.service_date')
+                    ->label('Service Date')
+                    ->date()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
                 Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid','success' => 'Paid','primary' => 'Partial',])->summarize(Count::make('status')->label('Number of Bills')),
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
