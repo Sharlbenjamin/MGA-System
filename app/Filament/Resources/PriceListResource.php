@@ -260,70 +260,7 @@ class PriceListResource extends Resource
                                                 return $result;
                                             }),
                                             
-                                        // Provider Branches Table
-                                        Placeholder::make('branches_table')
-                                            ->label('Provider Branches & Costs')
-                                            ->content(function (Get $get) {
-                                                $countryId = $get('country_id');
-                                                $cityId = $get('city_id');
-                                                $serviceTypeId = $get('service_type_id');
-                                                
-                                                if (!$countryId || !$cityId || !$serviceTypeId) {
-                                                    return 'Select Country, City, and Service Type to see provider costs.';
-                                                }
-                                                
-                                                $serviceTypeName = ServiceType::find($serviceTypeId)?->name;
-                                                
-                                                $query = ProviderBranch::query()
-                                                    ->where('status', 'Active');
-                                                
-                                                // Filter by city if available
-                                                if ($cityId) {
-                                                    $query->where('city_id', $cityId);
-                                                }
-                                                
-                                                // Filter by service type if available
-                                                if ($serviceTypeName) {
-                                                    $query->whereJsonContains('service_types', $serviceTypeName);
-                                                }
-                                                
-                                                $branches = $query->get();
-                                                
-                                                // If no city-specific branches, try country-wide branches
-                                                if ($branches->isEmpty() && $countryId) {
-                                                    $branches = ProviderBranch::query()
-                                                        ->where('status', 'Active')
-                                                        ->whereHas('provider', function ($q) use ($countryId) {
-                                                            $q->where('country_id', $countryId);
-                                                        })
-                                                        ->when($serviceTypeName, function ($q) use ($serviceTypeName) {
-                                                            $q->whereJsonContains('service_types', $serviceTypeName);
-                                                        })
-                                                        ->get();
-                                                }
-                                                
-                                                if ($branches->isEmpty()) {
-                                                    return 'No active provider branches found for the selected criteria.';
-                                                }
-                                                
-                                                // Sort by day_cost (lowest first)
-                                                $branches = $branches->sortBy('day_cost');
-                                                
-                                                $result = "Provider Branches (sorted by lowest cost):\n\n";
-                                                
-                                                foreach ($branches as $branch) {
-                                                    $providerName = $branch->provider->name ?? 'N/A';
-                                                    $dayCost = $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A';
-                                                    $weekendCost = $branch->weekend_cost ? '€' . number_format($branch->weekend_cost, 2) : 'N/A';
-                                                    $nightCost = $branch->night_cost ? '€' . number_format($branch->night_cost, 2) : 'N/A';
-                                                    $weekendNightCost = $branch->weekend_night_cost ? '€' . number_format($branch->weekend_night_cost, 2) : 'N/A';
-                                                    
-                                                    $result .= "• {$providerName} - {$branch->branch_name}\n";
-                                                    $result .= "  Day: {$dayCost} | Weekend: {$weekendCost} | Night: {$nightCost} | Night Weekend: {$weekendNightCost}\n\n";
-                                                }
-                                                
-                                                return $result;
-                                            }),
+
                                     ]),
 
                                 // Note: Auto-suggest functionality moved to form actions
