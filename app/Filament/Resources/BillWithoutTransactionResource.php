@@ -2,10 +2,9 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BillResource\Pages;
-use App\Filament\Resources\BillResource\RelationManagers\ItemsRelationManager;
-use App\Models\BankAccount;
+use App\Filament\Resources\BillWithoutTransactionResource\Pages;
 use App\Models\Bill;
+use App\Models\BankAccount;
 use Filament\Forms;
 use Filament\Tables\Grouping\Group;
 use Filament\Forms\Form;
@@ -20,21 +19,21 @@ use App\Services\UploadBillToGoogleDrive;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
 
-
-class BillResource extends Resource
+class BillWithoutTransactionResource extends Resource
 {
     protected static ?string $model = Bill::class;
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
+    protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Finance';
+    protected static ?string $navigationLabel = 'Bills Without Trx';
+    protected static ?string $modelLabel = 'Bill Without Transaction';
+    protected static ?string $pluralModelLabel = 'Bills Without Transactions';
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereNull('bill_google_link')
-            ->orWhere('bill_google_link', '=', '')
+        return static::getModel()::where('status', 'Paid')
+            ->whereDoesntHave('transactions')
             ->count();
-        
-        return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -42,7 +41,12 @@ class BillResource extends Resource
         return 'warning';
     }
 
-
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->where('status', 'Paid')
+            ->whereDoesntHave('transactions');
+    }
 
     public static function form(Form $form): Form
     {
@@ -119,7 +123,6 @@ class BillResource extends Resource
                         Forms\Components\Placeholder::make('subtotal')->label('Subtotal')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->subtotal, 2) : '0.00'),
                         Forms\Components\Placeholder::make('discount')->label('Discount')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->discount, 2) : '0.00'),
                         Forms\Components\Placeholder::make('total_amount')->label('Total Amount')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->total_amount, 2) : '0.00'),
-
                     ])->columnSpan(['lg' => 1]),
             ])
             ->columns(3);
@@ -159,7 +162,6 @@ class BillResource extends Resource
                     ->color(fn (Bill $record): string => $record->bill_google_link ? 'success' : 'danger')
                     ->summarize(Count::make('bill_google_link')->label('Total Bills'))
                     ->toggleable(isToggledHiddenByDefault: false),
-
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('provider.name')->relationship('provider', 'name')->label('Provider')->searchable()->multiple(),
@@ -170,7 +172,6 @@ class BillResource extends Resource
                         'Paid' => 'Paid',
                         'Partial' => 'Partial',
                     ]),
-
                 Tables\Filters\Filter::make('due_date')
                     ->form([
                         Forms\Components\DatePicker::make('due_from'),
@@ -187,7 +188,6 @@ class BillResource extends Resource
                                 fn (Builder $query, $date): Builder => $query->whereDate('due_date', '<=', $date),
                             );
                     }),
-
                 Tables\Filters\Filter::make('missing_document')
                     ->label('Missing Document')
                     ->form([
@@ -210,12 +210,11 @@ class BillResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-
                 Tables\Actions\Action::make('download')
                     ->icon('heroicon-o-pencil')
                     ->url(fn (Bill $record) => $record->draft_path)
                     ->openUrlInNewTab(),
-            ])->headerActions([Tables\Actions\CreateAction::make()])
+            ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
@@ -224,17 +223,16 @@ class BillResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ItemsRelationManager::class,
+            //
         ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBills::route('/'),
-            'create' => Pages\CreateBill::route('/create'),
-            'edit' => Pages\EditBill::route('/{record}/edit'),
-
+            'index' => Pages\ListBillWithoutTransactions::route('/'),
+            'create' => Pages\CreateBillWithoutTransaction::route('/create'),
+            'edit' => Pages\EditBillWithoutTransaction::route('/{record}/edit'),
         ];
     }
-}
+} 

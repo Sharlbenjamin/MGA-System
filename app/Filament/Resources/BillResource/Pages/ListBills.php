@@ -14,13 +14,7 @@ class ListBills extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
-            Actions\Action::make('bills-without-transactions')
-                ->label('Bills Without Trx')
-                ->icon('heroicon-o-exclamation-triangle')
-                ->color('warning')
-                ->url(static::getResource()::getUrl('paid-without-transactions'))
-                ->badge(fn () => static::getResource()::getModel()::where('status', 'Paid')->whereDoesntHave('transactions')->count())
-                ->badgeColor('warning'),
+
         ];
     }
 }
