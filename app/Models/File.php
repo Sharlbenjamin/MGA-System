@@ -319,7 +319,8 @@ class File extends Model
 
     public function getNameAttribute()
     {
-        return $this->mga_reference . ' - ' . $this->patient->name;
+        $patientName = $this->patient ? $this->patient->name : 'Unknown Patient';
+        return $this->mga_reference . ' - ' . $patientName;
     }
 
     public function getInvoiceAmountAttribute()

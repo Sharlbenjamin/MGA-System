@@ -54,10 +54,7 @@ class Bill extends Model
         return $this->belongsTo(Provider::class);
     }
 
-    public function patient(): BelongsTo
-    {
-        return $this->belongsTo(Patient::class);
-    }
+    // Removed incorrect patient relationship - bills are related to patients through files
 
     public function bankAccount(): BelongsTo
     {
@@ -82,7 +79,12 @@ class Bill extends Model
 
         static::creating(function ($bill) {
             if (!$bill->name) {
-                $bill->name = $bill->file->mga_reference . ' - ' . $bill->file->patient->name;
+                // Load the file relationship to avoid infinite recursion
+                $file = $bill->file;
+                if ($file) {
+                    $patientName = $file->patient ? $file->patient->name : 'Unknown Patient';
+                    $bill->name = $file->mga_reference . ' - ' . $patientName;
+                }
             }
                 $bill->bill_date = now();
                 $bill->due_date = now()->addDays(60);
@@ -109,7 +111,11 @@ class Bill extends Model
         static::updated(function ($bill) {
             if ($bill->isDirty('paid_amount')) {
                 $bill->checkStatus();
-                $bill->transaction->calculateBankCharges();
+                // Get the first transaction if it exists
+                $transaction = $bill->transactions()->first();
+                if ($transaction && method_exists($transaction, 'calculateBankCharges')) {
+                    $transaction->calculateBankCharges();
+                }
             }
         });
     }
@@ -119,9 +125,9 @@ class Bill extends Model
 
     public function calculateTotal()
     {
-        $this->subtotal;
+        $subtotal = $this->subtotal;
         $this->calculateDiscount();
-        $this->total_amount = $this->subtotal - $this->discount;
+        $this->total_amount = $subtotal - $this->discount;
         $this->save();
     }
 
@@ -145,7 +151,6 @@ class Bill extends Model
 
     public function getSubtotalAttribute(): float
     {
-
         return $this->items->sum(function ($item) {
             return $item->amount;
         });
@@ -164,7 +169,8 @@ class Bill extends Model
 
     public function markAsPaid()
     {
-        $now = $this->transaction?->date ?? now();
+        $transaction = $this->transactions()->first();
+        $now = $transaction?->date ?? now();
         $this->status = 'Paid';
         $this->payment_date = $now;
         $this->save();
@@ -172,7 +178,8 @@ class Bill extends Model
 
     public function markAsPartial()
     {
-        $now = $this->transaction?->date ?? now();
+        $transaction = $this->transactions()->first();
+        $now = $transaction?->date ?? now();
         $this->status = 'Partial';
         $this->payment_date = $now;
         $this->save();

@@ -71,7 +71,7 @@ class BillResource extends Resource
                                 $fileId = $get('file_id');
                                 if ($fileId) {
                                     $file = \App\Models\File::find($fileId);
-                                    if ($file && $file->providerBranch) {
+                                    if ($file && $file->providerBranch && $file->providerBranch->provider_id) {
                                         $set('provider_id', $file->providerBranch->provider_id);
                                     }
                                 }
@@ -89,7 +89,7 @@ class BillResource extends Resource
                                 $fileId = $get('file_id');
                                 if ($fileId) {
                                     $file = \App\Models\File::find($fileId);
-                                    if ($file) {
+                                    if ($file && $file->provider_branch_id) {
                                         $set('branch_id', $file->provider_branch_id);
                                     }
                                 }

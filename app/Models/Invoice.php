@@ -75,7 +75,11 @@ class Invoice extends Model
         static::updated(function ($invoice) {
             if ($invoice->isDirty('paid_amount')) {
                 $invoice->checkStatus();
-                $invoice->transaction->calculateBankCharges();
+                // Get the first transaction if it exists
+                $transaction = $invoice->transactions()->first();
+                if ($transaction && method_exists($transaction, 'calculateBankCharges')) {
+                    $transaction->calculateBankCharges();
+                }
             }
 
             if($invoice->isDirty('status') && $invoice->status === 'Posted')
@@ -136,10 +140,7 @@ class Invoice extends Model
         return $this->belongsTo(BankAccount::class);
     }
 
-    public function transaction()
-    {
-        return $this->belongsTo(Transaction::class);
-    }
+    // Removed incorrect transaction relationship - invoices are related to transactions through pivot table
 
     public function items(): HasMany
     {
@@ -157,9 +158,9 @@ class Invoice extends Model
 
     public function calculateTotal()
     {
-        $this->subtotal;
+        $subtotal = $this->subtotal;
         $this->calculateDiscount();
-        $this->total_amount = $this->subtotal - $this->discount;
+        $this->total_amount = $subtotal - $this->discount;
         $this->save();
     }
 
@@ -183,7 +184,6 @@ class Invoice extends Model
 
     public function getSubtotalAttribute(): float
     {
-
         return $this->items->sum(function ($item) {
             return $item->amount;
         });
@@ -202,7 +202,8 @@ class Invoice extends Model
 
     public function markAsPaid()
     {
-        $now = $this->transaction?->date ?? now();
+        $transaction = $this->transactions()->first();
+        $now = $transaction?->date ?? now();
         $this->status = 'Paid';
         $this->payment_date = $now;
         $this->save();
@@ -210,7 +211,8 @@ class Invoice extends Model
 
     public function markAsPartial()
     {
-        $now = $this->transaction?->date ?? now();
+        $transaction = $this->transactions()->first();
+        $now = $transaction?->date ?? now();
         $this->status = 'Partial';
         $this->payment_date = $now;
         $this->save();
