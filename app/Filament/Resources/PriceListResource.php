@@ -346,8 +346,7 @@ class PriceListResource extends Resource
                                                 $html .= '</div>';
                                                 
                                                 return $html;
-                                            })
-                                            ->html(),
+                                            }),
                                     ]),
 
                                 // Note: Auto-suggest functionality moved to form actions
