@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Services\UploadBillToGoogleDrive;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
-use Filament\Resources\NavigationItem;
+use Filament\Navigation\NavigationItem;
 
 
 class BillResource extends Resource
