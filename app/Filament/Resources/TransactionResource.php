@@ -110,7 +110,6 @@ class TransactionResource extends Resource
                         }
                     }),
                 Forms\Components\Select::make('bills')
-                ->relationship('bills', 'name')
                 ->label('Bills')
                 ->multiple()
                 ->searchable()

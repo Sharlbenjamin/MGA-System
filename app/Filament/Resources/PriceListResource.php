@@ -402,4 +402,9 @@ class PriceListResource extends Resource
     {
         return static::getModel()::count();
     }
+
+    public static function isGlobalSearchDisabled(): bool
+    {
+        return true;
+    }
 }

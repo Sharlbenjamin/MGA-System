@@ -153,12 +153,13 @@ class Transaction extends Model
                         'amount_paid' => $bill->total_amount
                     ]);
 
-                    // Update bill paid_amount
-                    $bill->paid_amount = $bill->total_amount;
-                    $bill->save();
-
-                    // Update bill status
-                    $bill->checkStatus();
+                    // Temporarily disable model events to prevent circular dependency
+                    $bill->withoutEvents(function () use ($bill) {
+                        $bill->paid_amount = $bill->total_amount;
+                        $bill->status = 'Paid';
+                        $bill->payment_date = now();
+                        $bill->save();
+                    });
                 }
             }
         }
