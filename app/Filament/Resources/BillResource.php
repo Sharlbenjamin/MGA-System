@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Services\UploadBillToGoogleDrive;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
+use Filament\Resources\NavigationItem;
 
 
 class BillResource extends Resource
@@ -42,7 +43,18 @@ class BillResource extends Resource
         return 'warning';
     }
 
-
+    public static function getNavigationItems(): array
+    {
+        return [
+            ...parent::getNavigationItems(),
+            NavigationItem::make('Bills Without Trx')
+                ->url(static::getUrl('paid-without-transactions'))
+                ->icon('heroicon-o-exclamation-triangle')
+                ->badge(fn () => static::getModel()::where('status', 'Paid')->whereDoesntHave('transactions')->count())
+                ->badgeColor('warning')
+                ->sort(2),
+        ];
+    }
 
     public static function form(Form $form): Form
     {

@@ -187,7 +187,7 @@ class PriceListResource extends Resource
                                 Card::make()
                                     ->schema([
                                         Placeholder::make('provider_cost_info')
-                                            ->label('Average Provider Costs')
+                                            ->label('Provider Costs Summary')
                                             ->content(function (Get $get) {
                                                 $countryId = $get('country_id');
                                                 $cityId = $get('city_id');
@@ -259,6 +259,100 @@ class PriceListResource extends Resource
                                                 
                                                 return $result;
                                             }),
+                                            
+                                        // Provider Branches Table
+                                        \Filament\Infolists\Components\Section::make('Provider Branches & Costs')
+                                            ->schema([
+                                                \Filament\Infolists\Components\TextEntry::make('branches_table')
+                                                    ->label('')
+                                                    ->html(function (Get $get) {
+                                                        $countryId = $get('country_id');
+                                                        $cityId = $get('city_id');
+                                                        $serviceTypeId = $get('service_type_id');
+                                                        
+                                                        if (!$countryId || !$cityId || !$serviceTypeId) {
+                                                            return '<div class="text-gray-500 italic">Select Country, City, and Service Type to see provider costs.</div>';
+                                                        }
+                                                        
+                                                        $serviceTypeName = ServiceType::find($serviceTypeId)?->name;
+                                                        
+                                                        $query = ProviderBranch::query()
+                                                            ->where('status', 'Active');
+                                                        
+                                                        // Filter by city if available
+                                                        if ($cityId) {
+                                                            $query->where('city_id', $cityId);
+                                                        }
+                                                        
+                                                        // Filter by service type if available
+                                                        if ($serviceTypeName) {
+                                                            $query->whereJsonContains('service_types', $serviceTypeName);
+                                                        }
+                                                        
+                                                        $branches = $query->get();
+                                                        
+                                                        // If no city-specific branches, try country-wide branches
+                                                        if ($branches->isEmpty() && $countryId) {
+                                                            $branches = ProviderBranch::query()
+                                                                ->where('status', 'Active')
+                                                                ->whereHas('provider', function ($q) use ($countryId) {
+                                                                    $q->where('country_id', $countryId);
+                                                                })
+                                                                ->when($serviceTypeName, function ($q) use ($serviceTypeName) {
+                                                                    $q->whereJsonContains('service_types', $serviceTypeName);
+                                                                })
+                                                                ->get();
+                                                        }
+                                                        
+                                                        if ($branches->isEmpty()) {
+                                                            return '<div class="text-gray-500 italic">No active provider branches found for the selected criteria.</div>';
+                                                        }
+                                                        
+                                                        // Sort by day_cost (lowest first)
+                                                        $branches = $branches->sortBy('day_cost');
+                                                        
+                                                        $html = '<div class="overflow-x-auto">';
+                                                        $html .= '<table class="min-w-full divide-y divide-gray-200">';
+                                                        $html .= '<thead class="bg-gray-50">';
+                                                        $html .= '<tr>';
+                                                        $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>';
+                                                        $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>';
+                                                        $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day Cost</th>';
+                                                        $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weekend</th>';
+                                                        $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Night Weekday</th>';
+                                                        $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Night Weekend</th>';
+                                                        $html .= '</tr>';
+                                                        $html .= '</thead>';
+                                                        $html .= '<tbody class="bg-white divide-y divide-gray-200">';
+                                                        
+                                                        foreach ($branches as $index => $branch) {
+                                                            $rowClass = $index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                                                            $providerName = $branch->provider->name ?? 'N/A';
+                                                            $dayCost = $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : '-';
+                                                            $weekendCost = $branch->weekend_cost ? '€' . number_format($branch->weekend_cost, 2) : '-';
+                                                            $nightCost = $branch->night_cost ? '€' . number_format($branch->night_cost, 2) : '-';
+                                                            $weekendNightCost = $branch->weekend_night_cost ? '€' . number_format($branch->weekend_night_cost, 2) : '-';
+                                                            
+                                                            $html .= "<tr class=\"{$rowClass}\">";
+                                                            $html .= "<td class=\"px-3 py-2 text-sm text-gray-900 font-medium\">{$providerName}</td>";
+                                                            $html .= "<td class=\"px-3 py-2 text-sm text-gray-900\">{$branch->branch_name}</td>";
+                                                            $html .= "<td class=\"px-3 py-2 text-sm text-gray-900 font-semibold\">{$dayCost}</td>";
+                                                            $html .= "<td class=\"px-3 py-2 text-sm text-gray-900\">{$weekendCost}</td>";
+                                                            $html .= "<td class=\"px-3 py-2 text-sm text-gray-900\">{$nightCost}</td>";
+                                                            $html .= "<td class=\"px-3 py-2 text-sm text-gray-900\">{$weekendNightCost}</td>";
+                                                            $html .= '</tr>';
+                                                        }
+                                                        
+                                                        $html .= '</tbody>';
+                                                        $html .= '</table>';
+                                                        $html .= '</div>';
+                                                        
+                                                        return $html;
+                                                    })
+                                                    ->dehydrated(false),
+                                            ])
+                                            ->collapsible()
+                                            ->collapsed(),
                                     ]),
 
                                 // Note: Auto-suggest functionality moved to form actions
