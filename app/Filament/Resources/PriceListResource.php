@@ -231,27 +231,30 @@ class PriceListResource extends Resource
                                                     return 'No active provider branches found for the selected criteria.';
                                                 }
                                                 
-                                                $avgDayCost = round($branches->avg('day_cost'), 2);
-                                                $avgWeekendCost = round($branches->avg('weekend_cost'), 2);
-                                                $avgNightCost = round($branches->avg('night_cost'), 2);
-                                                $avgWeekendNightCost = round($branches->avg('weekend_night_cost'), 2);
+                                                // Sort by day_cost to get lowest costs
+                                                $branches = $branches->sortBy('day_cost');
+                                                
+                                                $lowestDayCost = $branches->first()->day_cost ? round($branches->first()->day_cost, 2) : 0;
+                                                $lowestWeekendCost = $branches->min('weekend_cost') ? round($branches->min('weekend_cost'), 2) : 0;
+                                                $lowestNightCost = $branches->min('night_cost') ? round($branches->min('night_cost'), 2) : 0;
+                                                $lowestWeekendNightCost = $branches->min('weekend_night_cost') ? round($branches->min('weekend_night_cost'), 2) : 0;
                                                 
                                                 $result = "{$branches->count()} active provider(s) found\n\n";
-                                                $result .= "Average Costs:\n";
-                                                $result .= "• Day Cost: €{$avgDayCost}\n";
-                                                $result .= "• Weekend Cost: €{$avgWeekendCost}\n";
-                                                $result .= "• Night Weekday: €{$avgNightCost}\n";
-                                                $result .= "• Night Weekend: €{$avgWeekendNightCost}\n\n";
+                                                $result .= "Lowest Costs:\n";
+                                                $result .= "• Day Cost: €{$lowestDayCost}\n";
+                                                $result .= "• Weekend Cost: €{$lowestWeekendCost}\n";
+                                                $result .= "• Night Weekday: €{$lowestNightCost}\n";
+                                                $result .= "• Night Weekend: €{$lowestWeekendNightCost}\n\n";
                                                 
                                                 if ($branches->count() <= 5) {
-                                                    $result .= "Provider Details:\n";
+                                                    $result .= "Provider Details (sorted by cost):\n";
                                                     foreach ($branches as $branch) {
                                                         $providerName = $branch->provider->name ?? 'N/A';
                                                         $dayCost = $branch->day_cost ? "€" . number_format($branch->day_cost, 2) : 'N/A';
                                                         $result .= "• {$providerName} - {$branch->branch_name} ({$dayCost})\n";
                                                     }
                                                 } else {
-                                                    $result .= "Showing average costs from {$branches->count()} providers";
+                                                    $result .= "Showing lowest costs from {$branches->count()} providers";
                                                 }
                                                 
                                                 return $result;
