@@ -85,15 +85,40 @@ class PriceListResource extends Resource
                                         
                                         $serviceTypeName = ServiceType::find($serviceTypeId)?->name;
                                         
-                                        return ProviderBranch::query()
-                                            ->where('city_id', $cityId)
+                                        $query = ProviderBranch::query()
                                             ->where('status', 'Active')
-                                            ->whereJsonContains('service_types', $serviceTypeName)
-                                            ->with('provider')
-                                            ->get()
-                                            ->mapWithKeys(function ($branch) {
-                                                return [$branch->id => $branch->provider->name . ' - ' . $branch->branch_name];
-                                            });
+                                            ->with('provider');
+                                        
+                                        // Filter by city if available
+                                        if ($cityId) {
+                                            $query->where('city_id', $cityId);
+                                        }
+                                        
+                                        // Filter by service type if available
+                                        if ($serviceTypeName) {
+                                            $query->whereJsonContains('service_types', $serviceTypeName);
+                                        }
+                                        
+                                        // If no city-specific branches, try country-wide branches
+                                        $branches = $query->get();
+                                        
+                                        if ($branches->isEmpty() && $countryId) {
+                                            $branches = ProviderBranch::query()
+                                                ->where('status', 'Active')
+                                                ->whereHas('provider', function ($q) use ($countryId) {
+                                                    $q->where('country_id', $countryId);
+                                                })
+                                                ->when($serviceTypeName, function ($q) use ($serviceTypeName) {
+                                                    $q->whereJsonContains('service_types', $serviceTypeName);
+                                                })
+                                                ->with('provider')
+                                                ->get();
+                                        }
+                                        
+                                        return $branches->mapWithKeys(function ($branch) {
+                                            $providerName = $branch->provider->name ?? 'Unknown Provider';
+                                            return [$branch->id => $providerName . ' - ' . $branch->branch_name];
+                                        });
                                     })
                                     ->searchable()
                                     ->placeholder('Select for provider-specific pricing')
@@ -162,11 +187,33 @@ class PriceListResource extends Resource
                                                 
                                                 $serviceTypeName = ServiceType::find($serviceTypeId)?->name;
                                                 
-                                                $branches = ProviderBranch::query()
-                                                    ->where('city_id', $cityId)
-                                                    ->where('status', 'Active')
-                                                    ->whereJsonContains('service_types', $serviceTypeName)
-                                                    ->get();
+                                                $query = ProviderBranch::query()
+                                                    ->where('status', 'Active');
+                                                
+                                                // Filter by city if available
+                                                if ($cityId) {
+                                                    $query->where('city_id', $cityId);
+                                                }
+                                                
+                                                // Filter by service type if available
+                                                if ($serviceTypeName) {
+                                                    $query->whereJsonContains('service_types', $serviceTypeName);
+                                                }
+                                                
+                                                $branches = $query->get();
+                                                
+                                                // If no city-specific branches, try country-wide branches
+                                                if ($branches->isEmpty() && $countryId) {
+                                                    $branches = ProviderBranch::query()
+                                                        ->where('status', 'Active')
+                                                        ->whereHas('provider', function ($q) use ($countryId) {
+                                                            $q->where('country_id', $countryId);
+                                                        })
+                                                        ->when($serviceTypeName, function ($q) use ($serviceTypeName) {
+                                                            $q->whereJsonContains('service_types', $serviceTypeName);
+                                                        })
+                                                        ->get();
+                                                }
                                                 
                                                 if ($branches->isEmpty()) {
                                                     return 'No active provider branches found for the selected criteria.';
