@@ -222,30 +222,6 @@ class TransactionResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
-            ->headerActions([
-                Tables\Actions\Action::make('view_bill')
-                    ->label('View Bill')
-                    ->icon('heroicon-o-document-text')
-                    ->color('primary')
-                    ->visible(fn ($record) => $record->bills()->exists())
-                    ->action(function ($record) {
-                        $bill = $record->bills()->first();
-                        if ($bill) {
-                            return redirect()->route('filament.admin.resources.bills.edit', $bill);
-                        }
-                    }),
-                Tables\Actions\Action::make('view_file')
-                    ->label('View File')
-                    ->icon('heroicon-o-folder')
-                    ->color('success')
-                    ->visible(fn ($record) => $record->bills()->exists() && $record->bills()->first()->file)
-                    ->action(function ($record) {
-                        $bill = $record->bills()->first();
-                        if ($bill && $bill->file) {
-                            return redirect()->route('filament.admin.resources.files.edit', $bill->file);
-                        }
-                    }),
-            ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
