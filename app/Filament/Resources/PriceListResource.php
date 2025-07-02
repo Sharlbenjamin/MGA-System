@@ -224,13 +224,36 @@ class PriceListResource extends Resource
                                                 $avgNightCost = round($branches->avg('night_cost'), 2);
                                                 $avgWeekendNightCost = round($branches->avg('weekend_night_cost'), 2);
                                                 
-                                                return view('components.provider-cost-info', [
-                                                    'branches' => $branches,
-                                                    'avgDayCost' => $avgDayCost,
-                                                    'avgWeekendCost' => $avgWeekendCost,
-                                                    'avgNightCost' => $avgNightCost,
-                                                    'avgWeekendNightCost' => $avgWeekendNightCost,
-                                                ])->render();
+                                                $html = "<div class='space-y-3'>";
+                                                $html .= "<div class='text-sm text-gray-600'><strong>{$branches->count()} active provider(s) found</strong></div>";
+                                                
+                                                $html .= "<div class='grid grid-cols-2 gap-2 text-xs'>";
+                                                $html .= "<div class='bg-blue-50 p-2 rounded'><div class='font-semibold text-blue-800'>Day Cost</div><div class='text-blue-600'>€{$avgDayCost}</div></div>";
+                                                $html .= "<div class='bg-green-50 p-2 rounded'><div class='font-semibold text-green-800'>Weekend Cost</div><div class='text-green-600'>€{$avgWeekendCost}</div></div>";
+                                                $html .= "<div class='bg-purple-50 p-2 rounded'><div class='font-semibold text-purple-800'>Night Weekday</div><div class='text-purple-600'>€{$avgNightCost}</div></div>";
+                                                $html .= "<div class='bg-orange-50 p-2 rounded'><div class='font-semibold text-orange-800'>Night Weekend</div><div class='text-orange-600'>€{$avgWeekendNightCost}</div></div>";
+                                                $html .= "</div>";
+                                                
+                                                if ($branches->count() <= 5) {
+                                                    $html .= "<div class='mt-3'><div class='text-xs font-semibold text-gray-700 mb-1'>Provider Details:</div>";
+                                                    $html .= "<div class='space-y-1'>";
+                                                    foreach ($branches as $branch) {
+                                                        $providerName = $branch->provider->name ?? 'N/A';
+                                                        $dayCost = $branch->day_cost ? "€" . number_format($branch->day_cost, 2) : '';
+                                                        $html .= "<div class='text-xs text-gray-600'><span class='font-medium'>{$providerName}</span> - <span>{$branch->branch_name}</span>";
+                                                        if ($dayCost) {
+                                                            $html .= " <span class='text-gray-500'>({$dayCost})</span>";
+                                                        }
+                                                        $html .= "</div>";
+                                                    }
+                                                    $html .= "</div></div>";
+                                                } else {
+                                                    $html .= "<div class='mt-2 text-xs text-gray-500'>Showing average costs from {$branches->count()} providers</div>";
+                                                }
+                                                
+                                                $html .= "</div>";
+                                                
+                                                return $html;
                                             }),
                                     ]),
 
