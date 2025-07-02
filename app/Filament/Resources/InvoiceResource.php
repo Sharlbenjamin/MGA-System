@@ -124,7 +124,12 @@ class InvoiceResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('file.mga_reference')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('file.mga_reference')
+                    ->searchable()
+                    ->sortable()
+                    ->url(fn (Invoice $record): string => $record->file->google_drive_link ?? '#')
+                    ->openUrlInNewTab()
+                    ->color(fn (Invoice $record): string => $record->file->google_drive_link ? 'primary' : 'gray'),
                 Tables\Columns\TextColumn::make('patient.client.company_name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('file.client_reference')->label('Client Reference')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('patient.name')->searchable()->sortable(),
