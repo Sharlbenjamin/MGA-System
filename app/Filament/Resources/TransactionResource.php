@@ -272,6 +272,7 @@ class TransactionResource extends Resource
                     });
                 })
                 ->whereDoesntHave('transactions')
+                ->whereIn('status', ['Unpaid', 'Partial'])
                 ->get();
         } elseif ($relatedType === 'Branch') {
             $bills = Bill::query()
@@ -279,6 +280,7 @@ class TransactionResource extends Resource
                     $query->where('provider_branch_id', $relatedId);
                 })
                 ->whereDoesntHave('transactions')
+                ->whereIn('status', ['Unpaid', 'Partial'])
                 ->get();
         }
 
