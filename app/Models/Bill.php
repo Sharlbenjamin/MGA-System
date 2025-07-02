@@ -79,12 +79,8 @@ class Bill extends Model
 
         static::creating(function ($bill) {
             if (!$bill->name) {
-                // Load the file relationship to avoid infinite recursion
-                $file = $bill->file;
-                if ($file) {
-                    $patientName = $file->patient ? $file->patient->name : 'Unknown Patient';
-                    $bill->name = $file->mga_reference . ' - ' . $patientName;
-                }
+                // Generate bill number with sequence
+                $bill->name = static::generateBillNumber($bill);
             }
                 $bill->bill_date = now();
                 $bill->due_date = now()->addDays(60);
@@ -106,6 +102,10 @@ class Bill extends Model
                 $bill->due_date = now()->addDays(60);
             }
 
+            // If file_id is being changed, regenerate the bill name
+            if ($bill->isDirty('file_id')) {
+                $bill->name = static::generateBillNumber($bill);
+            }
         });
 
         static::updated(function ($bill) {
@@ -118,6 +118,23 @@ class Bill extends Model
                 }
             }
         });
+    }
+
+    protected static function generateBillNumber($bill)
+    {
+        // Get the file reference
+        $fileReference = $bill->file ? $bill->file->mga_reference : 'UNKNOWN';
+        
+        // Get the latest bill number for this file and increment
+        $latestBill = static::where('name', 'like', $fileReference . '-Bill-%')
+            ->orderByRaw('CAST(SUBSTRING(name, -2) AS UNSIGNED) DESC')
+            ->first();
+
+        $number = $latestBill
+            ? (int)substr($latestBill->name, -2) + 1
+            : 1;
+
+        return $fileReference . '-Bill-' . str_pad($number, 2, '0', STR_PAD_LEFT);
     }
 
     // Calculations      Calculations      Calculations       Calculations        Calculations

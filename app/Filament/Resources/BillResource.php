@@ -50,7 +50,11 @@ class BillResource extends Resource
             ->schema([
                 Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\TextInput::make('name')->maxLength(255),
+                        Forms\Components\TextInput::make('name')
+                            ->maxLength(255)
+                            ->disabled()
+                            ->dehydrated()
+                            ->helperText('Bill name will be auto-generated based on file reference and sequence'),
                         Forms\Components\Select::make('file_id')
                             ->relationship('file', 'mga_reference')
                             ->required()
