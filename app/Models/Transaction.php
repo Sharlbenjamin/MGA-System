@@ -166,4 +166,45 @@ class Transaction extends Model
         // Recalculate bank charges after attaching bills
         $this->calculateBankCharges();
     }
+
+    /**
+     * Check if the attachment is a Google Drive link
+     */
+    public function isGoogleDriveAttachment(): bool
+    {
+        return $this->attachment_path && str_contains($this->attachment_path, 'drive.google.com');
+    }
+
+    /**
+     * Get the attachment display text
+     */
+    public function getAttachmentDisplayText(): string
+    {
+        if (!$this->attachment_path) {
+            return 'No Document';
+        }
+        
+        if ($this->isGoogleDriveAttachment()) {
+            return 'View Document';
+        }
+        
+        return 'Document Link';
+    }
+
+    /**
+     * Get the Google Drive file ID from the URL
+     */
+    public function getGoogleDriveFileId(): ?string
+    {
+        if (!$this->isGoogleDriveAttachment()) {
+            return null;
+        }
+
+        // Extract file ID from Google Drive URL
+        if (preg_match('/\/file\/d\/([a-zA-Z0-9_-]+)/', $this->attachment_path, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
 }

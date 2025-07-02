@@ -24,9 +24,9 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 use Filament\Forms\Components\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
-use App\Services\UploadTransactionToGoogleDrive;
+
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action as TableAction;
+
 
 class TransactionResource extends Resource
 {
@@ -66,14 +66,22 @@ class TransactionResource extends Resource
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
-                Forms\Components\FileUpload::make('attachment_path')
-                    ->label('Upload Transaction Document')
-                    ->acceptedFileTypes(['application/pdf', 'image/*'])
-                    ->maxSize(10240) // 10MB
-                    ->disk('public')
-                    ->directory('transactions')
-                    ->visibility('public')
-                    ->helperText('Upload the transaction document (PDF or image)'),
+                Forms\Components\TextInput::make('attachment_path')
+                    ->label('Google Drive Document Link')
+                    ->placeholder('https://drive.google.com/file/d/...')
+                    ->helperText('Paste the Google Drive link to the transaction document here.')
+                    ->url()
+                    ->maxLength(500)
+                    ->rules([
+                        'nullable',
+                        'url',
+                        function ($attribute, $value, $fail) {
+                            if ($value && !str_contains($value, 'drive.google.com')) {
+                                $fail('The link must be a valid Google Drive URL.');
+                            }
+                        }
+                    ]),
+
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
                 ->prefix('€')
@@ -150,7 +158,19 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('type')->searchable()
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
-                Tables\Columns\TextColumn::make('attachment_path')->searchable(),
+                Tables\Columns\TextColumn::make('attachment_path')
+                    ->label('Document')
+                    ->searchable()
+                    ->formatStateUsing(fn ($record) => $record->getAttachmentDisplayText())
+                    ->action(function ($state, $record) {
+                        if ($record->isGoogleDriveAttachment()) {
+                            return $record->attachment_path;
+                        }
+                        return null;
+                    })
+                    ->openUrlInNewTab()
+                    ->icon(fn ($record) => $record->isGoogleDriveAttachment() ? 'heroicon-o-link' : 'heroicon-o-document')
+                    ->color(fn ($record) => $record->isGoogleDriveAttachment() ? 'primary' : 'gray'),
                 Tables\Columns\TextColumn::make('bank_charges')->money()->sortable(),
                 Tables\Columns\IconColumn::make('charges_covered_by_client')->label('Covered')->boolean()->sortable(),
             ])
@@ -192,63 +212,6 @@ class TransactionResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                TableAction::make('upload_to_google_drive')
-                    ->label('Upload to Google Drive')
-                    ->icon('heroicon-o-cloud-arrow-up')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Upload Transaction to Google Drive')
-                    ->modalDescription('This will upload the transaction document to the Google Drive folder associated with this transaction.')
-                    ->modalSubmitActionLabel('Upload')
-                    ->action(function (Transaction $record) {
-                        // Check if there's an attachment
-                        if (!$record->attachment_path) {
-                            Notification::make()
-                                ->danger()
-                                ->title('No attachment found')
-                                ->body('Please upload a document first before uploading to Google Drive.')
-                                ->send();
-                            return;
-                        }
-
-                        // Get the file content using the public disk
-                        $filePath = storage_path('app/public/transactions/' . basename($record->attachment_path));
-                        if (!file_exists($filePath)) {
-                            Notification::make()
-                                ->danger()
-                                ->title('File not found')
-                                ->body('The uploaded file could not be found.')
-                                ->send();
-                            return;
-                        }
-
-                        $fileContent = file_get_contents($filePath);
-                        $fileName = basename($record->attachment_path);
-
-                        // Upload to Google Drive
-                        $uploader = app(UploadTransactionToGoogleDrive::class);
-                        $result = $uploader->uploadTransactionToGoogleDrive(
-                            $fileContent,
-                            $fileName,
-                            $record
-                        );
-
-                        if ($result === false) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Upload failed')
-                                ->body('Failed to upload to Google Drive. Check logs for more details.')
-                                ->send();
-                            return;
-                        }
-
-                        Notification::make()
-                            ->success()
-                            ->title('Upload successful')
-                            ->body('Transaction has been uploaded to Google Drive successfully.')
-                            ->send();
-                    })
-                    ->visible(fn (Transaction $record) => $record->attachment_path && !str_contains($record->attachment_path, 'drive.google.com')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

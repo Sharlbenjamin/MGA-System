@@ -61,11 +61,29 @@ class UploadTransactionToGoogleDrive
                 // or use the first file associated with the client
                 $client = \App\Models\Client::find($transaction->related_id);
                 $file = $client->patients()->first()?->files()->first();
+            } elseif ($transaction->related_type === 'Provider') {
+                // For provider transactions, try to find a file through bills
+                $provider = \App\Models\Provider::find($transaction->related_id);
+                $file = $provider->bills()->first()?->file;
+            } elseif ($transaction->related_type === 'Branch') {
+                // For branch transactions, try to find a file through bills
+                $branch = \App\Models\ProviderBranch::find($transaction->related_id);
+                $file = $branch->bills()->first()?->file;
+            } elseif ($transaction->related_type === 'Patient') {
+                // For patient transactions, use the patient's files
+                $patient = \App\Models\Patient::find($transaction->related_id);
+                $file = $patient->files()->first();
             }
 
             if (!$file) {
-                Log::error('No file found for transaction', ['transaction_id' => $transaction->id]);
-                return false;
+                // If no specific file found, create a general transactions folder
+                // This is a fallback for transactions that don't have a specific file association
+                Log::info('No specific file found for transaction, creating general folder', ['transaction_id' => $transaction->id]);
+                
+                // Create a dummy file object for the general transactions folder
+                $file = new \App\Models\File();
+                $file->mga_reference = 'TRANSACTIONS';
+                $file->created_at = now();
             }
 
             if (empty($file->google_drive_link)) {
