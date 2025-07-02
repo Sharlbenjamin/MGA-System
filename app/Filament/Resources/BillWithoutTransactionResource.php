@@ -213,7 +213,8 @@ class BillWithoutTransactionResource extends Resource
                     })
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->url(fn (Bill $record) => route('filament.admin.resources.bills.edit', $record)),
                 Tables\Actions\Action::make('download')
                     ->icon('heroicon-o-pencil')
                     ->url(fn (Bill $record) => $record->draft_path)
@@ -236,7 +237,6 @@ class BillWithoutTransactionResource extends Resource
         return [
             'index' => Pages\ListBillWithoutTransactions::route('/'),
             'create' => Pages\CreateBillWithoutTransaction::route('/create'),
-            'edit' => Pages\EditBillWithoutTransaction::route('/{record}/edit'),
         ];
     }
 } 

@@ -67,20 +67,10 @@ class TransactionResource extends Resource
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
                 Forms\Components\TextInput::make('attachment_path')
-                    ->label('Google Drive Document Link')
-                    ->placeholder('https://drive.google.com/file/d/...')
-                    ->helperText('Paste the Google Drive link to the transaction document here.')
-                    ->url()
-                    ->maxLength(500)
-                    ->rules([
-                        'nullable',
-                        'url',
-                        function ($attribute, $value, $fail) {
-                            if ($value && !str_contains($value, 'drive.google.com')) {
-                                $fail('The link must be a valid Google Drive URL.');
-                            }
-                        }
-                    ]),
+                    ->label('Link or Text')
+                    ->placeholder('Enter a Google Drive link, any URL, or any text here...')
+                    ->helperText('You can enter a Google Drive link, any URL (will be clickable), or any text.')
+                    ->maxLength(1000),
 
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
@@ -159,18 +149,37 @@ class TransactionResource extends Resource
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('attachment_path')
-                    ->label('Document')
+                    ->label('Link/Text')
                     ->searchable()
-                    ->formatStateUsing(fn ($record) => $record->getAttachmentDisplayText())
-                    ->action(function ($state, $record) {
+                    ->formatStateUsing(function ($record) {
+                        if (!$record->attachment_path) {
+                            return 'No Link/Text';
+                        }
+                        
+                        // Check if it's a Google Drive link
                         if ($record->isGoogleDriveAttachment()) {
+                            return 'View Document';
+                        }
+                        
+                        // Check if it's any other URL
+                        if (filter_var($record->attachment_path, FILTER_VALIDATE_URL)) {
+                            return 'View Link';
+                        }
+                        
+                        // Return truncated text if it's not a URL
+                        return strlen($record->attachment_path) > 30 
+                            ? substr($record->attachment_path, 0, 30) . '...' 
+                            : $record->attachment_path;
+                    })
+                    ->action(function ($state, $record) {
+                        if ($record->attachment_path && filter_var($record->attachment_path, FILTER_VALIDATE_URL)) {
                             return $record->attachment_path;
                         }
                         return null;
                     })
                     ->openUrlInNewTab()
-                    ->icon(fn ($record) => $record->isGoogleDriveAttachment() ? 'heroicon-o-link' : 'heroicon-o-document')
-                    ->color(fn ($record) => $record->isGoogleDriveAttachment() ? 'primary' : 'gray'),
+                    ->icon(fn ($record) => !$record->attachment_path ? 'heroicon-o-document' : (($record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'heroicon-o-link' : 'heroicon-o-document-text'))
+                    ->color(fn ($record) => !$record->attachment_path ? 'gray' : (($record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'primary' : 'gray')),
                 Tables\Columns\TextColumn::make('bank_charges')->money()->sortable(),
                 Tables\Columns\IconColumn::make('charges_covered_by_client')->label('Covered')->boolean()->sortable(),
             ])
@@ -212,6 +221,30 @@ class TransactionResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('view_bill')
+                    ->label('View Bill')
+                    ->icon('heroicon-o-document-text')
+                    ->color('primary')
+                    ->visible(fn ($record) => $record->bills()->exists())
+                    ->action(function ($record) {
+                        $bill = $record->bills()->first();
+                        if ($bill) {
+                            return redirect()->route('filament.admin.resources.bills.edit', $bill);
+                        }
+                    }),
+                Tables\Actions\Action::make('view_file')
+                    ->label('View File')
+                    ->icon('heroicon-o-folder')
+                    ->color('success')
+                    ->visible(fn ($record) => $record->bills()->exists() && $record->bills()->first()->file)
+                    ->action(function ($record) {
+                        $bill = $record->bills()->first();
+                        if ($bill && $bill->file) {
+                            return redirect()->route('filament.admin.resources.files.edit', $bill->file);
+                        }
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
