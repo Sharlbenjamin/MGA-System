@@ -309,43 +309,20 @@ class PriceListResource extends Resource
                                                 // Sort by day_cost (lowest first)
                                                 $branches = $branches->sortBy('day_cost');
                                                 
-                                                $html = '<div class="overflow-x-auto">';
-                                                $html .= '<table class="min-w-full divide-y divide-gray-200 border border-gray-300">';
-                                                $html .= '<thead class="bg-gray-50">';
-                                                $html .= '<tr>';
-                                                $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300">Provider</th>';
-                                                $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300">Branch</th>';
-                                                $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300">Day Cost</th>';
-                                                $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300">Weekend</th>';
-                                                $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300">Night Weekday</th>';
-                                                $html .= '<th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border border-gray-300">Night Weekend</th>';
-                                                $html .= '</tr>';
-                                                $html .= '</thead>';
-                                                $html .= '<tbody class="bg-white divide-y divide-gray-200">';
+                                                $result = "Provider Branches (sorted by lowest cost):\n\n";
                                                 
-                                                foreach ($branches as $index => $branch) {
-                                                    $rowClass = $index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                                                foreach ($branches as $branch) {
                                                     $providerName = $branch->provider->name ?? 'N/A';
-                                                    $dayCost = $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : '-';
-                                                    $weekendCost = $branch->weekend_cost ? '€' . number_format($branch->weekend_cost, 2) : '-';
-                                                    $nightCost = $branch->night_cost ? '€' . number_format($branch->night_cost, 2) : '-';
-                                                    $weekendNightCost = $branch->weekend_night_cost ? '€' . number_format($branch->weekend_night_cost, 2) : '-';
+                                                    $dayCost = $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A';
+                                                    $weekendCost = $branch->weekend_cost ? '€' . number_format($branch->weekend_cost, 2) : 'N/A';
+                                                    $nightCost = $branch->night_cost ? '€' . number_format($branch->night_cost, 2) : 'N/A';
+                                                    $weekendNightCost = $branch->weekend_night_cost ? '€' . number_format($branch->weekend_night_cost, 2) : 'N/A';
                                                     
-                                                    $html .= "<tr class=\"{$rowClass}\">";
-                                                    $html .= "<td class=\"px-3 py-2 text-sm text-gray-900 font-medium border border-gray-300\">{$providerName}</td>";
-                                                    $html .= "<td class=\"px-3 py-2 text-sm text-gray-900 border border-gray-300\">{$branch->branch_name}</td>";
-                                                    $html .= "<td class=\"px-3 py-2 text-sm text-gray-900 font-semibold border border-gray-300\">{$dayCost}</td>";
-                                                    $html .= "<td class=\"px-3 py-2 text-sm text-gray-900 border border-gray-300\">{$weekendCost}</td>";
-                                                    $html .= "<td class=\"px-3 py-2 text-sm text-gray-900 border border-gray-300\">{$nightCost}</td>";
-                                                    $html .= "<td class=\"px-3 py-2 text-sm text-gray-900 border border-gray-300\">{$weekendNightCost}</td>";
-                                                    $html .= '</tr>';
+                                                    $result .= "• {$providerName} - {$branch->branch_name}\n";
+                                                    $result .= "  Day: {$dayCost} | Weekend: {$weekendCost} | Night: {$nightCost} | Night Weekend: {$weekendNightCost}\n\n";
                                                 }
                                                 
-                                                $html .= '</tbody>';
-                                                $html .= '</table>';
-                                                $html .= '</div>';
-                                                
-                                                return $html;
+                                                return $result;
                                             }),
                                     ]),
 
