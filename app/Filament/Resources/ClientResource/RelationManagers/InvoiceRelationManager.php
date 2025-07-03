@@ -120,23 +120,23 @@ class InvoiceRelationManager extends RelationManager
                             ->body('Invoice has been uploaded to Google Drive.')
                             ->send();
                     }),
-                Action::make('markAsAssisted')
-                    ->label('Mark as Assisted')
-                    ->color('warning')
-                    ->icon('heroicon-o-check-circle')
+                Action::make('markAsSent')
+                    ->label('Mark as Sent')
+                    ->color('primary')
+                    ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
-                    ->modalHeading('Mark Invoice as Assisted')
-                    ->modalDescription('Are you sure you want to mark this invoice as Assisted?')
-                    ->modalSubmitActionLabel('Mark as Assisted')
-                    ->visible(fn (Invoice $record): bool => $record->status === 'Draft')
+                    ->modalHeading('Mark Invoice as Sent')
+                    ->modalDescription('Are you sure you want to mark this invoice as Sent?')
+                    ->modalSubmitActionLabel('Mark as Sent')
+                    ->visible(fn (Invoice $record): bool => $record->status === 'Posted')
                     ->action(function (Invoice $record) {
-                        $record->status = 'Assisted';
+                        $record->status = 'Sent';
                         $record->save();
 
                         Notification::make()
                             ->success()
-                            ->title('Invoice marked as Assisted')
-                            ->body('Invoice status has been updated to Assisted.')
+                            ->title('Invoice marked as Sent')
+                            ->body('Invoice status has been updated to Sent.')
                             ->send();
                     }),
                 Tables\Actions\Action::make('view')
