@@ -21,6 +21,6 @@ class ListShouldBePaid extends ListRecords
     public function getTitle(): string
     {
         $count = $this->getTableQuery()->count();
-        return "Bills with Paid Invoices - Should Be Paid ({$count})";
+        return "Unpaid Bills with Paid Invoices ({$count})";
     }
 } 

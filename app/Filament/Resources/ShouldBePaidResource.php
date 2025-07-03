@@ -27,7 +27,12 @@ class ShouldBePaidResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::whereIn('status', ['Unpaid', 'Partial'])->count();
+        $count = static::getModel()::where('status', 'Unpaid')
+            ->whereHas('file', function (Builder $fileQuery) {
+                $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
+                    $invoiceQuery->where('status', 'Paid');
+                });
+            })->count();
         return $count > 0 ? (string) $count : null;
     }
 
@@ -39,7 +44,12 @@ class ShouldBePaidResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->whereIn('status', ['Unpaid', 'Partial'])
+            ->where('status', 'Unpaid')
+            ->whereHas('file', function (Builder $fileQuery) {
+                $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
+                    $invoiceQuery->where('status', 'Paid');
+                });
+            })
             ->orderBy('due_date', 'asc');
     }
 
@@ -70,7 +80,7 @@ class ShouldBePaidResource extends Resource
                     ->openUrlInNewTab()
                     ->color(fn (Bill $record) => $record->file?->google_drive_link ? 'primary' : 'gray'),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
-                Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid','warning' => 'Partial'])->summarize(Count::make('status')->label('Number of Bills')),
+                Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid'])->summarize(Count::make('status')->label('Number of Bills')),
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('remaining_amount')->money('EUR')->sortable()->state(fn (Bill $record) => $record->total_amount - $record->paid_amount),
@@ -88,7 +98,6 @@ class ShouldBePaidResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Unpaid' => 'Unpaid',
-                        'Partial' => 'Partial',
                     ]),
                 // 1. Overdue Bills with status unpaid
                 Tables\Filters\Filter::make('overdue_unpaid')
