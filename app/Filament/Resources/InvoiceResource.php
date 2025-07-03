@@ -236,7 +236,7 @@ class InvoiceResource extends Resource
 
                         // Update invoice with new Google Drive link
                         $record->invoice_google_link = $result['webViewLink'];
-                        $record->status = 'Sent';
+                        $record->status = 'Posted';
                         $record->save();
 
                         Notification::make()
