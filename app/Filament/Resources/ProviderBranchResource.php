@@ -31,6 +31,7 @@ class ProviderBranchResource extends Resource
     protected static ?string $navigationGroup = 'PRM';
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationIcon = 'heroicon-o-home-modern';
+    protected static ?string $recordTitleAttribute = 'branch_name';
 
     public static function form(Forms\Form $form): Forms\Form
     {

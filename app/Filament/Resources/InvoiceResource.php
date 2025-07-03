@@ -27,6 +27,7 @@ class InvoiceResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-currency-euro';
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Finance';
+    protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationBadge(): ?string
     {

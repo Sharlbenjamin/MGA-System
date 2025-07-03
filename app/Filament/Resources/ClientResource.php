@@ -24,6 +24,7 @@ class ClientResource extends Resource
     protected static ?string $navigationGroup = 'CRM';
     protected static ?int $navigationSort = 1;
     protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static ?string $recordTitleAttribute = 'company_name';
 
     public static function form(Forms\Form $form): Forms\Form
     {

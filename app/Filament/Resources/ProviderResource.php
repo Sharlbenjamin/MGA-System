@@ -28,6 +28,7 @@ class ProviderResource extends Resource
     protected static ?string $navigationGroup = 'PRM';
     protected static ?int $navigationSort = 1;
     protected static ?string $navigationIcon = 'heroicon-o-truck';
+    protected static ?string $recordTitleAttribute = 'name';
 
     public static function form(Forms\Form $form): Forms\Form
 {

@@ -26,23 +26,6 @@ class Gop extends Model
         return $this->file->providerBranch();
     }
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::updating(function ($gop) {
-            // Only automatically change status to 'Updated' if:
-            // 1. The original status was 'Sent'
-            // 2. The status field is not being explicitly changed by the user
-            // 3. Other fields are being updated (not just status)
-            if ($gop->getOriginal('status') === 'Sent' && 
-                !$gop->isDirty('status') && 
-                $gop->isDirty()) {
-                $gop->status = 'Updated';
-            }
-        });
-    }
-
     public function sendGopToBranch()
     {
 

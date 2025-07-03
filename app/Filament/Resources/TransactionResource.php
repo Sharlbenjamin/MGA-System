@@ -35,6 +35,7 @@ class TransactionResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Finance';
     protected static ?int $navigationSort = 5;
+    protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationBadge(): ?string
     {
@@ -116,10 +117,59 @@ class TransactionResource extends Resource
                 ->preload()
                 ->live()
                 ->visible(fn ($get) => $get('related_type') === 'Provider' || $get('related_type') === 'Branch')
-                ->default(fn () => request()->get('bill_id') ? [request()->get('bill_id')] : [])
-                ->options(function (callable $get) {
+                ->default(function ($record = null) {
+                    if (request()->get('bill_id')) {
+                        return [request()->get('bill_id')];
+                    }
+                    
+                    // If editing, get the currently attached bill IDs
+                    if ($record && $record->exists) {
+                        return $record->bills()->pluck('bills.id')->toArray();
+                    }
+                    
+                    return [];
+                })
+                ->options(function (callable $get, $record = null) {
                     $relatedType = $get('related_type');
                     $relatedId = $get('related_id');
+                    
+                    // If we're editing and have a record, include currently attached bills
+                    if ($record && $record->exists) {
+                        $attachedBillIds = $record->bills()->pluck('bills.id')->toArray();
+                        
+                        // Get all bills for the related provider/branch
+                        $allBills = collect();
+                        if ($relatedType === 'Provider') {
+                            $allBills = Bill::query()
+                                ->whereHas('file', function ($query) use ($relatedId) {
+                                    $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
+                                        $providerQuery->where('providers.id', $relatedId);
+                                    })
+                                    ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
+                                        $branchQuery->where('provider_branches.provider_id', $relatedId);
+                                    });
+                                })
+                                ->where(function ($query) use ($attachedBillIds) {
+                                    $query->whereIn('status', ['Unpaid', 'Partial'])
+                                        ->orWhereIn('id', $attachedBillIds);
+                                })
+                                ->get();
+                        } elseif ($relatedType === 'Branch') {
+                            $allBills = Bill::query()
+                                ->whereHas('file', function ($query) use ($relatedId) {
+                                    $query->where('provider_branch_id', $relatedId);
+                                })
+                                ->where(function ($query) use ($attachedBillIds) {
+                                    $query->whereIn('status', ['Unpaid', 'Partial'])
+                                        ->orWhereIn('id', $attachedBillIds);
+                                })
+                                ->get();
+                        }
+                        
+                        return $allBills->pluck('name', 'id')->toArray();
+                    }
+                    
+                    // For create mode, use the original logic
                     if (!$relatedId) return [];
 
                     return static::getBills($relatedType, $relatedId)

@@ -36,7 +36,6 @@ class PriceListResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-currency-euro';
     protected static ?string $navigationGroup = 'Admin';
     protected static ?int $navigationSort = 5;
-    protected static ?string $recordTitleAttribute = 'display_name';
 
     public static function form(Forms\Form $form): Forms\Form
     {
