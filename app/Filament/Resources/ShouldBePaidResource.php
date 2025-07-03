@@ -45,11 +45,6 @@ class ShouldBePaidResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where('status', 'Unpaid')
-            ->whereHas('file', function (Builder $fileQuery) {
-                $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
-                    $invoiceQuery->where('status', 'Paid');
-                });
-            })
             ->orderBy('due_date', 'asc');
     }
 
