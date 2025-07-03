@@ -131,7 +131,13 @@ class InvoiceResource extends Resource
                     ->openUrlInNewTab()
                     ->color(fn (Invoice $record): string => $record->file->google_drive_link ? 'primary' : 'gray'),
                 Tables\Columns\TextColumn::make('patient.client.company_name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('file.client_reference')->label('Client Reference')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('file.client_reference')
+                    ->label('Client Reference')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('Client reference copied to clipboard')
+                    ->copyMessageDuration(1500),
                 Tables\Columns\TextColumn::make('patient.name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('invoice_date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
