@@ -85,6 +85,7 @@ class InvoiceRelationManager extends RelationManager
                     ->icon('heroicon-o-document-arrow-up')
                     ->requiresConfirmation()
                     ->modalDescription('This will generate and upload the invoice to Google Drive.')
+                    ->visible(fn (Invoice $record): bool => $record->status === 'Draft')
                     ->action(function (Invoice $record) {
                         // First generate PDF
                         $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
@@ -117,6 +118,25 @@ class InvoiceRelationManager extends RelationManager
                             ->success()
                             ->title('Invoice generated and uploaded successfully')
                             ->body('Invoice has been uploaded to Google Drive.')
+                            ->send();
+                    }),
+                Action::make('markAsAssisted')
+                    ->label('Mark as Assisted')
+                    ->color('warning')
+                    ->icon('heroicon-o-check-circle')
+                    ->requiresConfirmation()
+                    ->modalHeading('Mark Invoice as Assisted')
+                    ->modalDescription('Are you sure you want to mark this invoice as Assisted?')
+                    ->modalSubmitActionLabel('Mark as Assisted')
+                    ->visible(fn (Invoice $record): bool => $record->status === 'Draft')
+                    ->action(function (Invoice $record) {
+                        $record->status = 'Assisted';
+                        $record->save();
+
+                        Notification::make()
+                            ->success()
+                            ->title('Invoice marked as Assisted')
+                            ->body('Invoice status has been updated to Assisted.')
                             ->send();
                     }),
                 Tables\Actions\Action::make('view')
