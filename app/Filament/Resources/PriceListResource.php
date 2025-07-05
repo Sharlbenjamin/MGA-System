@@ -28,6 +28,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class PriceListResource extends Resource
 {
@@ -36,6 +37,25 @@ class PriceListResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-currency-euro';
     protected static ?string $navigationGroup = 'Admin';
     protected static ?int $navigationSort = 5;
+
+    /**
+     * Clear cache when price lists are modified
+     */
+    public static function clearCache(): void
+    {
+        Cache::forget('countries_with_price_lists');
+        Cache::forget('service_types');
+        
+        // Clear price list caches
+        $countries = \App\Models\Country::whereHas('priceLists')->pluck('id');
+        $serviceTypes = \App\Models\ServiceType::pluck('id');
+        
+        foreach ($countries as $countryId) {
+            foreach ($serviceTypes as $serviceTypeId) {
+                Cache::forget("price_lists_country_{$countryId}_service_{$serviceTypeId}");
+            }
+        }
+    }
 
     public static function form(Forms\Form $form): Forms\Form
     {

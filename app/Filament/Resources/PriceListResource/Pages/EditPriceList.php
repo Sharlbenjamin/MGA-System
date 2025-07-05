@@ -13,7 +13,17 @@ class EditPriceList extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->after(function () {
+                    // Clear cache after deletion
+                    PriceListResource::clearCache();
+                }),
         ];
+    }
+
+    protected function afterSave(): void
+    {
+        // Clear cache to refresh the tabbed view
+        PriceListResource::clearCache();
     }
 }

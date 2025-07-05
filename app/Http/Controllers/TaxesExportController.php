@@ -28,10 +28,8 @@ class TaxesExportController extends Controller
             $endDate = Carbon::create($year, 12, 31)->endOfYear();
         }
 
-        // Calculate totals
-        $invoiceTotal = Invoice::whereBetween('invoice_date', [$startDate, $endDate])
-            ->where('status', 'Paid')
-            ->sum('total_amount');
+        // Calculate totals - using the same logic as the view
+        $invoiceTotal = Invoice::whereBetween('invoice_date', [$startDate, $endDate])->sum('total_amount');
         $billTotal = Bill::whereBetween('bill_date', [$startDate, $endDate])->sum('total_amount');
         $expenseTotal = DB::table('transactions')
             ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
@@ -43,10 +41,9 @@ class TaxesExportController extends Controller
         // Outflow is the sum of bills and expenses
         $outflowTotal = $billTotal + $expenseTotal;
 
-        // Get filtered data
+        // Get filtered data - using the EXACT same query logic as the view
         $invoices = Invoice::query()
             ->whereBetween('invoice_date', [$startDate, $endDate])
-            ->where('status', 'Paid')
             ->select([
                 'id',
                 'name as document_number',

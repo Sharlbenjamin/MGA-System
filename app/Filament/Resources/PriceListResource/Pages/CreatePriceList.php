@@ -9,4 +9,10 @@ use Filament\Resources\Pages\CreateRecord;
 class CreatePriceList extends CreateRecord
 {
     protected static string $resource = PriceListResource::class;
+
+    protected function afterCreate(): void
+    {
+        // Clear cache to refresh the tabbed view
+        PriceListResource::clearCache();
+    }
 }

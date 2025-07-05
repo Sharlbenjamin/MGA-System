@@ -60,7 +60,7 @@ class Invoice extends Model
                 $invoice->name = static::generateInvoiceNumber($invoice);
             }
             $invoice->invoice_date = now();
-            $invoice->due_date = now()->addDays(45);
+            $invoice->due_date = now()->addDays(30);
         });
 
         static::updating(function ($invoice) {
