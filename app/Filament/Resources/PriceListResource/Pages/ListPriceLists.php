@@ -21,6 +21,7 @@ use Filament\Tables\Contracts\HasTable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Livewire\Attributes\On;
 
 class ListPriceLists extends Page implements HasTable
 {

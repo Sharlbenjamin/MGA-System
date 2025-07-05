@@ -139,7 +139,7 @@
                                                                 @endif
                                                             </td>
                                                             <td class="px-6 py-4 text-right">
-                                                                <div class="flex justify-end space-x-2">
+                                                                <div class="flex justify-end">
                                                                     <x-filament::button
                                                                         size="sm"
                                                                         color="primary"
@@ -148,28 +148,6 @@
                                                                     >
                                                                         Edit
                                                                     </x-filament::button>
-                                                                    
-                                                                    <x-filament::button
-                                                                        size="sm"
-                                                                        color="danger"
-                                                                        x-data=""
-                                                                        x-on:click.prevent="
-                                                                            if (confirm('Are you sure you want to delete this price list?')) {
-                                                                                $el.closest('form').submit()
-                                                                            }
-                                                                        "
-                                                                    >
-                                                                        Delete
-                                                                    </x-filament::button>
-                                                                    
-                                                                    <form 
-                                                                        action="{{ route('filament.admin.resources.price-lists.destroy', $priceList) }}" 
-                                                                        method="POST" 
-                                                                        class="hidden"
-                                                                    >
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                    </form>
                                                                 </div>
                                                             </td>
                                                         </tr>
