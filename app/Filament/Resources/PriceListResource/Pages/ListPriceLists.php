@@ -39,7 +39,8 @@ class ListPriceLists extends Page implements HasTable
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->url(route('filament.admin.resources.price-lists.create')),
         ];
     }
 
@@ -82,12 +83,6 @@ class ListPriceLists extends Page implements HasTable
                     ->money('EUR')
                     ->sortable()
                     ->alignEnd(),
-
-                BadgeColumn::make('suggested_markup')
-                    ->label('Markup')
-                    ->formatStateUsing(fn ($state) => $state ? (($state - 1) * 100) . '%' : 'N/A')
-                    ->colors(['success', 'warning'])
-                    ->alignCenter(),
             ])
             ->actions([
                 EditAction::make(),

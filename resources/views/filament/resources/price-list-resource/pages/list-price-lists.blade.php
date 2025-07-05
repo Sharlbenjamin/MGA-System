@@ -84,9 +84,6 @@
                                                         <th scope="col" class="px-6 py-3 text-right">
                                                             Night Weekend
                                                         </th>
-                                                        <th scope="col" class="px-6 py-3 text-center">
-                                                            Markup
-                                                        </th>
                                                         <th scope="col" class="px-6 py-3 text-right">
                                                             Actions
                                                         </th>
@@ -127,15 +124,6 @@
                                                                     €{{ number_format($priceList->night_weekend_price, 2) }}
                                                                 @else
                                                                     -
-                                                                @endif
-                                                            </td>
-                                                            <td class="px-6 py-4 text-center">
-                                                                @if($priceList->suggested_markup)
-                                                                    <x-filament::badge color="success">
-                                                                        {{ (($priceList->suggested_markup - 1) * 100) }}%
-                                                                    </x-filament::badge>
-                                                                @else
-                                                                    <span class="text-gray-400">N/A</span>
                                                                 @endif
                                                             </td>
                                                             <td class="px-6 py-4 text-right">
