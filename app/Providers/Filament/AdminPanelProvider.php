@@ -76,6 +76,17 @@ class AdminPanelProvider extends PanelProvider
                 GopResource::class,
                 PrescriptionResource::class,
                 DrugResource::class,
+                // Stages Resources
+                \App\Filament\Resources\FilesWithoutGopResource::class,
+                \App\Filament\Resources\GopWithoutDocsResource::class,
+                \App\Filament\Resources\FilesWithoutBillsResource::class,
+                \App\Filament\Resources\FilesWithoutMedicalReportResource::class,
+                \App\Filament\Resources\FilesWithoutInvoicesResource::class,
+                \App\Filament\Resources\BillsWithoutDocumentsResource::class,
+                \App\Filament\Resources\InvoicesWithoutDocsResource::class,
+                \App\Filament\Resources\BillWithoutTransactionResource::class,
+                \App\Filament\Resources\InvoicesWithoutTransactionResource::class,
+                \App\Filament\Resources\TransactionsWithoutDocumentsResource::class,
             ])
             ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')

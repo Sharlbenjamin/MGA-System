@@ -69,9 +69,6 @@
                                                 <th scope="col" class="px-4 py-3">
                                                     City
                                                 </th>
-                                                <th scope="col" class="px-4 py-3">
-                                                    Provider Branch
-                                                </th>
                                                 <th scope="col" class="px-4 py-3 text-right">
                                                     Day Price
                                                 </th>
@@ -97,9 +94,6 @@
                                                     </td>
                                                     <td class="px-4 py-3 text-gray-500">
                                                         {{ $priceList->city->name ?? 'N/A' }}
-                                                    </td>
-                                                    <td class="px-4 py-3 text-gray-500">
-                                                        {{ $priceList->providerBranch->branch_name ?? 'General pricing' }}
                                                     </td>
                                                     <td class="px-4 py-3 text-right">
                                                         @if($priceList->day_price)
