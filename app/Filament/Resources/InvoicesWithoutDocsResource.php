@@ -24,7 +24,7 @@ class InvoicesWithoutDocsResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereNull('draft_path')->orWhere('draft_path', '')->count();
+        return static::getModel()::whereNull('invoice_google_link')->orWhere('invoice_google_link', '')->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -60,8 +60,9 @@ class InvoicesWithoutDocsResource extends Resource
                         'Paid' => 'Paid',
                     ])
                     ->required(),
-                Forms\Components\TextInput::make('draft_path')
-                    ->label('Draft Path')
+                Forms\Components\TextInput::make('invoice_google_link')
+                    ->label('Google Drive Link')
+                    ->url()
                     ->maxLength(255),
             ]);
     }
@@ -69,7 +70,7 @@ class InvoicesWithoutDocsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('draft_path')->orWhere('draft_path', ''))
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('invoice_google_link')->orWhere('invoice_google_link', ''))
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()

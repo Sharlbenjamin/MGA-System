@@ -26,7 +26,7 @@ class Invoice extends Model
         'payment_date',
         'transaction_id',
         'paid_amount',
-        'draft_path',
+
         'invoice_date',
         'payment_link',
     ];
