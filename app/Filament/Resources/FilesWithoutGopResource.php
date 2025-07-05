@@ -24,7 +24,9 @@ class FilesWithoutGopResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereDoesntHave('gops')->count();
+        return static::getModel()::where('status', 'Assisted')
+            ->whereDoesntHave('gops')
+            ->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -62,7 +64,7 @@ class FilesWithoutGopResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereDoesntHave('gops'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'Assisted')->whereDoesntHave('gops'))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')
                     ->searchable()

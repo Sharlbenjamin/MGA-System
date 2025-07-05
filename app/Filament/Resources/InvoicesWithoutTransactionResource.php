@@ -24,7 +24,9 @@ class InvoicesWithoutTransactionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereDoesntHave('transactions')->count();
+        return static::getModel()::whereDoesntHave('transactions')
+            ->whereIn('status', ['Paid', 'Partial'])
+            ->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -66,7 +68,8 @@ class InvoicesWithoutTransactionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereDoesntHave('transactions'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereDoesntHave('transactions')
+                ->whereIn('status', ['Paid', 'Partial']))
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()

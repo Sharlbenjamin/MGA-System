@@ -83,7 +83,6 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Resources\FilesWithoutMedicalReportResource::class,
                 \App\Filament\Resources\FilesWithoutInvoicesResource::class,
                 \App\Filament\Resources\BillsWithoutDocumentsResource::class,
-                \App\Filament\Resources\InvoicesWithoutDocsResource::class,
                 \App\Filament\Resources\BillWithoutTransactionResource::class,
                 \App\Filament\Resources\InvoicesWithoutTransactionResource::class,
                 \App\Filament\Resources\TransactionsWithoutDocumentsResource::class,

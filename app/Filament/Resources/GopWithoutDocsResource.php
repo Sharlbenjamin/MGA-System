@@ -24,7 +24,12 @@ class GopWithoutDocsResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereNull('gop_google_drive_link')->orWhere('gop_google_drive_link', '')->count();
+        return static::getModel()::where('type', 'In')
+            ->where(function ($query) {
+                $query->whereNull('gop_google_drive_link')
+                      ->orWhere('gop_google_drive_link', '');
+            })
+            ->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -68,7 +73,11 @@ class GopWithoutDocsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('gop_google_drive_link')->orWhere('gop_google_drive_link', ''))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('type', 'In')
+                ->where(function ($query) {
+                    $query->whereNull('gop_google_drive_link')
+                          ->orWhere('gop_google_drive_link', '');
+                }))
             ->columns([
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')

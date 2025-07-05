@@ -24,7 +24,9 @@ class FilesWithoutBillsResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereDoesntHave('bills')->count();
+        return static::getModel()::where('status', 'Assisted')
+            ->whereDoesntHave('bills')
+            ->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -62,7 +64,7 @@ class FilesWithoutBillsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereDoesntHave('bills'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'Assisted')->whereDoesntHave('bills'))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')
                     ->searchable()
