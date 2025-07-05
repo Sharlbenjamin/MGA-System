@@ -22,6 +22,16 @@ class InvoicesWithoutTransactionResource extends Resource
     protected static ?string $modelLabel = 'Invoice without transaction';
     protected static ?string $pluralModelLabel = 'Invoices without transaction';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereDoesntHave('transactions')->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form

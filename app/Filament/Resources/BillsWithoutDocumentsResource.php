@@ -22,6 +22,16 @@ class BillsWithoutDocumentsResource extends Resource
     protected static ?string $modelLabel = 'Bill without documents';
     protected static ?string $pluralModelLabel = 'Bills without documents';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereNull('bill_google_link')->orWhere('bill_google_link', '')->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form

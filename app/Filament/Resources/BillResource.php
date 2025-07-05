@@ -29,19 +29,7 @@ class BillResource extends Resource
     protected static ?string $navigationGroup = 'Operation';
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationBadge(): ?string
-    {
-        $count = static::getModel()::whereNull('bill_google_link')
-            ->orWhere('bill_google_link', '=', '')
-            ->count();
-        
-        return $count > 0 ? (string) $count : null;
-    }
 
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'warning';
-    }
 
 
 

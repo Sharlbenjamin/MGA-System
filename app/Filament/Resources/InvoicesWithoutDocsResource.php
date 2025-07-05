@@ -22,6 +22,16 @@ class InvoicesWithoutDocsResource extends Resource
     protected static ?string $modelLabel = 'Invoice without docs';
     protected static ?string $pluralModelLabel = 'Invoices without docs';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereNull('draft_path')->orWhere('draft_path', '')->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form

@@ -22,6 +22,16 @@ class FilesWithoutBillsResource extends Resource
     protected static ?string $modelLabel = 'File without Bills';
     protected static ?string $pluralModelLabel = 'Files without Bills';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereDoesntHave('bills')->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form

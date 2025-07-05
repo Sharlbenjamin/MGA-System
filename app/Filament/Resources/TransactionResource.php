@@ -37,15 +37,7 @@ class TransactionResource extends Resource
     protected static ?int $navigationSort = 5;
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationBadge(): ?string
-    {
-        $count = static::getModel()::query()
-            ->where('type', 'Outflow')
-            ->whereNull('attachment_path')
-            ->count();
-            
-        return $count > 0 ? (string) $count : null;
-    }
+
 
     public static function form(Form $form): Form
     {

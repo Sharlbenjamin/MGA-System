@@ -22,6 +22,16 @@ class FilesWithoutInvoicesResource extends Resource
     protected static ?string $modelLabel = 'File without invoices';
     protected static ?string $pluralModelLabel = 'Files without invoices';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereDoesntHave('invoices')->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form

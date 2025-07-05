@@ -29,15 +29,7 @@ class InvoiceResource extends Resource
     protected static ?string $navigationGroup = 'Finance';
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::whereIn('status', ['Draft', 'Posted'])->count();
-    }
 
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'warning';
-    }
     public static function form(Form $form): Form
     {
         return $form

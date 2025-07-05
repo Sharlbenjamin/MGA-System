@@ -22,6 +22,16 @@ class FilesWithoutGopResource extends Resource
     protected static ?string $modelLabel = 'File without GOP';
     protected static ?string $pluralModelLabel = 'Files without GOP';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereDoesntHave('gops')->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form

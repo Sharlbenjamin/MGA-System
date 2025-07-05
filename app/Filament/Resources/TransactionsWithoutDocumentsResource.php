@@ -22,6 +22,16 @@ class TransactionsWithoutDocumentsResource extends Resource
     protected static ?string $modelLabel = 'Transaction without documents';
     protected static ?string $pluralModelLabel = 'Transactions without documents';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereNull('attachment_path')->orWhere('attachment_path', '')->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form

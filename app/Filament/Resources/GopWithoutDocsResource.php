@@ -22,6 +22,16 @@ class GopWithoutDocsResource extends Resource
     protected static ?string $modelLabel = 'GOP without docs';
     protected static ?string $pluralModelLabel = 'GOP without docs';
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::whereNull('gop_google_drive_link')->orWhere('gop_google_drive_link', '')->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
