@@ -56,7 +56,7 @@ class TaxesExportController extends Controller
                 DB::raw("name as invoice_number"),
                 DB::raw("NULL as bill_number"),
                 DB::raw("NULL as transaction_notes"),
-                DB::raw("NULL as google_drive_link")
+                'invoice_google_link as google_drive_link'
             ]);
 
         $bills = Bill::query()

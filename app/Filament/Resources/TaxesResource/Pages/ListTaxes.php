@@ -219,7 +219,7 @@ class ListTaxes extends ListRecords
                     ->label('View Document')
                     ->html()
                     ->formatStateUsing(function ($state, $record) {
-                        if ($state && $record->type === 'bill') {
+                        if ($state && ($record->type === 'bill' || $record->type === 'invoice')) {
                             return '<a href="' . $state . '" target="_blank" class="text-primary-600 hover:text-primary-500 underline">View Document</a>';
                         }
                         return '-';
@@ -310,7 +310,7 @@ class ListTaxes extends ListRecords
                 DB::raw("name as invoice_number"),
                 DB::raw("NULL as bill_number"),
                 DB::raw("NULL as transaction_notes"),
-                DB::raw("NULL as google_drive_link")
+                'invoice_google_link as google_drive_link'
             ]);
 
         // Query bills for the selected period
