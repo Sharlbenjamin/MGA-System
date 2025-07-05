@@ -158,14 +158,15 @@
 
             <div class="info-section">
                 <p><span class="bold">Invoice Number:</span> {{ $invoice->name }}</p>
-                <p><span class="bold">Date:</span> {{ $invoice->created_at->format('d/m/Y') }}</p>
+                <p><span class="bold">Patient Name:</span> {{ $invoice->patient->name }}</p>
+                <p><span class="bold">MGA Reference:</span> {{ $invoice->file->mga_reference ?? 'N/A' }}</p>
+                <p><span class="bold">Client Reference:</span> {{ $invoice->file->client_reference ?? 'N/A' }}</p>
+                <p><span class="bold">Issue Date:</span> {{ $invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : $invoice->created_at->format('d/m/Y') }}</p>
                 <p><span class="bold">Due Date:</span> {{ $invoice->due_date->format('d/m/Y') }}</p>
-            </div>
-
-            <div class="info-section">
-                <h3>Patient Information</h3>
-                <p><span class="bold">Name:</span> {{ $invoice->patient->name }}</p>
-                <p><span class="bold">Address:</span> {{ $invoice->patient->address }}</p>
+                <p><span class="bold">Service Type:</span> {{ $invoice->file->serviceType->name ?? 'N/A' }}</p>
+                <p><span class="bold">Service Date:</span> {{ $invoice->file->service_date ? $invoice->file->service_date->format('d/m/Y') : 'N/A' }}</p>
+                <p><span class="bold">Country:</span> {{ $invoice->file->country->name ?? 'N/A' }}</p>
+                <p><span class="bold">City:</span> {{ $invoice->file->city->name ?? 'N/A' }}</p>
             </div>
 
             <table class="invoice-table">
@@ -186,13 +187,13 @@
             </table>
 
             <div class="invoice-total">
-                <p><span class="bold">Subtotal:</span> €{{ number_format($invoice->final_total, 2) }}</p>
+                <p><span class="bold">Subtotal:</span> €{{ number_format($invoice->subtotal, 2) }}</p>
 
                 @if($invoice->discount > 0)
                 <p><span class="bold">Discount:</span> €{{ number_format($invoice->discount, 2) }}</p>
                 @endif
 
-                <p style="font-size: 1.2em;"><span class="bold">Total Amount:</span> €{{ number_format($invoice->final_total - $invoice->discount, 2) }}</p>
+                <p style="font-size: 1.2em;"><span class="bold">Total Amount:</span> €{{ number_format($invoice->total_amount, 2) }}</p>
 
                 @if($invoice->paid_amount > 0)
                 <p><span class="bold">Paid Amount:</span> €{{ number_format($invoice->paid_amount, 2) }}</p>
