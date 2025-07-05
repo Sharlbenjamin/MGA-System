@@ -31,7 +31,9 @@ class BillWithoutTransactionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereDoesntHave('transactions')->count();
+        return static::getModel()::where('status', 'Paid')
+            ->whereDoesntHave('transactions')
+            ->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
