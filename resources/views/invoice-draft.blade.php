@@ -3,6 +3,12 @@
 <head>
     <meta charset="utf-8">
     <title>Invoice Draft</title>
+    @php
+        $baseMargin = 200;
+        $perRowMargin = 30;
+        $totalRows = count($invoice->items);
+        $dynamicMargin = $baseMargin + ($totalRows * $perRowMargin);
+    @endphp
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -104,13 +110,6 @@
         }
 
         /* Footer Styles */
-        @php
-            $baseMargin = 200;
-            $perRowMargin = 30;
-            $totalRows = count($invoice->items);
-            $dynamicMargin = $baseMargin + ($totalRows * $perRowMargin);
-        @endphp
-
         .footer {
             position: absolute;
             bottom: 0;
@@ -125,7 +124,6 @@
             background: rgba(255, 255, 255, 0.95);
             z-index: 10;
             box-sizing: border-box;
-            margin-top: {{ $dynamicMargin }}px;
         }
 
         .footer ul {
@@ -202,7 +200,7 @@
             </div>
         </div>
 
-        <div class="footer">
+        <div class="footer" style="margin-top: {{ $dynamicMargin }}px">
             <ul>
                 <li>Company Name: Med Guard Assistance</li>
                 <li>Email: mga.operation@medguarda.com</li>
