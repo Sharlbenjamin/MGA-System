@@ -227,18 +227,17 @@
                     <div class="info-details-flex">
                         <div class="info-details-column">
                             <p><span class="bold">Patient Name:</span> {{ $invoice->patient->name }}</p>
-                            <p><span class="bold">Invoice Number:</span> {{ $invoice->name }}</p>
                             <p><span class="bold">MGA Reference:</span> {{ $invoice->file->mga_reference ?? 'N/A' }}</p>
-                            <p><span class="bold">Client Reference:</span> {{ $invoice->file->client_reference }}</p>
                             <p><span class="bold">Issue Date:</span> {{ $invoice->invoice_date?->format('d/m/Y') }}</p>
-                            <p><span class="bold">Due Date:</span> {{ $invoice->due_date?->format('d/m/Y') }}</p>
+                            <p><span class="bold">Service Date:</span> {{ $invoice->file->service_date?->format('d/m/Y') }}</p>
+                            <p><span class="bold">Country:</span> {{ $invoice->file->country?->name }}</p>
                         </div>
                         <div class="info-details-column">
-                            <p><span class="bold">Service Date:</span> {{ $invoice->file->service_date?->format('d/m/Y') }}</p>
+                            <p><span class="bold">Invoice Number:</span> {{ $invoice->name }}</p>
+                            <p><span class="bold">Client Reference:</span> {{ $invoice->file->client_reference }}</p>
+                            <p><span class="bold">Due Date:</span> {{ $invoice->due_date?->format('d/m/Y') }}</p>
                             <p><span class="bold">Service Type:</span> {{ $invoice->file->serviceType->name }}</p>
-                            <p><span class="bold">Country:</span> {{ $invoice->file->country?->name }}</p>
-                            <p><span class="bold">City:</span> {{ $invoice->file->city?->name ?? 'N/A' }}</p>
-                            <p><span class="bold">Service City:</span> {{ $invoice->file->service_city ?? 'N/A' }}</p>
+                            <p><span class="bold">Service City:</span> {{ $invoice->file->city?->name ?? 'N/A' }}</p>
                         </div>
                     </div>
                 </div>
