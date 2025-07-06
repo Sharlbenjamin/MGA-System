@@ -26,7 +26,6 @@ class Invoice extends Model
         'payment_date',
         'transaction_id',
         'paid_amount',
-
         'invoice_date',
         'payment_link',
     ];
@@ -59,18 +58,9 @@ class Invoice extends Model
             if (!$invoice->name) {
                 $invoice->name = static::generateInvoiceNumber($invoice);
             }
-            $invoice->invoice_date = now();
             $invoice->due_date = now()->addDays(30);
         });
 
-        static::updating(function ($invoice) {
-            // If status is being changed to sent
-            if ($invoice->isDirty('status') && $invoice->status === 'Sent') {
-                $invoice->invoice_date = now();
-                $invoice->due_date = now()->addDays(45);
-            }
-
-        });
 
         static::updated(function ($invoice) {
             if ($invoice->isDirty('paid_amount')) {
