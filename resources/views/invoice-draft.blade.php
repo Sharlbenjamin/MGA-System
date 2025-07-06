@@ -155,16 +155,17 @@
             </div>
 
             <div class="info-section">
-                <p><span class="bold">Invoice Number:</span> {{ $invoice->name }}</p>
                 <p><span class="bold">Patient Name:</span> {{ $invoice->patient->name }}</p>
+                <p><span class="bold">Invoice Number:</span> {{ $invoice->name }}</p>
                 <p><span class="bold">MGA Reference:</span> {{ $invoice->file->mga_reference ?? 'N/A' }}</p>
                 <p><span class="bold">Client Reference:</span> {{ $invoice->file->client_reference ?? 'N/A' }}</p>
                 <p><span class="bold">Issue Date:</span> {{ $invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : $invoice->created_at->format('d/m/Y') }}</p>
                 <p><span class="bold">Due Date:</span> {{ $invoice->due_date->format('d/m/Y') }}</p>
-                <p><span class="bold">Service Type:</span> {{ $invoice->file->serviceType->name ?? 'N/A' }}</p>
                 <p><span class="bold">Service Date:</span> {{ $invoice->file->service_date ? $invoice->file->service_date->format('d/m/Y') : 'N/A' }}</p>
+                <p><span class="bold">Service Type:</span> {{ $invoice->file->serviceType->name ?? 'N/A' }}</p>
                 <p><span class="bold">Country:</span> {{ $invoice->file->country->name ?? 'N/A' }}</p>
                 <p><span class="bold">City:</span> {{ $invoice->file->city->name ?? 'N/A' }}</p>
+                <p><span class="bold">Service City:</span> {{ $invoice->file->service_city ?? 'N/A' }}</p>
             </div>
 
             <table class="invoice-table">
