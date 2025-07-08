@@ -16,6 +16,8 @@ use Filament\Tables\Columns\TextColumn;
 use App\Services\UploadGopToGoogleDrive;
 use Filament\Notifications\Notification;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class GopRelationManager extends RelationManager
 {
@@ -89,38 +91,78 @@ class GopRelationManager extends RelationManager
                             ->disk('public')
                             ->directory('gops')
                             ->visibility('public')
-                            ->helperText('Upload the GOP document (PDF or image)'),
+                            ->helperText('Upload the GOP document (PDF or image)')
+                            ->storeFileNamesIn('original_filename')
+                            ->downloadable()
+                            ->openable()
+                            ->preserveFilenames()
+                            ->maxFiles(1),
                     ] : [])
                     ->action(function ($record, array $data = []) {
-                        if ($record->type === 'Out') {
-                            // Generate PDF for Out type
-                            $pdf = Pdf::loadView('pdf.gop_out', ['gop' => $record]);
-                            $content = $pdf->output();
-                            $fileName = 'GOP Out ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.pdf';
-                        } else {
-                            // Upload existing document for In type
-                            if (!isset($data['document'])) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('No document uploaded')
-                                    ->body('Please upload a document first.')
-                                    ->send();
-                                return;
-                            }
+                        try {
+                            if ($record->type === 'Out') {
+                                // Generate PDF for Out type
+                                $pdf = Pdf::loadView('pdf.gop_out', ['gop' => $record]);
+                                $content = $pdf->output();
+                                $fileName = 'GOP Out ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.pdf';
+                            } else {
+                                // Upload existing document for In type
+                                if (!isset($data['document']) || empty($data['document'])) {
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('No document uploaded')
+                                        ->body('Please upload a document first.')
+                                        ->send();
+                                    return;
+                                }
 
-                            $filePath = storage_path('app/public/gops/' . basename($data['document']));
-                            if (!file_exists($filePath)) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('File not found')
-                                    ->body('The uploaded file could not be found.')
-                                    ->send();
-                                return;
-                            }
+                                // Handle the uploaded file properly
+                                $uploadedFile = $data['document'];
+                                
+                                // Log the uploaded file data for debugging
+                                \Log::info('Uploaded file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
+                                
+                                // If it's an array (multiple files), take the first one
+                                if (is_array($uploadedFile)) {
+                                    $uploadedFile = $uploadedFile[0] ?? null;
+                                }
+                                
+                                if (!$uploadedFile) {
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Invalid file data')
+                                        ->body('The uploaded file data is invalid.')
+                                        ->send();
+                                    return;
+                                }
 
-                            $content = file_get_contents($filePath);
-                            $fileName = basename($data['document']);
-                        }
+                                // Handle the uploaded file properly using Storage facade
+                                try {
+                                    // Get the file content using Storage facade
+                                    $content = Storage::disk('public')->get($uploadedFile);
+                                    
+                                    if ($content === false) {
+                                        \Log::error('File not found in storage:', ['path' => $uploadedFile]);
+                                        Notification::make()
+                                            ->danger()
+                                            ->title('File not found')
+                                            ->body('The uploaded file could not be found in storage.')
+                                            ->send();
+                                        return;
+                                    }
+                                    
+                                    $fileName = basename($uploadedFile);
+                                    \Log::info('File successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                } catch (\Exception $e) {
+                                    \Log::error('File access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('File access error')
+                                        ->body('Error accessing uploaded file: ' . $e->getMessage())
+                                        ->send();
+                                    return;
+                                }
+                            }
 
                         // Upload to Google Drive
                         $uploader = app(UploadGopToGoogleDrive::class);
@@ -149,6 +191,14 @@ class GopRelationManager extends RelationManager
                             ->title("GOP {$actionType} successfully")
                             ->body('GOP has been uploaded to Google Drive.')
                             ->send();
+                        } catch (\Exception $e) {
+                            \Log::error('GOP upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload error')
+                                ->body('An error occurred during upload: ' . $e->getMessage())
+                                ->send();
+                        }
                     }),
                 // Add this new action before existing actions
                 Action::make('sendToBranch')

@@ -39,8 +39,12 @@ class LivewireFileUploadServiceProvider extends ServiceProvider
                         mkdir($tempDir, 0755, true);
                     }
 
-                    // Create a temporary file using file_put_contents instead of tmpfile()
-                    file_put_contents($tempPath, '');
+                    // Copy the uploaded file to our temporary location
+                    if ($this->storage->exists($this->path)) {
+                        $stream = $this->storage->readStream($this->path);
+                        file_put_contents($tempPath, stream_get_contents($stream));
+                        fclose($stream);
+                    }
                     
                     parent::__construct($tempPath, $this->path);
                 }
@@ -55,16 +59,32 @@ class LivewireFileUploadServiceProvider extends ServiceProvider
                         mkdir($tempDir, 0755, true);
                     }
 
-                    $stream = $this->storage->readStream($this->path);
-                    file_put_contents($tempPath, stream_get_contents($stream));
-                    fclose($stream);
+                    if ($this->storage->exists($this->path)) {
+                        $stream = $this->storage->readStream($this->path);
+                        file_put_contents($tempPath, stream_get_contents($stream));
+                        fclose($stream);
 
-                    $dimensions = @getimagesize($tempPath);
+                        $dimensions = @getimagesize($tempPath);
+                        
+                        // Clean up the temporary file
+                        @unlink($tempPath);
+                        
+                        return $dimensions;
+                    }
                     
-                    // Clean up the temporary file
-                    @unlink($tempPath);
-                    
-                    return $dimensions;
+                    return false;
+                }
+
+                public function getRealPath()
+                {
+                    // Return the actual file path for the uploaded file
+                    return $this->storage->path($this->path);
+                }
+
+                public function getPathname()
+                {
+                    // Return the actual file path for the uploaded file
+                    return $this->storage->path($this->path);
                 }
             };
         });
