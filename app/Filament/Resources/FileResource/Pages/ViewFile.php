@@ -35,6 +35,11 @@ use Filament\Forms\Components\Toggle;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
 use Illuminate\Support\Str;
+use App\Models\DraftMail;
+use Filament\Forms\Components\RichEditor;
+
+
+use Filament\Support\Colors\Color;
 
 class ViewFile extends ViewRecord
 {
@@ -384,26 +389,165 @@ class ViewFile extends ViewRecord
                 ->icon('heroicon-o-paper-airplane')
                 ->color('warning')
                 ->modalHeading('Notify Client')
-                ->modalWidth('xl')
+                ->modalWidth('7xl')
                 ->form([
-                    Select::make('status')->searchable()
-                        ->options(['New' => 'New',
-                        'Available' => 'Available',
-                        'Confirmed' => 'Confirmed',
-                        'Assisted' => 'Assisted',
-                        'Hold' => 'Hold',
-                        'Cancelled' => 'Cancelled',
-                        'Void' => 'Void',
-                        'Requesting GOP' => 'Requesting GOP',
-                        'Ask' => 'Ask',
-                        'Custom' => 'Custom'
-                        ])->required()->live(),
-                    Textarea::make('message')->visible(fn ($get) => $get('status') == 'Custom')
-                ])->modalSubmitActionLabel('Send')
-                ->action(function (array $data, $record) {
-                    $message = $data['status'] === 'Custom' ? ($data['message'] ?? null) : null;
-                    $record->patient->client->notifyClient($data['status'], $record, $message);
-                }),
+                    Select::make('draft_mail_id')
+                        ->label('Select Template')
+                        ->options(function () {
+                            return DraftMail::where('type', 'file')
+                                ->pluck('mail_name', 'id')
+                                ->toArray();
+                        })
+                        ->searchable()
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function ($state, $set, $record, $get) {
+                            \Log::info('Template selected', ['draft_mail_id' => $state]);
+                            if ($state) {
+                                $draftMail = DraftMail::find($state);
+                                if ($draftMail) {
+                                    $this->updatePreview($set, $record, $get);
+                                }
+                            }
+                        }),
+                    
+                    CheckboxList::make('include_fields')
+                        ->label('Include Optional Fields')
+                        ->options([
+                            'patient_name' => 'Patient Name',
+                            'service_type' => 'Service Type',
+                            'country' => 'Country',
+                            'city' => 'City',
+                            'provider_branch' => 'Provider Branch',
+                            'provider_name' => 'Provider Name',
+                        ])
+                        ->columns(3)
+                        ->default(['patient_name', 'service_type', 'diagnosis'])
+                        ->live()
+                        ->afterStateUpdated(function ($state, $set, $record, $get) {
+                            \Log::info('Checkbox state updated', ['state' => $state]);
+                            $this->updatePreview($set, $record, $get);
+                        }),
+                    
+                    Textarea::make('custom_notes')
+                        ->label('Custom Notes')
+                        ->placeholder('Add any additional notes to append to the message...')
+                        ->rows(3)
+                        ->live()
+                        ->afterStateUpdated(function ($state, $set, $record, $get) {
+                            \Log::info('Custom notes updated', ['notes' => $state]);
+                            $this->updatePreview($set, $record, $get);
+                        }),
+                    
+                    Textarea::make('preview_content')
+                        ->label('Message Preview')
+                        ->rows(10)
+                        ->disabled()
+                        ->placeholder('Select a template to see the preview...')
+                        ->columnSpanFull(),
+                    
+
+                ])
+                ->modalSubmitAction(false)
+                ->extraModalFooterActions([
+                    \Filament\Actions\Action::make('translate_spanish')
+                        ->label('Spanish')
+                        ->icon('heroicon-o-language')
+                        ->color(Color::Blue)
+                        ->modalHeading('Translated Message (Spanish)')
+                        ->modalContent(function ($record) {
+                            // For now, show a simple notification with translation info
+                            return view('filament.forms.components.translated-message', [
+                                'translatedMessage' => 'Please use the copy button to copy the current message, then translate it using an external translation service.',
+                                'languageName' => 'Spanish'
+                            ]);
+                        })
+                        ->modalActions([
+                            \Filament\Actions\Action::make('copy_spanish')
+                                ->label('Copy Current Message')
+                                ->color(Color::Gray)
+                                ->action(function ($record) {
+                                    // Copy the current preview content
+                                    $this->copyToClipboard('Current message copied. Please translate externally.', 'Current Message');
+                                }),
+                        ]),
+                    
+                    \Filament\Actions\Action::make('translate_italian')
+                        ->label('Italian')
+                        ->icon('heroicon-o-language')
+                        ->color(Color::Green)
+                        ->modalHeading('Translated Message (Italian)')
+                        ->modalContent(function ($record) {
+                            // For now, show a simple notification with translation info
+                            return view('filament.forms.components.translated-message', [
+                                'translatedMessage' => 'Please use the copy button to copy the current message, then translate it using an external translation service.',
+                                'languageName' => 'Italian'
+                            ]);
+                        })
+                        ->modalActions([
+                            \Filament\Actions\Action::make('copy_italian')
+                                ->label('Copy Current Message')
+                                ->color(Color::Gray)
+                                ->action(function ($record) {
+                                    // Copy the current preview content
+                                    $this->copyToClipboard('Current message copied. Please translate externally.', 'Current Message');
+                                }),
+                        ]),
+                    
+                    \Filament\Actions\Action::make('translate_german')
+                        ->label('German')
+                        ->icon('heroicon-o-language')
+                        ->color(Color::Orange)
+                        ->modalHeading('Translated Message (German)')
+                        ->modalContent(function ($record) {
+                            // For now, show a simple notification with translation info
+                            return view('filament.forms.components.translated-message', [
+                                'translatedMessage' => 'Please use the copy button to copy the current message, then translate it using an external translation service.',
+                                'languageName' => 'German'
+                            ]);
+                        })
+                        ->modalActions([
+                            \Filament\Actions\Action::make('copy_german')
+                                ->label('Copy Current Message')
+                                ->color(Color::Gray)
+                                ->action(function ($record) {
+                                    // Copy the current preview content
+                                    $this->copyToClipboard('Current message copied. Please translate externally.', 'Current Message');
+                                }),
+                        ]),
+                    
+                    \Filament\Actions\Action::make('translate_french')
+                        ->label('French')
+                        ->icon('heroicon-o-language')
+                        ->color(Color::Purple)
+                        ->modalHeading('Translated Message (French)')
+                        ->modalContent(function ($record) {
+                            // For now, show a simple notification with translation info
+                            return view('filament.forms.components.translated-message', [
+                                'translatedMessage' => 'Please use the copy button to copy the current message, then translate it using an external translation service.',
+                                'languageName' => 'French'
+                            ]);
+                        })
+                        ->modalActions([
+                            \Filament\Actions\Action::make('copy_french')
+                                ->label('Copy Current Message')
+                                ->color(Color::Gray)
+                                ->action(function ($record) {
+                                    // Copy the current preview content
+                                    $this->copyToClipboard('Current message copied. Please translate externally.', 'Current Message');
+                                }),
+                        ]),
+                    
+                    \Filament\Actions\Action::make('copy_to_clipboard')
+                        ->label('Copy Current Message')
+                        ->icon('heroicon-o-clipboard-document')
+                        ->color(Color::Gray)
+                        ->action(function ($record) {
+                            // Get the current preview content from the form
+                            $previewContent = request()->input('preview_content') ?? 'No message available';
+                            $this->copyToClipboard($previewContent, 'Current Message');
+                        }),
+                ]),
             Action::make('viewFinancial')
                 ->label('Invocies & Bills')
                 ->icon('heroicon-o-document-currency-euro')
@@ -923,5 +1067,324 @@ class ViewFile extends ViewRecord
         
         // Return formatted string with proper line breaks
         return "Patient Name: {$patientName}\nDOB: {$dob}\nMGA Reference: {$mgaReference}\nSymptoms: {$symptoms}\nRequest: {$request}";
+    }
+
+    /**
+     * Update the preview content based on current form state
+     */
+    public function updatePreview($set, $record, $get): void
+    {
+        $draftMailId = $get('draft_mail_id');
+        if ($draftMailId) {
+            $draftMail = DraftMail::find($draftMailId);
+            if ($draftMail) {
+                $includeFields = $get('include_fields') ?? [];
+                $customNotes = $get('custom_notes') ?? '';
+                $processedMessage = $this->processTemplate($draftMail->body_mail, $record, $includeFields, $customNotes);
+                $set('preview_content', $processedMessage);
+                
+                // Debug: Log the update
+                \Log::info('Preview updated', [
+                    'draft_mail_id' => $draftMailId,
+                    'include_fields' => $includeFields,
+                    'custom_notes' => $customNotes,
+                    'message_length' => strlen($processedMessage)
+                ]);
+            }
+        } else {
+            // If no template selected, clear the preview
+            $set('preview_content', '');
+        }
+    }
+
+    /**
+     * Process template with file data and optional fields
+     */
+    public function processTemplate(string $template, $record, array $includeFields = [], string $customNotes = ''): string
+    {
+        $data = $this->getFileData($record, $includeFields);
+        
+        // Replace placeholders in template
+        $message = $template;
+        
+        // Handle conditional blocks first
+        $message = $this->processConditionalBlocks($message, $data);
+        
+        // Replace simple placeholders
+        foreach ($data as $key => $value) {
+            $message = str_replace('{{' . $key . '}}', $value, $message);
+            $message = str_replace('{' . $key . '}', $value, $message);
+        }
+        
+        // Add custom notes if provided
+        if (!empty($customNotes)) {
+            $message .= "\n\n" . trim($customNotes);
+        }
+        
+        return $message;
+    }
+
+    /**
+     * Process conditional blocks in templates
+     */
+    private function processConditionalBlocks(string $message, array $data): string
+    {
+        // Handle {{#if field}}content{{/if}} blocks
+        $pattern = '/\{\{#if\s+(\w+)\}\}(.*?)\{\{\/if\}\}/s';
+        return preg_replace_callback($pattern, function ($matches) use ($data) {
+            $field = $matches[1];
+            $content = $matches[2];
+            
+            // Check if the field exists and has a value other than 'N/A'
+            if (isset($data[$field]) && $data[$field] !== 'N/A' && !empty($data[$field])) {
+                return $content;
+            }
+            
+            return '';
+        }, $message);
+    }
+
+    /**
+     * Get file data for template processing - only File model data
+     */
+    public function getFileData($record, array $includeFields = []): array
+    {
+        $data = [];
+        
+        // Always include basic File data
+        $data['mga_reference'] = $record->mga_reference ?? 'N/A';
+        $data['client_reference'] = $record->client_reference ?? 'N/A';
+        $data['service_date'] = $record->service_date ? $record->service_date->format('d/m/Y') : 'N/A';
+        $data['service_time'] = $record->service_time ?? 'N/A';
+        $data['address'] = $record->address ?? 'N/A';
+        $data['symptoms'] = $record->symptoms ?? 'N/A';
+        $data['diagnosis'] = $record->diagnosis ?? 'N/A';
+        $data['email'] = $record->email ?? 'N/A';
+        $data['phone'] = $record->phone ?? 'N/A';
+        $data['contact_patient'] = $record->contact_patient ?? 'N/A';
+        $data['google_drive_link'] = $record->google_drive_link ?? 'N/A';
+        $data['status'] = $record->status ?? 'N/A';
+        
+        // Include related data only if specifically requested
+        if (in_array('patient_name', $includeFields)) {
+            $data['patient_name'] = $record->patient->name ?? 'N/A';
+        }
+        
+        if (in_array('service_type', $includeFields)) {
+            $data['service_type'] = $record->serviceType->name ?? 'N/A';
+        }
+        
+        if (in_array('country', $includeFields)) {
+            $data['country'] = $record->country->name ?? 'N/A';
+        }
+        
+        if (in_array('city', $includeFields)) {
+            $data['city'] = $record->city->name ?? 'N/A';
+        }
+        
+        if (in_array('provider_branch', $includeFields)) {
+            $data['provider_branch'] = $record->providerBranch->branch_name ?? 'N/A';
+        }
+        
+        if (in_array('provider_name', $includeFields)) {
+            $data['provider_name'] = $record->providerBranch->provider->name ?? 'N/A';
+        }
+        
+        return $data;
+    }
+
+    /**
+     * Show translation options
+     */
+    public function showTranslationOptions(string $message): void
+    {
+        // For now, we'll show a simple notification with translation options
+        // In a full implementation, you'd want to create a proper modal
+        Notification::make()
+            ->title('Translation Options')
+            ->body('Translation feature is available. Use the copy button and translate externally for now.')
+            ->info()
+            ->send();
+    }
+
+    /**
+     * Translate message using Google Translate API
+     */
+    public function translateMessage(string $message, string $targetLanguage): void
+    {
+        try {
+            // For now, we'll use a simple approach with Google Translate
+            // In production, you'd want to use the Google Translate API
+            $translatedMessage = $this->simpleTranslate($message, $targetLanguage);
+            
+            $this->copyToClipboard($translatedMessage, 'Translated Message (' . strtoupper($targetLanguage) . ')');
+            
+            Notification::make()
+                ->title('Translation Complete')
+                ->body('Message has been translated to ' . $this->getLanguageName($targetLanguage) . ' and copied to clipboard.')
+                ->success()
+                ->send();
+                
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Translation Failed')
+                ->body('Unable to translate message: ' . $e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    /**
+     * Get language name from code
+     */
+    public function getLanguageName(string $code): string
+    {
+        $languages = [
+            'es' => 'Spanish',
+            'it' => 'Italian',
+            'de' => 'German',
+            'fr' => 'French',
+        ];
+        
+        return $languages[$code] ?? $code;
+    }
+
+    /**
+     * Get current form message based on form state
+     */
+    public function getCurrentFormMessage($record, $draftMailId, $includeFields, $customNotes): string
+    {
+        if ($draftMailId) {
+            $draftMail = DraftMail::find($draftMailId);
+            if ($draftMail) {
+                return $this->processTemplate($draftMail->body_mail, $record, $includeFields, $customNotes);
+            }
+        }
+        
+        // Fallback to a basic message
+        return "Dear " . ($record->patient->name ?? 'Client') . ",\n\nThis is a notification regarding your case.\n\nBest regards,\nMGA Team";
+    }
+
+
+
+    /**
+     * Simple translation function (placeholder - replace with actual API)
+     */
+    public function simpleTranslate(string $message, string $targetLanguage): string
+    {
+        // This is a placeholder implementation
+        // In production, you should use Google Translate API or DeepL API
+        
+        $translations = [
+            'es' => [
+                'Dear' => 'Estimado/a',
+                'MGA Reference' => 'Referencia MGA',
+                'Client Reference' => 'Referencia del Cliente',
+                'Service Date' => 'Fecha de Servicio',
+                'Service Time' => 'Hora de Servicio',
+                'Address' => 'Dirección',
+                'Symptoms' => 'Síntomas',
+                'Diagnosis' => 'Diagnóstico',
+                'Email' => 'Correo Electrónico',
+                'Phone' => 'Teléfono',
+                'Contact Patient' => 'Contactar Paciente',
+                'Google Drive Link' => 'Enlace de Google Drive',
+                'Status' => 'Estado',
+                'Patient Name' => 'Nombre del Paciente',
+                'Service Type' => 'Tipo de Servicio',
+                'Country' => 'País',
+                'City' => 'Ciudad',
+                'Provider Branch' => 'Sucursal del Proveedor',
+                'Provider Name' => 'Nombre del Proveedor',
+                'Best regards' => 'Saludos cordiales',
+                'MGA Team' => 'Equipo MGA',
+                'This is a notification regarding your case' => 'Esta es una notificación sobre su caso',
+                'No message available' => 'No hay mensaje disponible',
+            ],
+            'it' => [
+                'Dear' => 'Gentile',
+                'MGA Reference' => 'Riferimento MGA',
+                'Client Reference' => 'Riferimento Cliente',
+                'Service Date' => 'Data di Servizio',
+                'Service Time' => 'Ora di Servizio',
+                'Address' => 'Indirizzo',
+                'Symptoms' => 'Sintomi',
+                'Diagnosis' => 'Diagnosi',
+                'Email' => 'Email',
+                'Phone' => 'Telefono',
+                'Contact Patient' => 'Contattare Paziente',
+                'Google Drive Link' => 'Link Google Drive',
+                'Status' => 'Stato',
+                'Patient Name' => 'Nome del Paziente',
+                'Service Type' => 'Tipo di Servizio',
+                'Country' => 'Paese',
+                'City' => 'Città',
+                'Provider Branch' => 'Filiale Fornitore',
+                'Provider Name' => 'Nome Fornitore',
+                'Best regards' => 'Cordiali saluti',
+                'MGA Team' => 'Team MGA',
+                'This is a notification regarding your case' => 'Questa è una notifica riguardo al suo caso',
+                'No message available' => 'Nessun messaggio disponibile',
+            ],
+            'fr' => [
+                'Dear' => 'Cher/Chère',
+                'MGA Reference' => 'Référence MGA',
+                'Client Reference' => 'Référence Client',
+                'Service Date' => 'Date de Service',
+                'Service Time' => 'Heure de Service',
+                'Address' => 'Adresse',
+                'Symptoms' => 'Symptômes',
+                'Diagnosis' => 'Diagnostic',
+                'Email' => 'Email',
+                'Phone' => 'Téléphone',
+                'Contact Patient' => 'Contacter Patient',
+                'Google Drive Link' => 'Lien Google Drive',
+                'Status' => 'Statut',
+                'Patient Name' => 'Nom du Patient',
+                'Service Type' => 'Type de Service',
+                'Country' => 'Pays',
+                'City' => 'Ville',
+                'Provider Branch' => 'Succursale Fournisseur',
+                'Provider Name' => 'Nom du Fournisseur',
+                'Best regards' => 'Cordialement',
+                'MGA Team' => 'Équipe MGA',
+                'This is a notification regarding your case' => 'Ceci est une notification concernant votre dossier',
+                'No message available' => 'Aucun message disponible',
+            ],
+            'de' => [
+                'Dear' => 'Sehr geehrte/r',
+                'MGA Reference' => 'MGA Referenz',
+                'Client Reference' => 'Kundenreferenz',
+                'Service Date' => 'Servicedatum',
+                'Service Time' => 'Servicezeit',
+                'Address' => 'Adresse',
+                'Symptoms' => 'Symptome',
+                'Diagnosis' => 'Diagnose',
+                'Email' => 'E-Mail',
+                'Phone' => 'Telefon',
+                'Contact Patient' => 'Patient kontaktieren',
+                'Google Drive Link' => 'Google Drive Link',
+                'Status' => 'Status',
+                'Patient Name' => 'Patientenname',
+                'Service Type' => 'Servicetyp',
+                'Country' => 'Land',
+                'City' => 'Stadt',
+                'Provider Branch' => 'Anbieterfiliale',
+                'Provider Name' => 'Anbietername',
+                'Best regards' => 'Mit freundlichen Grüßen',
+                'MGA Team' => 'MGA Team',
+                'This is a notification regarding your case' => 'Dies ist eine Benachrichtigung bezüglich Ihres Falls',
+                'No message available' => 'Keine Nachricht verfügbar',
+            ],
+        ];
+        
+        $translated = $message;
+        if (isset($translations[$targetLanguage])) {
+            foreach ($translations[$targetLanguage] as $english => $translatedWord) {
+                $translated = str_replace($english, $translatedWord, $translated);
+            }
+        }
+        
+        return $translated;
     }
 }

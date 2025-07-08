@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             RoleSeeder::class,
             ProviderDraftMailSeeder::class,
+            FileDraftMailSeeder::class,
             ProviderBranchSeeder::class,
             ProvinceSeeder::class,
         ]);
