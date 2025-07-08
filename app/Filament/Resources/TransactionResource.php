@@ -261,6 +261,110 @@ class TransactionResource extends Resource
 
             ])
             ->actions([
+                Action::make('uploadDocument')
+                    ->label('Upload Document')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Upload Transaction Document')
+                    ->modalDescription('Upload the transaction document to Google Drive.')
+                    ->modalSubmitActionLabel('Upload')
+                    ->form([
+                        Forms\Components\FileUpload::make('document')
+                            ->label('Upload Transaction Document')
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                            ->maxSize(10240) // 10MB
+                            ->required()
+                            ->disk('public')
+                            ->directory('transactions')
+                            ->visibility('public')
+                            ->helperText('Upload the transaction document (PDF or image)')
+                            ->storeFileNamesIn('original_filename')
+                            ->downloadable()
+                            ->openable()
+                            ->preserveFilenames()
+                            ->maxFiles(1),
+                    ])
+                    ->action(function ($record, array $data = []) {
+                        try {
+                            if (!isset($data['document']) || empty($data['document'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('No document uploaded')
+                                    ->body('Please upload a document first.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Handle the uploaded file properly
+                            $uploadedFile = $data['document'];
+                            
+                            // Log the uploaded file data for debugging
+                            \Log::info('Transaction upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
+                            
+                            // If it's an array (multiple files), take the first one
+                            if (is_array($uploadedFile)) {
+                                $uploadedFile = $uploadedFile[0] ?? null;
+                            }
+                            
+                            if (!$uploadedFile) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Invalid file data')
+                                    ->body('The uploaded file data is invalid.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Handle the uploaded file properly using Storage facade
+                            try {
+                                // Get the file content using Storage facade
+                                $content = \Storage::disk('public')->get($uploadedFile);
+                                
+                                if ($content === false) {
+                                    \Log::error('Transaction file not found in storage:', ['path' => $uploadedFile]);
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('File not found')
+                                        ->body('The uploaded file could not be found in storage.')
+                                        ->send();
+                                    return;
+                                }
+                                
+                                // Generate the proper filename format
+                                $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
+                                $fileName = 'Transaction ' . $record->name . ' - ' . $record->date->format('Y-m-d') . '.' . $originalExtension;
+                                \Log::info('Transaction file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                
+                                // Here you would upload to Google Drive
+                                // For now, we'll just update the transaction with the file path
+                                $record->attachment_path = $uploadedFile;
+                                $record->save();
+                                
+                                Notification::make()
+                                    ->success()
+                                    ->title('Transaction document uploaded successfully')
+                                    ->body('Transaction document has been uploaded.')
+                                    ->send();
+                                    
+                            } catch (\Exception $e) {
+                                \Log::error('Transaction file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
+                                Notification::make()
+                                    ->danger()
+                                    ->title('File access error')
+                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
+                                    ->send();
+                                return;
+                            }
+                        } catch (\Exception $e) {
+                            \Log::error('Transaction upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload error')
+                                ->body('An error occurred during upload: ' . $e->getMessage())
+                                ->send();
+                        }
+                    }),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

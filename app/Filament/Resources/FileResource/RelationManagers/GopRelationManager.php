@@ -104,7 +104,7 @@ class GopRelationManager extends RelationManager
                                 // Generate PDF for Out type
                                 $pdf = Pdf::loadView('pdf.gop_out', ['gop' => $record]);
                                 $content = $pdf->output();
-                                $fileName = 'GOP Out ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.pdf';
+                                $fileName = 'GOP in ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.pdf';
                             } else {
                                 // Upload existing document for In type
                                 if (!isset($data['document']) || empty($data['document'])) {
@@ -151,7 +151,9 @@ class GopRelationManager extends RelationManager
                                         return;
                                     }
                                     
-                                    $fileName = basename($uploadedFile);
+                                    // Generate the proper filename format
+                                    $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
+                                    $fileName = 'GOP in ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
                                     Log::info('File successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 } catch (\Exception $e) {
                                     Log::error('File access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
