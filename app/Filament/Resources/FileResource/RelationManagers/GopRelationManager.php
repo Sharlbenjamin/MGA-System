@@ -96,7 +96,9 @@ class GopRelationManager extends RelationManager
                             ->downloadable()
                             ->openable()
                             ->preserveFilenames()
-                            ->maxFiles(1),
+                            ->maxFiles(1)
+                            ->livewire(false)
+                            ->disableLivewireFileUpload(),
                     ] : [])
                     ->action(function ($record, array $data = []) {
                         try {
@@ -120,7 +122,7 @@ class GopRelationManager extends RelationManager
                                 $uploadedFile = $data['document'];
                                 
                                 // Log the uploaded file data for debugging
-                                \Log::info('Uploaded file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
+                                Log::info('Uploaded file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
                                 
                                 // If it's an array (multiple files), take the first one
                                 if (is_array($uploadedFile)) {
@@ -142,7 +144,7 @@ class GopRelationManager extends RelationManager
                                     $content = Storage::disk('public')->get($uploadedFile);
                                     
                                     if ($content === false) {
-                                        \Log::error('File not found in storage:', ['path' => $uploadedFile]);
+                                        Log::error('File not found in storage:', ['path' => $uploadedFile]);
                                         Notification::make()
                                             ->danger()
                                             ->title('File not found')
@@ -152,9 +154,9 @@ class GopRelationManager extends RelationManager
                                     }
                                     
                                     $fileName = basename($uploadedFile);
-                                    \Log::info('File successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                    Log::info('File successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 } catch (\Exception $e) {
-                                    \Log::error('File access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
+                                    Log::error('File access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
                                     Notification::make()
                                         ->danger()
                                         ->title('File access error')
@@ -192,7 +194,7 @@ class GopRelationManager extends RelationManager
                             ->body('GOP has been uploaded to Google Drive.')
                             ->send();
                         } catch (\Exception $e) {
-                            \Log::error('GOP upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
+                            Log::error('GOP upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
                             Notification::make()
                                 ->danger()
                                 ->title('Upload error')
