@@ -96,9 +96,7 @@ class GopRelationManager extends RelationManager
                             ->downloadable()
                             ->openable()
                             ->preserveFilenames()
-                            ->maxFiles(1)
-                            ->livewire(false)
-                            ->disableLivewireFileUpload(),
+                            ->maxFiles(1),
                     ] : [])
                     ->action(function ($record, array $data = []) {
                         try {
