@@ -4,12 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\FilesWithoutMedicalReportResource\Pages;
 use App\Models\File;
+use App\Models\MedicalReport;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class FilesWithoutMedicalReportResource extends Resource
 {
@@ -132,6 +137,137 @@ class FilesWithoutMedicalReportResource extends Resource
                     ->url(fn (File $record): string => route('filament.admin.resources.files.edit', $record))
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
+                Action::make('upload_medical_report')
+                    ->label('Upload Medical Report')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Upload Medical Report')
+                    ->modalDescription('Upload a medical report document for this file.')
+                    ->modalSubmitActionLabel('Upload Medical Report')
+                    ->form([
+                        Forms\Components\TextInput::make('title')
+                            ->label('Report Title')
+                            ->required()
+                            ->default(fn (File $record) => 'Medical Report - ' . $record->mga_reference),
+                        Forms\Components\Textarea::make('description')
+                            ->label('Description')
+                            ->rows(3)
+                            ->nullable(),
+                        Forms\Components\DatePicker::make('report_date')
+                            ->label('Report Date')
+                            ->required()
+                            ->default(now()),
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                'Draft' => 'Draft',
+                                'Final' => 'Final',
+                                'Reviewed' => 'Reviewed'
+                            ])
+                            ->default('Draft')
+                            ->required(),
+                        Forms\Components\FileUpload::make('document')
+                            ->label('Upload Medical Report Document')
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                            ->maxSize(10240) // 10MB
+                            ->required()
+                            ->disk('public')
+                            ->directory('medical-reports')
+                            ->visibility('public')
+                            ->helperText('Upload the medical report document (PDF or image)')
+                            ->storeFileNamesIn('original_filename')
+                            ->downloadable()
+                            ->openable()
+                            ->preserveFilenames()
+                            ->maxFiles(1),
+                    ])
+                    ->action(function (File $record, array $data) {
+                        try {
+                            if (!isset($data['document']) || empty($data['document'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('No document uploaded')
+                                    ->body('Please upload a document first.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Handle the uploaded file properly
+                            $uploadedFile = $data['document'];
+                            
+                            // Log the uploaded file data for debugging
+                            Log::info('Medical report upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
+                            
+                            // If it's an array (multiple files), take the first one
+                            if (is_array($uploadedFile)) {
+                                $uploadedFile = $uploadedFile[0] ?? null;
+                            }
+                            
+                            if (!$uploadedFile) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Invalid file data')
+                                    ->body('The uploaded file data is invalid.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Handle the uploaded file properly using Storage facade
+                            try {
+                                // Get the file content using Storage facade
+                                $content = Storage::disk('public')->get($uploadedFile);
+                                
+                                if ($content === false) {
+                                    Log::error('Medical report file not found in storage:', ['path' => $uploadedFile]);
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('File not found')
+                                        ->body('The uploaded file could not be found in storage.')
+                                        ->send();
+                                    return;
+                                }
+                                
+                                // Generate the proper filename format
+                                $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
+                                $fileName = 'Medical Report ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
+                                Log::info('Medical report file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                
+                                // Create the medical report record
+                                $medicalReport = new MedicalReport([
+                                    'file_id' => $record->id,
+                                    'title' => $data['title'],
+                                    'description' => $data['description'] ?? null,
+                                    'report_date' => $data['report_date'],
+                                    'status' => $data['status'],
+                                    'medical_report_google_link' => $uploadedFile, // Store the file path for now
+                                ]);
+                                
+                                $medicalReport->save();
+                                
+                                Notification::make()
+                                    ->success()
+                                    ->title('Medical report uploaded successfully')
+                                    ->body('Medical report document has been uploaded and created.')
+                                    ->send();
+                                    
+                            } catch (\Exception $e) {
+                                Log::error('Medical report file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
+                                Notification::make()
+                                    ->danger()
+                                    ->title('File access error')
+                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
+                                    ->send();
+                                return;
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Medical report upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload error')
+                                ->body('An error occurred during upload: ' . $e->getMessage())
+                                ->send();
+                        }
+                    }),
                 Tables\Actions\Action::make('create_medical_report')
                     ->url(fn (File $record): string => route('filament.admin.resources.files.edit', $record) . '#medical-reports')
                     ->icon('heroicon-o-plus')

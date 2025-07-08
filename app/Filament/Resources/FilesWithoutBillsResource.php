@@ -4,12 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\FilesWithoutBillsResource\Pages;
 use App\Models\File;
+use App\Models\Bill;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class FilesWithoutBillsResource extends Resource
 {
@@ -134,6 +139,138 @@ class FilesWithoutBillsResource extends Resource
                     ->url(fn (File $record): string => route('filament.admin.resources.files.edit', $record))
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
+                Action::make('upload_bill')
+                    ->label('Upload Bill')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Upload Bill Document')
+                    ->modalDescription('Upload a bill document for this file.')
+                    ->modalSubmitActionLabel('Upload Bill')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Bill Name')
+                            ->required()
+                            ->default(fn (File $record) => $record->mga_reference . '-Bill-01'),
+                        Forms\Components\TextInput::make('total_amount')
+                            ->label('Total Amount')
+                            ->numeric()
+                            ->required()
+                            ->prefix('€'),
+                        Forms\Components\DatePicker::make('due_date')
+                            ->label('Due Date')
+                            ->required()
+                            ->default(now()->addDays(60)),
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                'Unpaid' => 'Unpaid',
+                                'Partial' => 'Partial',
+                                'Paid' => 'Paid'
+                            ])
+                            ->default('Unpaid')
+                            ->required(),
+                        Forms\Components\FileUpload::make('document')
+                            ->label('Upload Bill Document')
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                            ->maxSize(10240) // 10MB
+                            ->required()
+                            ->disk('public')
+                            ->directory('bills')
+                            ->visibility('public')
+                            ->helperText('Upload the bill document (PDF or image)')
+                            ->storeFileNamesIn('original_filename')
+                            ->downloadable()
+                            ->openable()
+                            ->preserveFilenames()
+                            ->maxFiles(1),
+                    ])
+                    ->action(function (File $record, array $data) {
+                        try {
+                            if (!isset($data['document']) || empty($data['document'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('No document uploaded')
+                                    ->body('Please upload a document first.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Handle the uploaded file properly
+                            $uploadedFile = $data['document'];
+                            
+                            // Log the uploaded file data for debugging
+                            Log::info('Bill upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
+                            
+                            // If it's an array (multiple files), take the first one
+                            if (is_array($uploadedFile)) {
+                                $uploadedFile = $uploadedFile[0] ?? null;
+                            }
+                            
+                            if (!$uploadedFile) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Invalid file data')
+                                    ->body('The uploaded file data is invalid.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Handle the uploaded file properly using Storage facade
+                            try {
+                                // Get the file content using Storage facade
+                                $content = Storage::disk('public')->get($uploadedFile);
+                                
+                                if ($content === false) {
+                                    Log::error('Bill file not found in storage:', ['path' => $uploadedFile]);
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('File not found')
+                                        ->body('The uploaded file could not be found in storage.')
+                                        ->send();
+                                    return;
+                                }
+                                
+                                // Generate the proper filename format
+                                $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
+                                $fileName = 'Bill ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
+                                Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                
+                                // Create the bill record
+                                $bill = new Bill([
+                                    'file_id' => $record->id,
+                                    'name' => $data['name'],
+                                    'total_amount' => $data['total_amount'],
+                                    'due_date' => $data['due_date'],
+                                    'status' => $data['status'],
+                                    'bill_google_link' => $uploadedFile, // Store the file path for now
+                                ]);
+                                
+                                $bill->save();
+                                
+                                Notification::make()
+                                    ->success()
+                                    ->title('Bill uploaded successfully')
+                                    ->body('Bill document has been uploaded and created.')
+                                    ->send();
+                                    
+                            } catch (\Exception $e) {
+                                Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
+                                Notification::make()
+                                    ->danger()
+                                    ->title('File access error')
+                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
+                                    ->send();
+                                return;
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Bill upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload error')
+                                ->body('An error occurred during upload: ' . $e->getMessage())
+                                ->send();
+                        }
+                    }),
                 Tables\Actions\Action::make('create_bill')
                     ->url(fn (File $record): string => route('filament.admin.resources.files.edit', $record) . '#bills')
                     ->icon('heroicon-o-plus')

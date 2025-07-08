@@ -4,12 +4,17 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\FilesWithoutGopResource\Pages;
 use App\Models\File;
+use App\Models\Gop;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class FilesWithoutGopResource extends Resource
 {
@@ -134,6 +139,140 @@ class FilesWithoutGopResource extends Resource
                     ->url(fn (File $record): string => route('filament.admin.resources.files.edit', $record))
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
+                Action::make('upload_gop')
+                    ->label('Upload GOP')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Upload GOP Document')
+                    ->modalDescription('Upload a GOP document for this file.')
+                    ->modalSubmitActionLabel('Upload GOP')
+                    ->form([
+                        Forms\Components\Select::make('type')
+                            ->options([
+                                'In'  => 'In',
+                                'Out' => 'Out',
+                            ])
+                            ->required()
+                            ->default('In'),
+                        Forms\Components\TextInput::make('amount')
+                            ->numeric()
+                            ->required()
+                            ->prefix('€'),
+                        Forms\Components\DatePicker::make('date')
+                            ->required()
+                            ->default(now()),
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                'Not Sent' => 'Not Sent',
+                                'Sent' => 'Sent',
+                                'Updated' => 'Updated',
+                                'Cancelled' => 'Cancelled'
+                            ])
+                            ->default('Not Sent')
+                            ->required(),
+                        Forms\Components\FileUpload::make('document')
+                            ->label('Upload GOP Document')
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                            ->maxSize(10240) // 10MB
+                            ->required()
+                            ->disk('public')
+                            ->directory('gops')
+                            ->visibility('public')
+                            ->helperText('Upload the GOP document (PDF or image)')
+                            ->storeFileNamesIn('original_filename')
+                            ->downloadable()
+                            ->openable()
+                            ->preserveFilenames()
+                            ->maxFiles(1),
+                    ])
+                    ->action(function (File $record, array $data) {
+                        try {
+                            if (!isset($data['document']) || empty($data['document'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('No document uploaded')
+                                    ->body('Please upload a document first.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Handle the uploaded file properly
+                            $uploadedFile = $data['document'];
+                            
+                            // Log the uploaded file data for debugging
+                            Log::info('GOP upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
+                            
+                            // If it's an array (multiple files), take the first one
+                            if (is_array($uploadedFile)) {
+                                $uploadedFile = $uploadedFile[0] ?? null;
+                            }
+                            
+                            if (!$uploadedFile) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Invalid file data')
+                                    ->body('The uploaded file data is invalid.')
+                                    ->send();
+                                return;
+                            }
+
+                            // Handle the uploaded file properly using Storage facade
+                            try {
+                                // Get the file content using Storage facade
+                                $content = Storage::disk('public')->get($uploadedFile);
+                                
+                                if ($content === false) {
+                                    Log::error('GOP file not found in storage:', ['path' => $uploadedFile]);
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('File not found')
+                                        ->body('The uploaded file could not be found in storage.')
+                                        ->send();
+                                    return;
+                                }
+                                
+                                // Generate the proper filename format
+                                $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
+                                $fileName = 'GOP in ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
+                                Log::info('GOP file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                
+                                // Create the GOP record
+                                $gop = new Gop([
+                                    'file_id' => $record->id,
+                                    'type' => $data['type'],
+                                    'amount' => $data['amount'],
+                                    'date' => $data['date'],
+                                    'status' => $data['status'],
+                                    'gop_google_drive_link' => $uploadedFile, // Store the file path for now
+                                ]);
+                                
+                                $gop->save();
+                                
+                                Notification::make()
+                                    ->success()
+                                    ->title('GOP uploaded successfully')
+                                    ->body('GOP document has been uploaded and created.')
+                                    ->send();
+                                    
+                            } catch (\Exception $e) {
+                                Log::error('GOP file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
+                                Notification::make()
+                                    ->danger()
+                                    ->title('File access error')
+                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
+                                    ->send();
+                                return;
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('GOP upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
+                            Notification::make()
+                                ->danger()
+                                ->title('Upload error')
+                                ->body('An error occurred during upload: ' . $e->getMessage())
+                                ->send();
+                        }
+                    }),
                 Tables\Actions\Action::make('create_gop')
                     ->url(fn (File $record): string => route('filament.admin.resources.files.edit', $record) . '#gops')
                     ->icon('heroicon-o-plus')
