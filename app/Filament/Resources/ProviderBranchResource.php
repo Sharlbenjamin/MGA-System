@@ -173,17 +173,17 @@ class ProviderBranchResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return $record->branch_name . ' - ' . $record->provider->name;
+        return ($record->branch_name ?? 'Unknown') . ' - ' . ($record->provider?->name ?? 'Unknown Provider');
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
-            'Provider' => $record->provider->name,
-            'Status' => $record->status,
-            'Priority' => $record->priority,
-            'Cities' => $record->cities->pluck('name')->implode(', '),
-            'Service Types' => is_array($record->service_types) ? implode(', ', $record->service_types) : $record->service_types,
+            'Provider' => $record->provider?->name ?? 'Unknown',
+            'Status' => $record->status ?? 'Unknown',
+            'Priority' => $record->priority ?? 'Unknown',
+            'Cities' => $record->cities?->pluck('name')->implode(', ') ?? 'Unknown',
+            'Service Types' => is_array($record->service_types) ? implode(', ', $record->service_types) : ($record->service_types ?? 'Unknown'),
         ];
     }
 

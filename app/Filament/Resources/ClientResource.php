@@ -131,17 +131,17 @@ class ClientResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return $record->company_name . ' (' . $record->status . ')';
+        return ($record->company_name ?? 'Unknown') . ' (' . ($record->status ?? 'Unknown') . ')';
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
-            'Type' => $record->type,
-            'Status' => $record->status,
+            'Type' => $record->type ?? 'Unknown',
+            'Status' => $record->status ?? 'Unknown',
             'Files' => $record->filesCount ?? $record->files()->count(),
-            'Phone' => $record->phone,
-            'Email' => $record->email,
+            'Phone' => $record->phone ?? 'Unknown',
+            'Email' => $record->email ?? 'Unknown',
         ];
     }
 

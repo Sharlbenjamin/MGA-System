@@ -233,18 +233,18 @@ class BillResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return $record->name . ' - ' . $record->file->mga_reference;
+        return ($record->name ?? 'Unknown') . ' - ' . ($record->file?->mga_reference ?? 'Unknown File');
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
-            'File Reference' => $record->file->mga_reference,
-            'Provider' => $record->provider->name,
-            'Branch' => $record->branch->branch_name,
-            'Status' => $record->status,
-            'Total Amount' => '€' . number_format($record->total_amount, 2),
-            'Due Date' => $record->due_date?->format('d/m/Y'),
+            'File Reference' => $record->file?->mga_reference ?? 'Unknown',
+            'Provider' => $record->provider?->name ?? 'Unknown',
+            'Branch' => $record->branch?->branch_name ?? 'Unknown',
+            'Status' => $record->status ?? 'Unknown',
+            'Total Amount' => '€' . number_format($record->total_amount ?? 0, 2),
+            'Due Date' => $record->due_date?->format('d/m/Y') ?? 'Unknown',
         ];
     }
 

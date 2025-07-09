@@ -289,18 +289,18 @@ class InvoiceResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return $record->name . ' - ' . $record->patient->name;
+        return ($record->name ?? 'Unknown') . ' - ' . ($record->patient?->name ?? 'Unknown Patient');
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
-            'Patient' => $record->patient->name,
-            'Client' => $record->patient->client->company_name,
-            'File Reference' => $record->file->mga_reference,
-            'Status' => $record->status,
-            'Total Amount' => '€' . number_format($record->total_amount, 2),
-            'Due Date' => $record->due_date?->format('d/m/Y'),
+            'Patient' => $record->patient?->name ?? 'Unknown',
+            'Client' => $record->patient?->client?->company_name ?? 'Unknown',
+            'File Reference' => $record->file?->mga_reference ?? 'Unknown',
+            'Status' => $record->status ?? 'Unknown',
+            'Total Amount' => '€' . number_format($record->total_amount ?? 0, 2),
+            'Due Date' => $record->due_date?->format('d/m/Y') ?? 'Unknown',
         ];
     }
 

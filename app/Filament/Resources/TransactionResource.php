@@ -393,17 +393,17 @@ class TransactionResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return $record->name . ' (' . $record->type . ')';
+        return ($record->name ?? 'Unknown') . ' (' . ($record->type ?? 'Unknown') . ')';
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
-            'Type' => $record->type,
-            'Related Type' => $record->related_type,
-            'Amount' => '€' . number_format($record->amount, 2),
-            'Date' => $record->date->format('d/m/Y'),
-            'Bank Account' => $record->bankAccount->beneficiary_name,
+            'Type' => $record->type ?? 'Unknown',
+            'Related Type' => $record->related_type ?? 'Unknown',
+            'Amount' => '€' . number_format($record->amount ?? 0, 2),
+            'Date' => $record->date?->format('d/m/Y') ?? 'Unknown',
+            'Bank Account' => $record->bankAccount?->beneficiary_name ?? 'Unknown',
         ];
     }
 

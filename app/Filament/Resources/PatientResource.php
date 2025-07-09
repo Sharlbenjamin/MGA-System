@@ -94,14 +94,14 @@ class PatientResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return $record->name . ' - ' . $record->client->company_name;
+        return $record->name . ' - ' . ($record->client?->company_name ?? 'Unknown Client');
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
-            'Client' => $record->client->company_name,
-            'Country' => $record->country?->name,
+            'Client' => $record->client?->company_name ?? 'Unknown',
+            'Country' => $record->country?->name ?? 'Unknown',
             'Age' => $record->dob ? \Carbon\Carbon::parse($record->dob)->diff(\Carbon\Carbon::now())->format('%y years') : 'N/A',
             'Files' => $record->files_count ?? $record->files()->count(),
         ];

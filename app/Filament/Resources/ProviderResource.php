@@ -137,18 +137,18 @@ public static function table(Tables\Table $table): Tables\Table
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return $record->name . ' (' . $record->type . ')';
+        return ($record->name ?? 'Unknown') . ' (' . ($record->type ?? 'Unknown') . ')';
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
-            'Country' => $record->country->name,
-            'Status' => $record->status,
-            'Type' => $record->type,
+            'Country' => $record->country?->name ?? 'Unknown',
+            'Status' => $record->status ?? 'Unknown',
+            'Type' => $record->type ?? 'Unknown',
             'Files' => $record->filesCount ?? $record->files()->count(),
-            'Phone' => $record->phone,
-            'Email' => $record->email,
+            'Phone' => $record->phone ?? 'Unknown',
+            'Email' => $record->email ?? 'Unknown',
         ];
     }
 

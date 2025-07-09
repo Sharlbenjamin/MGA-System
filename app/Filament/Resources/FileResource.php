@@ -272,16 +272,16 @@ class FileResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return $record->mga_reference . ' - ' . $record->patient->name;
+        return $record->mga_reference . ' - ' . ($record->patient?->name ?? 'Unknown Patient');
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
-            'Patient' => $record->patient->name,
-            'Client' => $record->patient->client->company_name,
-            'Status' => $record->status,
-            'Service Date' => $record->service_date?->format('d/m/Y'),
+            'Patient' => $record->patient?->name ?? 'Unknown',
+            'Client' => $record->patient?->client?->company_name ?? 'Unknown',
+            'Status' => $record->status ?? 'Unknown',
+            'Service Date' => $record->service_date?->format('d/m/Y') ?? 'Unknown',
         ];
     }
 
