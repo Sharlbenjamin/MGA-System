@@ -98,6 +98,13 @@ class GopWithoutDocsResource extends Resource
                     ->label('Client')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('file.client_reference')
+                    ->label('Client Reference')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('Client reference copied to clipboard')
+                    ->copyMessageDuration(1500),
                 Tables\Columns\TextColumn::make('type')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {

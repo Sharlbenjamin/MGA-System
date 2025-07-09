@@ -43,7 +43,8 @@ class InvoiceResource extends Resource
                         Forms\Components\Select::make('file_id')
                             ->relationship('file', 'mga_reference', fn (Builder $query, Get $get) => $query->where('patient_id', $get('patient_id')))
                             ->required()
-                            ->searchable()->preload(),
+                            ->searchable()->preload()
+                            ->default(fn () => request()->get('file_id')),
 
                         Forms\Components\Select::make('patient_id')
                             ->relationship('patient', 'name')

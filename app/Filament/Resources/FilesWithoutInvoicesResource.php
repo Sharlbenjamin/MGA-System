@@ -135,7 +135,7 @@ class FilesWithoutInvoicesResource extends Resource
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
                 Tables\Actions\Action::make('create_invoice')
-                    ->url(fn (File $record): string => route('filament.admin.resources.files.edit', $record) . '#invoices')
+                    ->url(fn (File $record): string => route('filament.admin.resources.invoices.create', ['file_id' => $record->id, 'patient_id' => $record->patient_id]))
                     ->icon('heroicon-o-plus')
                     ->label('Create Invoice')
                     ->color('success'),

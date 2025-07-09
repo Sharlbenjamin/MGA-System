@@ -70,7 +70,9 @@ class FilesWithoutBillsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'Assisted')->whereDoesntHave('bills'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'Assisted')
+                ->whereDoesntHave('bills')
+                ->with(['patient.client', 'providerBranch.provider', 'country', 'city', 'serviceType']))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')
                     ->searchable()
@@ -80,6 +82,15 @@ class FilesWithoutBillsResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('patient.client.company_name')
                     ->label('Client')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('provider_branch_info')
+                    ->label('Provider & Branch')
+                    ->formatStateUsing(function ($record) {
+                        $providerName = $record->providerBranch?->provider?->name ?? 'N/A';
+                        $branchName = $record->providerBranch?->branch_name ?? 'N/A';
+                        return $providerName . ' - ' . $branchName;
+                    })
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('country.name')
@@ -290,11 +301,7 @@ class FilesWithoutBillsResource extends Resource
                                 ->send();
                         }
                     }),
-                Tables\Actions\Action::make('create_bill')
-                    ->url(fn (File $record): string => route('filament.admin.resources.files.edit', $record) . '#bills')
-                    ->icon('heroicon-o-plus')
-                    ->label('Create Bill')
-                    ->color('success'),
+
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

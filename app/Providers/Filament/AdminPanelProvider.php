@@ -80,7 +80,6 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Resources\FilesWithoutGopResource::class,
                 \App\Filament\Resources\GopWithoutDocsResource::class,
                 \App\Filament\Resources\FilesWithoutBillsResource::class,
-                \App\Filament\Resources\FilesWithoutMedicalReportResource::class,
                 \App\Filament\Resources\FilesWithoutInvoicesResource::class,
                 \App\Filament\Resources\BillsWithoutDocumentsResource::class,
                 \App\Filament\Resources\InvoicesWithoutDocsResource::class,
