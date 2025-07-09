@@ -391,6 +391,33 @@ class TransactionResource extends Resource
         ];
     }
 
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return $record->name . ' (' . $record->type . ')';
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return [
+            'Type' => $record->type,
+            'Related Type' => $record->related_type,
+            'Amount' => '€' . number_format($record->amount, 2),
+            'Date' => $record->date->format('d/m/Y'),
+            'Bank Account' => $record->bankAccount->beneficiary_name,
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['bankAccount']);
+    }
+
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return TransactionResource::getUrl('edit', ['record' => $record]);
+    }
+
     public function relatedInvoices()
     {
         // invocies will pass an array of invoice ids

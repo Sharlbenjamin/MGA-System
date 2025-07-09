@@ -110,6 +110,16 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('MGA System')
             ->brandLogo(asset('logo.png'))
             ->favicon(asset('logo.png'))
-            ->globalSearchKeyBindings(['command+k', 'ctrl+k']);
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
+            ->globalSearch([
+                FileResource::class,
+                PatientResource::class,
+                ClientResource::class,
+                ProviderResource::class,
+                ProviderBranchResource::class,
+                InvoiceResource::class,
+                BillResource::class,
+                TransactionResource::class,
+            ]);
     }
 }

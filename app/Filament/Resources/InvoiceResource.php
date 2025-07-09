@@ -286,4 +286,32 @@ class InvoiceResource extends Resource
             'edit' => Pages\EditInvoice::route('/{record}/edit'),
         ];
     }
+
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return $record->name . ' - ' . $record->patient->name;
+    }
+
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
+    {
+        return [
+            'Patient' => $record->patient->name,
+            'Client' => $record->patient->client->company_name,
+            'File Reference' => $record->file->mga_reference,
+            'Status' => $record->status,
+            'Total Amount' => '€' . number_format($record->total_amount, 2),
+            'Due Date' => $record->due_date?->format('d/m/Y'),
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['patient.client', 'file']);
+    }
+
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return InvoiceResource::getUrl('edit', ['record' => $record]);
+    }
 }
