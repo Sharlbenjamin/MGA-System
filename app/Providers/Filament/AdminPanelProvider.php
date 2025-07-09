@@ -89,7 +89,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationItems([
                 \Filament\Navigation\NavigationItem::make('Stages Overview')
-                    ->url(route('filament.admin.resources.files-without-gops.index'))
+                    ->url(route('filament.admin.resources.files-without-gop-resource.index'))
                     ->icon('heroicon-o-clipboard-document-list')
                     ->group('Stages')
                     ->sort(1)
