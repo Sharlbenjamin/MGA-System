@@ -76,6 +76,24 @@ class ListTaxes extends ListRecords
                 ->extraAttributes([
                     'class' => 'bg-primary-600 hover:bg-primary-700',
                 ]),
+            Actions\Action::make('export_zip')
+                ->label('Export Zip')
+                ->icon('heroicon-o-archive-box')
+                ->color('success')
+                ->action(function () {
+                    $year = $this->selectedYear ?? Carbon::now()->year;
+                    $quarter = $this->selectedQuarter ?? '1';
+                    
+                    $url = route('taxes.export.zip', [
+                        'year' => $year,
+                        'quarter' => $quarter,
+                    ]);
+                    
+                    return redirect($url);
+                })
+                ->extraAttributes([
+                    'class' => 'bg-green-600 hover:bg-green-700',
+                ]),
         ];
     }
 

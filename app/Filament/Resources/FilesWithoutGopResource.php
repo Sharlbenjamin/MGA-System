@@ -234,26 +234,45 @@ class FilesWithoutGopResource extends Resource
                                 
                                 // Generate the proper filename format
                                 $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
-                                $fileName = 'GOP in ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
+                                $fileName = 'GOP ' . $data['type'] . ' ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
                                 Log::info('GOP file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
-                                // Create the GOP record
-                                $gop = new Gop([
+                                // Create the GOP record first
+                                $gop = new \App\Models\Gop([
                                     'file_id' => $record->id,
                                     'type' => $data['type'],
                                     'amount' => $data['amount'],
                                     'date' => $data['date'],
                                     'status' => $data['status'],
-                                    'gop_google_drive_link' => $uploadedFile, // Store the file path for now
                                 ]);
                                 
                                 $gop->save();
                                 
-                                Notification::make()
-                                    ->success()
-                                    ->title('GOP uploaded successfully')
-                                    ->body('GOP document has been uploaded and created.')
-                                    ->send();
+                                // Upload to Google Drive using the service
+                                $uploadService = new \App\Services\UploadGopToGoogleDrive(new \App\Services\GoogleDriveFolderService());
+                                $uploadResult = $uploadService->uploadGopToGoogleDrive($content, $fileName, $gop);
+                                
+                                if ($uploadResult) {
+                                    Log::info('GOP uploaded to Google Drive successfully:', ['result' => $uploadResult]);
+                                    
+                                    // Update the GOP record with the Google Drive link
+                                    $gop->gop_google_drive_link = $uploadResult;
+                                    $gop->status = 'Sent';
+                                    $gop->save();
+                                    
+                                    Notification::make()
+                                        ->success()
+                                        ->title('GOP uploaded successfully')
+                                        ->body('GOP document has been uploaded to Google Drive and created.')
+                                        ->send();
+                                } else {
+                                    Log::error('Failed to upload GOP to Google Drive');
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Google Drive upload failed')
+                                        ->body('The GOP was created but failed to upload to Google Drive.')
+                                        ->send();
+                                }
                                     
                             } catch (\Exception $e) {
                                 Log::error('GOP file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);

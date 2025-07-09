@@ -183,7 +183,8 @@ class GopRelationManager extends RelationManager
                             return;
                         }
 
-                        // Update GOP status
+                        // Update GOP with Google Drive link and status
+                        $record->gop_google_drive_link = $result;
                         $record->status = 'Sent';
                         $record->save();
 

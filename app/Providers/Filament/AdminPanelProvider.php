@@ -109,6 +109,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->brandName('MGA System')
             ->brandLogo(asset('logo.png'))
-            ->favicon(asset('logo.png'));
+            ->favicon(asset('logo.png'))
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k']);
     }
 }

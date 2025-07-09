@@ -170,4 +170,31 @@ class ProviderBranchResource extends Resource
             'overview' => Pages\BranchOverView::route('/{record}'),
         ];
     }
+
+    public static function getGlobalSearchResultTitle(ProviderBranch $record): string
+    {
+        return $record->branch_name . ' - ' . $record->provider->name;
+    }
+
+    public static function getGlobalSearchResultDetails(ProviderBranch $record): array
+    {
+        return [
+            'Provider' => $record->provider->name,
+            'Status' => $record->status,
+            'Priority' => $record->priority,
+            'Cities' => $record->cities->pluck('name')->implode(', '),
+            'Service Types' => is_array($record->service_types) ? implode(', ', $record->service_types) : $record->service_types,
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['provider', 'cities']);
+    }
+
+    public static function getGlobalSearchResultUrl(ProviderBranch $record): string
+    {
+        return ProviderBranchResource::getUrl('overview', ['record' => $record]);
+    }
 }

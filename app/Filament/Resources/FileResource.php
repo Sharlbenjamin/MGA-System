@@ -270,4 +270,29 @@ class FileResource extends Resource
         ];
     }
 
+    public static function getGlobalSearchResultTitle(File $record): string
+    {
+        return $record->mga_reference . ' - ' . $record->patient->name;
+    }
+
+    public static function getGlobalSearchResultDetails(File $record): array
+    {
+        return [
+            'Patient' => $record->patient->name,
+            'Client' => $record->patient->client->company_name,
+            'Status' => $record->status,
+            'Service Date' => $record->service_date?->format('d/m/Y'),
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['patient.client', 'country', 'city', 'serviceType']);
+    }
+
+    public static function getGlobalSearchResultUrl(File $record): string
+    {
+        return FileResource::getUrl('view', ['record' => $record]);
+    }
 }

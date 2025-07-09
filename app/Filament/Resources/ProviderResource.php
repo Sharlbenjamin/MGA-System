@@ -21,6 +21,7 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Resources\Resource;
 use Filament\Tables\Filters\SelectFilter;
 use App\Models\Contact;
+use Illuminate\Database\Eloquent\Builder;
 class ProviderResource extends Resource
 {
     protected static ?string $model = Provider::class;
@@ -132,5 +133,34 @@ public static function table(Tables\Table $table): Tables\Table
             'edit' => Pages\EditProvider::route('/{record}/edit'),
             'overview' => Pages\ProviderOverView::route('/{record}'),
         ];
+    }
+
+    public static function getGlobalSearchResultTitle(Provider $record): string
+    {
+        return $record->name . ' (' . $record->type . ')';
+    }
+
+    public static function getGlobalSearchResultDetails(Provider $record): array
+    {
+        return [
+            'Country' => $record->country->name,
+            'Status' => $record->status,
+            'Type' => $record->type,
+            'Files' => $record->filesCount ?? $record->files()->count(),
+            'Phone' => $record->phone,
+            'Email' => $record->email,
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['country'])
+            ->withCount('files');
+    }
+
+    public static function getGlobalSearchResultUrl(Provider $record): string
+    {
+        return ProviderResource::getUrl('overview', ['record' => $record]);
     }
 }

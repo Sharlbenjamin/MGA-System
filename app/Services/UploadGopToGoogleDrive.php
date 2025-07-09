@@ -108,10 +108,7 @@ class UploadGopToGoogleDrive
                 'supportsAllDrives' => true
             ]);
 
-            $gop->gop_google_drive_link = $file->webViewLink;
-            $gop->save();
-
-            return $file->id;
+            return $file->webViewLink;
         } catch (\Exception $e) {
             Log::error('Google Drive Upload Error', ['error' => $e->getMessage()]);
             return false;

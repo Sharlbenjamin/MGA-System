@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Services\UploadBillToGoogleDrive;
 
 class FilesWithoutBillsResource extends Resource
 {
@@ -235,23 +236,41 @@ class FilesWithoutBillsResource extends Resource
                                 $fileName = 'Bill ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
                                 Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
-                                // Create the bill record
-                                $bill = new Bill([
+                                // Create the bill record first
+                                $bill = new \App\Models\Bill([
                                     'file_id' => $record->id,
                                     'name' => $data['name'],
                                     'total_amount' => $data['total_amount'],
                                     'due_date' => $data['due_date'],
                                     'status' => $data['status'],
-                                    'bill_google_link' => $uploadedFile, // Store the file path for now
                                 ]);
                                 
                                 $bill->save();
                                 
-                                Notification::make()
-                                    ->success()
-                                    ->title('Bill uploaded successfully')
-                                    ->body('Bill document has been uploaded and created.')
-                                    ->send();
+                                // Upload to Google Drive using the service
+                                $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
+                                $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $bill);
+                                
+                                if ($uploadResult) {
+                                    Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
+                                    
+                                    // Update the bill record with the Google Drive link
+                                    $bill->bill_google_link = $uploadResult;
+                                    $bill->save();
+                                    
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Bill uploaded successfully')
+                                        ->body('Bill document has been uploaded to Google Drive and created.')
+                                        ->send();
+                                } else {
+                                    Log::error('Failed to upload bill to Google Drive');
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Google Drive upload failed')
+                                        ->body('The bill was created but failed to upload to Google Drive.')
+                                        ->send();
+                                }
                                     
                             } catch (\Exception $e) {
                                 Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);

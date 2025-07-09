@@ -16,6 +16,7 @@ use Filament\Tables\Columns\TextColumn;
 use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
 use Filament\Tables\Filters\SelectFilter;
 use App\Models\Contact;
+use Illuminate\Database\Eloquent\Builder;
 
 class ClientResource extends Resource
 {
@@ -126,5 +127,32 @@ class ClientResource extends Resource
             'edit' => Pages\EditClient::route('/{record}/edit'),
             'overview' => Pages\ClientOverview::route('/{record}'),
         ];
+    }
+
+    public static function getGlobalSearchResultTitle(Client $record): string
+    {
+        return $record->company_name . ' (' . $record->status . ')';
+    }
+
+    public static function getGlobalSearchResultDetails(Client $record): array
+    {
+        return [
+            'Type' => $record->type,
+            'Status' => $record->status,
+            'Files' => $record->filesCount ?? $record->files()->count(),
+            'Phone' => $record->phone,
+            'Email' => $record->email,
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->withCount('files');
+    }
+
+    public static function getGlobalSearchResultUrl(Client $record): string
+    {
+        return ClientResource::getUrl('overview', ['record' => $record]);
     }
 }

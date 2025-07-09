@@ -7,7 +7,7 @@ use Google\Service\Drive;
 use Google\Service\Drive\DriveFile;
 use Illuminate\Support\Facades\Log;
 
-class UploadBillToGoogleDrive
+class UploadMedicalReportToGoogleDrive
 {
     private $folderService;
 
@@ -36,7 +36,7 @@ class UploadBillToGoogleDrive
             : $driveLink;
     }
 
-    public function uploadBillToGoogleDrive($fileContent, $fileName, $bill)
+    public function uploadMedicalReportToGoogleDrive($fileContent, $fileName, $medicalReport)
     {
         try {
             $credentialsPath = storage_path('app/google-drive/laraveldriveintegration-af9e6ab2e69d.json');
@@ -47,12 +47,12 @@ class UploadBillToGoogleDrive
             $client->addScope(Drive::DRIVE);
             $service = new Drive($client);
 
-            if (empty($bill->file->google_drive_link)) {
-                $this->folderService->generateGoogleDriveFolder($bill->file);
-                if (empty($bill->file->google_drive_link)) return false;
+            if (empty($medicalReport->file->google_drive_link)) {
+                $this->folderService->generateGoogleDriveFolder($medicalReport->file);
+                if (empty($medicalReport->file->google_drive_link)) return false;
             }
 
-            $parentFolderId = $this->extractFolderId($bill->file->google_drive_link);
+            $parentFolderId = $this->extractFolderId($medicalReport->file->google_drive_link);
             if (!$this->checkFolderAccess($service, $parentFolderId)) return false;
 
             $file = $service->files->create(
@@ -70,7 +70,8 @@ class UploadBillToGoogleDrive
             );
 
             return $file->webViewLink;
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            Log::error('Medical Report Google Drive Upload Error', ['error' => $e->getMessage()]);
             return false;
         }
     }

@@ -232,23 +232,41 @@ class FilesWithoutMedicalReportResource extends Resource
                                 $fileName = 'Medical Report ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
                                 Log::info('Medical report file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
-                                // Create the medical report record
-                                $medicalReport = new MedicalReport([
+                                // Create the medical report record first
+                                $medicalReport = new \App\Models\MedicalReport([
                                     'file_id' => $record->id,
                                     'title' => $data['title'],
                                     'description' => $data['description'] ?? null,
                                     'report_date' => $data['report_date'],
                                     'status' => $data['status'],
-                                    'medical_report_google_link' => $uploadedFile, // Store the file path for now
                                 ]);
                                 
                                 $medicalReport->save();
                                 
-                                Notification::make()
-                                    ->success()
-                                    ->title('Medical report uploaded successfully')
-                                    ->body('Medical report document has been uploaded and created.')
-                                    ->send();
+                                // Upload to Google Drive using the service
+                                $uploadService = new \App\Services\UploadMedicalReportToGoogleDrive(new \App\Services\GoogleDriveFolderService());
+                                $uploadResult = $uploadService->uploadMedicalReportToGoogleDrive($content, $fileName, $medicalReport);
+                                
+                                if ($uploadResult) {
+                                    Log::info('Medical report uploaded to Google Drive successfully:', ['result' => $uploadResult]);
+                                    
+                                    // Update the medical report record with the Google Drive link
+                                    $medicalReport->medical_report_google_link = $uploadResult;
+                                    $medicalReport->save();
+                                    
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Medical report uploaded successfully')
+                                        ->body('Medical report document has been uploaded to Google Drive and created.')
+                                        ->send();
+                                } else {
+                                    Log::error('Failed to upload medical report to Google Drive');
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Google Drive upload failed')
+                                        ->body('The medical report was created but failed to upload to Google Drive.')
+                                        ->send();
+                                }
                                     
                             } catch (\Exception $e) {
                                 Log::error('Medical report file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);

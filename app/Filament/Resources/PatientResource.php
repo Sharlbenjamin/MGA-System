@@ -91,4 +91,31 @@ class PatientResource extends Resource
             'financial' => Pages\PatientFinancialView::route('/{record}/financial'),
         ];
     }
+
+    public static function getGlobalSearchResultTitle(Patient $record): string
+    {
+        return $record->name . ' - ' . $record->client->company_name;
+    }
+
+    public static function getGlobalSearchResultDetails(Patient $record): array
+    {
+        return [
+            'Client' => $record->client->company_name,
+            'Country' => $record->country?->name,
+            'Age' => $record->dob ? \Carbon\Carbon::parse($record->dob)->diff(\Carbon\Carbon::now())->format('%y years') : 'N/A',
+            'Files' => $record->files_count ?? $record->files()->count(),
+        ];
+    }
+
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['client', 'country'])
+            ->withCount('files');
+    }
+
+    public static function getGlobalSearchResultUrl(Patient $record): string
+    {
+        return PatientResource::getUrl('edit', ['record' => $record]);
+    }
 }

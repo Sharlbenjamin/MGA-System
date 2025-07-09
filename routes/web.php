@@ -65,6 +65,7 @@ Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, Dispatch
     
     // Taxes Export Route
     Route::get('/taxes/export', [TaxesExportController::class, 'export'])->name('taxes.export');
+    Route::get('/taxes/export/zip', [TaxesExportController::class, 'exportZip'])->name('taxes.export.zip');
 });
 
 // Google Meet Route
