@@ -27,11 +27,11 @@ class InvoicesWithoutDocsResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('invoice_number')
+                Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
                 Forms\Components\Select::make('file_id')
-                    ->relationship('file', 'file_number')
+                    ->relationship('file', 'mga_reference')
                     ->required(),
                 Forms\Components\TextInput::make('total_amount')
                     ->required()
@@ -56,16 +56,30 @@ class InvoicesWithoutDocsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('invoice_google_link')
+                ->orWhere('invoice_google_link', '')
+                ->with(['file.patient.client']))
             ->columns([
-                Tables\Columns\TextColumn::make('invoice_number')
+                Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('file.file_number')
-                    ->label('File Number')
+                Tables\Columns\TextColumn::make('file.mga_reference')
+                    ->label('File Reference')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('file.client.name')
+                Tables\Columns\TextColumn::make('file.patient.client.company_name')
                     ->label('Client')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('file.client_reference')
+                    ->label('Client Reference')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('Client reference copied to clipboard')
+                    ->copyMessageDuration(1500),
+                Tables\Columns\TextColumn::make('patient.name')
+                    ->label('Patient')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('total_amount')
@@ -97,15 +111,20 @@ class InvoicesWithoutDocsResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('view_file')
+                    ->url(fn (Invoice $record): string => route('filament.admin.resources.files.edit', $record->file))
+                    ->icon('heroicon-o-eye')
+                    ->label('View File'),
+                Tables\Actions\Action::make('view_invoice')
+                    ->url(fn (Invoice $record): string => route('filament.admin.resources.invoices.edit', $record))
+                    ->icon('heroicon-o-document-text')
+                    ->label('View Invoice'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ])
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('invoice_google_link'));
+            ]);
     }
 
     public static function getRelations(): array

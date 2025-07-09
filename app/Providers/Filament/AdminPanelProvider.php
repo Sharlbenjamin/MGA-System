@@ -87,6 +87,53 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Resources\InvoicesWithoutTransactionResource::class,
                 \App\Filament\Resources\TransactionsWithoutDocumentsResource::class,
             ])
+            ->navigationItems([
+                \Filament\Navigation\NavigationItem::make('Stages Overview')
+                    ->url(route('filament.admin.resources.files-without-gops.index'))
+                    ->icon('heroicon-o-clipboard-document-list')
+                    ->group('Stages')
+                    ->sort(1)
+                    ->badge(function () {
+                        $totalCount = 0;
+                        
+                        // Files Without GOP
+                        $totalCount += \App\Models\File::where('status', 'Assisted')->whereDoesntHave('gops')->count();
+                        
+                        // GOP Without Docs
+                        $totalCount += \App\Models\Gop::where('type', 'In')
+                            ->where(function ($query) {
+                                $query->whereNull('gop_google_drive_link')
+                                      ->orWhere('gop_google_drive_link', '');
+                            })
+                            ->whereHas('file', function ($fileQuery) {
+                                $fileQuery->where('status', 'Assisted');
+                            })->count();
+                        
+                        // Files Without Bills
+                        $totalCount += \App\Models\File::where('status', 'Assisted')->whereDoesntHave('bills')->count();
+                        
+                        // Files Without Invoices
+                        $totalCount += \App\Models\File::where('status', 'Assisted')->whereDoesntHave('invoices')->count();
+                        
+                        // Bills Without Documents
+                        $totalCount += \App\Models\Bill::whereNull('bill_google_link')->orWhere('bill_google_link', '')->count();
+                        
+                        // Invoices Without Docs
+                        $totalCount += \App\Models\Invoice::whereNull('invoice_google_link')->orWhere('invoice_google_link', '')->count();
+                        
+                        // Bills Without Transactions
+                        $totalCount += \App\Models\Bill::whereDoesntHave('transactions')->whereIn('status', ['Unpaid', 'Partial'])->count();
+                        
+                        // Invoices Without Transactions
+                        $totalCount += \App\Models\Invoice::whereDoesntHave('transactions')->whereIn('status', ['Unpaid', 'Partial'])->count();
+                        
+                        // Transactions Without Documents
+                        $totalCount += \App\Models\Transaction::where('type', 'Outflow')->whereNull('attachment_path')->count();
+                        
+                        return $totalCount;
+                    })
+                    ->badgeColor('warning'),
+            ])
             ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
