@@ -266,11 +266,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-pencil')
                     ->label('Edit Bill')
                     ->color('primary'),
-                Tables\Actions\Action::make('upload_doc')
-                    ->url(fn (Bill $record): string => route('filament.admin.resources.bills.edit', $record))
-                    ->icon('heroicon-o-cloud-arrow-up')
-                    ->label('Upload Doc')
-                    ->color('success'),
+
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

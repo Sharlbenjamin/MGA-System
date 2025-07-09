@@ -20,12 +20,12 @@ class FilesWithoutMedicalReportResource extends Resource
 {
     protected static ?string $model = File::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Stages';
-    protected static ?int $navigationSort = 4;
-    protected static ?string $navigationLabel = 'Files without Medical Report';
-    protected static ?string $modelLabel = 'File without Medical Report';
-    protected static ?string $pluralModelLabel = 'Files without Medical Report';
+    // protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    // protected static ?string $navigationGroup = 'Stages';
+    // protected static ?int $navigationSort = 4;
+    // protected static ?string $navigationLabel = 'Files without Medical Report';
+    // protected static ?string $modelLabel = 'File without Medical Report';
+    // protected static ?string $pluralModelLabel = 'Files without Medical Report';
 
     public static function getNavigationBadge(): ?string
     {
