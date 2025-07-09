@@ -81,6 +81,9 @@ class GopWithoutDocsResource extends Resource
                 ->where(function ($query) {
                     $query->whereNull('gop_google_drive_link')
                           ->orWhere('gop_google_drive_link', '');
+                })
+                ->whereHas('file', function ($fileQuery) {
+                    $fileQuery->where('status', 'Assisted');
                 }))
             ->columns([
                 Tables\Columns\TextColumn::make('file.mga_reference')
