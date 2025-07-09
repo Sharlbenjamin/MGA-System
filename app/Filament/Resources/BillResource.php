@@ -124,6 +124,11 @@ class BillResource extends Resource
             Group::make('provider.name')->label('Provider')->collapsible(),
             Group::make('branch.branch_name')->label('Branch')->collapsible(),
         ])
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'file.patient.client',
+                'provider',
+                'branch'
+            ]))
             ->defaultSort('bill_date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
@@ -135,6 +140,10 @@ class BillResource extends Resource
                     ->url(fn (Bill $record) => $record->file?->google_drive_link)
                     ->openUrlInNewTab()
                     ->color(fn (Bill $record) => $record->file?->google_drive_link ? 'primary' : 'gray'),
+                Tables\Columns\TextColumn::make('file.patient.client.company_name')
+                    ->label('Client')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
                 Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid','success' => 'Paid','primary' => 'Partial',])->summarize(Count::make('status')->label('Number of Bills')),
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),

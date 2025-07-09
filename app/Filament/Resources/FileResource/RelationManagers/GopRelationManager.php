@@ -34,6 +34,10 @@ class GopRelationManager extends RelationManager
         return $table
             ->columns([
                 TextColumn::make('type'),
+                TextColumn::make('file.patient.client.company_name')
+                    ->label('Client')
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('amount'),
                 TextColumn::make('date')->date(),
                 TextColumn::make('status')->badge()->color(fn($state) => $state === 'Sent' ? 'success' : 'danger'),

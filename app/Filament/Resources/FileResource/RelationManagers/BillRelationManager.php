@@ -34,6 +34,10 @@ class BillRelationManager extends RelationManager
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('file.patient.client.company_name')
+                    ->label('Client')
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()
                 ->color(fn (string $state): string => match ($state) {
                     'Paid' => 'success',

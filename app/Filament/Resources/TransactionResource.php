@@ -179,6 +179,11 @@ class TransactionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'bankAccount',
+                'invoices.file.patient.client',
+                'bills.file.patient.client'
+            ]))
             ->defaultSort('date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable(),
@@ -189,6 +194,29 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('type')->searchable()
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
+                Tables\Columns\TextColumn::make('client_reference')
+                    ->label('Client Reference')
+                    ->formatStateUsing(function ($record) {
+                        // For Income transactions, try to get client from invoices
+                        if ($record->type === 'Income' && $record->invoices->isNotEmpty()) {
+                            $firstInvoice = $record->invoices->first();
+                            if ($firstInvoice->file && $firstInvoice->file->patient && $firstInvoice->file->patient->client) {
+                                return $firstInvoice->file->patient->client->company_name;
+                            }
+                        }
+                        
+                        // For Outflow/Expense transactions, try to get client from bills
+                        if (in_array($record->type, ['Outflow', 'Expense']) && $record->bills->isNotEmpty()) {
+                            $firstBill = $record->bills->first();
+                            if ($firstBill->file && $firstBill->file->patient && $firstBill->file->patient->client) {
+                                return $firstBill->file->patient->client->company_name;
+                            }
+                        }
+                        
+                        return 'N/A';
+                    })
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('attachment_path')
                     ->label('Link/Text')
                     ->searchable()
