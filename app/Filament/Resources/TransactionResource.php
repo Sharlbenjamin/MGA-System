@@ -418,6 +418,11 @@ class TransactionResource extends Resource
         return TransactionResource::getUrl('edit', ['record' => $record]);
     }
 
+    public static function isGlobalSearchDisabled(): bool
+    {
+        return true;
+    }
+
     public function relatedInvoices()
     {
         // invocies will pass an array of invoice ids

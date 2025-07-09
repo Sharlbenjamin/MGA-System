@@ -314,4 +314,9 @@ class InvoiceResource extends Resource
     {
         return InvoiceResource::getUrl('edit', ['record' => $record]);
     }
+
+    public static function isGlobalSearchDisabled(): bool
+    {
+        return true;
+    }
 }

@@ -258,4 +258,9 @@ class BillResource extends Resource
     {
         return BillResource::getUrl('edit', ['record' => $record]);
     }
+
+    public static function isGlobalSearchDisabled(): bool
+    {
+        return true;
+    }
 }

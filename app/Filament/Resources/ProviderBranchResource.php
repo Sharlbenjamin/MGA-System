@@ -197,4 +197,9 @@ class ProviderBranchResource extends Resource
     {
         return ProviderBranchResource::getUrl('overview', ['record' => $record]);
     }
+
+    public static function isGlobalSearchDisabled(): bool
+    {
+        return true;
+    }
 }

@@ -163,4 +163,9 @@ public static function table(Tables\Table $table): Tables\Table
     {
         return ProviderResource::getUrl('overview', ['record' => $record]);
     }
+
+    public static function isGlobalSearchDisabled(): bool
+    {
+        return true;
+    }
 }

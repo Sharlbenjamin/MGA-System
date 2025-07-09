@@ -155,4 +155,9 @@ class ClientResource extends Resource
     {
         return ClientResource::getUrl('overview', ['record' => $record]);
     }
+
+    public static function isGlobalSearchDisabled(): bool
+    {
+        return true;
+    }
 }
