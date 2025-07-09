@@ -87,13 +87,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Resources\InvoicesWithoutTransactionResource::class,
                 \App\Filament\Resources\TransactionsWithoutDocumentsResource::class,
             ])
-            ->navigationItems([
-                \Filament\Navigation\NavigationItem::make('Stages Overview')
-                    ->url('/admin/files-without-gops')
-                    ->icon('heroicon-o-clipboard-document-list')
-                    ->group('Stages')
-                    ->sort(1),
-            ])
+
             ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
