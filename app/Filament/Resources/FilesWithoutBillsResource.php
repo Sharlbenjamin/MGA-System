@@ -185,11 +185,11 @@ class FilesWithoutBillsResource extends Resource
                             ->label('Upload Bill Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
-                            ->required()
+                            ->nullable()
                             ->disk('public')
                             ->directory('bills')
                             ->visibility('public')
-                            ->helperText('Upload the bill document (PDF or image)')
+                            ->helperText('Upload the bill document (PDF or image) - Optional')
                             ->storeFileNamesIn('original_filename')
                             ->downloadable()
                             ->openable()
@@ -198,99 +198,99 @@ class FilesWithoutBillsResource extends Resource
                     ])
                     ->action(function (File $record, array $data) {
                         try {
-                            if (!isset($data['document']) || empty($data['document'])) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('No document uploaded')
-                                    ->body('Please upload a document first.')
-                                    ->send();
-                                return;
-                            }
+                            // Create the bill record first
+                            $bill = new \App\Models\Bill([
+                                'file_id' => $record->id,
+                                'name' => $data['name'],
+                                'total_amount' => $data['total_amount'],
+                                'due_date' => $data['due_date'],
+                                'status' => $data['status'],
+                            ]);
+                            
+                            $bill->save();
 
-                            // Handle the uploaded file properly
-                            $uploadedFile = $data['document'];
-                            
-                            // Log the uploaded file data for debugging
-                            Log::info('Bill upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
-                            
-                            // If it's an array (multiple files), take the first one
-                            if (is_array($uploadedFile)) {
-                                $uploadedFile = $uploadedFile[0] ?? null;
-                            }
-                            
-                            if (!$uploadedFile) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Invalid file data')
-                                    ->body('The uploaded file data is invalid.')
-                                    ->send();
-                                return;
-                            }
-
-                            // Handle the uploaded file properly using Storage facade
-                            try {
-                                // Get the file content using Storage facade
-                                $content = Storage::disk('public')->get($uploadedFile);
+                            // Handle the uploaded file if provided
+                            if (isset($data['document']) && !empty($data['document'])) {
+                                $uploadedFile = $data['document'];
                                 
-                                if ($content === false) {
-                                    Log::error('Bill file not found in storage:', ['path' => $uploadedFile]);
+                                // Log the uploaded file data for debugging
+                                Log::info('Bill upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
+                                
+                                // If it's an array (multiple files), take the first one
+                                if (is_array($uploadedFile)) {
+                                    $uploadedFile = $uploadedFile[0] ?? null;
+                                }
+                                
+                                if (!$uploadedFile) {
                                     Notification::make()
                                         ->danger()
-                                        ->title('File not found')
-                                        ->body('The uploaded file could not be found in storage.')
+                                        ->title('Invalid file data')
+                                        ->body('The uploaded file data is invalid.')
                                         ->send();
                                     return;
                                 }
-                                
-                                // Generate the proper filename format
-                                $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
-                                $fileName = 'Bill ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
-                                Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
-                                
-                                // Create the bill record first
-                                $bill = new \App\Models\Bill([
-                                    'file_id' => $record->id,
-                                    'name' => $data['name'],
-                                    'total_amount' => $data['total_amount'],
-                                    'due_date' => $data['due_date'],
-                                    'status' => $data['status'],
-                                ]);
-                                
-                                $bill->save();
-                                
-                                // Upload to Google Drive using the service
-                                $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
-                                $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $bill);
-                                
-                                if ($uploadResult) {
-                                    Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
+
+                                // Handle the uploaded file properly using Storage facade
+                                try {
+                                    // Get the file content using Storage facade
+                                    $content = Storage::disk('public')->get($uploadedFile);
                                     
-                                    // Update the bill record with the Google Drive link
-                                    $bill->bill_google_link = $uploadResult;
-                                    $bill->save();
+                                    if ($content === false) {
+                                        Log::error('Bill file not found in storage:', ['path' => $uploadedFile]);
+                                        Notification::make()
+                                            ->danger()
+                                            ->title('File not found')
+                                            ->body('The uploaded file could not be found in storage.')
+                                            ->send();
+                                        return;
+                                    }
                                     
-                                    Notification::make()
-                                        ->success()
-                                        ->title('Bill uploaded successfully')
-                                        ->body('Bill document has been uploaded to Google Drive and created.')
-                                        ->send();
-                                } else {
-                                    Log::error('Failed to upload bill to Google Drive');
+                                    // Generate the proper filename format
+                                    $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
+                                    $fileName = 'Bill ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
+                                    Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                    
+                                    // Upload to Google Drive using the service
+                                    $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
+                                    $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $bill);
+                                    
+                                    if ($uploadResult) {
+                                        Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
+                                        
+                                        // Update the bill record with the Google Drive link
+                                        $bill->bill_google_link = $uploadResult;
+                                        $bill->save();
+                                        
+                                        Notification::make()
+                                            ->success()
+                                            ->title('Bill uploaded successfully')
+                                            ->body('Bill document has been uploaded to Google Drive and created.')
+                                            ->send();
+                                    } else {
+                                        Log::error('Failed to upload bill to Google Drive');
+                                        Notification::make()
+                                            ->danger()
+                                            ->title('Google Drive upload failed')
+                                            ->body('The bill was created but failed to upload to Google Drive.')
+                                            ->send();
+                                    }
+                                        
+                                } catch (\Exception $e) {
+                                    Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
                                     Notification::make()
                                         ->danger()
-                                        ->title('Google Drive upload failed')
-                                        ->body('The bill was created but failed to upload to Google Drive.')
+                                        ->title('File access error')
+                                        ->body('Error accessing uploaded file: ' . $e->getMessage())
                                         ->send();
+                                    return;
                                 }
-                                    
-                            } catch (\Exception $e) {
-                                Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
+                            } else {
+                                // No document uploaded, just create the bill
                                 Notification::make()
-                                    ->danger()
-                                    ->title('File access error')
-                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
+                                    ->success()
+                                    ->title('Bill created successfully')
+                                    ->body('Bill has been created without a document.')
                                     ->send();
-                                return;
                             }
                         } catch (\Exception $e) {
                             Log::error('Bill upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
