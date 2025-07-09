@@ -129,12 +129,12 @@ class ClientResource extends Resource
         ];
     }
 
-    public static function getGlobalSearchResultTitle(Client $record): string
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
         return $record->company_name . ' (' . $record->status . ')';
     }
 
-    public static function getGlobalSearchResultDetails(Client $record): array
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
             'Type' => $record->type,
@@ -151,7 +151,7 @@ class ClientResource extends Resource
             ->withCount('files');
     }
 
-    public static function getGlobalSearchResultUrl(Client $record): string
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
     {
         return ClientResource::getUrl('overview', ['record' => $record]);
     }

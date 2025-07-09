@@ -270,12 +270,12 @@ class FileResource extends Resource
         ];
     }
 
-    public static function getGlobalSearchResultTitle(File $record): string
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
         return $record->mga_reference . ' - ' . $record->patient->name;
     }
 
-    public static function getGlobalSearchResultDetails(File $record): array
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
             'Patient' => $record->patient->name,
@@ -291,7 +291,7 @@ class FileResource extends Resource
             ->with(['patient.client', 'country', 'city', 'serviceType']);
     }
 
-    public static function getGlobalSearchResultUrl(File $record): string
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
     {
         return FileResource::getUrl('view', ['record' => $record]);
     }

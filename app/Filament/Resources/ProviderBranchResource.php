@@ -171,12 +171,12 @@ class ProviderBranchResource extends Resource
         ];
     }
 
-    public static function getGlobalSearchResultTitle(ProviderBranch $record): string
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
         return $record->branch_name . ' - ' . $record->provider->name;
     }
 
-    public static function getGlobalSearchResultDetails(ProviderBranch $record): array
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
             'Provider' => $record->provider->name,
@@ -193,7 +193,7 @@ class ProviderBranchResource extends Resource
             ->with(['provider', 'cities']);
     }
 
-    public static function getGlobalSearchResultUrl(ProviderBranch $record): string
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
     {
         return ProviderBranchResource::getUrl('overview', ['record' => $record]);
     }

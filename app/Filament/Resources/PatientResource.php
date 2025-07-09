@@ -92,12 +92,12 @@ class PatientResource extends Resource
         ];
     }
 
-    public static function getGlobalSearchResultTitle(Patient $record): string
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
         return $record->name . ' - ' . $record->client->company_name;
     }
 
-    public static function getGlobalSearchResultDetails(Patient $record): array
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
             'Client' => $record->client->company_name,
@@ -114,7 +114,7 @@ class PatientResource extends Resource
             ->withCount('files');
     }
 
-    public static function getGlobalSearchResultUrl(Patient $record): string
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
     {
         return PatientResource::getUrl('edit', ['record' => $record]);
     }

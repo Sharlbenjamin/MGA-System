@@ -135,12 +135,12 @@ public static function table(Tables\Table $table): Tables\Table
         ];
     }
 
-    public static function getGlobalSearchResultTitle(Provider $record): string
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
         return $record->name . ' (' . $record->type . ')';
     }
 
-    public static function getGlobalSearchResultDetails(Provider $record): array
+    public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
     {
         return [
             'Country' => $record->country->name,
@@ -159,7 +159,7 @@ public static function table(Tables\Table $table): Tables\Table
             ->withCount('files');
     }
 
-    public static function getGlobalSearchResultUrl(Provider $record): string
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
     {
         return ProviderResource::getUrl('overview', ['record' => $record]);
     }
