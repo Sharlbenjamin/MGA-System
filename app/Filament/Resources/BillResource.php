@@ -89,7 +89,6 @@ class BillResource extends Resource
                             }),
                         Forms\Components\Select::make('bank_account_id')
                             ->label('Bank Account')
-                            ->relationship('bankAccount', 'beneficiary_name')
                             ->options(function ($get) {
                                 $fileId = $get('file_id');
                                 if (!$fileId) {
