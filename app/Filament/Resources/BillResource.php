@@ -92,12 +92,12 @@ class BillResource extends Resource
                             ->options(function ($get) {
                                 $fileId = $get('file_id');
                                 if (!$fileId) {
-                                    return collect();
+                                    return [];
                                 }
 
                                 $file = \App\Models\File::find($fileId);
                                 if (!$file) {
-                                    return collect();
+                                    return [];
                                 }
 
                                 // Get provider bank accounts if file has a provider
@@ -117,7 +117,7 @@ class BillResource extends Resource
                                 }
 
                                 // Merge provider and client accounts
-                                return $providerAccounts->merge($clientAccounts);
+                                return $providerAccounts->merge($clientAccounts)->toArray();
                             })
                             ->searchable()
                             ->preload()
