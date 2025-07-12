@@ -89,35 +89,51 @@ class BillResource extends Resource
                             }),
                         Forms\Components\Select::make('bank_account_id')
                             ->label('Bank Account')
-                            ->options(function ($get) {
+                            ->options(function ($get, $record) {
                                 $fileId = $get('file_id');
-                                if (!$fileId) {
-                                    return [];
-                                }
+                                $selectedBankAccountId = $get('bank_account_id');
+                                
+                                // Start with an empty collection
+                                $accounts = collect();
+                                
+                                if ($fileId) {
+                                    $file = \App\Models\File::find($fileId);
+                                    if ($file) {
+                                        // Get provider bank accounts if file has a provider
+                                        if ($file->providerBranch && $file->providerBranch->provider) {
+                                            $providerAccounts = BankAccount::where('type', 'Provider')
+                                                ->where('provider_id', $file->providerBranch->provider_id)
+                                                ->pluck('beneficiary_name', 'id');
+                                            $accounts = $accounts->merge($providerAccounts);
+                                        }
 
-                                $file = \App\Models\File::find($fileId);
-                                if (!$file) {
-                                    return [];
+                                        // Get client bank accounts if file has a patient with a client
+                                        if ($file->patient && $file->patient->client) {
+                                            $clientAccounts = BankAccount::where('type', 'Client')
+                                                ->where('client_id', $file->patient->client_id)
+                                                ->pluck('beneficiary_name', 'id');
+                                            $accounts = $accounts->merge($clientAccounts);
+                                        }
+                                    }
                                 }
-
-                                // Get provider bank accounts if file has a provider
-                                $providerAccounts = collect();
-                                if ($file->providerBranch && $file->providerBranch->provider) {
-                                    $providerAccounts = BankAccount::where('type', 'Provider')
-                                        ->where('provider_id', $file->providerBranch->provider_id)
-                                        ->pluck('beneficiary_name', 'id');
+                                
+                                // If there's a selected bank account that's not in the current options, add it
+                                if ($selectedBankAccountId && !$accounts->has($selectedBankAccountId)) {
+                                    $selectedAccount = BankAccount::find($selectedBankAccountId);
+                                    if ($selectedAccount) {
+                                        $accounts->put($selectedAccount->id, $selectedAccount->beneficiary_name);
+                                    }
                                 }
-
-                                // Get client bank accounts if file has a patient with a client
-                                $clientAccounts = collect();
-                                if ($file->patient && $file->patient->client) {
-                                    $clientAccounts = BankAccount::where('type', 'Client')
-                                        ->where('client_id', $file->patient->client_id)
-                                        ->pluck('beneficiary_name', 'id');
+                                
+                                // If editing an existing record, ensure its bank account is included
+                                if ($record && $record->bank_account_id && !$accounts->has($record->bank_account_id)) {
+                                    $recordAccount = BankAccount::find($record->bank_account_id);
+                                    if ($recordAccount) {
+                                        $accounts->put($recordAccount->id, $recordAccount->beneficiary_name);
+                                    }
                                 }
-
-                                // Merge provider and client accounts
-                                return $providerAccounts->merge($clientAccounts)->toArray();
+                                
+                                return $accounts->toArray();
                             })
                             ->searchable()
                             ->preload()
