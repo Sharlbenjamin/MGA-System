@@ -37,6 +37,12 @@ class Bill extends Model
         'bill_date' => 'date',
     ];
 
+    // Mutators
+    public function setBankAccountIdAttribute($value)
+    {
+        $this->attributes['bank_account_id'] = ($value == 0 || $value == '0') ? null : $value;
+    }
+
     // relations      relations      relations       relations        relations        relations
 
     public function file()
