@@ -123,6 +123,7 @@ class BillResource extends Resource
                             ->preload()
                             ->nullable()
                             ->live()
+                            ->default(null)
                             ->helperText('Shows provider and client bank accounts based on the selected file'),
                         Forms\Components\DatePicker::make('bill_date')->default(now()->format('Y-m-d')),
                         Forms\Components\Select::make('status')
