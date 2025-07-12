@@ -92,17 +92,13 @@ class BillResource extends Resource
                             ->options(function ($get) {
                                 $fileId = $get('file_id');
                                 if (!$fileId) {
-                                    return BankAccount::where('type', 'Internal')->pluck('beneficiary_name', 'id');
+                                    return collect();
                                 }
 
                                 $file = \App\Models\File::find($fileId);
                                 if (!$file) {
-                                    return BankAccount::where('type', 'Internal')->pluck('beneficiary_name', 'id');
+                                    return collect();
                                 }
-
-                                // Get internal bank accounts
-                                $internalAccounts = BankAccount::where('type', 'Internal')
-                                    ->pluck('beneficiary_name', 'id');
 
                                 // Get provider bank accounts if file has a provider
                                 $providerAccounts = collect();
@@ -120,8 +116,8 @@ class BillResource extends Resource
                                         ->pluck('beneficiary_name', 'id');
                                 }
 
-                                // Merge all accounts
-                                return $internalAccounts->merge($providerAccounts)->merge($clientAccounts);
+                                // Merge provider and client accounts
+                                return $providerAccounts->merge($clientAccounts);
                             })
                             ->searchable()
                             ->preload()
@@ -132,7 +128,7 @@ class BillResource extends Resource
                                 // Clear bank account when file changes
                                 $set('bank_account_id', null);
                             })
-                            ->helperText('Shows internal, provider, and client bank accounts based on the selected file'),
+                            ->helperText('Shows provider and client bank accounts based on the selected file'),
                         Forms\Components\DatePicker::make('bill_date')->default(now()->format('Y-m-d')),
                         Forms\Components\Select::make('status')
                             ->options([
