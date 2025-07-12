@@ -89,6 +89,7 @@ class BillResource extends Resource
                             }),
                         Forms\Components\Select::make('bank_account_id')
                             ->label('Bank Account')
+                            ->relationship('bankAccount', 'beneficiary_name')
                             ->options(function ($get) {
                                 $fileId = $get('file_id');
                                 if (!$fileId) {
@@ -123,7 +124,6 @@ class BillResource extends Resource
                             ->preload()
                             ->nullable()
                             ->live()
-                            ->default(null)
                             ->helperText('Shows provider and client bank accounts based on the selected file'),
                         Forms\Components\DatePicker::make('bill_date')->default(now()->format('Y-m-d')),
                         Forms\Components\Select::make('status')
