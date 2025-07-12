@@ -88,11 +88,51 @@ class BillResource extends Resource
                                 }
                             }),
                         Forms\Components\Select::make('bank_account_id')
-                            ->relationship('bankAccount', 'beneficiary_name')
-                            ->options(function () {
-                                return BankAccount::where('type', 'internal')->pluck('beneficiary_name', 'id');
+                            ->label('Bank Account')
+                            ->options(function ($get) {
+                                $fileId = $get('file_id');
+                                if (!$fileId) {
+                                    return BankAccount::where('type', 'Internal')->pluck('beneficiary_name', 'id');
+                                }
+
+                                $file = \App\Models\File::find($fileId);
+                                if (!$file) {
+                                    return BankAccount::where('type', 'Internal')->pluck('beneficiary_name', 'id');
+                                }
+
+                                // Get internal bank accounts
+                                $internalAccounts = BankAccount::where('type', 'Internal')
+                                    ->pluck('beneficiary_name', 'id');
+
+                                // Get provider bank accounts if file has a provider
+                                $providerAccounts = collect();
+                                if ($file->providerBranch && $file->providerBranch->provider) {
+                                    $providerAccounts = BankAccount::where('type', 'Provider')
+                                        ->where('provider_id', $file->providerBranch->provider_id)
+                                        ->pluck('beneficiary_name', 'id');
+                                }
+
+                                // Get client bank accounts if file has a patient with a client
+                                $clientAccounts = collect();
+                                if ($file->patient && $file->patient->client) {
+                                    $clientAccounts = BankAccount::where('type', 'Client')
+                                        ->where('client_id', $file->patient->client_id)
+                                        ->pluck('beneficiary_name', 'id');
+                                }
+
+                                // Merge all accounts
+                                return $internalAccounts->merge($providerAccounts)->merge($clientAccounts);
                             })
-                            ->nullable(),
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->live()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Clear bank account when file changes
+                                $set('bank_account_id', null);
+                            })
+                            ->helperText('Shows internal, provider, and client bank accounts based on the selected file'),
                         Forms\Components\DatePicker::make('bill_date')->default(now()->format('Y-m-d')),
                         Forms\Components\Select::make('status')
                             ->options([

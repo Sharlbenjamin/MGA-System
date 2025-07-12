@@ -56,7 +56,7 @@ class InvoiceResource extends Resource
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')
                             ->options(function () {
-                                return BankAccount::where('type', 'internal')->pluck('beneficiary_name', 'id');
+                                return BankAccount::where('type', 'Internal')->pluck('beneficiary_name', 'id');
                             })
                             ->nullable(),
 
