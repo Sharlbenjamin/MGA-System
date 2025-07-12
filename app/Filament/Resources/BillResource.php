@@ -123,11 +123,6 @@ class BillResource extends Resource
                             ->preload()
                             ->nullable()
                             ->live()
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, $set, $get) {
-                                // Clear bank account when file changes
-                                $set('bank_account_id', null);
-                            })
                             ->helperText('Shows provider and client bank accounts based on the selected file'),
                         Forms\Components\DatePicker::make('bill_date')->default(now()->format('Y-m-d')),
                         Forms\Components\Select::make('status')
