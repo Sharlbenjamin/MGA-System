@@ -89,7 +89,9 @@ class BillResource extends Resource
                             }),
                         Forms\Components\Select::make('bank_account_id')
                             ->label('Bank Account')
-                            ->relationship('bankAccount', 'beneficiary_name')
+                            ->relationship('bankAccount', 'beneficiary_name', function ($query) {
+                                return $query->where('type', 'Provider');
+                            })
                             ->searchable()
                             ->preload()
                             ->nullable()
