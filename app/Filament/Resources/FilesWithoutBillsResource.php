@@ -159,6 +159,7 @@ class FilesWithoutBillsResource extends Resource
                     ->modalHeading('Upload Bill Document')
                     ->modalDescription('Upload a bill document for this file.')
                     ->modalSubmitActionLabel('Upload Bill')
+                    ->uniqueId(fn (File $record): string => 'upload_bill_' . $record->id)
                     ->form([
                         Forms\Components\TextInput::make('name')
                             ->label('Bill Name')
@@ -181,7 +182,7 @@ class FilesWithoutBillsResource extends Resource
                             ])
                             ->default('Unpaid')
                             ->required(),
-                        Forms\Components\FileUpload::make('document')
+                        Forms\Components\FileUpload::make('file_bill_document')
                             ->label('Upload Bill Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
@@ -210,8 +211,8 @@ class FilesWithoutBillsResource extends Resource
                             $bill->save();
 
                             // Handle the uploaded file if provided
-                            if (isset($data['document']) && !empty($data['document'])) {
-                                $uploadedFile = $data['document'];
+                            if (isset($data['file_bill_document']) && !empty($data['file_bill_document'])) {
+                                $uploadedFile = $data['file_bill_document'];
                                 
                                 // Log the uploaded file data for debugging
                                 Log::info('Bill upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);

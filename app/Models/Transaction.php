@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\Log;
 
 class Transaction extends Model
 {
@@ -39,22 +40,47 @@ class Transaction extends Model
 
 
         static::updated(function ($transaction) {
-            $transaction->bankAccount->calculateBalance();
+            try {
+                if ($transaction->bankAccount) {
+                    $transaction->bankAccount->calculateBalance();
+                }
+            } catch (\Exception $e) {
+                Log::error('Error in transaction updated event: ' . $e->getMessage(), [
+                    'transaction_id' => $transaction->id,
+                    'bank_account_id' => $transaction->bank_account_id
+                ]);
+            }
         });
 
         static::created(function ($transaction) {
-            $transaction->bankAccount->calculateBalance();
+            try {
+                if ($transaction->bankAccount) {
+                    $transaction->bankAccount->calculateBalance();
+                }
+            } catch (\Exception $e) {
+                Log::error('Error in transaction created event: ' . $e->getMessage(), [
+                    'transaction_id' => $transaction->id,
+                    'bank_account_id' => $transaction->bank_account_id
+                ]);
+            }
         });
 
 
         static::deleting(function ($transaction) {
-            // un pay all the invoices or bills related to this transaction
-            if ($transaction->related_type === 'Invoice') {
-                $transaction->related->update(['status' => 'Unpaid']);
-
-            }
-            if ($transaction->related_type === 'Bill') {
-                $transaction->related->update(['status' => 'Unpaid']);
+            try {
+                // un pay all the invoices or bills related to this transaction
+                if ($transaction->related_type === 'Invoice' && $transaction->related) {
+                    $transaction->related->update(['status' => 'Unpaid']);
+                }
+                if ($transaction->related_type === 'Bill' && $transaction->related) {
+                    $transaction->related->update(['status' => 'Unpaid']);
+                }
+            } catch (\Exception $e) {
+                Log::error('Error in transaction deleting event: ' . $e->getMessage(), [
+                    'transaction_id' => $transaction->id,
+                    'related_type' => $transaction->related_type,
+                    'related_id' => $transaction->related_id
+                ]);
             }
         });
     }
@@ -72,6 +98,11 @@ class Transaction extends Model
     public function bills(): BelongsToMany
     {
         return $this->belongsToMany(Bill::class)->withPivot('amount_paid');
+    }
+
+    public function related(): MorphTo
+    {
+        return $this->morphTo();
     }
 
     public function calculateBankCharges()

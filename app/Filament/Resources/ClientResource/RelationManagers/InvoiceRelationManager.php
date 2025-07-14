@@ -48,6 +48,7 @@ class InvoiceRelationManager extends RelationManager
                     'Sent' => 'info',
                     'Overdue' => 'danger',
                     'Paid' => 'success',
+                    'Partial' => 'warning',
                     'Posted' => 'primary',
                     'Unpaid' => 'danger',
                 }),
@@ -71,6 +72,7 @@ class InvoiceRelationManager extends RelationManager
                         'Unpaid' => 'Unpaid',
                         'Overdue' => 'Overdue',
                         'Paid' => 'Paid',
+                        'Partial' => 'Partial',
                     ]),
                     // due date filter when true fetch invoices with due date before today
             ])->actions([
@@ -146,6 +148,40 @@ class InvoiceRelationManager extends RelationManager
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
+                BulkAction::make('updateStatus')
+                    ->label('Update Status')
+                    ->color('primary')
+                    ->icon('heroicon-o-pencil-square')
+                    ->modalHeading('Update Invoice Status')
+                    ->modalSubmitActionLabel('Update Status')
+                    ->form([
+                        Forms\Components\Select::make('status')
+                            ->label('New Status')
+                            ->options([
+                                'Draft' => 'Draft',
+                                'Posted' => 'Posted',
+                                'Sent' => 'Sent',
+                                'Unpaid' => 'Unpaid',
+                                'Overdue' => 'Overdue',
+                                'Paid' => 'Paid',
+                                'Partial' => 'Partial',
+                            ])
+                            ->required()
+                            ->default('Draft'),
+                    ])
+                    ->action(function (array $data) {
+                        $invoices = $this->getSelectedTableRecords();
+                        
+                        foreach ($invoices as $invoice) {
+                            $invoice->update(['status' => $data['status']]);
+                        }
+                        
+                        Notification::make()
+                            ->success()
+                            ->title('Status Updated')
+                            ->body(count($invoices) . ' invoice(s) status has been updated to ' . $data['status'])
+                            ->send();
+                    }),
                 BulkAction::make('SendBalanceUpdate')
                     ->label('Send Balance Update')
                     ->color('success')

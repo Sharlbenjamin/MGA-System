@@ -76,7 +76,7 @@ class BillRelationManager extends RelationManager
                     ->modalDescription('Upload the bill document to Google Drive.')
                     ->modalSubmitActionLabel('Upload')
                     ->form([
-                        Forms\Components\FileUpload::make('document')
+                        Forms\Components\FileUpload::make('bill_relation_document')
                             ->label('Upload Bill Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
@@ -93,7 +93,7 @@ class BillRelationManager extends RelationManager
                     ])
                     ->action(function ($record, array $data = []) {
                         try {
-                            if (!isset($data['document']) || empty($data['document'])) {
+                            if (!isset($data['bill_relation_document']) || empty($data['bill_relation_document'])) {
                                 Notification::make()
                                     ->danger()
                                     ->title('No document uploaded')
@@ -103,7 +103,7 @@ class BillRelationManager extends RelationManager
                             }
 
                             // Handle the uploaded file properly
-                            $uploadedFile = $data['document'];
+                            $uploadedFile = $data['bill_relation_document'];
                             
                             // Log the uploaded file data for debugging
                             Log::info('Bill upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);

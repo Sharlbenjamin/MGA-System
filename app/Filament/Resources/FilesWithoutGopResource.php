@@ -154,6 +154,7 @@ class FilesWithoutGopResource extends Resource
                     ->modalHeading('Upload GOP Document')
                     ->modalDescription('Upload a GOP document for this file.')
                     ->modalSubmitActionLabel('Upload GOP')
+                    ->uniqueId(fn (File $record): string => 'upload_gop_' . $record->id)
                     ->form([
                         Forms\Components\Select::make('type')
                             ->options([
@@ -178,7 +179,7 @@ class FilesWithoutGopResource extends Resource
                             ])
                             ->default('Not Sent')
                             ->required(),
-                        Forms\Components\FileUpload::make('document')
+                        Forms\Components\FileUpload::make('file_gop_document')
                             ->label('Upload GOP Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
@@ -195,7 +196,7 @@ class FilesWithoutGopResource extends Resource
                     ])
                     ->action(function (File $record, array $data) {
                         try {
-                            if (!isset($data['document']) || empty($data['document'])) {
+                            if (!isset($data['file_gop_document']) || empty($data['file_gop_document'])) {
                                 Notification::make()
                                     ->danger()
                                     ->title('No document uploaded')
@@ -205,7 +206,7 @@ class FilesWithoutGopResource extends Resource
                             }
 
                             // Handle the uploaded file properly
-                            $uploadedFile = $data['document'];
+                            $uploadedFile = $data['file_gop_document'];
                             
                             // Log the uploaded file data for debugging
                             Log::info('GOP upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);

@@ -165,8 +165,9 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ->modalHeading('Upload Transaction Document')
                     ->modalDescription('Upload the transaction document to Google Drive.')
                     ->modalSubmitActionLabel('Upload')
+                    ->uniqueId(fn (Transaction $record): string => 'upload_document_' . $record->id)
                     ->form([
-                        Forms\Components\FileUpload::make('document')
+                        Forms\Components\FileUpload::make('transaction_document')
                             ->label('Upload Transaction Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
@@ -183,7 +184,7 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ])
                     ->action(function ($record, array $data = []) {
                         try {
-                            if (!isset($data['document']) || empty($data['document'])) {
+                            if (!isset($data['transaction_document']) || empty($data['transaction_document'])) {
                                 \Filament\Notifications\Notification::make()
                                     ->danger()
                                     ->title('No document uploaded')
@@ -193,7 +194,7 @@ class TransactionsWithoutDocumentsResource extends Resource
                             }
 
                             // Handle the uploaded file properly
-                            $uploadedFile = $data['document'];
+                            $uploadedFile = $data['transaction_document'];
                             
                             // Log the uploaded file data for debugging
                             \Illuminate\Support\Facades\Log::info('Transaction upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);

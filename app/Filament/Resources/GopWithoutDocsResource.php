@@ -159,8 +159,9 @@ class GopWithoutDocsResource extends Resource
                     ->modalHeading('Upload GOP Document')
                     ->modalDescription('Upload the GOP document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
+                    ->uniqueId(fn (Gop $record): string => 'upload_gop_doc_' . $record->id)
                     ->form([
-                        Forms\Components\FileUpload::make('document')
+                        Forms\Components\FileUpload::make('gop_document')
                             ->label('Upload GOP Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
@@ -177,7 +178,7 @@ class GopWithoutDocsResource extends Resource
                     ])
                     ->action(function (Gop $record, array $data) {
                         try {
-                            if (!isset($data['document']) || empty($data['document'])) {
+                            if (!isset($data['gop_document']) || empty($data['gop_document'])) {
                                 Notification::make()
                                     ->danger()
                                     ->title('No document uploaded')
@@ -187,7 +188,7 @@ class GopWithoutDocsResource extends Resource
                             }
 
                             // Handle the uploaded file properly
-                            $uploadedFile = $data['document'];
+                            $uploadedFile = $data['gop_document'];
                             
                             // Log the uploaded file data for debugging
                             Log::info('GOP doc upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);

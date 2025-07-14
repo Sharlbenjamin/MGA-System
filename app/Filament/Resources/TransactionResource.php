@@ -298,7 +298,7 @@ class TransactionResource extends Resource
                     ->modalDescription('Upload the transaction document to Google Drive.')
                     ->modalSubmitActionLabel('Upload')
                     ->form([
-                        Forms\Components\FileUpload::make('document')
+                        Forms\Components\FileUpload::make('transaction_document_main')
                             ->label('Upload Transaction Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
@@ -315,7 +315,7 @@ class TransactionResource extends Resource
                     ])
                     ->action(function ($record, array $data = []) {
                         try {
-                            if (!isset($data['document']) || empty($data['document'])) {
+                            if (!isset($data['transaction_document_main']) || empty($data['transaction_document_main'])) {
                                 Notification::make()
                                     ->danger()
                                     ->title('No document uploaded')
@@ -325,7 +325,7 @@ class TransactionResource extends Resource
                             }
 
                             // Handle the uploaded file properly
-                            $uploadedFile = $data['document'];
+                            $uploadedFile = $data['transaction_document_main'];
                             
                             // Log the uploaded file data for debugging
                             \Log::info('Transaction upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);

@@ -87,7 +87,7 @@ class GopRelationManager extends RelationManager
                         : 'This will upload the GOP document to Google Drive.')
                     ->modalSubmitActionLabel(fn ($record) => $record->type === 'Out' ? 'Generate' : 'Upload')
                     ->form(fn ($record) => $record->type === 'In' ? [
-                        Forms\Components\FileUpload::make('document')
+                        Forms\Components\FileUpload::make('gop_relation_document')
                             ->label('Upload GOP Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
@@ -111,7 +111,7 @@ class GopRelationManager extends RelationManager
                                 $fileName = 'GOP in ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.pdf';
                             } else {
                                 // Upload existing document for In type
-                                if (!isset($data['document']) || empty($data['document'])) {
+                                if (!isset($data['gop_relation_document']) || empty($data['gop_relation_document'])) {
                                     Notification::make()
                                         ->danger()
                                         ->title('No document uploaded')
@@ -121,7 +121,7 @@ class GopRelationManager extends RelationManager
                                 }
 
                                 // Handle the uploaded file properly
-                                $uploadedFile = $data['document'];
+                                $uploadedFile = $data['gop_relation_document'];
                                 
                                 // Log the uploaded file data for debugging
                                 Log::info('Uploaded file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
