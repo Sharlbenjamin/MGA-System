@@ -206,7 +206,6 @@ public static function form(Form $form): Form
                         ->modalHeading('Create Custom Status')
                         ->modalButton('Create Status')
                         ->action(function (array $data, $get) {
-                            // Store custom status in the custom_status field
                             return $data['custom_status'];
                         });
                 }),
@@ -237,7 +236,6 @@ public static function form(Form $form): Form
                         ->modalHeading('Create Custom Status')
                         ->modalButton('Create Status')
                         ->action(function (array $data, $get) {
-                            // Store custom status in the custom_new_status field
                             return $data['custom_new_status'];
                         });
                 }),
