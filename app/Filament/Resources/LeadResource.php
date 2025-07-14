@@ -82,6 +82,7 @@ class LeadResource extends Resource
                         'Error' => 'danger',
                         'Partner' => 'success',
                         'Rejected' => 'gray',
+                        default => 'gray',
             }),
                 TextColumn::make('last_contact_date')->date()->sortable()->searchable(),
             ])
