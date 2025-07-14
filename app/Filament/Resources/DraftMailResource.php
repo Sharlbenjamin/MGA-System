@@ -82,16 +82,22 @@ class DraftMailResource extends Resource
             ];
         }
 
-        // Get custom statuses from draft mails
-        $customStatuses = DraftMail::where('type', $type)
+        // Get all unique statuses from existing draft mails of this type
+        $existingStatuses = DraftMail::where('type', $type)
             ->whereNotNull('status')
-            ->pluck('status', 'status')
+            ->distinct()
+            ->pluck('status')
             ->toArray();
 
-        $customNewStatuses = DraftMail::where('type', $type)
+        $existingNewStatuses = DraftMail::where('type', $type)
             ->whereNotNull('new_status')
-            ->pluck('new_status', 'new_status')
+            ->distinct()
+            ->pluck('new_status')
             ->toArray();
+
+        // Convert to associative array
+        $customStatuses = array_combine($existingStatuses, $existingStatuses);
+        $customNewStatuses = array_combine($existingNewStatuses, $existingNewStatuses);
 
         // Merge all statuses
         return array_merge($defaultStatuses, $customStatuses, $customNewStatuses);
@@ -180,65 +186,27 @@ public static function form(Form $form): Form
                     'File' => 'File',
                 ])->reactive()->required(),
 
-            Select::make('status')->options(fn ($get) => self::getAvailableStatuses($get('type')))
-                ->nullable()->label('Lead Status')->reactive()
-                ->searchable()
-                ->allowHtml()
-                ->getSearchResultsUsing(function (string $search, $get) {
+            TextInput::make('status')
+                ->label('Lead Status')
+                ->reactive()
+                ->datalist(function ($get) {
                     $type = $get('type');
+                    if (!$type) return [];
                     $statuses = self::getAvailableStatuses($type);
-                    
-                    // Filter existing statuses
-                    $filtered = array_filter($statuses, function($key) use ($search) {
-                        return str_contains(strtolower($key), strtolower($search));
-                    }, ARRAY_FILTER_USE_KEY);
-                    
-                    return $filtered;
+                    return array_keys($statuses);
                 })
-                ->createOptionForm([
-                    TextInput::make('custom_status')
-                        ->label('Custom Status Name')
-                        ->required()
-                        ->maxLength(255)
-                ])
-                ->createOptionAction(function (Forms\Components\Actions\Action $action) {
-                    return $action
-                        ->modalHeading('Create Custom Status')
-                        ->modalButton('Create Status')
-                        ->action(function (array $data, $get) {
-                            return $data['custom_status'];
-                        });
-                }),
+                ->helperText('Type a custom status or select from the dropdown'),
 
-            Select::make('new_status')->options(fn ($get) => self::getAvailableStatuses($get('type')))
-                ->nullable()->label('New Status After Sending')->reactive()
-                ->searchable()
-                ->allowHtml()
-                ->getSearchResultsUsing(function (string $search, $get) {
+            TextInput::make('new_status')
+                ->label('New Status After Sending')
+                ->reactive()
+                ->datalist(function ($get) {
                     $type = $get('type');
+                    if (!$type) return [];
                     $statuses = self::getAvailableStatuses($type);
-                    
-                    // Filter existing statuses
-                    $filtered = array_filter($statuses, function($key) use ($search) {
-                        return str_contains(strtolower($key), strtolower($search));
-                    }, ARRAY_FILTER_USE_KEY);
-                    
-                    return $filtered;
+                    return array_keys($statuses);
                 })
-                ->createOptionForm([
-                    TextInput::make('custom_new_status')
-                        ->label('Custom New Status Name')
-                        ->required()
-                        ->maxLength(255)
-                ])
-                ->createOptionAction(function (Forms\Components\Actions\Action $action) {
-                    return $action
-                        ->modalHeading('Create Custom Status')
-                        ->modalButton('Create Status')
-                        ->action(function (array $data, $get) {
-                            return $data['custom_new_status'];
-                        });
-                }),
+                ->helperText('Type a custom status or select from the dropdown'),
         ]);
 }
 
