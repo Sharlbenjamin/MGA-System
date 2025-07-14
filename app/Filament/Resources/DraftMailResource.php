@@ -21,10 +21,81 @@ class DraftMailResource extends Resource
 {
     protected static ?string $model = DraftMail::class;
 
-
     protected static ?string $navigationGroup = 'CRM';
-protected static ?int $navigationSort = 3;
-protected static ?string $navigationIcon = 'heroicon-o-envelope'; // ✉️ Draft Mails Icon
+    protected static ?int $navigationSort = 3;
+    protected static ?string $navigationIcon = 'heroicon-o-envelope'; // ✉️ Draft Mails Icon
+
+    /**
+     * Get all available statuses for a given type (including custom ones)
+     */
+    public static function getAvailableStatuses($type)
+    {
+        $defaultStatuses = [];
+        
+        if ($type === 'Provider') {
+            $defaultStatuses = [
+                'Pending information' => 'Pending information',
+                'Step one' => 'Step one',
+                'Step one sent' => 'Step one sent',
+                'Reminder' => 'Reminder',
+                'Reminder sent' => 'Reminder sent',
+                'Discount' => 'Discount',
+                'Discount sent' => 'Discount sent',
+                'Step two' => 'Step two',
+                'Step two sent' => 'Step two sent',
+                'Presentation' => 'Presentation',
+                'Presentation sent' => 'Presentation sent',
+                'Contract' => 'Contract',
+                'Contract sent' => 'Contract sent',
+                'Fake Case' => 'Fake Case',
+                'Fake Case sent' => 'Fake Case sent',
+                'Cancel Case' => 'Cancel Case',
+                'Cancel Case sent' => 'Cancel Case sent',
+            ];
+        } elseif ($type === 'File') {
+            $defaultStatuses = [
+                'New' => 'New',
+                'Handling' => 'Handling',
+                'Available' => 'Available',
+                'Confirmed' => 'Confirmed',
+                'Requesting GOP' => 'Requesting GOP',
+                'Assisted' => 'Assisted',
+                'Hold' => 'Hold',
+                'Void' => 'Void',
+            ];
+        } else { // Client
+            $defaultStatuses = [
+                'Introduction' => 'Introduction',
+                'Introduction Sent' => 'Introduction Sent',
+                'Reminder' => 'Reminder',
+                'Reminder Sent' => 'Reminder Sent',
+                'Presentation' => 'Presentation',
+                'Presentation Sent' => 'Presentation Sent',
+                'Price List' => 'Price List',
+                'Price List Sent' => 'Price List Sent',
+                'Contract' => 'Contract',
+                'Contract Sent' => 'Contract Sent',
+                'Interested' => 'Interested',
+                'Error' => 'Error',
+                'Partner' => 'Partner',
+                'Rejected' => 'Rejected',
+            ];
+        }
+
+        // Get custom statuses from draft mails
+        $customStatuses = DraftMail::where('type', $type)
+            ->whereNotNull('status')
+            ->pluck('status', 'status')
+            ->toArray();
+
+        $customNewStatuses = DraftMail::where('type', $type)
+            ->whereNotNull('new_status')
+            ->pluck('new_status', 'new_status')
+            ->toArray();
+
+        // Merge all statuses
+        return array_merge($defaultStatuses, $customStatuses, $customNewStatuses);
+    }
 
 public static function form(Form $form): Form
 {
@@ -109,11 +180,67 @@ public static function form(Form $form): Form
                     'File' => 'File',
                 ])->reactive()->required(),
 
-            Select::make('status')->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : ($get('type') === 'File' ? $fileStatuses : $leadStatuses))
-                ->nullable()->label('Lead Status')->reactive(),
+            Select::make('status')->options(fn ($get) => self::getAvailableStatuses($get('type')))
+                ->nullable()->label('Lead Status')->reactive()
+                ->searchable()
+                ->allowHtml()
+                ->getSearchResultsUsing(function (string $search, $get) {
+                    $type = $get('type');
+                    $statuses = self::getAvailableStatuses($type);
+                    
+                    // Filter existing statuses
+                    $filtered = array_filter($statuses, function($key) use ($search) {
+                        return str_contains(strtolower($key), strtolower($search));
+                    }, ARRAY_FILTER_USE_KEY);
+                    
+                    return $filtered;
+                })
+                ->createOptionForm([
+                    TextInput::make('custom_status')
+                        ->label('Custom Status Name')
+                        ->required()
+                        ->maxLength(255)
+                ])
+                ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                    return $action
+                        ->modalHeading('Create Custom Status')
+                        ->modalButton('Create Status')
+                        ->action(function (array $data, $get) {
+                            // Store custom status in the custom_status field
+                            return $data['custom_status'];
+                        });
+                }),
 
-            Select::make('new_status')->options(fn ($get) => $get('type') === 'Provider' ? $providerLeadStatuses : ($get('type') === 'File' ? $fileStatuses : $leadStatuses))
-                ->nullable()->label('New Status After Sending')->reactive(),
+            Select::make('new_status')->options(fn ($get) => self::getAvailableStatuses($get('type')))
+                ->nullable()->label('New Status After Sending')->reactive()
+                ->searchable()
+                ->allowHtml()
+                ->getSearchResultsUsing(function (string $search, $get) {
+                    $type = $get('type');
+                    $statuses = self::getAvailableStatuses($type);
+                    
+                    // Filter existing statuses
+                    $filtered = array_filter($statuses, function($key) use ($search) {
+                        return str_contains(strtolower($key), strtolower($search));
+                    }, ARRAY_FILTER_USE_KEY);
+                    
+                    return $filtered;
+                })
+                ->createOptionForm([
+                    TextInput::make('custom_new_status')
+                        ->label('Custom New Status Name')
+                        ->required()
+                        ->maxLength(255)
+                ])
+                ->createOptionAction(function (Forms\Components\Actions\Action $action) {
+                    return $action
+                        ->modalHeading('Create Custom Status')
+                        ->modalButton('Create Status')
+                        ->action(function (array $data, $get) {
+                            // Store custom status in the custom_new_status field
+                            return $data['custom_new_status'];
+                        });
+                }),
         ]);
 }
 

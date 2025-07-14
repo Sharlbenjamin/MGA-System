@@ -37,8 +37,11 @@ class LeadResource extends Resource
 
     public static function form(Forms\Form $form): Forms\Form
     {
-        $leadStatuses =['Introduction' => 'Introduction','Introduction Sent' => 'Introduction Sent','Reminder' => 'Reminder','Reminder Sent' => 'Reminder Sent','Presentation' => 'Presentation','Presentation Sent' => 'Presentation Sent','Price List' => 'Price List','Price List Sent' => 'Price List Sent','Contract' => 'Contract','Contract Sent' => 'Contract Sent','Interested' => 'Interested','Error' => 'Error','Partner' => 'Partner','Rejected' => 'Rejected',];
         $methods = ['Email' => 'Email', 'Phone' => 'Phone', 'Linked In' => 'Linked In', 'Other' => 'Other',];
+        
+        // Get all available statuses from draft mails for Client type
+        $leadStatuses = \App\Filament\Resources\DraftMailResource::getAvailableStatuses('Client');
+        
         return $form
             ->schema([
                 Select::make('client_id')->relationship('client', 'company_name')->required()->preload()->searchable(),
@@ -54,7 +57,7 @@ class LeadResource extends Resource
 
     public static function table(Tables\Table $table): Tables\Table
     {
-        $leadStatuses =['Introduction' => 'Introduction','Introduction Sent' => 'Introduction Sent','Reminder' => 'Reminder','Reminder Sent' => 'Reminder Sent','Presentation' => 'Presentation','Presentation Sent' => 'Presentation Sent','Price List' => 'Price List','Price List Sent' => 'Price List Sent','Contract' => 'Contract','Contract Sent' => 'Contract Sent','Interested' => 'Interested','Error' => 'Error','Partner' => 'Partner','Rejected' => 'Rejected',];
+        $leadStatuses = \App\Filament\Resources\DraftMailResource::getAvailableStatuses('Client');
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
@@ -96,24 +99,7 @@ class LeadResource extends Resource
                     ->form([
                 Select::make('status')
                     ->label('New Status')
-                    ->options([
-                        [
-                            'Introduction' => 'Introduction',
-                            'Introduction Sent' => 'Introduction Sent',
-                            'Reminder' => 'Reminder',
-                            'Reminder Sent' => 'Reminder Sent',
-                            'Presentation' => 'Presentation',
-                            'Presentation Sent' => 'Presentation Sent',
-                            'Price List' => 'Price List',
-                            'Price List Sent' => 'Price List Sent',
-                            'Contract' => 'Contract',
-                            'Contract Sent' => 'Contract Sent',
-                            'Interested' => 'Interested',
-                            'Error' => 'Error',
-                            'Partner' => 'Partner',
-                            'Rejected' => 'Rejected',
-                        ]
-                    ])
+                    ->options(\App\Filament\Resources\DraftMailResource::getAvailableStatuses('Client'))
                     ->required(),
                     ])
                     ->action(function (Collection $records, array $data) {
