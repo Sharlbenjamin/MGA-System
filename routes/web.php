@@ -62,8 +62,10 @@ Route::get('/redirect-after-login', function () {
 // Filament Admin Panel Routes
 Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, DispatchServingFilamentEvent::class])->group(function () {
     // Filament registers its own routes automatically.
-    
-    // Taxes Export Route
+});
+
+// Taxes Export Routes (only require Filament authentication, not site password)
+Route::middleware([FilamentAuthenticate::class])->group(function () {
     Route::get('/taxes/export', [TaxesExportController::class, 'export'])->name('taxes.export');
     Route::get('/taxes/export/zip', [TaxesExportController::class, 'exportZip'])->name('taxes.export.zip');
 });
