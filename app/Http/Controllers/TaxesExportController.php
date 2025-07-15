@@ -308,8 +308,8 @@ class TaxesExportController extends Controller
                     'supportsAllDrives' => true
                 ]);
 
-                // The response is already the file content as string
-                $content = $response;
+                // The response should be the file content directly
+                $content = (string) $response;
                 
                 // Verify we got actual content
                 if (empty($content) || strlen($content) < 100) {
@@ -317,7 +317,7 @@ class TaxesExportController extends Controller
                         'fileId' => $fileId,
                         'contentLength' => strlen($content)
                     ]);
-                    return 'Document download failed';
+                    return 'Document download failed: Content too small';
                 }
 
                 return $content;
