@@ -303,8 +303,8 @@ class TaxesExportController extends Controller
                     'supportsAllDrives' => true
                 ]);
 
-                // Get the response body as string
-                $content = $response->getBody()->getContents();
+                // The response is already the file content as string
+                $content = $response;
                 
                 // Verify we got actual content
                 if (empty($content) || strlen($content) < 100) {
