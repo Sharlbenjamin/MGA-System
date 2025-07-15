@@ -216,13 +216,13 @@ class TaxesExportController extends Controller
         foreach ($invoices as $invoice) {
             if ($invoice->invoice_google_link) {
                 $fileName = 'Invoices/' . $invoice->name . '.pdf';
-                $content = $this->downloadGoogleDriveFile($invoice->invoice_google_link);
-                if ($content && $content !== 'Document not accessible' && $content !== 'Document download failed' && $content !== 'Service unavailable') {
-                    $zip->addFromString($fileName, $content);
+                $result = $this->downloadGoogleDriveFile($invoice->invoice_google_link);
+                if (is_string($result) && $result !== 'Document not accessible' && $result !== 'Document download failed' && $result !== 'Service unavailable') {
+                    $zip->addFromString($fileName, $result);
                 } else {
                     // Fallback to text file with link if download fails
                     $fileName = 'Invoices/' . $invoice->name . '_LINK.txt';
-                    $content = $this->createDocumentLinkFile($invoice->name, $invoice->invoice_google_link, 'Invoice');
+                    $content = $this->createDocumentLinkFile($invoice->name, $invoice->invoice_google_link, 'Invoice', $result);
                     $zip->addFromString($fileName, $content);
                 }
             }
@@ -232,13 +232,13 @@ class TaxesExportController extends Controller
         foreach ($bills as $bill) {
             if ($bill->bill_google_link) {
                 $fileName = 'Bills/' . $bill->name . '.pdf';
-                $content = $this->downloadGoogleDriveFile($bill->bill_google_link);
-                if ($content && $content !== 'Document not accessible' && $content !== 'Document download failed' && $content !== 'Service unavailable') {
-                    $zip->addFromString($fileName, $content);
+                $result = $this->downloadGoogleDriveFile($bill->bill_google_link);
+                if (is_string($result) && $result !== 'Document not accessible' && $result !== 'Document download failed' && $result !== 'Service unavailable') {
+                    $zip->addFromString($fileName, $result);
                 } else {
                     // Fallback to text file with link if download fails
                     $fileName = 'Bills/' . $bill->name . '_LINK.txt';
-                    $content = $this->createDocumentLinkFile($bill->name, $bill->bill_google_link, 'Bill');
+                    $content = $this->createDocumentLinkFile($bill->name, $bill->bill_google_link, 'Bill', $result);
                     $zip->addFromString($fileName, $content);
                 }
             }
@@ -248,13 +248,13 @@ class TaxesExportController extends Controller
         foreach ($expenses as $expense) {
             if ($expense->attachment_path) {
                 $fileName = 'Expenses/' . $expense->name . '.pdf';
-                $content = $this->downloadGoogleDriveFile($expense->attachment_path);
-                if ($content && $content !== 'Document not accessible' && $content !== 'Document download failed' && $content !== 'Service unavailable') {
-                    $zip->addFromString($fileName, $content);
+                $result = $this->downloadGoogleDriveFile($expense->attachment_path);
+                if (is_string($result) && $result !== 'Document not accessible' && $result !== 'Document download failed' && $result !== 'Service unavailable') {
+                    $zip->addFromString($fileName, $result);
                 } else {
                     // Fallback to text file with link if download fails
                     $fileName = 'Expenses/' . $expense->name . '_LINK.txt';
-                    $content = $this->createDocumentLinkFile($expense->name, $expense->attachment_path, 'Expense');
+                    $content = $this->createDocumentLinkFile($expense->name, $expense->attachment_path, 'Expense', $result);
                     $zip->addFromString($fileName, $content);
                 }
             }
@@ -288,12 +288,17 @@ class TaxesExportController extends Controller
                     'fields' => 'id,name,mimeType',
                     'supportsAllDrives' => true
                 ]);
+                Log::info('File metadata accessed successfully', [
+                    'fileId' => $fileId,
+                    'fileName' => $file->getName(),
+                    'mimeType' => $file->getMimeType()
+                ]);
             } catch (\Exception $e) {
                 Log::warning('Cannot access file metadata', [
                     'fileId' => $fileId,
                     'error' => $e->getMessage()
                 ]);
-                return 'Document not accessible';
+                return 'Document not accessible: ' . $e->getMessage();
             }
 
             // Download file content with proper error handling
@@ -346,19 +351,24 @@ class TaxesExportController extends Controller
         return null;
     }
 
-    private function createDocumentLinkFile($documentName, $googleDriveLink, $documentType)
+    private function createDocumentLinkFile($documentName, $googleDriveLink, $documentType, $errorMessage = null)
     {
         $content = "Document Information\n";
         $content .= "===================\n\n";
         $content .= "Document Name: {$documentName}\n";
         $content .= "Document Type: {$documentType}\n";
         $content .= "Google Drive Link: {$googleDriveLink}\n\n";
+        
+        if ($errorMessage) {
+            $content .= "Download Error: {$errorMessage}\n\n";
+        }
+        
         $content .= "Instructions:\n";
         $content .= "1. Click on the Google Drive link above to access the document\n";
         $content .= "2. The document will open in your browser\n";
         $content .= "3. You can download or view the document directly from Google Drive\n\n";
         $content .= "Note: This file contains a link to the actual document stored in Google Drive.\n";
-        $content .= "The document is not embedded in this zip file to avoid authentication issues.\n";
+        $content .= "The document is not embedded in this zip file due to: {$errorMessage}\n";
         
         return $content;
     }
