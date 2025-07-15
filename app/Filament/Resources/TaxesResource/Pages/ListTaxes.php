@@ -23,6 +23,7 @@ use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Form;
 use Filament\Forms\Components\Actions\Action;
+use Illuminate\Http\Request;
 
 class ListTaxes extends ListRecords
 {
@@ -84,12 +85,15 @@ class ListTaxes extends ListRecords
                     $year = $this->selectedYear ?? Carbon::now()->year;
                     $quarter = $this->selectedQuarter ?? '1';
                     
-                    $url = route('taxes.export.zip', [
+                    // Call the export method directly instead of redirecting
+                    $controller = new \App\Http\Controllers\TaxesExportController();
+                    $request = new \Illuminate\Http\Request();
+                    $request->merge([
                         'year' => $year,
                         'quarter' => $quarter,
                     ]);
                     
-                    return redirect($url);
+                    return $controller->exportZip($request);
                 })
                 ->extraAttributes([
                     'class' => 'bg-green-600 hover:bg-green-700',
