@@ -303,40 +303,44 @@ class TaxesExportController extends Controller
 
             // Download file content with proper error handling
             try {
-                // Use the correct method to download file content
+                // First, get file metadata to check if it's accessible
+                $file = $service->files->get($fileId, [
+                    'fields' => 'id,name,mimeType,size',
+                    'supportsAllDrives' => true
+                ]);
+
+                Log::info('File metadata retrieved', [
+                    'fileId' => $fileId,
+                    'fileName' => $file->getName(),
+                    'mimeType' => $file->getMimeType(),
+                    'size' => $file->getSize()
+                ]);
+
+                // Now download the actual file content
                 $response = $service->files->get($fileId, [
                     'alt' => 'media',
                     'supportsAllDrives' => true
                 ]);
 
-                // Log what we're getting for debugging
-                Log::info('Google Drive response type', [
-                    'fileId' => $fileId,
-                    'responseType' => get_class($response),
-                    'responseContent' => substr((string) $response, 0, 200) // First 200 chars for debugging
-                ]);
-
-                // Try to get the content properly
-                if (method_exists($response, 'getBody')) {
-                    $body = $response->getBody();
-                    if (method_exists($body, 'getContents')) {
-                        $content = $body->getContents();
-                    } else {
-                        $content = (string) $body;
-                    }
-                } elseif (method_exists($response, 'getContents')) {
-                    $content = $response->getContents();
-                } else {
-                    $content = (string) $response;
-                }
+                // The response should be the raw file content
+                $content = (string) $response;
                 
-                // Verify we got actual content
+                // Verify we got actual content and it looks like a PDF
                 if (empty($content) || strlen($content) < 100) {
                     Log::warning('Downloaded content seems too small', [
                         'fileId' => $fileId,
                         'contentLength' => strlen($content)
                     ]);
                     return 'Document download failed: Content too small';
+                }
+
+                // Check if it looks like a PDF (should start with %PDF)
+                if (substr($content, 0, 4) !== '%PDF') {
+                    Log::warning('Downloaded content does not appear to be a PDF', [
+                        'fileId' => $fileId,
+                        'contentStart' => substr($content, 0, 50)
+                    ]);
+                    return 'Document download failed: Not a valid PDF file';
                 }
 
                 return $content;
