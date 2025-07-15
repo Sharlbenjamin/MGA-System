@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use App\Models\Invoice;
 use App\Models\Bill;
@@ -214,24 +215,27 @@ class TaxesExportController extends Controller
         // Add invoices to zip
         foreach ($invoices as $invoice) {
             if ($invoice->invoice_google_link) {
-                $fileName = 'Invoices/' . $invoice->name . '.pdf';
-                $zip->addFromString($fileName, $this->downloadGoogleDriveFile($invoice->invoice_google_link));
+                $fileName = 'Invoices/' . $invoice->name . '.txt';
+                $content = $this->createDocumentLinkFile($invoice->name, $invoice->invoice_google_link, 'Invoice');
+                $zip->addFromString($fileName, $content);
             }
         }
 
         // Add bills to zip
         foreach ($bills as $bill) {
             if ($bill->bill_google_link) {
-                $fileName = 'Bills/' . $bill->name . '.pdf';
-                $zip->addFromString($fileName, $this->downloadGoogleDriveFile($bill->bill_google_link));
+                $fileName = 'Bills/' . $bill->name . '.txt';
+                $content = $this->createDocumentLinkFile($bill->name, $bill->bill_google_link, 'Bill');
+                $zip->addFromString($fileName, $content);
             }
         }
 
         // Add expenses to zip
         foreach ($expenses as $expense) {
             if ($expense->attachment_path) {
-                $fileName = 'Expenses/' . $expense->name . '.pdf';
-                $zip->addFromString($fileName, $this->downloadGoogleDriveFile($expense->attachment_path));
+                $fileName = 'Expenses/' . $expense->name . '.txt';
+                $content = $this->createDocumentLinkFile($expense->name, $expense->attachment_path, 'Expense');
+                $zip->addFromString($fileName, $content);
             }
         }
 
@@ -254,21 +258,44 @@ class TaxesExportController extends Controller
             $client = new Client();
             $client->setAuthConfig(storage_path('app/google-drive/laraveldriveintegration-af9e6ab2e69d.json'));
             $client->addScope(Drive::DRIVE);
+            $client->setSubject('mga.operation@medguarda.com'); // Set the service account to impersonate
             $service = new Drive($client);
 
-            // Download file content
-            $content = $service->files->get($fileId, [
-                'alt' => 'media',
-                'supportsAllDrives' => true
-            ]);
+            // First, try to get file metadata to check access
+            try {
+                $file = $service->files->get($fileId, [
+                    'fields' => 'id,name,mimeType',
+                    'supportsAllDrives' => true
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Cannot access file metadata', [
+                    'fileId' => $fileId,
+                    'error' => $e->getMessage()
+                ]);
+                return 'Document not accessible';
+            }
 
-            return $content->getBody()->getContents();
+            // Download file content with proper error handling
+            try {
+                $content = $service->files->get($fileId, [
+                    'alt' => 'media',
+                    'supportsAllDrives' => true
+                ]);
+
+                return $content;
+            } catch (\Exception $e) {
+                Log::error('Failed to download file content', [
+                    'fileId' => $fileId,
+                    'error' => $e->getMessage()
+                ]);
+                return 'Document download failed';
+            }
         } catch (\Exception $e) {
-            \Log::error('Failed to download Google Drive file', [
+            Log::error('Failed to initialize Google Drive service', [
                 'url' => $googleDriveLink,
                 'error' => $e->getMessage()
             ]);
-            return 'Document not available';
+            return 'Service unavailable';
         }
     }
 
@@ -284,5 +311,22 @@ class TaxesExportController extends Controller
         }
         
         return null;
+    }
+
+    private function createDocumentLinkFile($documentName, $googleDriveLink, $documentType)
+    {
+        $content = "Document Information\n";
+        $content .= "===================\n\n";
+        $content .= "Document Name: {$documentName}\n";
+        $content .= "Document Type: {$documentType}\n";
+        $content .= "Google Drive Link: {$googleDriveLink}\n\n";
+        $content .= "Instructions:\n";
+        $content .= "1. Click on the Google Drive link above to access the document\n";
+        $content .= "2. The document will open in your browser\n";
+        $content .= "3. You can download or view the document directly from Google Drive\n\n";
+        $content .= "Note: This file contains a link to the actual document stored in Google Drive.\n";
+        $content .= "The document is not embedded in this zip file to avoid authentication issues.\n";
+        
+        return $content;
     }
 } 
