@@ -215,27 +215,48 @@ class TaxesExportController extends Controller
         // Add invoices to zip
         foreach ($invoices as $invoice) {
             if ($invoice->invoice_google_link) {
-                $fileName = 'Invoices/' . $invoice->name . '.txt';
-                $content = $this->createDocumentLinkFile($invoice->name, $invoice->invoice_google_link, 'Invoice');
-                $zip->addFromString($fileName, $content);
+                $fileName = 'Invoices/' . $invoice->name . '.pdf';
+                $content = $this->downloadGoogleDriveFile($invoice->invoice_google_link);
+                if ($content && $content !== 'Document not accessible' && $content !== 'Document download failed' && $content !== 'Service unavailable') {
+                    $zip->addFromString($fileName, $content);
+                } else {
+                    // Fallback to text file with link if download fails
+                    $fileName = 'Invoices/' . $invoice->name . '_LINK.txt';
+                    $content = $this->createDocumentLinkFile($invoice->name, $invoice->invoice_google_link, 'Invoice');
+                    $zip->addFromString($fileName, $content);
+                }
             }
         }
 
         // Add bills to zip
         foreach ($bills as $bill) {
             if ($bill->bill_google_link) {
-                $fileName = 'Bills/' . $bill->name . '.txt';
-                $content = $this->createDocumentLinkFile($bill->name, $bill->bill_google_link, 'Bill');
-                $zip->addFromString($fileName, $content);
+                $fileName = 'Bills/' . $bill->name . '.pdf';
+                $content = $this->downloadGoogleDriveFile($bill->bill_google_link);
+                if ($content && $content !== 'Document not accessible' && $content !== 'Document download failed' && $content !== 'Service unavailable') {
+                    $zip->addFromString($fileName, $content);
+                } else {
+                    // Fallback to text file with link if download fails
+                    $fileName = 'Bills/' . $bill->name . '_LINK.txt';
+                    $content = $this->createDocumentLinkFile($bill->name, $bill->bill_google_link, 'Bill');
+                    $zip->addFromString($fileName, $content);
+                }
             }
         }
 
         // Add expenses to zip
         foreach ($expenses as $expense) {
             if ($expense->attachment_path) {
-                $fileName = 'Expenses/' . $expense->name . '.txt';
-                $content = $this->createDocumentLinkFile($expense->name, $expense->attachment_path, 'Expense');
-                $zip->addFromString($fileName, $content);
+                $fileName = 'Expenses/' . $expense->name . '.pdf';
+                $content = $this->downloadGoogleDriveFile($expense->attachment_path);
+                if ($content && $content !== 'Document not accessible' && $content !== 'Document download failed' && $content !== 'Service unavailable') {
+                    $zip->addFromString($fileName, $content);
+                } else {
+                    // Fallback to text file with link if download fails
+                    $fileName = 'Expenses/' . $expense->name . '_LINK.txt';
+                    $content = $this->createDocumentLinkFile($expense->name, $expense->attachment_path, 'Expense');
+                    $zip->addFromString($fileName, $content);
+                }
             }
         }
 
@@ -277,10 +298,22 @@ class TaxesExportController extends Controller
 
             // Download file content with proper error handling
             try {
-                $content = $service->files->get($fileId, [
+                $response = $service->files->get($fileId, [
                     'alt' => 'media',
                     'supportsAllDrives' => true
                 ]);
+
+                // Get the response body as string
+                $content = $response->getBody()->getContents();
+                
+                // Verify we got actual content
+                if (empty($content) || strlen($content) < 100) {
+                    Log::warning('Downloaded content seems too small', [
+                        'fileId' => $fileId,
+                        'contentLength' => strlen($content)
+                    ]);
+                    return 'Document download failed';
+                }
 
                 return $content;
             } catch (\Exception $e) {

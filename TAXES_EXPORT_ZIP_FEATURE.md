@@ -13,9 +13,11 @@ The Taxes resource now includes an "Export Zip" button that allows users to down
 
 ### Zip File Structure
 The exported zip file contains three main folders:
-1. **Invoices/** - Contains all invoice PDF documents
-2. **Bills/** - Contains all bill PDF documents  
-3. **Expenses/** - Contains all expense PDF documents
+1. **Invoices/** - Contains all invoice PDF documents (with fallback to link files if download fails)
+2. **Bills/** - Contains all bill PDF documents (with fallback to link files if download fails)
+3. **Expenses/** - Contains all expense PDF documents (with fallback to link files if download fails)
+
+**Note**: If a PDF cannot be downloaded from Google Drive, a `_LINK.txt` file will be created instead with the Google Drive link.
 
 ### File Naming Convention
 - **Zip file name**: `taxes_documents_{YEAR}_Q{QUARTER}_{TIMESTAMP}.zip`
@@ -54,7 +56,9 @@ The export respects the current tax period selection:
 ### Error Handling
 - Graceful handling of missing Google Drive files
 - Logging of download failures
-- Fallback content for unavailable documents
+- Fallback to link files for unavailable documents
+- Automatic retry with different authentication methods
+- Content validation to ensure downloaded files are valid PDFs
 
 ## Usage Instructions
 
