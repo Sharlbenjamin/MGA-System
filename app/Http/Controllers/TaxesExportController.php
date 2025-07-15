@@ -303,13 +303,32 @@ class TaxesExportController extends Controller
 
             // Download file content with proper error handling
             try {
+                // Use the correct method to download file content
                 $response = $service->files->get($fileId, [
                     'alt' => 'media',
                     'supportsAllDrives' => true
                 ]);
 
-                // The response should be the file content directly
-                $content = (string) $response;
+                // Log what we're getting for debugging
+                Log::info('Google Drive response type', [
+                    'fileId' => $fileId,
+                    'responseType' => get_class($response),
+                    'responseContent' => substr((string) $response, 0, 200) // First 200 chars for debugging
+                ]);
+
+                // Try to get the content properly
+                if (method_exists($response, 'getBody')) {
+                    $body = $response->getBody();
+                    if (method_exists($body, 'getContents')) {
+                        $content = $body->getContents();
+                    } else {
+                        $content = (string) $body;
+                    }
+                } elseif (method_exists($response, 'getContents')) {
+                    $content = $response->getContents();
+                } else {
+                    $content = (string) $response;
+                }
                 
                 // Verify we got actual content
                 if (empty($content) || strlen($content) < 100) {
