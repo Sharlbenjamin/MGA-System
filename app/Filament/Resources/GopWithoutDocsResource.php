@@ -159,7 +159,6 @@ class GopWithoutDocsResource extends Resource
                     ->modalHeading('Upload GOP Document')
                     ->modalDescription('Upload the GOP document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
-                    ->uniqueId(fn (Gop $record): string => 'upload_gop_doc_' . $record->id)
                     ->form([
                         Forms\Components\FileUpload::make('gop_document')
                             ->label('Upload GOP Document')

@@ -151,7 +151,6 @@ class BillsWithoutDocumentsResource extends Resource
                     ->modalHeading('Upload Bill Document')
                     ->modalDescription('Upload a bill document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
-                    ->uniqueId(fn (Bill $record): string => 'upload_bill_doc_' . $record->id)
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
                             ->label('Upload Bill Document')

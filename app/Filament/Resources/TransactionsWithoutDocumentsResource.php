@@ -165,7 +165,6 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ->modalHeading('Upload Transaction Document')
                     ->modalDescription('Upload the transaction document to Google Drive.')
                     ->modalSubmitActionLabel('Upload')
-                    ->uniqueId(fn (Transaction $record): string => 'upload_document_' . $record->id)
                     ->form([
                         Forms\Components\FileUpload::make('transaction_document')
                             ->label('Upload Transaction Document')
