@@ -234,7 +234,7 @@ class File extends Model
                 $processedCount++;
             } catch (\Exception $e) {
                 $errorCount++;
-                \Log::error('Failed to process appointment notification', [
+                Log::error('Failed to process appointment notification', [
                     'appointment_id' => $appointment->id,
                     'file_id' => $file->id,
                     'error' => $e->getMessage()
@@ -296,6 +296,34 @@ class File extends Model
     public function generateGoogleMeetLink()
     {
         return app(GoogleMeetService::class)->generateMeetLink($this);
+    }
+
+    /**
+     * Confirm telemedicine appointment for this file
+     * This method finds the latest requested appointment and confirms it
+     */
+    public function confirmTelemedicineAppointment()
+    {
+        // Find the latest requested appointment for this file
+        $latestAppointment = $this->appointments()
+            ->where('status', 'Requested')
+            ->latest()
+            ->first();
+
+        if (!$latestAppointment) {
+            throw new \Exception('No requested appointment found for this file.');
+        }
+
+        // Confirm the appointment (this will trigger the updated event in Appointment model)
+        $latestAppointment->update(['status' => 'Confirmed']);
+
+        // Add a comment to track this action
+        $this->comments()->create([
+            'user_id' => Auth::id(),
+            'content' => 'Telemedicine appointment confirmed manually via "Confirm Telemedicine" button.'
+        ]);
+
+        return $latestAppointment;
     }
 
     public static function generateMGAReference($id, $type)

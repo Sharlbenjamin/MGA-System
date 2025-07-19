@@ -69,25 +69,30 @@ class Appointment extends Model
 
         static::updated(function ($appointment) {
             if ($appointment->status === 'Confirmed') {
+                // Ensure immediate update of file fields with appointment data
                 $appointment->file->update([
                     'status' => 'Confirmed',
                     'service_date' => $appointment->service_date,
                     'service_time' => $appointment->service_time,
                     'provider_branch_id' => $appointment->provider_branch_id,
                 ]);
+                
+                // Cancel all other appointments for this file
                 $appointment->file->appointments()->where('id', '!=', $appointment->id)->update(['status' => 'Cancelled']);
 
-                // Get the service type name for telemedicine (ID 2)
-
+                // Generate Google Meet link for telemedicine appointments (service_type_id = 2)
                 if ($appointment->file->service_type_id == 2) {
                     $appointment->file->generateGoogleMeetLink();
                 }
 
+                // Send notifications based on contact preference
                 if($appointment->file->contact_patient === 'Client'){
                     $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment, '');
                 }else{
                     $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
                 }
+                
+                // Notify the provider branch
                 $appointment->providerBranch->notifyBranch('appointment_confirmed', $appointment);
             }
 

@@ -622,6 +622,34 @@ class ViewFile extends ViewRecord
                 ->modalButton('Send Requests')
                 ->action(fn (array $data, $record) => $this->bulkSendRequests($data, $record)),
 
+            Action::make('confirmTelemedicine')
+                ->label('Confirm Telemedicine')
+                ->icon('heroicon-o-video-camera')
+                ->color('success')
+                ->visible(fn ($record) => $record->service_type_id === 2 && $record->appointments()->where('status', 'Requested')->exists())
+                ->requiresConfirmation()
+                ->modalHeading('Confirm Telemedicine Appointment')
+                ->modalDescription('This will confirm the latest requested appointment for this telemedicine file and update all related fields.')
+                ->modalSubmitActionLabel('Confirm Appointment')
+                ->action(function ($record) {
+                    try {
+                        $appointment = $record->confirmTelemedicineAppointment();
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Telemedicine Appointment Confirmed')
+                            ->body('The appointment has been confirmed successfully. Google Meet link has been generated.')
+                            ->success()
+                            ->send();
+                            
+                        return redirect()->to(route('filament.admin.resources.files.view', $record));
+                    } catch (\Exception $e) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Error')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
             Action::make('Update File')
                 ->label('Update File')
                 ->icon('heroicon-o-pencil')
