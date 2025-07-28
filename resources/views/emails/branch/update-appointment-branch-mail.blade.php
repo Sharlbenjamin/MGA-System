@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Appointment Cancelation</title>
+    <title>Appointment Update</title>
 </head>
 <body>
+    <h2>Appointment Update - {{ $appointment->file->patient->name }}</h2>
     <p>Dear {{ $appointment->providerBranch->branch_name }},</p>
     <p>An update has been made to an appointment.</p>
     <p>Please confirm the availability of the appointment datails</p>
@@ -13,7 +14,9 @@
     <ul>
     <li><strong>Date:</strong> {{ date('d-m-Y', strtotime($appointment->service_date)) }}</li>
     <li><strong>Time:</strong> {{ $appointment->service_time }}</li>
-    <li><strong>Location:</strong> {{ $appointment->providerBranch->primaryContact('Appointment')->address ?? 'N/A' }}</li>
+    @if($appointment->file->symptoms)
+    <li><strong>Symptoms:</strong> {{ $appointment->file->symptoms }}</li>
+    @endif
     </ul>
     <p>Please take note of these changes.</p>
     <p>Please confirm the availability at your earliest convenience.</p>
