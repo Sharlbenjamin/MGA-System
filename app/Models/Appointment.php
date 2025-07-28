@@ -52,8 +52,8 @@ class Appointment extends Model
                         'status' => 'Requested',
                     ]);
 
-                    // Notify the branch of the update
-                    $existingAppointment->providerBranch->notifyBranch('appointment_updated', $existingAppointment);
+                    // Branch Appointment notifications are disabled - only AppointmentRequestMail is sent
+                    // $existingAppointment->providerBranch->notifyBranch('appointment_updated', $existingAppointment);
                 }
 
                 return false; // Prevent duplicate creation but allow updates
@@ -61,7 +61,8 @@ class Appointment extends Model
         });
 
         static::created(function ($appointment) {
-            $appointment->providerBranch->notifyBranch('appointment_created', $appointment);
+            // Branch Appointment notifications are disabled - only AppointmentRequestMail is sent
+            // $appointment->providerBranch->notifyBranch('appointment_created', $appointment);
             if($appointment->file->status === 'New') {
                 $appointment->file->update(['status' => 'Handling']);
             }
@@ -93,20 +94,22 @@ class Appointment extends Model
                 //     $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
                 // }
                 
-                // Notify the provider branch
-                $appointment->providerBranch->notifyBranch('appointment_confirmed', $appointment);
+                // Branch Appointment notifications are disabled - only AppointmentRequestMail is sent
+                // $appointment->providerBranch->notifyBranch('appointment_confirmed', $appointment);
             }
 
             if ($appointment->status === 'Cancelled') {
                 // check the previous status
                 $previousStatus = $appointment->getOriginal('status');
                 if ($previousStatus === 'Available') {
-                    $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
+                    // Branch Appointment notifications are disabled - only AppointmentRequestMail is sent
+                    // $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
                 }
             }
 
             if ($appointment->wasChanged(['service_date', 'service_time'])) {
-                $appointment->providerBranch->notifyBranch('appointment_updated', $appointment);
+                // Branch Appointment notifications are disabled - only AppointmentRequestMail is sent
+                // $appointment->providerBranch->notifyBranch('appointment_updated', $appointment);
             }
         });
     }

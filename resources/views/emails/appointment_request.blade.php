@@ -4,6 +4,8 @@
     <title>New Appointment Request</title>
 </head>
 <body>
+    <h2>Appointment Request - {{ $file->patient->name }}</h2>
+    
     <p>Hello,</p>
     
     @if($isCustomEmail)
@@ -27,12 +29,10 @@
         @if($file->service_time)
             <li><strong>Requested Service Time:</strong> {{ $file->service_time }}</li>
         @endif
+        @if($file->symptoms)
+            <li><strong>Symptoms:</strong> {{ $file->symptoms }}</li>
+        @endif
     </ul>
-
-    @if($file->symptoms)
-        <h3>Symptoms:</h3>
-        <p>{{ $file->symptoms }}</p>
-    @endif
 
     @if($file->diagnosis)
         <h3>Diagnosis:</h3>

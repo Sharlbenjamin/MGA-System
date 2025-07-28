@@ -23,6 +23,7 @@ use Filament\Forms\Components\Repeater;
 use Illuminate\Support\Facades\View;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\AppointmentRequestMail;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -767,9 +768,8 @@ class ViewFile extends ViewRecord
                 
                 if ($emailToUse) {
                     try {
-                        // Only create the appointment - the Branch Appointment email will be sent automatically
-                        // via the Appointment model's created event
-                        $successfulBranches[] = $providerBranch->branch_name . ' (Email will be sent via appointment creation)';
+                        Mail::to($emailToUse)->send(new AppointmentRequestMail($record, $providerBranch));
+                        $successfulBranches[] = $providerBranch->branch_name . ' (Email sent)';
                     } catch (\Exception $e) {
                         $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
                     }
