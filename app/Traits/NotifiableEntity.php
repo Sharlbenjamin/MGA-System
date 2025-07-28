@@ -20,8 +20,8 @@ trait NotifiableEntity
         if ($reason === 'Invoice' || $reason === 'Balance' || $reason === 'Financial') {
             return $this->financialContact;
         } elseif ($reason === 'Appointment') {
-            // Use GOP contact for appointment notifications as per new flow
-            return $this->gopContact;
+            // Use operation contact for appointment notifications
+            return $this->operationContact;
         } elseif ($reason === 'File' || $reason === 'Operation') {
             return $this->operationContact;
         } elseif ($reason === 'GOP') {
