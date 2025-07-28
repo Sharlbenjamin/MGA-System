@@ -729,7 +729,7 @@ class ViewFile extends ViewRecord
                         'taskable_id' => $appointment->id,
                         'taskable_type' => \App\Models\Appointment::class,
                         'department' => 'Operation',
-                        'title' => 'New Appointment Request',
+                        'title' => 'Branch Appointment Request',
                         'description' => "Confirm appointment with {$providerBranch->branch_name} for {$appointment->service_date}.",
                         'due_date' => now()->addHours(2),
                         'user_id' => Auth::id(),
@@ -783,7 +783,6 @@ class ViewFile extends ViewRecord
             }
         }
 
-        // Custom emails are disabled as per new flow - only Branch Appointment emails are sent
         // Send to custom emails
         /*
         foreach ($customEmails as $email) {
