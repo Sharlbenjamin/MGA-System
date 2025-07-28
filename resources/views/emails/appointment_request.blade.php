@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Branch Appointment</title>
+    <title>New Appointment Request</title>
 </head>
 <body>
-    <h2>Branch Appointment - {{ $file->patient->name }}</h2>
-    
     <p>Hello,</p>
     
     @if($isCustomEmail)
-        <p>You have received a branch appointment notification.</p>
+        <p>You have received a new appointment request notification.</p>
     @else
-        <p>You have received a branch appointment request for your branch: <strong>{{ $providerBranch->branch_name }}</strong>.</p>
+        <p>You have received a new appointment request for your branch: <strong>{{ $providerBranch->branch_name }}</strong>.</p>
     @endif
     
     <h3>File Details:</h3>
@@ -42,9 +40,9 @@
     @endif
 
     @if(!$isCustomEmail)
-        <p>Please log in to your portal to confirm or reject this branch appointment.</p>
+        <p>Please log in to your portal to confirm or reject this request.</p>
     @else
-        <p>Please review this branch appointment request and take appropriate action.</p>
+        <p>Please review this appointment request and take appropriate action.</p>
     @endif
 
     <p>Best regards,<br>

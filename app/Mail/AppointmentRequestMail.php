@@ -25,7 +25,7 @@ class AppointmentRequestMail extends Mailable
 
     public function build()
     {
-        $subject = 'Branch Appointment';
+        $subject = 'New Appointment Request';
         $view = 'emails.appointment_request';
         
         if ($this->providerBranch) {

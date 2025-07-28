@@ -729,7 +729,7 @@ class ViewFile extends ViewRecord
                         'taskable_id' => $appointment->id,
                         'taskable_type' => \App\Models\Appointment::class,
                         'department' => 'Operation',
-                        'title' => 'Branch Appointment Request',
+                        'title' => 'New Appointment Request',
                         'description' => "Confirm appointment with {$providerBranch->branch_name} for {$appointment->service_date}.",
                         'due_date' => now()->addHours(2),
                         'user_id' => Auth::id(),
