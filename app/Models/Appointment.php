@@ -85,12 +85,13 @@ class Appointment extends Model
                     $appointment->file->generateGoogleMeetLink();
                 }
 
+                // Client notifications are disabled as per new flow – DO NOT ENABLE
                 // Send notifications based on contact preference
-                if($appointment->file->contact_patient === 'Client'){
-                    $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment, '');
-                }else{
-                    $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
-                }
+                // if($appointment->file->contact_patient === 'Client'){
+                //     $appointment->file->patient->client->notifyClient('appointment_confirmed', $appointment, '');
+                // }else{
+                //     $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
+                // }
                 
                 // Notify the provider branch
                 $appointment->providerBranch->notifyBranch('appointment_confirmed', $appointment);

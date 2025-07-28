@@ -37,7 +37,7 @@ use Filament\Infolists\Components\Actions\Action as InfolistAction;
 use Illuminate\Support\Str;
 use App\Models\DraftMail;
 use Filament\Forms\Components\RichEditor;
-
+use App\Models\Task;
 
 use Filament\Support\Colors\Color;
 
@@ -599,7 +599,7 @@ class ViewFile extends ViewRecord
                                 'name' => $branch->branch_name,
                                 'provider' => $branch->provider->name ?? 'N/A',
                                 'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-                                'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
+                                'preferred_contact' => optional($branch->gopContact())->preferred_contact ?? 'N/A',
                             ])->toArray();
                         }),
                     
@@ -747,32 +747,39 @@ class ViewFile extends ViewRecord
                 continue;
             }
 
-            // Check if provider has email directly
-            if ($providerBranch->provider && $providerBranch->provider->email) {
-                try {
-                    Mail::to($providerBranch->provider->email)->send(new AppointmentRequestMail($record, $providerBranch));
-                    $successfulBranches[] = $providerBranch->branch_name . ' (Provider Email)';
-                } catch (\Exception $e) {
-                    $skippedBranches[] = $providerBranch->branch_name . ' (Provider Email failed)';
-                }
+            // Get the GOP contact for the branch (as per new flow requirements)
+            $gopContact = $providerBranch->gopContact();
+            
+            if (!$gopContact) {
+                $skippedBranches[] = $providerBranch->branch_name . ' (No GOP contact)';
                 continue;
             }
 
-            // Fallback to branch contact if provider doesn't have email
-            $contact = $providerBranch->primaryContact('Appointment');
-            if (!$contact) {
-                $skippedBranches[] = $providerBranch->branch_name . ' (No contact)';
-                continue;
-            }
-
-            // Send notification to the branch contact
-            if ($contact->email) {
-                try {
-                    Mail::to($contact->email)->send(new AppointmentRequestMail($record, $providerBranch));
-                    $successfulBranches[] = $providerBranch->branch_name . ' (Branch Contact)';
-                } catch (\Exception $e) {
-                    $skippedBranches[] = $providerBranch->branch_name . ' (Branch Email failed)';
+            // Check preferred contact method
+            $preferredContact = $gopContact->preferred_contact;
+            
+            if (in_array($preferredContact, ['Phone', 'Second Phone'])) {
+                // Phone contact required - notify user to call manually
+                $this->notifyUserForPhoneContact($providerBranch, $gopContact, $record);
+                $successfulBranches[] = $providerBranch->branch_name . ' (Phone contact - manual follow-up required)';
+            } elseif (in_array($preferredContact, ['Email', 'Second Email'])) {
+                // Email contact - send email notification
+                $emailToUse = $preferredContact === 'Email' ? $gopContact->email : $gopContact->second_email;
+                
+                if ($emailToUse) {
+                    try {
+                        Mail::to($emailToUse)->send(new AppointmentRequestMail($record, $providerBranch));
+                        $successfulBranches[] = $providerBranch->branch_name . ' (Email sent)';
+                    } catch (\Exception $e) {
+                        $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
+                    }
+                } else {
+                    $skippedBranches[] = $providerBranch->branch_name . ' (No email available)';
                 }
+            } else {
+                // Unknown contact method - notify user for manual follow-up
+                $this->notifyUserForPhoneContact($providerBranch, $gopContact, $record);
+                $successfulBranches[] = $providerBranch->branch_name . ' (Manual follow-up required)';
             }
         }
 
@@ -1294,6 +1301,31 @@ class ViewFile extends ViewRecord
     }
 
 
+
+    /**
+     * Notify user when phone contact is required for manual follow-up
+     */
+    private function notifyUserForPhoneContact($providerBranch, $gopContact, $record): void
+    {
+        // Create a task for the user to call the provider
+        Task::create([
+            'taskable_id' => $record->id,
+            'taskable_type' => \App\Models\File::class,
+            'department' => 'Operation',
+            'title' => 'Phone Call Required - ' . $providerBranch->branch_name,
+            'description' => "Call {$providerBranch->branch_name} to confirm appointment. Contact: {$gopContact->name} - {$gopContact->phone_number}. File: {$record->mga_reference}",
+            'due_date' => now()->addHours(2),
+            'user_id' => Auth::id(),
+            'file_id' => $record->id,
+        ]);
+
+        // Send Filament notification to current user
+        Notification::make()
+            ->title('Manual Follow-up Required')
+            ->body("Branch {$providerBranch->branch_name} requires phone confirmation. Please contact manually.")
+            ->warning()
+            ->send();
+    }
 
     /**
      * Simple translation function (placeholder - replace with actual API)

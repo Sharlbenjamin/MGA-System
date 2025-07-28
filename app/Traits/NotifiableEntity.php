@@ -18,7 +18,10 @@ trait NotifiableEntity
     {
         if ($reason === 'Invoice' || $reason === 'Balance' || $reason === 'Financial') {
             return $this->financialContact;
-        } elseif ($reason === 'Appointment' || $reason === 'File' || $reason === 'Operation') {
+        } elseif ($reason === 'Appointment') {
+            // Use GOP contact for appointment notifications as per new flow
+            return $this->gopContact;
+        } elseif ($reason === 'File' || $reason === 'Operation') {
             return $this->operationContact;
         } elseif ($reason === 'GOP') {
             return $this->gopContact;
@@ -77,6 +80,16 @@ trait NotifiableEntity
 
     private function notifyByEmail($reason, $type, $data, $parent, $message = null)
     {
+        // Client notifications are disabled as per new flow – DO NOT ENABLE
+        if ($parent === 'Client' || $parent === 'Patient') {
+            Log::info('Client/Patient notification skipped as per new flow', [
+                'reason' => $reason,
+                'type' => $type,
+                'parent' => $parent
+            ]);
+            return;
+        }
+
         $mailable = match ($parent) {
             'Branch' => new NotifyBranchMailable($type, $data),
             'Client' => new NotifyClientMailable($type, $data, $type === 'Custom' ? $message : null),

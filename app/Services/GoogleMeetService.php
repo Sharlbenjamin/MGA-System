@@ -95,21 +95,22 @@ class GoogleMeetService
                 }
             }
 
+            // Client notifications are disabled as per new flow – DO NOT ENABLE
             // Add patient's email (from file->email)
-            if ($file->email) {
-                $attendees[] = new EventAttendee([
-                    'email' => $file->email,
-                    'displayName' => $file->patient->name . ' (Patient)'
-                ]);
-                Log::info('Added patient as attendee', [
-                    'file_id' => $file->id,
-                    'patient_email' => $file->email
-                ]);
-            } else {
-                Log::warning('No patient email available for calendar event', [
-                    'file_id' => $file->id
-                ]);
-            }
+            // if ($file->email) {
+            //     $attendees[] = new EventAttendee([
+            //         'email' => $file->email,
+            //         'displayName' => $file->patient->name . ' (Patient)'
+            //     ]);
+            //     Log::info('Added patient as attendee', [
+            //         'file_id' => $file->id,
+            //         'patient_email' => $file->email
+            //     ]);
+            // } else {
+            //     Log::warning('No patient email available for calendar event', [
+            //         'file_id' => $file->id
+            //     ]);
+            // }
 
             // Add provider's email directly (priority) or from provider operation contact (fallback)
             if ($file->providerBranch && $file->providerBranch->provider) {
@@ -237,19 +238,20 @@ class GoogleMeetService
         $recipients = collect();
         $hasOperationContacts = false;
 
+        // Client notifications are disabled as per new flow – DO NOT ENABLE
         // Add file email (patient's email) as primary recipient
-        if ($file->email) {
-            $recipients->push($file->email);
-            $hasOperationContacts = true;
-            Log::info('Added patient email to recipients', [
-                'file_id' => $file->id,
-                'patient_email' => $file->email
-            ]);
-        } else {
-            Log::warning('No patient email found in file', [
-                'file_id' => $file->id
-            ]);
-        }
+        // if ($file->email) {
+        //     $recipients->push($file->email);
+        //     $hasOperationContacts = true;
+        //     Log::info('Added patient email to recipients', [
+        //         'file_id' => $file->id,
+        //         'patient_email' => $file->email
+        //     ]);
+        // } else {
+        //     Log::warning('No patient email found in file', [
+        //         'file_id' => $file->id
+        //     ]);
+        // }
 
         // Get provider email directly (priority) or from provider operation contact (fallback)
         if ($file->providerBranch && $file->providerBranch->provider) {

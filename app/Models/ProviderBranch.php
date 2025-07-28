@@ -110,6 +110,24 @@ class ProviderBranch extends Model
      */
     public function sendNotification($reason, $status, $data, $parent = null, $message = null)
     {
+        // For appointment-related notifications, use GOP contact instead of operation contact
+        if ($reason === 'Appointment') {
+            $contact = $this->gopContact();
+            if (!$contact) {
+                Notification::make()->title("No GOP Contact Found")->body("No GOP contact found for {$this->branch_name}")->danger()->send();
+                return;
+            }
+
+            match ($contact->preferred_contact) {
+                'Phone', 'Second Phone' => $this->notifyByPhone($data, $status),
+                'Email', 'Second Email' => $this->notifyByEmail($reason, $status, $data, $parent, $message),
+                'First Whatsapp', 'Second Whatsapp' => $this->notifyByWhatsapp($data),
+                'First SMS', 'Second SMS' => $this->notifyBySms($data),
+            };
+            return;
+        }
+
+        // For other notifications, use the original logic
         // First, try to use provider's email directly
         if ($this->provider && $this->provider->email) {
             $this->sendNotificationToProviderEmail($reason, $status, $data, $parent, $message);
