@@ -220,17 +220,8 @@ class File extends Model
 
         foreach ($file->appointments as $appointment) {
             try {
-                if ($appointment->status === 'Cancelled') {
-                    $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
-                    $processedCount++;
-                    continue;
-                }
-
-                if ($appointment->isUpdated()) {
-                    $appointment->providerBranch->notifyBranch('appointment_updated', $appointment);
-                } else {
-                    $appointment->providerBranch->notifyBranch('appointment_created', $appointment);
-                }
+                // Email notifications are now handled manually through the ViewFile interface
+                // to prevent duplicate emails and ensure proper control
                 $processedCount++;
             } catch (\Exception $e) {
                 $errorCount++;
