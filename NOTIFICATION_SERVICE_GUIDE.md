@@ -182,16 +182,14 @@ public function assignTask($task, User $assignedUser)
 
 ### Appointment Request Email
 
-The appointment request email template (`resources/views/emails/appointment_request.blade.php`) has been updated to handle both:
-- Provider branch notifications (existing functionality)
-- Custom email notifications (new functionality)
+The appointment request email system has been updated to use the standardized NotifiableEntity trait system.
 
-**Template Features:**
-- Detailed file information
-- Patient details
-- Service information
-- Symptoms and diagnosis (if available)
-- Different messaging for providers vs custom recipients
+**Current System Features:**
+- Uses NotifyBranchMailable for all branch notifications
+- Standardized email subjects with patient names
+- Consistent template structure across all appointment types
+- Symptoms included in all templates
+- Location information removed as requested
 
 ## Database Notifications
 
@@ -200,7 +198,6 @@ All notifications are stored in the `notifications` table and can be viewed in t
 **Notification Types:**
 - `general_notification`
 - `appointment_notification`
-- `appointment_request_notification` (NEW)
 - `file_notification`
 
 ## Error Handling
@@ -210,7 +207,7 @@ The notification service includes comprehensive error handling:
 ```php
 // Email failures are caught and reported
 try {
-    Mail::to($email)->send(new AppointmentRequestMail($file, $providerBranch));
+    $providerBranch->notifyBranch('appointment_created', $file);
     $successfulBranches[] = $providerBranch->branch_name;
 } catch (\Exception $e) {
     $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
@@ -231,13 +228,12 @@ If you have existing code that directly uses notification classes, replace them 
 
 **Before:**
 ```php
-$notification = new AppointmentNotification($appointment, 'created');
-$user->notify($notification);
+Mail::to($email)->send(new AppointmentRequestMail($file, $providerBranch));
 ```
 
 **After:**
 ```php
-NotificationService::sendAppointmentNotification($user, $appointment, 'created');
+$providerBranch->notifyBranch('appointment_created', $file);
 ```
 
 ## Troubleshooting

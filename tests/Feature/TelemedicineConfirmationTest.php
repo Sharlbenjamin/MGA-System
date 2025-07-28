@@ -13,7 +13,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\AppointmentRequestMail;
+
 
 class TelemedicineConfirmationTest extends TestCase
 {

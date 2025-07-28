@@ -24,7 +24,7 @@ use Filament\Forms\Components\Repeater;
 use Illuminate\Support\Facades\View;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\AppointmentRequestMail;
+
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
