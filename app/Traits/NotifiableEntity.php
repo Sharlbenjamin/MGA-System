@@ -75,8 +75,8 @@ trait NotifiableEntity
             'file_id' => $file_id,
         ]);
 
-        // Step 3: Always Notify Us via Email
-        Mail::to('mga.operation@medguarda.com')->send(new NotifyUsMailable($status, $data));
+        // Internal notifications are now handled manually to prevent duplicate emails
+        // Mail::to('mga.operation@medguarda.com')->send(new NotifyUsMailable($status, $data));
     }
 
     private function notifyByEmail($reason, $type, $data, $parent, $message = null)

@@ -52,8 +52,8 @@ class Appointment extends Model
                         'status' => 'Requested',
                     ]);
 
-                    // Notify the branch of the update
-                    $existingAppointment->providerBranch->notifyBranch('appointment_updated', $existingAppointment);
+                                    // Email notifications are now handled manually through the ViewFile interface
+                // to prevent duplicate emails and ensure proper control
                 }
 
                 return false; // Prevent duplicate creation but allow updates
@@ -61,7 +61,8 @@ class Appointment extends Model
         });
 
         static::created(function ($appointment) {
-            $appointment->providerBranch->notifyBranch('appointment_created', $appointment);
+            // Email notifications are now handled manually through the ViewFile interface
+            // to prevent duplicate emails and ensure proper control
             if($appointment->file->status === 'New') {
                 $appointment->file->update(['status' => 'Handling']);
             }
@@ -93,20 +94,18 @@ class Appointment extends Model
                 //     $appointment->file->patient->notifyPatient('appointment_confirmed', $appointment);
                 // }
                 
-                // Notify the provider branch
-                $appointment->providerBranch->notifyBranch('appointment_confirmed', $appointment);
+                // Email notifications are now handled manually through the ViewFile interface
+                // to prevent duplicate emails and ensure proper control
             }
 
             if ($appointment->status === 'Cancelled') {
-                // check the previous status
-                $previousStatus = $appointment->getOriginal('status');
-                if ($previousStatus === 'Available') {
-                    $appointment->providerBranch->notifyBranch('appointment_cancelled', $appointment);
-                }
+                // Email notifications are now handled manually through the ViewFile interface
+                // to prevent duplicate emails and ensure proper control
             }
 
             if ($appointment->wasChanged(['service_date', 'service_time'])) {
-                $appointment->providerBranch->notifyBranch('appointment_updated', $appointment);
+                // Email notifications are now handled manually through the ViewFile interface
+                // to prevent duplicate emails and ensure proper control
             }
         });
     }
