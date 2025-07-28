@@ -66,9 +66,9 @@ class GopMailable extends Mailable
             };
 
             $subject = match($this->gop->status) {
-                'Cancelled' => 'GOP Cancellation - ' . $this->gop->file->mga_reference,
-                'Updated' => 'GOP Update - ' . $this->gop->file->mga_reference,
-                default => 'MGA GOP for patient - ' . $this->gop->file->patient->name . ' - ' . $this->gop->file->mga_reference,
+                'Cancelled' => 'GOP Cancelled - ' . $this->gop->file->patient->name . ' - ' . $this->gop->file->mga_reference,
+                'Updated' => 'GOP Updated - ' . $this->gop->file->patient->name . ' - ' . $this->gop->file->mga_reference,
+                default => 'GOP Created - ' . $this->gop->file->patient->name . ' - ' . $this->gop->file->mga_reference,
             };
 
             // Build the email with the normal template and attach the PDF

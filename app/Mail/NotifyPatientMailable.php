@@ -55,9 +55,15 @@ class NotifyPatientMailable extends Mailable
             $file = $this->data->file;
         }
 
+        $subject = match ($this->type) {
+            'appointment_confirmed' => 'Appointment Confirmed - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'file_created' => 'File Created - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'file_available' => 'Appointments Available - ' . $file->patient->name . ' - ' . $file->mga_reference,
+        };
+
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject($file->patient->name . " - ". $file->serviceType->name . " - ". $file->city->name)
+                    ->subject($subject)
                     ->with(['file' => $file]);
     }
 

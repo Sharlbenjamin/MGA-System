@@ -46,19 +46,19 @@ class NotifyUsMailable extends Mailable
         };
 
         $customSubject = match ($this->type) {
-            'appointment_confirmed_client' => '[Client] Appointment Confirmed - ' . ($this->data->file->mga_reference),
-            'appointment_confirmed_patient' => '[Patient] Appointment Confirmed - ' . ($this->data->file->mga_reference),
-            'appointment_created' => '[Branch] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->file->mga_reference),
-            'appointment_confirmed' => '[Branch] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->file->mga_reference),
-            'appointment_updated' => '[Branch] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->file->mga_reference),
-            'appointment_cancelled' => '[Branch] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->file->mga_reference),
-            'file_created' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
-            'file_cancelled' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
-            'file_hold' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
-            'file_assisted' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
-            'file_handling' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
-            'file_available' => '[Client] ' . ucwords(str_replace('_', ' ', $this->type)) . " - " . ($this->data->mga_reference),
-            default => '[System] General Notification',
+            'appointment_confirmed_client' => 'Appointment Confirmed - ' . ($this->data->file->patient->name) . ' - ' . ($this->data->file->mga_reference),
+            'appointment_confirmed_patient' => 'Appointment Confirmed - ' . ($this->data->file->patient->name) . ' - ' . ($this->data->file->mga_reference),
+            'appointment_created' => 'Appointment Request - ' . ($this->data->file->patient->name) . ' - ' . ($this->data->file->mga_reference),
+            'appointment_confirmed' => 'Appointment Confirmed - ' . ($this->data->file->patient->name) . ' - ' . ($this->data->file->mga_reference),
+            'appointment_updated' => 'Appointment Updated - ' . ($this->data->file->patient->name) . ' - ' . ($this->data->file->mga_reference),
+            'appointment_cancelled' => 'Appointment Cancelled - ' . ($this->data->file->patient->name) . ' - ' . ($this->data->file->mga_reference),
+            'file_created' => 'File Created - ' . ($this->data->patient->name) . ' - ' . ($this->data->mga_reference),
+            'file_cancelled' => 'File Cancelled - ' . ($this->data->patient->name) . ' - ' . ($this->data->mga_reference),
+            'file_hold' => 'File On Hold - ' . ($this->data->patient->name) . ' - ' . ($this->data->mga_reference),
+            'file_assisted' => 'Patient Assisted - ' . ($this->data->patient->name) . ' - ' . ($this->data->mga_reference),
+            'file_handling' => 'File Handling - ' . ($this->data->patient->name) . ' - ' . ($this->data->mga_reference),
+            'file_available' => 'Appointments Available - ' . ($this->data->patient->name) . ' - ' . ($this->data->mga_reference),
+            default => 'General Notification',
         };
 
         return $this->view($view)

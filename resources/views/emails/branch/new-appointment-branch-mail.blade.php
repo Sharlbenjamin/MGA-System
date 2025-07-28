@@ -10,10 +10,11 @@
     <ul>
     <li><strong>Date:</strong> {{ date('d-m-Y', strtotime($appointment->service_date)) }}</li>
     <li><strong>Time:</strong> {{ $appointment->service_time }}</li>
-    @if($appointment->file->service_type_id != 2)
-    <li><strong>Location:</strong> {{ $appointment->file->address }}</li>
-    @endif
     </ul>
+
+    @if($appointment->file->symptoms)
+    <p><strong>Symptoms:</strong> {{ $appointment->file->symptoms }}</p>
+    @endif
 
     @else
 

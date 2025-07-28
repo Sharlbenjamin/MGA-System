@@ -10,6 +10,7 @@ use App\Mail\NotifyClientMailable;
 use App\Mail\NotifyUsMailable;
 use App\Models\Task;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 trait NotifiableEntity
 {

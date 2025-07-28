@@ -8,7 +8,10 @@
     <p>Time: <strong>{{ $file->service_time }}</strong></p>
     <p>Service: <strong>{{ $file->serviceType->name }}</strong></p>
     <p>Branch: <strong>{{ $file->providerBranch->branch_name }}</strong></p>
-    <p>Address: <strong>{{ $file->providerBranch->primaryContact('Appointment')->address ?? 'N/A' }}</strong></p>
+
+    @if($file->symptoms)
+    <p><strong>Symptoms:</strong> {{ $file->symptoms }}</p>
+    @endif
     <p>Thank you for choosing our services.</p>
     @include('draftsignature', ['signature' => auth()->user()->signature])
 </body>

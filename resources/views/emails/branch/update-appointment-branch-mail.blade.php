@@ -13,8 +13,11 @@
     <ul>
     <li><strong>Date:</strong> {{ date('d-m-Y', strtotime($appointment->service_date)) }}</li>
     <li><strong>Time:</strong> {{ $appointment->service_time }}</li>
-    <li><strong>Location:</strong> {{ $appointment->providerBranch->primaryContact('Appointment')->address ?? 'N/A' }}</li>
     </ul>
+
+    @if($appointment->file->symptoms)
+    <p><strong>Symptoms:</strong> {{ $appointment->file->symptoms }}</p>
+    @endif
     <p>Please take note of these changes.</p>
     <p>Please confirm the availability at your earliest convenience.</p>
     <p>This is not an appointment confirmation. this email is just for checking the availabiliity</p>

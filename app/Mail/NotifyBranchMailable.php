@@ -42,9 +42,16 @@ class NotifyBranchMailable extends Mailable
         };
 
 
+        $subject = match ($this->type) {
+            'appointment_created' => 'Appointment Request - ' . $this->appointment->file->patient->name . ' - ' . $this->appointment->file->mga_reference,
+            'appointment_confirmed' => 'Appointment Confirmed - ' . $this->appointment->file->patient->name . ' - ' . $this->appointment->file->mga_reference,
+            'appointment_updated' => 'Appointment Updated - ' . $this->appointment->file->patient->name . ' - ' . $this->appointment->file->mga_reference,
+            'appointment_cancelled' => 'Appointment Cancelled - ' . $this->appointment->file->patient->name . ' - ' . $this->appointment->file->mga_reference,
+        };
+
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject('Branch Appointment - ' . $this->appointment->file->mga_reference . ' - ' . $this->appointment->providerBranch->branch_name)
+                    ->subject($subject)
                     ->with(['appointment' => $this->appointment]);
     }
 

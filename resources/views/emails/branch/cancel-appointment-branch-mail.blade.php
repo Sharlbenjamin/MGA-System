@@ -12,8 +12,11 @@
     <ul>
     <li><strong>Date:</strong> {{ date('d-m-Y', strtotime($appointment->service_date)) }}</li>
     <li><strong>Time:</strong> {{ $appointment->service_time }}</li>
-    <li><strong>Location:</strong> {{ $appointment->providerBranch->primaryContact('Appointment')->address ?? 'N/A' }}</li>
     </ul>
+
+    @if($appointment->file->symptoms)
+    <p><strong>Symptoms:</strong> {{ $appointment->file->symptoms }}</p>
+    @endif
     @include('draftsignature', ['signature' => auth()->user()->signature])
 </body>
 </html>

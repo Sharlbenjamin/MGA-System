@@ -58,7 +58,19 @@ class NotifyClientMailable extends Mailable
         } else {
             $file = $this->data->file;
         }
-        $header = $file->mga_reference . ' | '. $file->patient->name . ' | '. $file->client_reference;
+
+        $subject = match ($this->type) {
+            'New' => 'File Created - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'Requesting GOP' => 'GOP Request - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'Void' => 'File Voided - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'Cancelled' => 'File Cancelled - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'Hold' => 'File On Hold - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'Available' => 'Appointments Available - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'Assisted' => 'Patient Assisted - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'Custom' => 'Custom Notification - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'ask_client' => 'Client Inquiry - ' . $file->patient->name . ' - ' . $file->mga_reference,
+            'Confirmed' => 'Appointment Confirmed - ' . $file->patient->name . ' - ' . $file->mga_reference,
+        };
 
         $viewData = [
             'file' => $file
@@ -71,7 +83,7 @@ class NotifyClientMailable extends Mailable
 
         return $this->view($view)
                     ->from($username, Auth::user()->name)
-                    ->subject($header)
+                    ->subject($subject)
                     ->with($viewData);
     }
 
