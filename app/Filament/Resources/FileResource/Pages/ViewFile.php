@@ -749,11 +749,11 @@ class ViewFile extends ViewRecord
                 continue;
             }
 
-            // Get the GOP contact for the branch (as per new flow requirements)
-            $gopContact = $providerBranch->gopContact();
+            // Get the operation contact for the branch
+            $operationContact = $providerBranch->operationContact();
             
-            if (!$gopContact) {
-                $skippedBranches[] = $providerBranch->branch_name . ' (No GOP contact)';
+            if (!$operationContact) {
+                $skippedBranches[] = $providerBranch->branch_name . ' (No operation contact)';
                 continue;
             }
 
