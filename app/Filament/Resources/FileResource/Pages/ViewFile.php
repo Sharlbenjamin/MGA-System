@@ -709,6 +709,8 @@ class ViewFile extends ViewRecord
                         ]);
                         $updatedAppointments[] = $providerBranch->branch_name;
                     }
+                    // Note: We continue here to avoid creating duplicate appointments
+                    // but we still send emails in the notification loop below
                     continue;
                 }
 
@@ -755,8 +757,8 @@ class ViewFile extends ViewRecord
                 continue;
             }
 
-            // Use the NotifiableEntity trait to send notifications
-            // This ensures consistent email sending behavior and prevents duplicates
+            // Always send notifications when "Request Appointment" is clicked
+            // This allows users to resend appointment requests as needed
             try {
                 $providerBranch->notifyBranch('appointment_created', $record);
                 $successfulBranches[] = $providerBranch->branch_name . ' (Notification sent)';
@@ -783,7 +785,7 @@ class ViewFile extends ViewRecord
         if (Auth::check()) {
             $user = Auth::user();
             $title = 'Appointment Requests Sent';
-            $body = "Successfully sent appointment requests for file {$record->mga_reference}";
+            $body = "Successfully sent appointment request emails for file {$record->mga_reference}";
             
             if (!empty($skippedBranches)) {
                 $body .= "\n\nSome requests failed: " . implode(', ', $skippedBranches);
