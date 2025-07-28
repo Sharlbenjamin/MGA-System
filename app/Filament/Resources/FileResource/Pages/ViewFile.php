@@ -387,7 +387,7 @@ class ViewFile extends ViewRecord
                 ->label('Notify Client')
                 ->slideOver()
                 ->icon('heroicon-o-paper-airplane')
-                ->color('warning')
+                ->color('yellow')
                 ->modalHeading('Notify Client')
                 ->modalWidth('7xl')
                 ->form([
