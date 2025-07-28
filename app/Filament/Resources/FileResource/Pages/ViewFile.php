@@ -23,7 +23,7 @@ use Filament\Forms\Components\Repeater;
 use Illuminate\Support\Facades\View;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\AppointmentRequestMail;
+
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -755,31 +755,13 @@ class ViewFile extends ViewRecord
                 continue;
             }
 
-            // Check preferred contact method
-            $preferredContact = $gopContact->preferred_contact;
-            
-            if (in_array($preferredContact, ['Phone', 'Second Phone'])) {
-                // Phone contact required - notify user to call manually
-                $this->notifyUserForPhoneContact($providerBranch, $gopContact, $record);
-                $successfulBranches[] = $providerBranch->branch_name . ' (Phone contact - manual follow-up required)';
-            } elseif (in_array($preferredContact, ['Email', 'Second Email'])) {
-                // Email contact - send email notification
-                $emailToUse = $preferredContact === 'Email' ? $gopContact->email : $gopContact->second_email;
-                
-                if ($emailToUse) {
-                    try {
-                        Mail::to($emailToUse)->send(new AppointmentRequestMail($record, $providerBranch));
-                        $successfulBranches[] = $providerBranch->branch_name . ' (Email sent)';
-                    } catch (\Exception $e) {
-                        $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
-                    }
-                } else {
-                    $skippedBranches[] = $providerBranch->branch_name . ' (No email available)';
-                }
-            } else {
-                // Unknown contact method - notify user for manual follow-up
-                $this->notifyUserForPhoneContact($providerBranch, $gopContact, $record);
-                $successfulBranches[] = $providerBranch->branch_name . ' (Manual follow-up required)';
+            // Use the NotifiableEntity trait to send notifications
+            // This ensures consistent email sending behavior and prevents duplicates
+            try {
+                $providerBranch->notifyBranch('appointment_created', $record);
+                $successfulBranches[] = $providerBranch->branch_name . ' (Notification sent)';
+            } catch (\Exception $e) {
+                $skippedBranches[] = $providerBranch->branch_name . ' (Notification failed: ' . $e->getMessage() . ')';
             }
         }
 
