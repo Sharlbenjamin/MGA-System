@@ -561,6 +561,23 @@ class ViewFile extends ViewRecord
                 ->modalHeading('Select Branches for Appointment Request')
                 ->modalWidth('4xl')
                 ->form([
+                    TextInput::make('branch_search')
+                        ->label('Search Branches by Country')
+                        ->placeholder('Enter country name to search for branches...')
+                        ->live()
+                        ->afterStateUpdated(function ($state, $set, $record) {
+                            $this->updateBranchList($state, $set, $record);
+                        })
+                        ->suffixAction(
+                            \Filament\Forms\Components\Actions\Action::make('clear_search')
+                                ->icon('heroicon-o-x-mark')
+                                ->color('gray')
+                                ->action(function ($set, $record) {
+                                    $set('branch_search', '');
+                                    $this->updateBranchList('', $set, $record);
+                                })
+                        ),
+                    
                     Toggle::make('searchByProvince')
                         ->label('Search by Province')
                         ->default(false)
@@ -785,18 +802,25 @@ class ViewFile extends ViewRecord
         }
 
         // Send to custom emails
-        /*
         foreach ($customEmails as $email) {
             if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 try {
-                    \Mail::to($email)->send(new \App\Mail\AppointmentRequestMail($record, null, $email));
+                    // Create a temporary appointment for custom emails
+                    $tempAppointment = new \App\Models\Appointment([
+                        'file_id' => $record->id,
+                        'provider_branch_id' => null,
+                        'service_date' => now()->toDateString(),
+                        'service_time' => now()->toTimeString(),
+                        'status' => 'Requested',
+                    ]);
+                    
+                    \Mail::to($email)->send(new \App\Mail\NotifyBranchMailable('appointment_created', $tempAppointment));
                     $successfulBranches[] = "Custom: {$email}";
                 } catch (\Exception $e) {
-                    $skippedBranches[] = "Custom: {$email} (Email failed)";
+                    $skippedBranches[] = "Custom: {$email} (Email failed: " . $e->getMessage() . ")";
                 }
             }
         }
-        */
 
         // Notify the user who created the request using Filament notifications
         if (Auth::check()) {
@@ -1460,5 +1484,35 @@ class ViewFile extends ViewRecord
 
         // Just return the preferred contact method
         return $operationContact->preferred_contact ?? 'N/A';
+    }
+
+    private function updateBranchList($searchTerm, $set, $record)
+    {
+        if (empty($searchTerm)) {
+            // If no search term, show default branches
+            $branches = $record->availableBranches();
+            $selectedBranches = $branches['cityBranches'];
+        } else {
+            // Search for branches by country
+            $selectedBranches = \App\Models\ProviderBranch::query()
+                ->where('status', 'Active')
+                ->whereHas('provider', function ($query) use ($searchTerm) {
+                    $query->whereHas('country', function ($q) use ($searchTerm) {
+                        $q->where('name', 'like', "%{$searchTerm}%");
+                    });
+                })
+                ->whereJsonContains('service_types', $record->serviceType?->name)
+                ->orderBy('priority', 'asc')
+                ->get();
+        }
+
+        $set('selected_branches', $selectedBranches->map(fn ($branch) => [
+            'id' => $branch->id,
+            'selected' => false,
+            'name' => $branch->branch_name,
+            'provider' => $branch->provider->name ?? 'N/A',
+            'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
+            'preferred_contact' => $this->getPreferredContactDisplay($branch),
+        ])->toArray());
     }
 }
