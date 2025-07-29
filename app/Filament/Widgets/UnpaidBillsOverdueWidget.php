@@ -7,7 +7,7 @@ use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
 
-class UnpaidBillsOverdue extends StatsOverviewWidget
+class UnpaidBillsOverdueWidget extends StatsOverviewWidget
 {
     protected static ?int $sort = 2;
     
