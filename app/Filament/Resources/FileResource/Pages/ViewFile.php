@@ -1434,34 +1434,14 @@ class ViewFile extends ViewRecord
 
     private function getPreferredContactDisplay($branch)
     {
-        // First check if operation_contact_id exists
-        if (!$branch->operation_contact_id) {
-            return 'N/A (No operation contact ID)';
-        }
-
-        // Get the operation contact using the relationship
+        // Simple approach - just show the preferred contact method
         $operationContact = $branch->operationContact;
         
         if (!$operationContact) {
-            return 'N/A (Contact not found)';
+            return 'N/A';
         }
 
-        // Check if contact is active
-        if ($operationContact->status !== 'Active') {
-            return "N/A (Contact inactive: {$operationContact->status})";
-        }
-
-        // Build the display string
-        $display = $operationContact->name;
-        
-        if ($operationContact->preferred_contact) {
-            $display .= " ({$operationContact->preferred_contact})";
-        }
-        
-        if ($operationContact->email) {
-            $display .= " - {$operationContact->email}";
-        }
-
-        return $display;
+        // Just return the preferred contact method
+        return $operationContact->preferred_contact ?? 'N/A';
     }
 }
