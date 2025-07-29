@@ -757,10 +757,27 @@ class ViewFile extends ViewRecord
                 continue;
             }
 
+            // Find or create the appointment for this branch
+            $appointment = $record->appointments()
+                ->where('provider_branch_id', $branchId)
+                ->first();
+
+            if (!$appointment) {
+                // Create a new appointment if none exists
+                $appointment = new \App\Models\Appointment([
+                    'file_id' => $record->id,
+                    'provider_branch_id' => $branchId,
+                    'service_date' => now()->toDateString(),
+                    'service_time' => now()->toTimeString(),
+                    'status' => 'Requested',
+                ]);
+                $appointment->save();
+            }
+
             // Always send notifications when "Request Appointment" is clicked
             // This allows users to resend appointment requests as needed
             try {
-                $providerBranch->notifyBranch('appointment_created', $record);
+                $providerBranch->notifyBranch('appointment_created', $appointment);
                 $successfulBranches[] = $providerBranch->branch_name . ' (Notification sent)';
             } catch (\Exception $e) {
                 $skippedBranches[] = $providerBranch->branch_name . ' (Notification failed: ' . $e->getMessage() . ')';
