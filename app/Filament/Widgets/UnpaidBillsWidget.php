@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class UnpaidBillsWidget extends StatsOverviewWidget
 {
-    protected int | string | array $columnSpan = 2;
+    protected int | string | array $columnSpan = 4;
 
     protected function getStats(): array
     {
