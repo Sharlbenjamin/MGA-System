@@ -18,12 +18,11 @@
 
     @else
 
-    <p>Dear {{ $appointment->providerBranch->branch_name }},</p>
-    <p>We are Med Guard Assistance, a Medical and Travel Assistance Company, That provides cashless medical services to our patients by paying to our providers on their behalf.</p>
-    <p>We are currently in need of a {{ $appointment->file->serviceType->name }} appointment for a patient in {{$appointment->file->city?->name}}.</p>
+    <p>Dear team,</p>
+    <p>We have a patinet in {{ $appointment->file->city?->name }} that needs a {{ $appointment->file->serviceType->name }} appointment.</p>
     <p>Symptoms: {{ $appointment->file->symptoms }}</p>
-    <p>Can you provide our patient with the required medical attenction and we will pay you directly?</p>
-    <p>If you confirm, we are going to send you our GOP (Guarantee of Payment) as a proof of payment.</p>
+    <p>Can you provide our patient with the required medical attention?</p>
+    <p>We are Med Guard Assistance, a Medical and Travel Assistance Company, That provides cashless medical services to our patients by paying to our providers on their behalf.</p>
 
 
     @endif

@@ -387,7 +387,7 @@ class ViewFile extends ViewRecord
                 ->label('Notify Client')
                 ->slideOver()
                 ->icon('heroicon-o-paper-airplane')
-                ->color('danger')
+                ->color('warning')
                 ->modalHeading('Notify Client')
                 ->modalWidth('7xl')
                 ->form([
@@ -813,7 +813,7 @@ class ViewFile extends ViewRecord
                     $dummyProvider = new \App\Models\Provider([
                         'id' => 0,
                         'name' => 'Custom Provider',
-                        'status' => 'Active',
+                        'status' => 'Inactive', // This will trigger the @else condition in the template
                     ]);
                     
                     // Set the relationships manually
