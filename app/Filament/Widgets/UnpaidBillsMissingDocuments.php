@@ -3,11 +3,11 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Bill;
-use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
 
-class UnpaidBillsMissingDocuments extends BaseWidget
+class UnpaidBillsMissingDocuments extends StatsOverviewWidget
 {
     protected function getStats(): array
     {
