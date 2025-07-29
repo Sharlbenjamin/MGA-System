@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\DB;
 
 class AmountUnpaidWidget extends StatsOverviewWidget
 {
-    protected static ?int $sort = 4;
 
     protected function getStats(): array
     {
