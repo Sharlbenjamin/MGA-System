@@ -593,27 +593,6 @@ class ViewFile extends ViewRecord
                             $branches = $record->availableBranches();
                             $selectedBranches = $branches['cityBranches']; // Start with city branches
 
-                            // Add any additional branches from search
-                            $additionalBranches = session('additional_branches', []);
-                            if (!empty($additionalBranches)) {
-                                $additionalBranchData = \App\Models\ProviderBranch::whereIn('id', $additionalBranches)
-                                    ->get()
-                                    ->map(fn ($branch) => [
-                                        'id' => $branch->id,
-                                        'selected' => false,
-                                        'name' => $branch->branch_name,
-                                        'provider' => $branch->provider->name ?? 'N/A',
-                                        'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-                                        'preferred_contact' => $this->getPreferredContactDisplay($branch),
-                                    ])
-                                    ->toArray();
-                                
-                                $selectedBranches = $selectedBranches->merge($additionalBranchData);
-                                
-                                // Clear the session after using it
-                                session()->forget('additional_branches');
-                            }
-
                             return $selectedBranches->map(fn ($branch) => [
                                 'id' => $branch->id,
                                 'selected' => false,
@@ -646,53 +625,6 @@ class ViewFile extends ViewRecord
                 ])
                 ->modalButton('Send Requests')
                 ->action(fn (array $data, $record) => $this->bulkSendRequests($data, $record)),
-
-            Action::make('addMoreBranches')
-                ->label('Add More Branches')
-                ->modalHeading('Search and Add Branches')
-                ->modalWidth('4xl')
-                ->form([
-                    TextInput::make('branch_search')
-                        ->label('Search Branches')
-                        ->placeholder('Enter branch name, provider name, or country...')
-                        ->live()
-                        ->afterStateUpdated(function ($state, $set) {
-                            $this->searchBranches($state, $set);
-                        }),
-                    
-                    Repeater::make('search_results')
-                        ->label('Search Results')
-                        ->schema([
-                            Checkbox::make('selected')->label('Add')->default(false),
-                            TextInput::make('name')->label('Branch Name')->disabled(),
-                            TextInput::make('provider')->label('Provider Name')->disabled(),
-                            TextInput::make('country')->label('Country')->disabled(),
-                            TextInput::make('day_cost')->label('Day Cost (€)')->disabled(),
-                            TextInput::make('preferred_contact')->label('Preferred Contact')->disabled(),
-                        ])
-                        ->columns(6)
-                        ->default([])
-                        ->disabled()
-                        ->visible(fn ($get) => !empty($get('search_results'))),
-                ])
-                ->action(function (array $data, $record) {
-                    // Add selected branches to the main request appointment form
-                    $selectedBranches = collect($data['search_results'] ?? [])
-                        ->filter(fn ($branch) => $branch['selected'])
-                        ->pluck('id')
-                        ->toArray();
-                    
-                    if (!empty($selectedBranches)) {
-                        // Store the selected branches in session for the main form
-                        session(['additional_branches' => $selectedBranches]);
-                        
-                        Notification::make()
-                            ->title('Branches Added')
-                            ->body(count($selectedBranches) . ' branches have been added to your request.')
-                            ->success()
-                            ->send();
-                    }
-                }),
 
             Action::make('confirmTelemedicine')
                 ->label('Confirm Telemedicine')
@@ -1537,39 +1469,5 @@ class ViewFile extends ViewRecord
 
         // Just return the preferred contact method
         return $operationContact->preferred_contact ?? 'N/A';
-    }
-
-    private function searchBranches($searchTerm, $set)
-    {
-        $searchTerm = trim($searchTerm);
-        if (empty($searchTerm)) {
-            $set('search_results', []);
-            return;
-        }
-
-        $branches = \App\Models\ProviderBranch::query()
-            ->where('status', 'Active')
-            ->where(function ($query) use ($searchTerm) {
-                $query->where('branch_name', 'like', "%{$searchTerm}%")
-                      ->orWhereHas('provider', function ($q) use ($searchTerm) {
-                          $q->where('name', 'like', "%{$searchTerm}%");
-                      })
-                      ->orWhereHas('provider.country', function ($q) use ($searchTerm) {
-                          $q->where('name', 'like', "%{$searchTerm}%");
-                      });
-            })
-            ->whereJsonContains('service_types', $this->record->serviceType?->name)
-            ->orderBy('priority', 'asc')
-            ->get();
-
-        $set('search_results', $branches->map(fn ($branch) => [
-            'id' => $branch->id,
-            'selected' => false,
-            'name' => $branch->branch_name,
-            'provider' => $branch->provider->name ?? 'N/A',
-            'country' => $branch->provider->country->name ?? 'N/A',
-            'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-            'preferred_contact' => $this->getPreferredContactDisplay($branch),
-        ])->toArray());
     }
 }
