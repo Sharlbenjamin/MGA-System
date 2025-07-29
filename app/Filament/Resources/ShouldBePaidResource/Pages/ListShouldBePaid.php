@@ -28,7 +28,7 @@ class ListShouldBePaid extends ListRecords
 
     public function getHeaderWidgetsColumns(): int | string | array
     {
-        return 2;
+        return 4;
     }
 
     public function getTitle(): string
