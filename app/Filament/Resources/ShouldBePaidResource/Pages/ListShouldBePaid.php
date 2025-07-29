@@ -4,9 +4,10 @@ namespace App\Filament\Resources\ShouldBePaidResource\Pages;
 
 use App\Filament\Resources\ShouldBePaidResource;
 use App\Filament\Widgets\UnpaidBillsSummary;
-use App\Filament\Widgets\UnpaidBillsOverdueWidget;
-use App\Filament\Widgets\UnpaidBillsMissingDocumentsWidget;
-use App\Filament\Widgets\UnpaidBillsWithPaidInvoicesWidget;
+use App\Filament\Widgets\ProvidersNeedPaymentWidget;
+use App\Filament\Widgets\TotalUnpaidWidget;
+use App\Filament\Widgets\UnpaidBillsWidget;
+use App\Filament\Widgets\AmountUnpaidWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -18,9 +19,10 @@ class ListShouldBePaid extends ListRecords
     {
         return [
             UnpaidBillsSummary::class,
-            UnpaidBillsOverdueWidget::class,
-            UnpaidBillsMissingDocumentsWidget::class,
-            UnpaidBillsWithPaidInvoicesWidget::class,
+            ProvidersNeedPaymentWidget::class,
+            TotalUnpaidWidget::class,
+            UnpaidBillsWidget::class,
+            AmountUnpaidWidget::class,
         ];
     }
 

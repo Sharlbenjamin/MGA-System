@@ -52,13 +52,13 @@ class UnpaidBillsSummary extends StatsOverviewWidget
             ->sum(DB::raw('total_amount - paid_amount'));
 
         return [
-            Stat::make('Providers Need Payment', $providersNeedingPayment)
-                ->description('Providers with unpaid bills')
+            Stat::make('Providers Need Payment (Paid Invoices)', $providersNeedingPayment)
+                ->description('Providers with unpaid bills (files with paid invoices only)')
                 ->descriptionIcon('heroicon-m-building-office')
                 ->color('danger'),
 
-            Stat::make('Total Outstanding', '€' . number_format($totalUnpaidAmount, 2))
-                ->description('Total amount to be paid')
+            Stat::make('Total Outstanding (Paid Invoices)', '€' . number_format($totalUnpaidAmount, 2))
+                ->description('Total amount to be paid (files with paid invoices only)')
                 ->descriptionIcon('heroicon-m-currency-euro')
                 ->color('danger'),
 
