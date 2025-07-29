@@ -19,6 +19,12 @@ class ListShouldBePaid extends ListRecords
     {
         return [
             UnpaidBillsSummary::class,
+        ];
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        return [
             ProvidersNeedPaymentWidget::class,
             TotalUnpaidWidget::class,
             UnpaidBillsWidget::class,
@@ -28,12 +34,12 @@ class ListShouldBePaid extends ListRecords
 
     public function getHeaderWidgetsColumns(): int | string | array
     {
-        return [
-            'default' => 4,
-            'sm' => 2,
-            'md' => 3,
-            'lg' => 4,
-        ];
+        return 1;
+    }
+
+    public function getFooterWidgetsColumns(): int | string | array
+    {
+        return 4;
     }
 
     public function getTitle(): string
