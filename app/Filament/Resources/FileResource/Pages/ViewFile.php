@@ -575,7 +575,7 @@ class ViewFile extends ViewRecord
                                 'name' => $branch->branch_name,
                                 'provider' => $branch->provider->name ?? 'N/A',
                                 'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-                                'preferred_contact' => optional($branch->primaryContact('Appointment'))->preferred_contact ?? 'N/A',
+                                'preferred_contact' => optional($branch->operationContact())->preferred_contact ?? 'N/A',
                             ])->toArray());
                         }),
                     
@@ -599,7 +599,7 @@ class ViewFile extends ViewRecord
                                 'name' => $branch->branch_name,
                                 'provider' => $branch->provider->name ?? 'N/A',
                                 'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-                                'preferred_contact' => optional($branch->gopContact())->preferred_contact ?? 'N/A',
+                                'preferred_contact' => optional($branch->operationContact())->preferred_contact ?? 'N/A',
                             ])->toArray();
                         }),
                     
