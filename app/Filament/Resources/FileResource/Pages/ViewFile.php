@@ -792,13 +792,38 @@ class ViewFile extends ViewRecord
         foreach ($customEmails as $email) {
             if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 try {
-                    // For custom emails, we'll send a simple email without the branch template
-                    $subject = 'Appointment Request - ' . $record->patient->name . ' - ' . $record->mga_reference;
+                    // Create a proper appointment object with a dummy branch for custom emails
+                    // This ensures the same template is used as branch emails
+                    $tempAppointment = new \App\Models\Appointment([
+                        'file_id' => $record->id,
+                        'provider_branch_id' => null, // Will be set below
+                        'service_date' => now()->toDateString(),
+                        'service_time' => now()->toTimeString(),
+                        'status' => 'Requested',
+                    ]);
                     
-                    \Mail::raw("Appointment request for file {$record->mga_reference} - Patient: {$record->patient->name}", function($message) use ($email, $subject) {
-                        $message->to($email)
-                                ->subject($subject);
-                    });
+                    // Create a dummy branch object for the template
+                    $dummyBranch = new \App\Models\ProviderBranch([
+                        'id' => 0,
+                        'branch_name' => 'Custom Provider',
+                        'provider_id' => 0,
+                    ]);
+                    
+                    // Create a dummy provider for the branch
+                    $dummyProvider = new \App\Models\Provider([
+                        'id' => 0,
+                        'name' => 'Custom Provider',
+                        'status' => 'Active',
+                    ]);
+                    
+                    // Set the relationships manually
+                    $dummyBranch->setRelation('provider', $dummyProvider);
+                    $tempAppointment->setRelation('providerBranch', $dummyBranch);
+                    
+                    // Use the exact same mailable as branches
+                    $mailable = new \App\Mail\NotifyBranchMailable('appointment_created', $tempAppointment);
+                    
+                    \Mail::to($email)->send($mailable);
                     
                     $successfulBranches[] = "Custom: {$email}";
                 } catch (\Exception $e) {
