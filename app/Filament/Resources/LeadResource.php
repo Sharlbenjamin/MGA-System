@@ -4,16 +4,21 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\LeadResource\Pages;
 use App\Filament\Resources\LeadResource\RelationManagers\InteractionsRelationManager;
 use App\Models\Lead;
+use App\Models\Client;
 use Filament\Resources\Resource;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\Action;
 use App\Mail\CustomLeadEmail;
-use App\Models\Client;
 use Illuminate\Support\Facades\Mail;
 use App\Models\DraftMail;
 use Carbon\Carbon;
@@ -44,14 +49,171 @@ class LeadResource extends Resource
         
         return $form
             ->schema([
-                Select::make('client_id')->relationship('client', 'company_name')->required()->preload()->searchable(),
-                Select::make('status')->options($leadStatuses)->required()->preload()->searchable(),
-                TextInput::make('first_name')->required(),
-                TextInput::make('email')->email()->unique('leads', 'email', ignoreRecord: true)->required(),
-                TextInput::make('phone')->label('Phone')->nullable(),
-                TextInput::make('linked_in')->label('Linked In')->nullable(),
-                Select::make('contact_method')->options($methods)->preload()->searchable(),
-                DatePicker::make('last_contact_date')->nullable(),
+                Section::make('Client Information')
+                    ->schema([
+                        Toggle::make('create_new_client')
+                            ->label('Create New Client')
+                            ->default(false)
+                            ->reactive()
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('client_id', null);
+                                $set('new_client_company_name', null);
+                                $set('new_client_type', null);
+                                $set('new_client_status', null);
+                                $set('new_client_initials', null);
+                            }),
+
+                        // Existing Client Selection
+                        Select::make('client_id')
+                            ->label('Select Client')
+                            ->options(Client::pluck('company_name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn (Get $get) => !$get('create_new_client'))
+                            ->required(fn (Get $get) => !$get('create_new_client')),
+
+                        // New Client Creation Fields
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('new_client_company_name')
+                                    ->label('Company Name')
+                                    ->required(fn (Get $get) => $get('create_new_client'))
+                                    ->visible(fn (Get $get) => $get('create_new_client'))
+                                    ->unique('clients', 'company_name', ignoreRecord: true),
+
+                                Select::make('new_client_type')
+                                    ->label('Client Type')
+                                    ->options([
+                                        'Assistance' => 'Assistance',
+                                        'Insurance' => 'Insurance',
+                                        'Agency' => 'Agency',
+                                    ])
+                                    ->required(fn (Get $get) => $get('create_new_client'))
+                                    ->visible(fn (Get $get) => $get('create_new_client')),
+                            ])
+                            ->visible(fn (Get $get) => $get('create_new_client')),
+
+                        Grid::make(2)
+                            ->schema([
+                                Select::make('new_client_status')
+                                    ->label('Status')
+                                    ->options([
+                                        'Searching' => 'Searching',
+                                        'Interested' => 'Interested',
+                                        'Sent' => 'Sent',
+                                        'Rejected' => 'Rejected',
+                                        'Active' => 'Active',
+                                        'On Hold' => 'On Hold',
+                                        'Closed' => 'Closed',
+                                        'Broker' => 'Broker',
+                                        'No Reply' => 'No Reply',
+                                    ])
+                                    ->required(fn (Get $get) => $get('create_new_client'))
+                                    ->visible(fn (Get $get) => $get('create_new_client')),
+
+                                TextInput::make('new_client_initials')
+                                    ->label('Initials')
+                                    ->maxLength(10)
+                                    ->required(fn (Get $get) => $get('create_new_client'))
+                                    ->visible(fn (Get $get) => $get('create_new_client')),
+                            ])
+                            ->visible(fn (Get $get) => $get('create_new_client')),
+
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('new_client_email')
+                                    ->label('Client Email')
+                                    ->email()
+                                    ->unique('clients', 'email', ignoreRecord: true)
+                                    ->visible(fn (Get $get) => $get('create_new_client'))
+                                    ->reactive()
+                                    ->afterStateUpdated(function (Set $set, Get $get) {
+                                        $email = $get('new_client_email');
+                                        if ($email) {
+                                            $exists = Client::where('email', $email)->exists();
+                                            if ($exists) {
+                                                $set('new_client_email', null);
+                                                Notification::make()
+                                                    ->title('Email Already Exists')
+                                                    ->body('This email is already registered with another client.')
+                                                    ->danger()
+                                                    ->send();
+                                            }
+                                        }
+                                    }),
+
+                                TextInput::make('new_client_phone')
+                                    ->label('Client Phone')
+                                    ->tel()
+                                    ->visible(fn (Get $get) => $get('create_new_client')),
+                            ])
+                            ->visible(fn (Get $get) => $get('create_new_client')),
+
+                        TextInput::make('new_client_number_requests')
+                            ->label('Number of Requests')
+                            ->numeric()
+                            ->default(0)
+                            ->minValue(0)
+                            ->visible(fn (Get $get) => $get('create_new_client')),
+                    ])
+                    ->collapsible(),
+
+                Section::make('Lead Information')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('first_name')
+                                    ->label('First Name')
+                                    ->required(),
+
+                                TextInput::make('email')
+                                    ->label('Email')
+                                    ->email()
+                                    ->unique('leads', 'email', ignoreRecord: true)
+                                    ->required()
+                                    ->reactive()
+                                    ->afterStateUpdated(function (Set $set, Get $get) {
+                                        $email = $get('email');
+                                        if ($email) {
+                                            $exists = Lead::where('email', $email)->exists();
+                                            if ($exists) {
+                                                $set('email', null);
+                                                Notification::make()
+                                                    ->title('Email Already Exists')
+                                                    ->body('This email is already registered with another lead.')
+                                                    ->danger()
+                                                    ->send();
+                                            }
+                                        }
+                                    }),
+                            ]),
+
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('phone')
+                                    ->label('Phone')
+                                    ->tel(),
+
+                                TextInput::make('linked_in')
+                                    ->label('LinkedIn Profile'),
+                            ]),
+
+                        Select::make('status')
+                            ->label('Status')
+                            ->options($leadStatuses)
+                            ->required()
+                            ->preload()
+                            ->searchable(),
+
+                        Select::make('contact_method')
+                            ->label('Contact Method')
+                            ->options($methods)
+                            ->preload()
+                            ->searchable(),
+
+                        DatePicker::make('last_contact_date')
+                            ->label('Last Contact Date'),
+                    ]),
             ]);
     }
 
@@ -148,7 +310,7 @@ class LeadResource extends Resource
         // Fetch updated user info from the database
         $user = \App\Models\User::find($user->id);
     
-        // Get SMTP credentials (use system default if user’s credentials are missing)
+        // Get SMTP credentials (use system default if user's credentials are missing)
         $smtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
         $smtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
     
@@ -205,8 +367,6 @@ class LeadResource extends Resource
                 ->send();
         }
     }
-    
-
 
     public static function getRelations(): array
     {
@@ -214,5 +374,4 @@ class LeadResource extends Resource
             InteractionsRelationManager::class,
         ];   
     }
-
 }

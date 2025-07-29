@@ -402,7 +402,7 @@ class ViewFile extends ViewRecord
                         ->required()
                         ->live()
                         ->afterStateUpdated(function ($state, $set, $record, $get) {
-                            \Log::info('Template selected', ['draft_mail_id' => $state]);
+                            Log::info('Template selected', ['draft_mail_id' => $state]);
                             if ($state) {
                                 $draftMail = DraftMail::find($state);
                                 if ($draftMail) {
@@ -425,7 +425,7 @@ class ViewFile extends ViewRecord
                         ->default(['patient_name', 'service_type', 'diagnosis'])
                         ->live()
                         ->afterStateUpdated(function ($state, $set, $record, $get) {
-                            \Log::info('Checkbox state updated', ['state' => $state]);
+                            Log::info('Checkbox state updated', ['state' => $state]);
                             $this->updatePreview($set, $record, $get);
                         }),
                     
@@ -435,7 +435,7 @@ class ViewFile extends ViewRecord
                         ->rows(3)
                         ->live()
                         ->afterStateUpdated(function ($state, $set, $record, $get) {
-                            \Log::info('Custom notes updated', ['notes' => $state]);
+                            Log::info('Custom notes updated', ['notes' => $state]);
                             $this->updatePreview($set, $record, $get);
                         }),
                     
@@ -823,7 +823,7 @@ class ViewFile extends ViewRecord
                     // Use the exact same mailable as branches
                     $mailable = new \App\Mail\NotifyBranchMailable('appointment_created', $tempAppointment);
                     
-                    \Mail::to($email)->send($mailable);
+                    Mail::to($email)->send($mailable);
                     
                     $successfulBranches[] = "Custom: {$email}";
                 } catch (\Exception $e) {
@@ -1154,7 +1154,7 @@ class ViewFile extends ViewRecord
                 $set('preview_content', $processedMessage);
                 
                 // Debug: Log the update
-                \Log::info('Preview updated', [
+                Log::info('Preview updated', [
                     'draft_mail_id' => $draftMailId,
                     'include_fields' => $includeFields,
                     'custom_notes' => $customNotes,

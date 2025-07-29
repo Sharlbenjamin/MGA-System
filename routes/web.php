@@ -12,6 +12,9 @@ use App\Http\Controllers\GopController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\TaxesExportController;
+use App\Http\Controllers\ProviderLeadController;
+use App\Http\Controllers\LeadController;
+use App\Models\City;
 use Google\Client as Google_Client;
 use Google\Service\Calendar;
 use Illuminate\Support\Facades\Log;
@@ -68,6 +71,31 @@ Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, Dispatch
 Route::middleware([FilamentAuthenticate::class])->group(function () {
     Route::get('/taxes/export', [TaxesExportController::class, 'export'])->name('taxes.export');
     Route::get('/taxes/export/zip', [TaxesExportController::class, 'exportZip'])->name('taxes.export.zip');
+});
+
+// API Routes for AJAX functionality
+Route::middleware([FilamentAuthenticate::class])->group(function () {
+    // Get cities by country ID
+    Route::get('/api/cities/{countryId}', function ($countryId) {
+        $cities = City::where('country_id', $countryId)->get(['id', 'name']);
+        return response()->json($cities);
+    });
+
+    // Check email existence
+    Route::get('/api/check-email', function (Request $request) {
+        $email = $request->input('email');
+        $type = $request->input('type', 'provider');
+        
+        if ($type === 'provider') {
+            $exists = \App\Models\Provider::where('email', $email)->exists();
+        } elseif ($type === 'client') {
+            $exists = \App\Models\Client::where('email', $email)->exists();
+        } else {
+            $exists = \App\Models\ProviderLead::where('email', $email)->exists();
+        }
+        
+        return response()->json(['exists' => $exists]);
+    });
 });
 
 // Google Meet Route
