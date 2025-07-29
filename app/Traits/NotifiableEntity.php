@@ -20,7 +20,7 @@ trait NotifiableEntity
         if ($reason === 'Invoice' || $reason === 'Balance' || $reason === 'Financial') {
             return $this->financialContact;
         } elseif ($reason === 'Appointment') {
-            // Use operation contact for appointment notifications
+            // Use operation contact for appointment notifications (without status filter for debugging)
             return $this->operationContact;
         } elseif ($reason === 'File' || $reason === 'Operation') {
             return $this->operationContact;

@@ -68,6 +68,11 @@ class ProviderBranch extends Model
 
     public function operationContact()
     {
+        return $this->belongsTo(Contact::class, 'operation_contact_id');
+    }
+
+    public function activeOperationContact()
+    {
         return $this->belongsTo(Contact::class, 'operation_contact_id')->where('status', 'Active');
     }
 

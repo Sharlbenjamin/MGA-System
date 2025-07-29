@@ -575,7 +575,7 @@ class ViewFile extends ViewRecord
                                 'name' => $branch->branch_name,
                                 'provider' => $branch->provider->name ?? 'N/A',
                                 'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-                                'preferred_contact' => optional($branch->operationContact())->preferred_contact ?? 'N/A',
+                                'preferred_contact' => $this->getPreferredContactDisplay($branch),
                             ])->toArray());
                         }),
                     
@@ -599,7 +599,7 @@ class ViewFile extends ViewRecord
                                 'name' => $branch->branch_name,
                                 'provider' => $branch->provider->name ?? 'N/A',
                                 'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-                                'preferred_contact' => optional($branch->operationContact())->preferred_contact ?? 'N/A',
+                                'preferred_contact' => $this->getPreferredContactDisplay($branch),
                             ])->toArray();
                         }),
                     
@@ -1430,5 +1430,38 @@ class ViewFile extends ViewRecord
         }
         
         return $translated;
+    }
+
+    private function getPreferredContactDisplay($branch)
+    {
+        // First check if operation_contact_id exists
+        if (!$branch->operation_contact_id) {
+            return 'N/A (No operation contact ID)';
+        }
+
+        // Get the operation contact without the status filter first
+        $operationContact = $branch->belongsTo(Contact::class, 'operation_contact_id')->first();
+        
+        if (!$operationContact) {
+            return 'N/A (Contact not found)';
+        }
+
+        // Check if contact is active
+        if ($operationContact->status !== 'Active') {
+            return "N/A (Contact inactive: {$operationContact->status})";
+        }
+
+        // Build the display string
+        $display = $operationContact->name;
+        
+        if ($operationContact->preferred_contact) {
+            $display .= " ({$operationContact->preferred_contact})";
+        }
+        
+        if ($operationContact->email) {
+            $display .= " - {$operationContact->email}";
+        }
+
+        return $display;
     }
 }
