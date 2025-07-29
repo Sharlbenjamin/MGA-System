@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class ProvidersNeedPaymentWidget extends StatsOverviewWidget
 {
-    protected int | string | array $columnSpan = 2;
+    protected int | string | array $columnSpan = 1;
 
     protected function getStats(): array
     {
