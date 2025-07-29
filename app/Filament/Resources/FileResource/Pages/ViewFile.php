@@ -1439,8 +1439,8 @@ class ViewFile extends ViewRecord
             return 'N/A (No operation contact ID)';
         }
 
-        // Get the operation contact without the status filter first
-        $operationContact = $branch->belongsTo(Contact::class, 'operation_contact_id')->first();
+        // Get the operation contact using the relationship
+        $operationContact = $branch->operationContact;
         
         if (!$operationContact) {
             return 'N/A (Contact not found)';
