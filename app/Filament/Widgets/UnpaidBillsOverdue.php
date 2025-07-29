@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class UnpaidBillsOverdue extends StatsOverviewWidget
 {
+    protected static ?int $sort = 2;
+    
     protected function getStats(): array
     {
         // Overdue unpaid bills count

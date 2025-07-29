@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class UnpaidBillsMissingDocuments extends StatsOverviewWidget
 {
+    protected static ?int $sort = 1;
+    
     protected function getStats(): array
     {
         // Bills with missing Google Drive links

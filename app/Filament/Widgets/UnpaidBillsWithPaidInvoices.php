@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class UnpaidBillsWithPaidInvoices extends StatsOverviewWidget
 {
+    protected static ?int $sort = 3;
+    
     protected function getStats(): array
     {
         // Bills with paid invoices count
