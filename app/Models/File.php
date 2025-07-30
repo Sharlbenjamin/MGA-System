@@ -76,6 +76,16 @@ class File extends Model
 
     public function gopInTotal()
     {
+        return $this->gops()->where('type', 'In')->sum('amount');
+    }
+
+    public function gopOutTotal()
+    {
+        return $this->gops()->where('type', 'Out')->sum('amount');
+    }
+
+    public function gopTotal()
+    {
         return $this->gops()->sum('amount');
     }
 
