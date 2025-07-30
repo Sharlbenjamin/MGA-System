@@ -91,11 +91,6 @@ class UnpaidBillsSummary extends BaseWidget
                 ->descriptionIcon('heroicon-m-currency-euro')
                 ->color('danger'),
 
-            Stat::make('Invoice Paid Bills', $invoicePaidBills)
-                ->description('Bills with paid invoices')
-                ->descriptionIcon('heroicon-m-document-check')
-                ->color('success'),
-
             Stat::make('Invoice Paid Amount', '€' . number_format($invoicePaidAmount, 2))
                 ->description('Amount with paid invoices')
                 ->descriptionIcon('heroicon-m-currency-euro')
@@ -115,6 +110,11 @@ class UnpaidBillsSummary extends BaseWidget
                 ->description('All unpaid bills')
                 ->descriptionIcon('heroicon-m-document')
                 ->color('warning'),
+
+            Stat::make('Invoice Paid Bills', $invoicePaidBills)
+                ->description('Bills with paid invoices')
+                ->descriptionIcon('heroicon-m-document-check')
+                ->color('success'),
 
             Stat::make('All Unpaid Amount', '€' . number_format($allUnpaidAmount, 2))
                 ->description('All unpaid amount')
