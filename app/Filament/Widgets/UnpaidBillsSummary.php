@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class UnpaidBillsSummary extends BaseWidget
 {
+    protected int $columns = 4;
+
     protected function getStats(): array
     {
         // Get providers that have unpaid bills with paid invoices
