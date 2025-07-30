@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\DB;
 
 class UnpaidBillsSummary extends BaseWidget
 {
-    protected int $columns = 4;
 
     protected function getStats(): array
     {
@@ -75,6 +74,12 @@ class UnpaidBillsSummary extends BaseWidget
         $allUnpaidAmount = Bill::whereIn('status', ['Unpaid', 'Partial'])
             ->sum(DB::raw('total_amount - paid_amount'));
 
+        // Fetch unpaid bills, group by bank account, and count the groups
+        $totalTransfers = Bill::whereIn('status', ['Unpaid', 'Partial'])
+            ->whereNotNull('bank_account_id')
+            ->groupBy('bank_account_id')
+            ->count();
+
         return [
             Stat::make('Providers Need Payment', $providersNeedingPayment)
                 ->description('Providers with unpaid bills')
@@ -115,6 +120,11 @@ class UnpaidBillsSummary extends BaseWidget
                 ->description('All unpaid amount')
                 ->descriptionIcon('heroicon-m-currency-euro')
                 ->color('warning'),
+
+            Stat::make('Total Transfers', $totalTransfers)
+                ->description('Bank account groups with unpaid bills')
+                ->descriptionIcon('heroicon-m-building-library')
+                ->color('info'),
         ];
     }
 } 
