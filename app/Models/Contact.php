@@ -10,15 +10,43 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 class Contact extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = ['type','client_id','provider_id','branch_id','patient_id','name','title','email','second_email','phone_number','second_phone','country_id','city_id','address','preferred_contact','status',];
 
     protected $casts = [
         'country_id' => 'integer',
         'city_id' => 'integer',
-        'name' => 'array',
     ];
+
+    // Accessor for name field to convert comma-separated string to array
+    public function getNameAttribute($value)
+    {
+        if (is_string($value) && str_contains($value, ',')) {
+            return array_map('trim', explode(',', $value));
+        }
+        return [$value];
+    }
+
+    // Mutator for name field to convert array to comma-separated string
+    public function setNameAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['name'] = implode(', ', $value);
+        } else {
+            $this->attributes['name'] = $value;
+        }
+    }
+
+    // Get name as string for display
+    public function getNameStringAttribute()
+    {
+        $names = $this->name;
+        if (is_array($names)) {
+            return implode(', ', $names);
+        }
+        return $names;
+    }
 
     public function contactable(): MorphTo
     {
