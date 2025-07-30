@@ -60,14 +60,11 @@ class ShouldBePaidResource extends Resource
     {
         return $table
             ->groups([
-                Group::make('bankAccount.beneficiary_name')->label('Bank Account')->collapsible(),
                 Group::make('provider.name')->label('Provider')->collapsible(),
                 Group::make('branch.branch_name')->label('Branch')->collapsible(),
             ])
             ->defaultSort('due_date', 'asc')
             ->columns([
-                Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')->searchable()->sortable()->label('Account/Beneficiary'),
-                Tables\Columns\TextColumn::make('bankAccount.bank_name')->searchable()->sortable()->label('Bank Name'),
                 Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
                 Tables\Columns\TextColumn::make('branch.branch_name')->searchable()->sortable()->label('Branch'),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
@@ -91,7 +88,6 @@ class ShouldBePaidResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('bankAccount.beneficiary_name')->relationship('bankAccount', 'beneficiary_name')->label('Bank Account')->searchable()->multiple(),
                 Tables\Filters\SelectFilter::make('provider.name')->relationship('provider', 'name')->label('Provider')->searchable()->multiple(),
                 Tables\Filters\SelectFilter::make('branch.branch_name')->relationship('branch', 'branch_name')->label('Branch')->searchable()->multiple(),
                 Tables\Filters\SelectFilter::make('status')

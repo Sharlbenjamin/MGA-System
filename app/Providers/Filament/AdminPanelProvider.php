@@ -30,14 +30,6 @@ use App\Filament\Widgets\FileStatsOverview;
 use App\Filament\Widgets\TotalFile;
 use App\Filament\Widgets\CasesPerMonthStatus;
 use App\Filament\Widgets\MonthlyProfit;
-use App\Filament\Widgets\ProvidersNeedPaymentWidget;
-use App\Filament\Widgets\TotalUnpaidWidget;
-use App\Filament\Widgets\UnpaidBillsWidget;
-use App\Filament\Widgets\AmountUnpaidWidget;
-use App\Filament\Widgets\TotalOutstandingPaidInvoicesWidget;
-use App\Filament\Widgets\InvoicePaidBillsWidget;
-use App\Filament\Widgets\InvoicePaidAmountWidget;
-
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;

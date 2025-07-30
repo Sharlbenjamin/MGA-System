@@ -3,11 +3,11 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Bill;
-use Filament\Widgets\StatsOverviewWidget;
+use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
 
-class UnpaidBillsSummary extends StatsOverviewWidget
+class UnpaidBillsSummary extends BaseWidget
 {
     protected function getStats(): array
     {
@@ -52,13 +52,13 @@ class UnpaidBillsSummary extends StatsOverviewWidget
             ->sum(DB::raw('total_amount - paid_amount'));
 
         return [
-            Stat::make('Providers Need Payment (Paid Invoices)', $providersNeedingPayment)
-                ->description('Providers with unpaid bills (files with paid invoices only)')
+            Stat::make('Providers Need Payment', $providersNeedingPayment)
+                ->description('Providers with unpaid bills')
                 ->descriptionIcon('heroicon-m-building-office')
                 ->color('danger'),
 
-            Stat::make('Total Outstanding (Paid Invoices)', '€' . number_format($totalUnpaidAmount, 2))
-                ->description('Total amount to be paid (files with paid invoices only)')
+            Stat::make('Total Outstanding', '€' . number_format($totalUnpaidAmount, 2))
+                ->description('Total amount to be paid')
                 ->descriptionIcon('heroicon-m-currency-euro')
                 ->color('danger'),
 

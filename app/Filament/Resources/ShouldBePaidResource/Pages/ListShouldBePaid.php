@@ -4,13 +4,6 @@ namespace App\Filament\Resources\ShouldBePaidResource\Pages;
 
 use App\Filament\Resources\ShouldBePaidResource;
 use App\Filament\Widgets\UnpaidBillsSummary;
-use App\Filament\Widgets\ProvidersNeedPaymentWidget;
-use App\Filament\Widgets\TotalUnpaidWidget;
-use App\Filament\Widgets\UnpaidBillsWidget;
-use App\Filament\Widgets\AmountUnpaidWidget;
-use App\Filament\Widgets\TotalOutstandingPaidInvoicesWidget;
-use App\Filament\Widgets\InvoicePaidBillsWidget;
-use App\Filament\Widgets\InvoicePaidAmountWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -22,19 +15,7 @@ class ListShouldBePaid extends ListRecords
     {
         return [
             UnpaidBillsSummary::class,
-            ProvidersNeedPaymentWidget::class,
-            TotalUnpaidWidget::class,
-            UnpaidBillsWidget::class,
-            AmountUnpaidWidget::class,
-            TotalOutstandingPaidInvoicesWidget::class,
-            InvoicePaidBillsWidget::class,
-            InvoicePaidAmountWidget::class,
         ];
-    }
-
-    public function getHeaderWidgetsColumns(): int | string | array
-    {
-        return 4;
     }
 
     public function getTitle(): string
