@@ -34,6 +34,9 @@ use App\Filament\Widgets\ProvidersNeedPaymentWidget;
 use App\Filament\Widgets\TotalUnpaidWidget;
 use App\Filament\Widgets\UnpaidBillsWidget;
 use App\Filament\Widgets\AmountUnpaidWidget;
+use App\Filament\Widgets\TotalOutstandingPaidInvoicesWidget;
+use App\Filament\Widgets\InvoicePaidBillsWidget;
+use App\Filament\Widgets\InvoicePaidAmountWidget;
 
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
