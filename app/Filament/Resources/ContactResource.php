@@ -99,7 +99,7 @@ public static function table(Tables\Table $table): Tables\Table
         ->columns([
             TextColumn::make('type')->label('Type')->sortable(),
             TextColumn::make('name')->label('Name')->sortable()->searchable(),
-            TextColumn::make('entity_name')->label('Entity Name')->sortable()->searchable(),
+            TextColumn::make('entity_name')->label('Entity Name')->sortable(),
             TextColumn::make('title')->label('Title')->sortable()->searchable(),
             TextColumn::make('email')->label('Email')->sortable()->searchable(),
             TextColumn::make('phone_number')->label('Phone')->sortable(),
