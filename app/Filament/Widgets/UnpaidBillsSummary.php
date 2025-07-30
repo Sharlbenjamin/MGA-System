@@ -51,6 +51,28 @@ class UnpaidBillsSummary extends BaseWidget
             })
             ->sum(DB::raw('total_amount - paid_amount'));
 
+        // Get providers that have unpaid bills (without invoice filter)
+        $allProvidersNeedingPayment = Bill::whereIn('bills.status', ['Unpaid', 'Partial'])
+            ->whereHas('file', function ($query) {
+                $query->whereNotNull('provider_branch_id');
+            })
+            ->join('files', 'bills.file_id', '=', 'files.id')
+            ->join('provider_branches', 'files.provider_branch_id', '=', 'provider_branches.id')
+            ->distinct('provider_branches.provider_id')
+            ->count('provider_branches.provider_id');
+
+        // Total amount of all unpaid bills (without invoice filter)
+        $allTotalUnpaidAmount = Bill::whereIn('status', ['Unpaid', 'Partial'])
+            ->sum(DB::raw('total_amount - paid_amount'));
+
+        // Number of all unpaid bills (without invoice filter)
+        $allUnpaidBills = Bill::whereIn('status', ['Unpaid', 'Partial'])
+            ->count();
+
+        // Total amount of all unpaid bills (without invoice filter)
+        $allUnpaidAmount = Bill::whereIn('status', ['Unpaid', 'Partial'])
+            ->sum(DB::raw('total_amount - paid_amount'));
+
         return [
             Stat::make('Providers Need Payment', $providersNeedingPayment)
                 ->description('Providers with unpaid bills')
@@ -71,6 +93,26 @@ class UnpaidBillsSummary extends BaseWidget
                 ->description('Amount with paid invoices')
                 ->descriptionIcon('heroicon-m-currency-euro')
                 ->color('success'),
+
+            Stat::make('All Providers Need Payment', $allProvidersNeedingPayment)
+                ->description('All providers with unpaid bills')
+                ->descriptionIcon('heroicon-m-building-office')
+                ->color('warning'),
+
+            Stat::make('All Total Outstanding', '€' . number_format($allTotalUnpaidAmount, 2))
+                ->description('All total amount to be paid')
+                ->descriptionIcon('heroicon-m-currency-euro')
+                ->color('warning'),
+
+            Stat::make('All Unpaid Bills', $allUnpaidBills)
+                ->description('All unpaid bills')
+                ->descriptionIcon('heroicon-m-document')
+                ->color('warning'),
+
+            Stat::make('All Unpaid Amount', '€' . number_format($allUnpaidAmount, 2))
+                ->description('All unpaid amount')
+                ->descriptionIcon('heroicon-m-currency-euro')
+                ->color('warning'),
         ];
     }
 } 
