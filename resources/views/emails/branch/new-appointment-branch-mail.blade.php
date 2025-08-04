@@ -10,6 +10,7 @@
     <ul>
     <li><strong>Date:</strong> {{ date('d-m-Y', strtotime($appointment->service_date)) }}</li>
     <li><strong>Time:</strong> {{ $appointment->service_time }}</li>
+    <li><strong>Service:</strong> {{ $appointment->serviceType->name }}</li>
     </ul>
 
     @if($appointment->file->symptoms)
