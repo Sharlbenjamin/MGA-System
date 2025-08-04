@@ -24,7 +24,7 @@ class ViewTransaction extends ViewRecord
         ];
     }
 
-    protected function getView(): string
+    public function getView(): string
     {
         return 'filament.resources.transaction-resource.pages.view-transaction';
     }
