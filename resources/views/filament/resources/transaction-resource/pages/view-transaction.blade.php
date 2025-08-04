@@ -201,7 +201,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if($invoice->file)
-                                            <a href="{{ route('filament.admin.resources.files.edit', $invoice->file->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                            <a href="{{ route('filament.admin.resources.files.view', $invoice->file->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
                                                 {{ $invoice->file->name }}
                                             </a>
                                         @else
@@ -240,7 +240,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if($bill->file)
-                                            <a href="{{ route('filament.admin.resources.files.edit', $bill->file->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                            <a href="{{ route('filament.admin.resources.files.view', $bill->file->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
                                                 {{ $bill->file->name }}
                                             </a>
                                         @else
@@ -249,11 +249,11 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         @if($bill->provider)
-                                            <a href="{{ route('filament.admin.resources.providers.edit', $bill->provider->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                            <a href="{{ route('filament.admin.resources.providers.view', $bill->provider->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
                                                 {{ $bill->provider->name }}
                                             </a>
                                         @elseif($bill->providerBranch)
-                                            <a href="{{ route('filament.admin.resources.provider-branches.edit', $bill->providerBranch->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                            <a href="{{ route('filament.admin.resources.provider-branches.view', $bill->providerBranch->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
                                                 {{ $bill->providerBranch->name }}
                                             </a>
                                         @else
