@@ -23,6 +23,7 @@ class PatientResource extends Resource
     protected static ?string $navigationGroup = 'Operation';
     protected static ?int $navigationSort = 1;
     protected static ?string $navigationIcon = 'heroicon-o-user-plus';
+    protected static ?string $navigationGroupBadge = 'bg-green-500';
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function form(Form $form): Form

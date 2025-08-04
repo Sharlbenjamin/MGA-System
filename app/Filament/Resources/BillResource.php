@@ -27,6 +27,7 @@ class BillResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Operation';
+    protected static ?string $navigationGroupBadge = 'bg-green-500';
     protected static ?string $recordTitleAttribute = 'name';
 
 
