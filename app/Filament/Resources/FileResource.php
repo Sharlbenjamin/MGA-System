@@ -43,8 +43,12 @@ class FileResource extends Resource
     protected static ?string $navigationGroup = 'Operation';
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
-    protected static ?string $navigationGroupBadge = 'bg-green-500';
     protected static ?string $recordTitleAttribute = 'mga_reference';
+
+    public static function getNavigationGroupBadge(): ?string
+    {
+        return 'bg-green-500 text-white';
+    }
 
     public static function getNavigationBadge(): ?string
     {
