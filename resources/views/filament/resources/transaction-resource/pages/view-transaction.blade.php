@@ -3,58 +3,55 @@
         <!-- Widgets Section -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Files Widget -->
-            <x-filament::widget>
-                <x-filament::widget.header>
-                    <x-filament::widget.header.heading>
-                        Files
-                    </x-filament::widget.header.heading>
-                    <x-filament::widget.header.icon 
-                        icon="heroicon-o-document"
-                        color="primary"
-                    />
-                </x-filament::widget.header>
-                <x-filament::widget.content>
-                    <div class="text-2xl font-semibold text-primary-600">
-                        {{ $this->record->invoices->flatMap->file->count() }}
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
                     </div>
-                </x-filament::widget.content>
-            </x-filament::widget>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Files</p>
+                        <p class="text-2xl font-semibold text-blue-600">
+                            {{ $this->record->invoices->flatMap->file->count() }}
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             <!-- Cost Widget -->
-            <x-filament::widget>
-                <x-filament::widget.header>
-                    <x-filament::widget.header.heading>
-                        Total Cost
-                    </x-filament::widget.header.heading>
-                    <x-filament::widget.header.icon 
-                        icon="heroicon-o-currency-dollar"
-                        color="danger"
-                    />
-                </x-filament::widget.header>
-                <x-filament::widget.content>
-                    <div class="text-2xl font-semibold text-danger-600">
-                        €{{ number_format($this->record->invoices->flatMap->file->flatMap->bills->sum('total_amount'), 2) }}
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-red-100 rounded-lg">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
                     </div>
-                </x-filament::widget.content>
-            </x-filament::widget>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Cost</p>
+                        <p class="text-2xl font-semibold text-red-600">
+                            €{{ number_format($this->record->invoices->flatMap->file->flatMap->bills->sum('total_amount'), 2) }}
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             <!-- Profit Widget -->
-            <x-filament::widget>
-                <x-filament::widget.header>
-                    <x-filament::widget.header.heading>
-                        Total Profit
-                    </x-filament::widget.header.heading>
-                    <x-filament::widget.header.icon 
-                        icon="heroicon-o-arrow-trending-up"
-                        color="success"
-                    />
-                </x-filament::widget.header>
-                <x-filament::widget.content>
-                    <div class="text-2xl font-semibold text-success-600">
-                        €{{ number_format($this->record->invoices->flatMap->file->sum('profit'), 2) }}
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-green-100 rounded-lg">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
                     </div>
-                </x-filament::widget.content>
-            </x-filament::widget>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Profit</p>
+                        <p class="text-2xl font-semibold text-green-600">
+                            €{{ number_format($this->record->invoices->flatMap->file->sum('profit'), 2) }}
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Transaction Details Section -->
