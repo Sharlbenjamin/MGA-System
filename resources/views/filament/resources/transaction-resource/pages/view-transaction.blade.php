@@ -51,7 +51,7 @@
         </div>
 
         <!-- Widgets Section -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Files Widget -->
             <div class="bg-white rounded-lg shadow p-4">
                 <div class="flex items-center">
@@ -62,7 +62,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Files</p>
-                        <p class="text-2xl font-semibold text-gray-900">
+                        <p class="text-2xl font-semibold text-blue-600">
                             {{ $this->record->invoices->flatMap->file->count() }}
                         </p>
                     </div>
@@ -200,7 +200,13 @@
                                         {{ $invoice->name }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ $invoice->file->name ?? 'N/A' }}
+                                        @if($invoice->file)
+                                            <a href="{{ route('filament.admin.resources.files.edit', $invoice->file->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                                {{ $invoice->file->name }}
+                                            </a>
+                                        @else
+                                            N/A
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {{ $invoice->file->patient->client->company_name ?? 'N/A' }}
@@ -233,10 +239,26 @@
                                         {{ $bill->name }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ $bill->file->name ?? 'N/A' }}
+                                        @if($bill->file)
+                                            <a href="{{ route('filament.admin.resources.files.edit', $bill->file->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                                {{ $bill->file->name }}
+                                            </a>
+                                        @else
+                                            N/A
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {{ $bill->provider->name ?? $bill->providerBranch->name ?? 'N/A' }}
+                                        @if($bill->provider)
+                                            <a href="{{ route('filament.admin.resources.providers.edit', $bill->provider->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                                {{ $bill->provider->name }}
+                                            </a>
+                                        @elseif($bill->providerBranch)
+                                            <a href="{{ route('filament.admin.resources.provider-branches.edit', $bill->providerBranch->id) }}" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                                {{ $bill->providerBranch->name }}
+                                            </a>
+                                        @else
+                                            N/A
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
                                         €{{ number_format($bill->total_amount, 2) }}
