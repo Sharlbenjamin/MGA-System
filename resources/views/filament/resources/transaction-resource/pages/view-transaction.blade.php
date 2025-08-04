@@ -55,223 +55,217 @@
         </div>
 
         <!-- Transaction Details Section -->
-        <x-filament::section>
-            <x-slot name="heading">
-                Transaction Details
-            </x-slot>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Transaction Details</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <x-filament::field-wrapper>
-                    <x-filament::field-wrapper.label>Name</x-filament::field-wrapper.label>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Name</label>
                     <div class="text-sm">{{ $this->record->name }}</div>
-                </x-filament::field-wrapper>
+                </div>
                 
-                <x-filament::field-wrapper>
-                    <x-filament::field-wrapper.label>Type</x-filament::field-wrapper.label>
-                    <x-filament::badge 
-                        :color="$this->record->type === 'Income' ? 'success' : ($this->record->type === 'Outflow' ? 'warning' : 'danger')"
-                    >
-                        {{ $this->record->type }}
-                    </x-filament::badge>
-                </x-filament::field-wrapper>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Type</label>
+                    <div class="text-sm">
+                        <span class="px-2 py-1 text-xs rounded-full 
+                            {{ $this->record->type === 'Income' ? 'bg-green-100 text-green-800' : 
+                               ($this->record->type === 'Outflow' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                            {{ $this->record->type }}
+                        </span>
+                    </div>
+                </div>
                 
-                <x-filament::field-wrapper>
-                    <x-filament::field-wrapper.label>Amount</x-filament::field-wrapper.label>
-                    <div class="text-sm font-semibold {{ $this->record->type === 'Income' ? 'text-success-600' : 'text-danger-600' }}">
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Amount</label>
+                    <div class="text-sm font-semibold {{ $this->record->type === 'Income' ? 'text-green-600' : 'text-red-600' }}">
                         €{{ number_format($this->record->amount, 2) }}
                     </div>
-                </x-filament::field-wrapper>
+                </div>
                 
-                <x-filament::field-wrapper>
-                    <x-filament::field-wrapper.label>Date</x-filament::field-wrapper.label>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Date</label>
                     <div class="text-sm">{{ $this->record->date->format('d/m/Y') }}</div>
-                </x-filament::field-wrapper>
+                </div>
                 
-                <x-filament::field-wrapper>
-                    <x-filament::field-wrapper.label>Bank Account</x-filament::field-wrapper.label>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Bank Account</label>
                     <div class="text-sm">{{ $this->record->bankAccount->beneficiary_name ?? 'N/A' }}</div>
-                </x-filament::field-wrapper>
+                </div>
                 
-                <x-filament::field-wrapper>
-                    <x-filament::field-wrapper.label>Related Type</x-filament::field-wrapper.label>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Related Type</label>
                     <div class="text-sm">{{ $this->record->related_type }}</div>
-                </x-filament::field-wrapper>
+                </div>
                 
-                <x-filament::field-wrapper>
-                    <x-filament::field-wrapper.label>Bills Count</x-filament::field-wrapper.label>
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Bills Count</label>
                     <div class="text-sm">{{ $this->record->bills->count() }}</div>
-                </x-filament::field-wrapper>
+                </div>
                 
                 @if($this->record->notes)
-                <x-filament::field-wrapper class="md:col-span-2 lg:col-span-3">
-                    <x-filament::field-wrapper.label>Notes</x-filament::field-wrapper.label>
+                <div class="md:col-span-2 lg:col-span-3">
+                    <label class="text-sm font-medium text-gray-500">Notes</label>
                     <div class="text-sm">{{ $this->record->notes }}</div>
-                </x-filament::field-wrapper>
+                </div>
                 @endif
             </div>
-        </x-filament::section>
+        </div>
 
         <!-- Table Section -->
-        <x-filament::section>
-            <x-slot name="heading">
-                @if($this->record->type === 'Income')
-                    Related Invoices
-                @else
-                    Related Bills
-                @endif
-            </x-slot>
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold">
+                    @if($this->record->type === 'Income')
+                        Related Invoices
+                    @else
+                        Related Bills
+                    @endif
+                </h3>
+            </div>
             
-            <x-filament::table>
-                @if($this->record->type === 'Income')
-                    <x-slot name="header">
-                        <x-filament::table.header-cell>Invoice Name</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>File</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>MGA Reference</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>Client</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>Amount</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>Status</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>Date</x-filament::table.header-cell>
-                    </x-slot>
-                    
-                    @forelse($this->record->invoices as $invoice)
-                        <x-filament::table.row>
-                            <x-filament::table.cell>
-                                {{ $invoice->name }}
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                @if($invoice->file)
-                                    <x-filament::link 
-                                        href="{{ route('filament.admin.resources.files.view', $invoice->file->id) }}"
-                                        color="primary"
-                                    >
-                                        {{ $invoice->file->name }}
-                                    </x-filament::link>
-                                @else
-                                    N/A
-                                @endif
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                @if($invoice->file)
-                                    <x-filament::link 
-                                        href="{{ route('filament.admin.resources.files.view', $invoice->file->id) }}"
-                                        color="primary"
-                                    >
-                                        {{ $invoice->file->mga_reference ?? 'N/A' }}
-                                    </x-filament::link>
-                                @else
-                                    N/A
-                                @endif
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                {{ $invoice->file->patient->client->company_name ?? 'N/A' }}
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                <span class="font-semibold text-success-600">
-                                    €{{ number_format($invoice->total_amount, 2) }}
-                                </span>
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                <x-filament::badge 
-                                    :color="$invoice->status === 'Paid' ? 'success' : ($invoice->status === 'Partial' ? 'warning' : 'danger')"
-                                >
-                                    {{ $invoice->status }}
-                                </x-filament::badge>
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                {{ $invoice->created_at->format('d/m/Y') }}
-                            </x-filament::table.cell>
-                        </x-filament::table.row>
-                    @empty
-                        <x-filament::table.row>
-                            <x-filament::table.cell colspan="7" class="text-center text-gray-500">
-                                No invoices found for this transaction.
-                            </x-filament::table.cell>
-                        </x-filament::table.row>
-                    @endforelse
-                @else
-                    <x-slot name="header">
-                        <x-filament::table.header-cell>Bill Name</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>File</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>MGA Reference</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>Provider</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>Amount</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>Status</x-filament::table.header-cell>
-                        <x-filament::table.header-cell>Date</x-filament::table.header-cell>
-                    </x-slot>
-                    
-                    @forelse($this->record->bills as $bill)
-                        <x-filament::table.row>
-                            <x-filament::table.cell>
-                                {{ $bill->name }}
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                @if($bill->file)
-                                    <x-filament::link 
-                                        href="{{ route('filament.admin.resources.files.view', $bill->file->id) }}"
-                                        color="primary"
-                                    >
-                                        {{ $bill->file->name }}
-                                    </x-filament::link>
-                                @else
-                                    N/A
-                                @endif
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                @if($bill->file)
-                                    <x-filament::link 
-                                        href="{{ route('filament.admin.resources.files.view', $bill->file->id) }}"
-                                        color="primary"
-                                    >
-                                        {{ $bill->file->mga_reference ?? 'N/A' }}
-                                    </x-filament::link>
-                                @else
-                                    N/A
-                                @endif
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                @if($bill->provider)
-                                    <x-filament::link 
-                                        href="{{ route('filament.admin.resources.providers.view', $bill->provider->id) }}"
-                                        color="primary"
-                                    >
-                                        {{ $bill->provider->name }}
-                                    </x-filament::link>
-                                @elseif($bill->providerBranch)
-                                    <x-filament::link 
-                                        href="{{ route('filament.admin.resources.provider-branches.view', $bill->providerBranch->id) }}"
-                                        color="primary"
-                                    >
-                                        {{ $bill->providerBranch->name }}
-                                    </x-filament::link>
-                                @else
-                                    N/A
-                                @endif
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                <span class="font-semibold text-danger-600">
-                                    €{{ number_format($bill->total_amount, 2) }}
-                                </span>
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                <x-filament::badge 
-                                    :color="$bill->status === 'Paid' ? 'success' : ($bill->status === 'Partial' ? 'warning' : 'danger')"
-                                >
-                                    {{ $bill->status }}
-                                </x-filament::badge>
-                            </x-filament::table.cell>
-                            <x-filament::table.cell>
-                                {{ $bill->created_at->format('d/m/Y') }}
-                            </x-filament::table.cell>
-                        </x-filament::table.row>
-                    @empty
-                        <x-filament::table.row>
-                            <x-filament::table.cell colspan="7" class="text-center text-gray-500">
-                                No bills found for this transaction.
-                            </x-filament::table.cell>
-                        </x-filament::table.row>
-                    @endforelse
-                @endif
-            </x-filament::table>
-        </x-filament::section>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    @if($this->record->type === 'Income')
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">Invoice Name</th>
+                                <th scope="col" class="px-6 py-3">File</th>
+                                <th scope="col" class="px-6 py-3">MGA Reference</th>
+                                <th scope="col" class="px-6 py-3">Client</th>
+                                <th scope="col" class="px-6 py-3">Amount</th>
+                                <th scope="col" class="px-6 py-3">Status</th>
+                                <th scope="col" class="px-6 py-3">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($this->record->invoices as $invoice)
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">{{ $invoice->name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if($invoice->file)
+                                            <a href="{{ route('filament.admin.resources.files.view', $invoice->file->id) }}" 
+                                               class="text-blue-600 hover:text-blue-800 underline">
+                                                {{ $invoice->file->name }}
+                                            </a>
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if($invoice->file)
+                                            <a href="{{ route('filament.admin.resources.files.view', $invoice->file->id) }}" 
+                                               class="text-blue-600 hover:text-blue-800 underline">
+                                                {{ $invoice->file->mga_reference ?? 'N/A' }}
+                                            </a>
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {{ $invoice->file->patient->client->company_name ?? 'N/A' }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="font-semibold text-green-600">
+                                            €{{ number_format($invoice->total_amount, 2) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs rounded-full 
+                                            {{ $invoice->status === 'Paid' ? 'bg-green-100 text-green-800' : 
+                                               ($invoice->status === 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                            {{ $invoice->status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {{ $invoice->created_at->format('d/m/Y') }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                        No invoices found for this transaction.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    @else
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">Bill Name</th>
+                                <th scope="col" class="px-6 py-3">File</th>
+                                <th scope="col" class="px-6 py-3">MGA Reference</th>
+                                <th scope="col" class="px-6 py-3">Provider</th>
+                                <th scope="col" class="px-6 py-3">Amount</th>
+                                <th scope="col" class="px-6 py-3">Status</th>
+                                <th scope="col" class="px-6 py-3">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($this->record->bills as $bill)
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">{{ $bill->name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if($bill->file)
+                                            <a href="{{ route('filament.admin.resources.files.view', $bill->file->id) }}" 
+                                               class="text-blue-600 hover:text-blue-800 underline">
+                                                {{ $bill->file->name }}
+                                            </a>
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if($bill->file)
+                                            <a href="{{ route('filament.admin.resources.files.view', $bill->file->id) }}" 
+                                               class="text-blue-600 hover:text-blue-800 underline">
+                                                {{ $bill->file->mga_reference ?? 'N/A' }}
+                                            </a>
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if($bill->provider)
+                                            <a href="{{ route('filament.admin.resources.providers.view', $bill->provider->id) }}" 
+                                               class="text-blue-600 hover:text-blue-800 underline">
+                                                {{ $bill->provider->name }}
+                                            </a>
+                                        @elseif($bill->providerBranch)
+                                            <a href="{{ route('filament.admin.resources.provider-branches.view', $bill->providerBranch->id) }}" 
+                                               class="text-blue-600 hover:text-blue-800 underline">
+                                                {{ $bill->providerBranch->name }}
+                                            </a>
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="font-semibold text-red-600">
+                                            €{{ number_format($bill->total_amount, 2) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs rounded-full 
+                                            {{ $bill->status === 'Paid' ? 'bg-green-100 text-green-800' : 
+                                               ($bill->status === 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                            {{ $bill->status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {{ $bill->created_at->format('d/m/Y') }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                        No bills found for this transaction.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    @endif
+                </table>
+            </div>
+        </div>
     </div>
 </x-filament-panels::page> 
