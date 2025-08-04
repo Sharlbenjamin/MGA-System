@@ -143,7 +143,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $invoice->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($invoice->file)
-                                            <a href="{{ route('filament.admin.resources.files.view', $invoice->file->id) }}" 
+                                            <a href="{{ route('filament.admin.resources.files.overview', $invoice->file->id) }}" 
                                                class="text-blue-600 hover:text-blue-800 underline">
                                                 {{ $invoice->file->name }}
                                             </a>
@@ -153,7 +153,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($invoice->file)
-                                            <a href="{{ route('filament.admin.resources.files.view', $invoice->file->id) }}" 
+                                            <a href="{{ route('filament.admin.resources.files.overview', $invoice->file->id) }}" 
                                                class="text-blue-600 hover:text-blue-800 underline">
                                                 {{ $invoice->file->mga_reference ?? 'N/A' }}
                                             </a>
@@ -206,7 +206,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">{{ $bill->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($bill->file)
-                                            <a href="{{ route('filament.admin.resources.files.view', $bill->file->id) }}" 
+                                            <a href="{{ route('filament.admin.resources.files.overview', $bill->file->id) }}" 
                                                class="text-blue-600 hover:text-blue-800 underline">
                                                 {{ $bill->file->name }}
                                             </a>
@@ -216,7 +216,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($bill->file)
-                                            <a href="{{ route('filament.admin.resources.files.view', $bill->file->id) }}" 
+                                            <a href="{{ route('filament.admin.resources.files.overview', $bill->file->id) }}" 
                                                class="text-blue-600 hover:text-blue-800 underline">
                                                 {{ $bill->file->mga_reference ?? 'N/A' }}
                                             </a>
@@ -226,12 +226,12 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($bill->provider)
-                                            <a href="{{ route('filament.admin.resources.providers.view', $bill->provider->id) }}" 
+                                            <a href="{{ route('filament.admin.resources.providers.overview', $bill->provider->id) }}" 
                                                class="text-blue-600 hover:text-blue-800 underline">
                                                 {{ $bill->provider->name }}
                                             </a>
                                         @elseif($bill->providerBranch)
-                                            <a href="{{ route('filament.admin.resources.provider-branches.view', $bill->providerBranch->id) }}" 
+                                            <a href="{{ route('filament.admin.resources.provider-branches.overview', $bill->providerBranch->id) }}" 
                                                class="text-blue-600 hover:text-blue-800 underline">
                                                 {{ $bill->providerBranch->name }}
                                             </a>
