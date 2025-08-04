@@ -22,7 +22,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
-use Filament\Forms\Components\Actions\Action;
+use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 
 use Filament\Notifications\Notification;

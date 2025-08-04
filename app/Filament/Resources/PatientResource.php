@@ -25,11 +25,6 @@ class PatientResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-user-plus';
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationGroupBadge(): ?string
-    {
-        return 'bg-green-500 text-white';
-    }
-
     public static function form(Form $form): Form
     {
         return $form

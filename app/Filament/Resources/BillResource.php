@@ -29,11 +29,6 @@ class BillResource extends Resource
     protected static ?string $navigationGroup = 'Operation';
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationGroupBadge(): ?string
-    {
-        return 'bg-green-500 text-white';
-    }
-
 
 
 

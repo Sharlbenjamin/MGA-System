@@ -45,11 +45,6 @@ class FileResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
     protected static ?string $recordTitleAttribute = 'mga_reference';
 
-    public static function getNavigationGroupBadge(): ?string
-    {
-        return 'bg-green-500 text-white';
-    }
-
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::whereIn('status', ['New', 'Handling', 'Available', 'Confirmed', 'Hold'])->count();

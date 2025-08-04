@@ -5,12 +5,3 @@
 [x-cloak] {
     display: none;
 }
-
-/* Custom styling for Operation navigation group */
-.fi-sidebar-group-label[data-group="Operation"] {
-    background-color: #10b981 !important;
-    color: white !important;
-    border-radius: 0.375rem;
-    padding: 0.25rem 0.5rem;
-    font-weight: 500;
-}
