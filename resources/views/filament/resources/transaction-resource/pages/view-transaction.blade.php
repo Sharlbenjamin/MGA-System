@@ -28,7 +28,7 @@
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">Total Cost</p>
+                        <p class="text-sm font-medium text-red-500">Total Cost</p>
                         <p class="text-2xl font-semibold text-red-600">
                             €{{ number_format($totalCost, 2) }}
                         </p>
@@ -60,7 +60,7 @@
                         </svg>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">Total Profit</p>
+                        <p class="text-sm font-medium text-green-500">Total Profit</p>
                         <p class="text-2xl font-semibold text-green-600">
                             €{{ number_format($totalProfit, 2) }}
                         </p>

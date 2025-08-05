@@ -35,7 +35,15 @@ class ViewTransaction extends ViewRecord
         });
         
         $filesCount = $invoicesWithFiles->pluck('file_id')->unique()->count();
-        $totalCost = $invoicesWithFiles->flatMap->file->flatMap->bills->sum('total_amount');
+        
+        // Calculate total cost by iterating through invoices manually
+        $totalCost = 0;
+        foreach ($invoicesWithFiles as $invoice) {
+            if ($invoice->file && $invoice->file->bills) {
+                $totalCost += $invoice->file->bills->sum('total_amount');
+            }
+        }
+        
         $totalInvoices = $invoices->sum('total_amount');
         $totalProfit = $totalInvoices - $totalCost;
         
