@@ -29,16 +29,26 @@ class ViewTransaction extends ViewRecord
         // Calculate widgets data - using proper relationship loading
         $invoices = $record->invoices()->with(['file.bills'])->get();
         
-        $filesCount = $invoices->pluck('file_id')->unique()->count();
-        $totalCost = $invoices->flatMap->file->flatMap->bills->sum('total_amount');
+        // Debug: Check what we have
+        $invoicesWithFiles = $invoices->filter(function($invoice) {
+            return $invoice->file !== null;
+        });
+        
+        $filesCount = $invoicesWithFiles->pluck('file_id')->unique()->count();
+        $totalCost = $invoicesWithFiles->flatMap->file->flatMap->bills->sum('total_amount');
         $totalInvoices = $invoices->sum('total_amount');
         $totalProfit = $totalInvoices - $totalCost;
+        
+        // Alternative: Check if we should use bills directly from transaction
+        $transactionBills = $record->bills()->with(['file'])->get();
+        $totalCostFromBills = $transactionBills->sum('total_amount');
         
         return [
             'record' => $record,
             'filesCount' => $filesCount,
             'totalCost' => $totalCost,
             'totalProfit' => $totalProfit,
+            'totalCostFromBills' => $totalCostFromBills,
         ];
     }
 

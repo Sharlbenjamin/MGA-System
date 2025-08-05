@@ -38,6 +38,12 @@
                             {{ $this->record->invoices->flatMap->file->count() }} files, 
                             {{ $this->record->invoices->flatMap->file->flatMap->bills->count() }} bills
                         </p>
+                        <p class="text-xs text-gray-500">
+                            Invoices with files: {{ $this->record->invoices->filter(function($invoice) { return $invoice->file !== null; })->count() }}
+                        </p>
+                        <p class="text-xs text-gray-500">
+                            Cost from transaction bills: €{{ number_format($totalCostFromBills, 2) }}
+                        </p>
                     </div>
                 </div>
             </div>
