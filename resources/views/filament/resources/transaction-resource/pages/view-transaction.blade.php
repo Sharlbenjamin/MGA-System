@@ -32,21 +32,6 @@
                         <p class="text-2xl font-semibold text-red-600">
                             €{{ number_format($totalCost, 2) }}
                         </p>
-                        <!-- Debug Info -->
-                        <p class="text-xs text-gray-500 mt-1">
-                            Debug: {{ $this->record->invoices->count() }} invoices, 
-                            {{ $this->record->invoices->flatMap->file->count() }} files, 
-                            {{ $this->record->invoices->flatMap->file->flatMap->bills->count() }} bills
-                        </p>
-                        <p class="text-xs text-gray-500">
-                            Invoices with files: {{ $this->record->invoices->filter(function($invoice) { return $invoice->file !== null; })->count() }}
-                        </p>
-                        <p class="text-xs text-gray-500">
-                            Cost from transaction bills: €{{ number_format($totalCostFromBills, 2) }}
-                        </p>
-                        <p class="text-xs text-gray-500">
-                            First file bills count: {{ $firstFileBillsCount }}, Sum: €{{ number_format($firstFileBillsSum, 2) }}
-                        </p>
                     </div>
                 </div>
             </div>
