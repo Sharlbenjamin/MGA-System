@@ -43,12 +43,20 @@ class ViewTransaction extends ViewRecord
         $transactionBills = $record->bills()->with(['file'])->get();
         $totalCostFromBills = $transactionBills->sum('total_amount');
         
+        // Debug: Check first file and its bills
+        $firstInvoice = $invoices->first();
+        $firstFile = $firstInvoice ? $firstInvoice->file : null;
+        $firstFileBillsCount = $firstFile ? $firstFile->bills->count() : 0;
+        $firstFileBillsSum = $firstFile ? $firstFile->bills->sum('total_amount') : 0;
+        
         return [
             'record' => $record,
             'filesCount' => $filesCount,
             'totalCost' => $totalCost,
             'totalProfit' => $totalProfit,
             'totalCostFromBills' => $totalCostFromBills,
+            'firstFileBillsCount' => $firstFileBillsCount,
+            'firstFileBillsSum' => $firstFileBillsSum,
         ];
     }
 

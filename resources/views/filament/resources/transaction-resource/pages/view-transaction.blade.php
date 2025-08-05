@@ -44,6 +44,9 @@
                         <p class="text-xs text-gray-500">
                             Cost from transaction bills: €{{ number_format($totalCostFromBills, 2) }}
                         </p>
+                        <p class="text-xs text-gray-500">
+                            First file bills count: {{ $firstFileBillsCount }}, Sum: €{{ number_format($firstFileBillsSum, 2) }}
+                        </p>
                     </div>
                 </div>
             </div>
