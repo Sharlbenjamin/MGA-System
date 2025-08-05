@@ -26,10 +26,12 @@ class ViewTransaction extends ViewRecord
             'bankAccount'
         ]);
         
-        // Calculate widgets data
-        $filesCount = $record->invoices->pluck('file_id')->unique()->count();
-        $totalCost = $record->invoices->flatMap->file->flatMap->bills->sum('total_amount');
-        $totalInvoices = $record->invoices->sum('total_amount');
+        // Calculate widgets data - using proper relationship loading
+        $invoices = $record->invoices()->with(['file.bills'])->get();
+        
+        $filesCount = $invoices->pluck('file_id')->unique()->count();
+        $totalCost = $invoices->flatMap->file->flatMap->bills->sum('total_amount');
+        $totalInvoices = $invoices->sum('total_amount');
         $totalProfit = $totalInvoices - $totalCost;
         
         return [
