@@ -13,7 +13,7 @@
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Files</p>
                         <p class="text-2xl font-semibold text-blue-600">
-                            {{ $this->record->invoices->pluck('file_id')->unique()->count() }}
+                            {{ $filesCount }}
                         </p>
                     </div>
                 </div>
@@ -30,7 +30,13 @@
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Total Cost</p>
                         <p class="text-2xl font-semibold text-red-600">
-                            €{{ number_format($this->record->invoices->flatMap->file->flatMap->bills->sum('total_amount'), 2) }}
+                            €{{ number_format($totalCost, 2) }}
+                        </p>
+                        <!-- Debug Info -->
+                        <p class="text-xs text-gray-500 mt-1">
+                            Debug: {{ $this->record->invoices->count() }} invoices, 
+                            {{ $this->record->invoices->flatMap->file->count() }} files, 
+                            {{ $this->record->invoices->flatMap->file->flatMap->bills->count() }} bills
                         </p>
                     </div>
                 </div>
@@ -47,7 +53,7 @@
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Total Profit</p>
                         <p class="text-2xl font-semibold text-green-600">
-                            €{{ number_format($this->record->invoices->sum('total_amount') - $this->record->invoices->flatMap->file->flatMap->bills->sum('total_amount'), 2) }}
+                            €{{ number_format($totalProfit, 2) }}
                         </p>
                     </div>
                 </div>
