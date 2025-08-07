@@ -149,16 +149,17 @@ class FileResource extends Resource
                     ->sortable()
                     ->searchable(),
                 
-                Tables\Columns\TextColumn::make('service_date')
+                Tables\Columns\TextColumn::make('serviceType.name')
                     ->label('Service')
                     ->description(fn ($record) => 
-                        ($record->service_time ? \Carbon\Carbon::parse($record->service_time)->format('H:i') . ' - ' : '') . 
-                        ($record->serviceType?->name ?? 'No Service Type')
+                        ($record->service_date ? $record->service_date->format('d/m/Y') : 'No Date') . 
+                        ($record->service_time ? ' at ' . \Carbon\Carbon::parse($record->service_time)->format('H:i') : '')
                     )
                     ->formatStateUsing(fn ($record) => 
-                        $record->service_date ? $record->service_date->format('d/m/Y') : 'No Date'
+                        $record->serviceType?->name ?? 'No Service Type'
                     )
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 
                 Tables\Columns\TextColumn::make('providerBranch.branch_name')
                     ->label('Provider')
