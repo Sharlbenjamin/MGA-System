@@ -96,8 +96,7 @@ class TransactionResource extends Resource
                                 $query->whereDoesntHave('transactions');
                             })
                             ->pluck('name', 'id');
-                    })
-                ),
+                    }),
                 Forms\Components\Select::make('bills')
                 ->label('Bills')
                 ->multiple()
@@ -163,8 +162,7 @@ class TransactionResource extends Resource
                     return static::getBills($relatedType, $relatedId)
                         ->pluck('name', 'id')
                         ->toArray();
-                })
-                ),
+                }),
             ]);
     }
 
