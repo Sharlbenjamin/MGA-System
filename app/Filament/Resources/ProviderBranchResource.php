@@ -202,6 +202,20 @@ class ProviderBranchResource extends Resource
                             })
                             ->searchable()
                             ->preload()
+                            ->relationship('cities', 'name', function (Builder $query, Get $get) {
+                                $providerId = $get('provider_id');
+                                $countryId = $get('new_provider_country_id');
+                                
+                                if ($providerId) {
+                                    $query->whereIn('country_id', function($subquery) use ($providerId) {
+                                        $subquery->select('country_id')
+                                            ->from('providers')
+                                            ->where('id', $providerId);
+                                    });
+                                } elseif ($countryId) {
+                                    $query->where('country_id', $countryId);
+                                }
+                            })
                             ->required(),
 
                         Toggle::make('all_country')
