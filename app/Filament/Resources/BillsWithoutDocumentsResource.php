@@ -149,7 +149,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Upload Bill Document')
-                    ->modalDescription('Upload a bill document for this record.')
+                    ->modalDescription(fn ($record): string => "Upload a bill document for:\nPatient: {$record->file->patient->name}\nMGA Reference: {$record->file->mga_reference}")
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
