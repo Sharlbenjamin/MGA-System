@@ -97,11 +97,7 @@ class TransactionResource extends Resource
                             })
                             ->pluck('name', 'id');
                     })
-                    ->afterStateUpdated(function ($state, $record) {
-                        if ($record && $state) {
-                            $record->attachInvoices($state);
-                        }
-                    }),
+                ),
                 Forms\Components\Select::make('bills')
                 ->label('Bills')
                 ->multiple()
@@ -168,11 +164,7 @@ class TransactionResource extends Resource
                         ->pluck('name', 'id')
                         ->toArray();
                 })
-                ->afterStateUpdated(function ($state, $record) {
-                    if ($record && $state) {
-                        $record->attachBills($state);
-                    }
-                }),
+                ),
             ]);
     }
 
