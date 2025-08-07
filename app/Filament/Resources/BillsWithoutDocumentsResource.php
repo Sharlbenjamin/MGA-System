@@ -148,8 +148,8 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(fn (Bill $record): string => "Upload Bill Document - {$record->file->patient->name} ({$record->file->mga_reference})")
-                    ->modalDescription(fn (Bill $record): string => "Upload a bill document for: {$record->name}")
+                    ->modalHeading('Upload Bill Document')
+                    ->modalDescription('Upload a bill document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
@@ -167,27 +167,8 @@ class BillsWithoutDocumentsResource extends Resource
                             ->preserveFilenames()
                             ->maxFiles(1),
                     ])
-                    ->action(function (Bill $record, array $data) {
+                    ->action(function ($record, array $data = []) {
                         try {
-                            // Ensure we have a valid record
-                            if (!$record || !$record->exists) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Invalid record')
-                                    ->body('The selected bill record is invalid.')
-                                    ->send();
-                                return;
-                            }
-                            
-                            // Log the record information for debugging
-                            Log::info('Bill upload action - Record details:', [
-                                'bill_id' => $record->id,
-                                'bill_name' => $record->name,
-                                'file_id' => $record->file_id,
-                                'mga_reference' => $record->file->mga_reference ?? 'N/A',
-                                'patient_name' => $record->file->patient->name ?? 'N/A'
-                            ]);
-                            
                             if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
                                     ->danger()
