@@ -148,13 +148,14 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Upload Bill Document')
-                    ->modalDescription(function (Bill $record): string {
+                    ->modalHeading(function (Bill $record): string {
                         $patientName = $record->file->patient->name ?? 'N/A';
                         $mgaReference = $record->file->mga_reference ?? 'N/A';
-                        return "Upload a bill document for:\nPatient: {$patientName}\nMGA Reference: {$mgaReference}";
+                        return "Upload Bill Document - {$patientName} ({$mgaReference})";
                     })
+                    ->modalDescription('Upload a bill document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
+                    ->extraAttributes(['data-bill-id' => fn (Bill $record) => $record->id])
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
                             ->label('Upload Bill Document')
@@ -173,6 +174,16 @@ class BillsWithoutDocumentsResource extends Resource
                     ])
                     ->action(function (Bill $record, array $data) {
                         try {
+                            // Ensure we have a valid record
+                            if (!$record || !$record->exists) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Invalid record')
+                                    ->body('The selected bill record is invalid.')
+                                    ->send();
+                                return;
+                            }
+                            
                             // Log the record information for debugging
                             Log::info('Bill upload action - Record details:', [
                                 'bill_id' => $record->id,
