@@ -153,9 +153,11 @@ class FileResource extends Resource
                     ->label('Service')
                     ->description(fn ($record) => 
                         ($record->service_time ? \Carbon\Carbon::parse($record->service_time)->format('H:i') . ' - ' : '') . 
-                        $record->serviceType?->name
+                        ($record->serviceType?->name ?? 'No Service Type')
                     )
-                    ->date()
+                    ->formatStateUsing(fn ($record) => 
+                        $record->service_date ? $record->service_date->format('d/m/Y') : 'No Date'
+                    )
                     ->sortable(),
                 
                 Tables\Columns\TextColumn::make('providerBranch.branch_name')
