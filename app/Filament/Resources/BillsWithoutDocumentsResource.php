@@ -149,7 +149,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Upload Bill Document')
-                    ->modalDescription(fn ($record): string => "Upload a bill document for:\nPatient: {$record->file->patient->name}\nMGA Reference: {$record->file->mga_reference}")
+                    ->modalDescription('Upload a bill document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
@@ -169,6 +169,14 @@ class BillsWithoutDocumentsResource extends Resource
                     ])
                     ->action(function ($record, array $data = []) {
                         try {
+                            // Debug: Log which record is being processed
+                            Log::info('Processing upload for record:', [
+                                'record_id' => $record->id,
+                                'bill_name' => $record->name,
+                                'patient_name' => $record->file->patient->name ?? 'N/A',
+                                'mga_reference' => $record->file->mga_reference ?? 'N/A'
+                            ]);
+                            
                             if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
                                     ->danger()
