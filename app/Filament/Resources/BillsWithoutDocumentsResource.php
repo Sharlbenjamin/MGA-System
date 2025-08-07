@@ -155,7 +155,6 @@ class BillsWithoutDocumentsResource extends Resource
                     })
                     ->modalDescription('Upload a bill document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
-                    ->extraAttributes(['data-bill-id' => fn (Bill $record) => $record->id])
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
                             ->label('Upload Bill Document')
