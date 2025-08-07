@@ -44,14 +44,26 @@ class InvoiceResource extends Resource
                             ->relationship('file', 'mga_reference', fn (Builder $query, Get $get) => $query->where('patient_id', $get('patient_id')))
                             ->required()
                             ->searchable()->preload()
-                            ->default(fn () => request()->get('file_id')),
+                            ->default(fn () => request()->get('file_id'))
+                            ->getOptionLabelFromRecordUsing(fn ($record) => $record->mga_reference)
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state) {
+                                    $file = \App\Models\File::find($state);
+                                    if ($file) {
+                                        $set('patient_id', $file->patient_id);
+                                    }
+                                }
+                            }),
 
                         Forms\Components\Select::make('patient_id')
                             ->relationship('patient', 'name')
                             ->required()
                             ->searchable()->preload()
                             ->live()
-                            ->default(fn () => request()->get('patient_id')),
+                            ->default(fn () => request()->get('patient_id'))
+                            ->disabled(fn () => request()->has('file_id'))
+                            ->dehydrated(),
 
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')

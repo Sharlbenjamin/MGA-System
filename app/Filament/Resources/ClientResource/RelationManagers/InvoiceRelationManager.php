@@ -232,11 +232,6 @@ class InvoiceRelationManager extends RelationManager
                          Notification::make()->success()->title('Invoice generated and sent successfully')->send();
                     })
             ])->headerActions([
-                Action::make('createInvoice')
-                    ->openUrlInNewTab(false)
-                    ->url(fn () => InvoiceResource::getUrl('create', [
-                        'patient_id' => $this->ownerRecord->id
-                    ])),
                 Action::make('ExportBalance')->label('Export Balance PDF')
                     ->color('info')
                     ->icon('heroicon-o-document-text')

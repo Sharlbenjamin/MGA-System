@@ -135,7 +135,8 @@ class InvoiceRelationManager extends RelationManager
                 Action::make('createInvoice')
                     ->openUrlInNewTab(false)
                     ->url(fn () => InvoiceResource::getUrl('create', [
-                        'file_id' => $this->ownerRecord->id
+                        'file_id' => $this->ownerRecord->id,
+                        'patient_id' => $this->ownerRecord->patient_id
                     ])),
             ]);
     }
