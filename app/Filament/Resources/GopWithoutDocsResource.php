@@ -33,6 +33,9 @@ class GopWithoutDocsResource extends Resource
                 $query->whereNull('gop_google_drive_link')
                       ->orWhere('gop_google_drive_link', '');
             })
+            ->whereHas('file', function ($fileQuery) {
+                $fileQuery->where('status', 'Assisted');
+            })
             ->count();
     }
 
