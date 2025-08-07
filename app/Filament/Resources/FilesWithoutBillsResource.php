@@ -87,10 +87,22 @@ class FilesWithoutBillsResource extends Resource
                 Tables\Columns\TextColumn::make('provider_branch_info')
                     ->label('Provider & Branch')
                     ->formatStateUsing(function ($record) {
-                        $providerName = $record->providerBranch?->provider?->name ?? 'N/A';
-                        $branchName = $record->providerBranch?->branch_name ?? 'N/A';
+                        if (!$record->providerBranch) {
+                            return 'No Provider Branch Assigned';
+                        }
+                        
+                        $providerName = $record->providerBranch->provider?->name ?? 'Provider N/A';
+                        $branchName = $record->providerBranch->branch_name ?? 'Branch N/A';
                         return $providerName . ' - ' . $branchName;
                     })
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('providerBranch.provider.name')
+                    ->label('Provider')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('providerBranch.branch_name')
+                    ->label('Branch')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('country.name')
@@ -136,6 +148,10 @@ class FilesWithoutBillsResource extends Resource
                         'Cancelled' => 'Cancelled',
                         'Void' => 'Void',
                     ]),
+                Tables\Filters\SelectFilter::make('provider_branch_id')
+                    ->relationship('providerBranch', 'branch_name')
+                    ->label('Provider Branch')
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('country_id')
                     ->relationship('country', 'name')
                     ->label('Country'),
