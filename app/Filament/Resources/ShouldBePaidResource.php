@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ShouldBePaidResource\Pages;
+use App\Filament\Resources\BillResource\Pages\EditBill;
 use App\Models\Bill;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -27,6 +28,7 @@ class ShouldBePaidResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
+        // Count unpaid bills that have files with paid invoices (BK received bills)
         $count = static::getModel()::where('status', 'Unpaid')
             ->whereHas('file', function (Builder $fileQuery) {
                 $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
@@ -44,7 +46,7 @@ class ShouldBePaidResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->where('status', 'Unpaid')
+            ->whereIn('status', ['Unpaid', 'Partial'])
             ->orderBy('due_date', 'asc');
     }
 
@@ -93,22 +95,23 @@ class ShouldBePaidResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Unpaid' => 'Unpaid',
+                        'Partial' => 'Partial',
                     ]),
                 // 1. Overdue Bills with status unpaid
                 Tables\Filters\Filter::make('overdue_unpaid')
-                    ->label('Overdue Bills (Unpaid)')
+                    ->label('Overdue Bills (Unpaid/Partial)')
                     ->query(function (Builder $query): Builder {
                         return $query->where('due_date', '<', now())
-                                   ->where('status', 'Unpaid');
+                                   ->whereIn('status', ['Unpaid', 'Partial']);
                     })
                     ->indicateUsing(function (): array {
-                        return ['overdue_unpaid' => 'Overdue Bills (Unpaid)'];
+                        return ['overdue_unpaid' => 'Overdue Bills (Unpaid/Partial)'];
                     }),
                 // 2. BK Received Bills - Unpaid bills with files that have paid invoices
                 Tables\Filters\Filter::make('bk_received')
                     ->label('BK Received Bills')
                     ->query(function (Builder $query): Builder {
-                        return $query->where('status', 'Unpaid')
+                        return $query->whereIn('status', ['Unpaid', 'Partial'])
                                    ->whereHas('file', function (Builder $fileQuery) {
                                        $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
                                            $invoiceQuery->where('status', 'Paid');
@@ -152,6 +155,7 @@ class ShouldBePaidResource extends Resource
     {
         return [
             'index' => Pages\ListShouldBePaid::route('/'),
+            'edit' => EditBill::route('/{record}/edit'),
         ];
     }
 } 
