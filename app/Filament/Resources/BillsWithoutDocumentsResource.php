@@ -149,7 +149,11 @@ class BillsWithoutDocumentsResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Upload Bill Document')
-                    ->modalDescription('Upload a bill document for this record.')
+                    ->modalDescription(function (Bill $record): string {
+                        $patientName = $record->file->patient->name ?? 'N/A';
+                        $mgaReference = $record->file->mga_reference ?? 'N/A';
+                        return "Upload a bill document for:\nPatient: {$patientName}\nMGA Reference: {$mgaReference}";
+                    })
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
@@ -169,6 +173,15 @@ class BillsWithoutDocumentsResource extends Resource
                     ])
                     ->action(function (Bill $record, array $data) {
                         try {
+                            // Log the record information for debugging
+                            Log::info('Bill upload action - Record details:', [
+                                'bill_id' => $record->id,
+                                'bill_name' => $record->name,
+                                'file_id' => $record->file_id,
+                                'mga_reference' => $record->file->mga_reference ?? 'N/A',
+                                'patient_name' => $record->file->patient->name ?? 'N/A'
+                            ]);
+                            
                             if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
                                     ->danger()
@@ -232,7 +245,7 @@ class BillsWithoutDocumentsResource extends Resource
                                     Notification::make()
                                         ->success()
                                         ->title('Bill document uploaded successfully')
-                                        ->body('Bill document has been uploaded to Google Drive.')
+                                        ->body("Bill document for '{$record->name}' (Patient: {$record->file->patient->name}) has been uploaded to Google Drive.")
                                         ->send();
                                 } else {
                                     Log::error('Failed to upload bill to Google Drive');
