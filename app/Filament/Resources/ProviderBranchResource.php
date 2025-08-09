@@ -25,6 +25,9 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
 
@@ -70,9 +73,9 @@ class ProviderBranchResource extends Resource
                             ->schema([
                                 TextInput::make('new_provider_name')
                                     ->label('Provider Name')
-                                    ->required(fn (Get $get) => $get('create_new_provider'))
                                     ->visible(fn (Get $get) => $get('create_new_provider'))
-                                    ->unique('providers', 'name', ignoreRecord: true),
+                                    ->required(fn (Get $get) => $get('create_new_provider'))
+                                    ->maxLength(255),
 
                                 Select::make('new_provider_type')
                                     ->label('Provider Type')
@@ -83,23 +86,16 @@ class ProviderBranchResource extends Resource
                                         'Dental' => 'Dental',
                                         'Agency' => 'Agency',
                                     ])
-                                    ->required(fn (Get $get) => $get('create_new_provider'))
-                                    ->visible(fn (Get $get) => $get('create_new_provider')),
-                            ])
-                            ->visible(fn (Get $get) => $get('create_new_provider')),
+                                    ->visible(fn (Get $get) => $get('create_new_provider'))
+                                    ->required(fn (Get $get) => $get('create_new_provider')),
 
-                        Grid::make(2)
-                            ->schema([
                                 Select::make('new_provider_country_id')
                                     ->label('Country')
                                     ->options(Country::pluck('name', 'id'))
                                     ->searchable()
-                                    ->reactive()
-                                    ->required(fn (Get $get) => $get('create_new_provider'))
                                     ->visible(fn (Get $get) => $get('create_new_provider'))
-                                    ->afterStateUpdated(function (Set $set) {
-                                        $set('cities', []);
-                                    }),
+                                    ->required(fn (Get $get) => $get('create_new_provider'))
+                                    ->reactive(),
 
                                 Select::make('new_provider_status')
                                     ->label('Status')
@@ -107,50 +103,29 @@ class ProviderBranchResource extends Resource
                                         'Active' => 'Active',
                                         'Hold' => 'Hold',
                                         'Potential' => 'Potential',
-                                        'Black list' => 'Black List',
+                                        'Black List' => 'Black List',
                                     ])
-                                    ->required(fn (Get $get) => $get('create_new_provider'))
-                                    ->visible(fn (Get $get) => $get('create_new_provider')),
-                            ])
-                            ->visible(fn (Get $get) => $get('create_new_provider')),
-
-                        Grid::make(2)
-                            ->schema([
-                                TextInput::make('new_provider_email')
-                                    ->label('Provider Email')
-                                    ->email()
-                                    ->unique('providers', 'email', ignoreRecord: true)
                                     ->visible(fn (Get $get) => $get('create_new_provider'))
-                                    ->reactive()
-                                    ->afterStateUpdated(function (Set $set, Get $get) {
-                                        $email = $get('new_provider_email');
-                                        if ($email) {
-                                            $exists = Provider::where('email', $email)->exists();
-                                            if ($exists) {
-                                                $set('new_provider_email', null);
-                                                Notification::make()
-                                                    ->title('Email Already Exists')
-                                                    ->body('This email is already registered with another provider.')
-                                                    ->danger()
-                                                    ->send();
-                                            }
-                                        }
-                                    }),
+                                    ->required(fn (Get $get) => $get('create_new_provider')),
+
+                                TextInput::make('new_provider_email')
+                                    ->label('Email')
+                                    ->email()
+                                    ->visible(fn (Get $get) => $get('create_new_provider'))
+                                    ->nullable(),
 
                                 TextInput::make('new_provider_phone')
-                                    ->label('Provider Phone')
+                                    ->label('Phone')
                                     ->tel()
-                                    ->visible(fn (Get $get) => $get('create_new_provider')),
-                            ])
-                            ->visible(fn (Get $get) => $get('create_new_provider')),
+                                    ->visible(fn (Get $get) => $get('create_new_provider'))
+                                    ->nullable(),
 
-                        Grid::make(2)
-                            ->schema([
                                 TextInput::make('new_provider_payment_due')
                                     ->label('Payment Due (Days)')
                                     ->numeric()
                                     ->minValue(0)
-                                    ->visible(fn (Get $get) => $get('create_new_provider')),
+                                    ->visible(fn (Get $get) => $get('create_new_provider'))
+                                    ->nullable(),
 
                                 Select::make('new_provider_payment_method')
                                     ->label('Payment Method')
@@ -159,13 +134,16 @@ class ProviderBranchResource extends Resource
                                         'Bank Transfer' => 'Bank Transfer',
                                         'AEAT' => 'AEAT',
                                     ])
-                                    ->visible(fn (Get $get) => $get('create_new_provider')),
+                                    ->visible(fn (Get $get) => $get('create_new_provider'))
+                                    ->nullable(),
                             ])
                             ->visible(fn (Get $get) => $get('create_new_provider')),
 
                         TextInput::make('new_provider_comment')
-                            ->label('Provider Comment')
-                            ->visible(fn (Get $get) => $get('create_new_provider')),
+                            ->label('Comment')
+                            ->textarea()
+                            ->visible(fn (Get $get) => $get('create_new_provider'))
+                            ->nullable(),
                     ])
                     ->collapsible(),
 
@@ -222,96 +200,77 @@ class ProviderBranchResource extends Resource
                             ->label('All Country')
                             ->inline(),
 
-                        Select::make('province_id')
-                            ->label('Province')
-                            ->options(function (Get $get) {
-                                $providerId = $get('provider_id');
-                                $countryId = $get('new_provider_country_id');
-                                
-                                if ($providerId) {
-                                    $provider = Provider::find($providerId);
-                                    return $provider ? Province::where('country_id', $provider->country_id)->pluck('name', 'id') : [];
-                                } elseif ($countryId) {
-                                    return Province::where('country_id', $countryId)->pluck('name', 'id');
-                                }
-                                
-                                return [];
-                            })
-                            ->searchable()
-                            ->reactive(),
-
-                        Grid::make(2)
-                            ->schema([
-                                Select::make('status')
-                                    ->label('Status')
-                                    ->options(['Active' => 'Active','Hold' => 'Hold',])
-                                    ->required(),
-
-                                Select::make('priority')
-                                    ->label('Priority')
-                                    ->options([
-                                        '1' => '1', '2' => '2', '3' => '3', '4' => '4', '5' => '5',
-                                        '6' => '6', '7' => '7', '8' => '8', '9' => '9', '10' => '10',
-                                    ])
-                                    ->required(),
-                            ]),
-
-                        Select::make('service_types')
-                            ->label('Service Types')
-                            ->multiple()
-                            ->options(ServiceType::pluck('name', 'name'))
-                            ->searchable()
+                        Select::make('status')
+                            ->label('Status')
+                            ->options([
+                                'Active' => 'Active',
+                                'Hold' => 'Hold',
+                            ])
                             ->required(),
 
-                        Grid::make(3)
-                            ->schema([
-                                Select::make('gop_contact_id')
-                                    ->label('GOP Contact')
-                                    ->options(Contact::pluck('title', 'id'))
-                                    ->searchable()
-                                    ->nullable(),
+                        TextInput::make('priority')
+                            ->label('Priority')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(10)
+                            ->required(),
 
-                                Select::make('operation_contact_id')
-                                    ->label('Operation Contact')
-                                    ->options(Contact::pluck('title', 'id'))
-                                    ->searchable()
-                                    ->nullable(),
-
-                                Select::make('financial_contact_id')
-                                    ->label('Financial Contact')
-                                    ->options(Contact::pluck('title', 'id'))
-                                    ->searchable()
-                                    ->nullable(),
-                            ]),
+                        Select::make('communication_method')
+                            ->label('Communication Method')
+                            ->options([
+                                'Email' => 'Email',
+                                'WhatsApp' => 'WhatsApp',
+                                'Phone' => 'Phone',
+                            ])
+                            ->required(),
 
                         Grid::make(2)
                             ->schema([
                                 TextInput::make('day_cost')
                                     ->label('Day Cost')
                                     ->numeric()
+                                    ->minValue(0)
+                                    ->step(0.01)
                                     ->nullable(),
 
                                 TextInput::make('night_cost')
                                     ->label('Night Cost')
                                     ->numeric()
+                                    ->minValue(0)
+                                    ->step(0.01)
                                     ->nullable(),
-                            ]),
 
-                        Grid::make(2)
-                            ->schema([
                                 TextInput::make('weekend_cost')
                                     ->label('Weekend Cost')
                                     ->numeric()
+                                    ->minValue(0)
+                                    ->step(0.01)
                                     ->nullable(),
 
                                 TextInput::make('weekend_night_cost')
                                     ->label('Weekend Night Cost')
                                     ->numeric()
+                                    ->minValue(0)
+                                    ->step(0.01)
                                     ->nullable(),
                             ]),
 
-                        Section::make('Medical Services')
+                        Section::make('Services')
                             ->schema([
+                                Select::make('service_types')
+                                    ->label('Service Types')
+                                    ->options(ServiceType::pluck('name', 'name'))
+                                    ->multiple()
+                                    ->searchable()
+                                    ->preload()
+                                    ->formatStateUsing(function ($state) {
+                                        if (is_string($state)) {
+                                            return explode(',', $state);
+                                        }
+                                        return is_array($state) ? $state : [];
+                                    })
+                                    ->dehydrateStateUsing(fn ($state) => is_array($state) ? $state : []),
+
                                 Grid::make(3)
                                     ->schema([
                                         Toggle::make('emergency')->label('Emergency')->inline(),
@@ -341,7 +300,15 @@ class ProviderBranchResource extends Resource
                 TextColumn::make('branch_name')->label('Branch Name')->sortable()->searchable(),
                 TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
                 TextColumn::make('cities.name')->label('Cities')->sortable()->searchable(),
-                TextColumn::make('service_types')->label('Service Types')->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state)->sortable(),
+                TextColumn::make('service_types')
+                    ->label('Service Types')
+                    ->formatStateUsing(function ($state) {
+                        if (is_array($state)) {
+                            return implode(', ', $state);
+                        }
+                        return $state ?? 'No Service Types';
+                    })
+                    ->sortable(),
                 BadgeColumn::make('status')
                     ->colors([
                         'success' => 'Active',
@@ -356,7 +323,70 @@ class ProviderBranchResource extends Resource
                 TextColumn::make('weekend_night_cost')->label('Weekend Night Cost'),
             ])
             ->filters([
-                // Add filters if needed
+                SelectFilter::make('provider')
+                    ->label('Provider')
+                    ->relationship('provider', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('city')
+                    ->label('City')
+                    ->relationship('cities', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('country')
+                    ->label('Country')
+                    ->relationship('provider.country', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('service_type')
+                    ->label('Service Type')
+                    ->options(function () {
+                        return ServiceType::pluck('name', 'name')->toArray();
+                    })
+                    ->query(function (Builder $query, array $data) {
+                        if (!empty($data['values'])) {
+                            $query->where(function ($q) use ($data) {
+                                foreach ($data['values'] as $serviceType) {
+                                    $q->orWhereJsonContains('service_types', $serviceType);
+                                }
+                            });
+                        }
+                        return $query;
+                    }),
+
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'Active' => 'Active',
+                        'Hold' => 'Hold',
+                    ]),
+            ])
+            ->groups([
+                Group::make('provider.name')
+                    ->label('Provider')
+                    ->collapsible(),
+
+                Group::make('cities.name')
+                    ->label('City')
+                    ->collapsible(),
+
+                Group::make('provider.country.name')
+                    ->label('Country')
+                    ->collapsible(),
+
+                Group::make('service_types')
+                    ->label('Service Type')
+                    ->collapsible()
+                    ->getTitleFromRecordUsing(function ($record) {
+                        $serviceTypes = $record->service_types;
+                        if (is_array($serviceTypes)) {
+                            return implode(', ', $serviceTypes);
+                        }
+                        return $serviceTypes ?? 'No Service Types';
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
