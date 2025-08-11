@@ -157,7 +157,6 @@ class BillsWithoutDocumentsResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('upload_bill')
-                    ->name(fn (Bill $record): string => "upload_bill_{$record->id}")
                     ->icon('heroicon-o-cloud-arrow-up')
                     ->label('Upload Bill')
                     ->color('success')
@@ -167,6 +166,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->extraAttributes(fn (Bill $record): array => [
                         'data-record-id' => $record->id,
                         'data-record-name' => $record->name,
+                        'data-action-name' => "upload_bill_{$record->id}",
                     ])
                     ->requiresConfirmation()
                     ->form([

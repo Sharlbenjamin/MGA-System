@@ -21,9 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (uploadButton && uploadButton.textContent.includes('Upload Bill')) {
             const recordId = uploadButton.getAttribute('data-record-id');
             const recordName = uploadButton.getAttribute('data-record-name');
+            const actionName = uploadButton.getAttribute('data-action-name');
             console.log('Upload button clicked:', {
                 recordId: recordId,
                 recordName: recordName,
+                actionName: actionName,
                 button: uploadButton,
                 timestamp: new Date().toISOString()
             });
