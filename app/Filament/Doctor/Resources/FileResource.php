@@ -22,6 +22,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
+use App\Filament\Forms\Components\PatientNameInput;
 use Illuminate\Support\Facades\Auth;
 
 class FileResource extends Resource
@@ -52,7 +53,7 @@ class FileResource extends Resource
                 ->afterStateUpdated(function ($state, callable $set) {
                     $set('mga_reference', File::generateMGAReference($state, 'patient'));
                 })->hidden(fn ($get) => $get('new_patient') == true),
-            TextInput::make('patient_name')->label('Patient Name')->required()->hidden(fn ($get) => $get('new_patient') == false),
+            PatientNameInput::make('patient_name')->label('Patient Name')->required()->hidden(fn ($get) => $get('new_patient') == false),
             DatePicker::make('patient_dob')->label('Date of Birth')->nullable()->hidden(fn ($get) => $get('new_patient') == false),
             Select::make('patient_gender')->label('Gender')->options(['Male' => 'Male', 'Female' => 'Female'])->nullable()->hidden(fn ($get) => $get('new_patient') == false),
             Select::make('client_id')->options(Client::where('status', 'Active')->pluck('company_name', 'id'))->searchable()->preload()->required()->live()->afterStateUpdated(function ($state, callable $set) {

@@ -134,4 +134,30 @@ class Patient extends Model
     {
         return $this->invoices_total_outstanding - $this->bills_total_outstanding;
     }
+
+    /**
+     * Find similar patients by name and client
+     */
+    public static function findSimilar($name, $clientId = null, $limit = 5)
+    {
+        $query = static::query()
+            ->with('client')
+            ->where('name', 'like', '%' . $name . '%');
+
+        if ($clientId) {
+            $query->where('client_id', $clientId);
+        }
+
+        return $query->limit($limit)->get();
+    }
+
+    /**
+     * Check if a patient with the same name and client already exists
+     */
+    public static function findDuplicate($name, $clientId)
+    {
+        return static::where('name', $name)
+            ->where('client_id', $clientId)
+            ->first();
+    }
 }
