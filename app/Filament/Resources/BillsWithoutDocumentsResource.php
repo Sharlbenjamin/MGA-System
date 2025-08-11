@@ -92,6 +92,10 @@ class BillsWithoutDocumentsResource extends Resource
                     ->label('Client')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('provider.name')
+                    ->label('Provider')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Bill Name')
                     ->searchable()
