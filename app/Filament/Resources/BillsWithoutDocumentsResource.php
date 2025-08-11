@@ -144,6 +144,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference} (ID: {$record->id})")
                     ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name} (Record ID: {$record->id})")
+                    ->modalId(fn (Bill $record): string => "upload_bill_modal_{$record->id}")
                     ->extraAttributes([
                         'data-action-name' => 'upload_bill_doc',
                     ])
@@ -165,6 +166,14 @@ class BillsWithoutDocumentsResource extends Resource
                             ->maxFiles(1),
                     ])
                     ->action(function (Bill $record, array $data) {
+                        // Debug: Log the record being processed
+                        Log::info('Bill upload action called with record:', [
+                            'record_id' => $record->id,
+                            'record_name' => $record->name,
+                            'file_reference' => $record->file->mga_reference ?? 'N/A',
+                            'patient_name' => $record->file->patient->name ?? 'N/A'
+                        ]);
+                        
                         try {
                             if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
