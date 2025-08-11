@@ -78,7 +78,11 @@ class BillsWithoutDocumentsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('bill_google_link')->orWhere('bill_google_link', ''))
+            ->modifyQueryUsing(function (Builder $query) {
+                $query->whereNull('bill_google_link')->orWhere('bill_google_link', '');
+                Log::info('Bills table query executed', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
+                return $query;
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')
@@ -128,7 +132,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\Action::make('upload_bill_doc')
+                Action::make('upload_bill_doc')
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
