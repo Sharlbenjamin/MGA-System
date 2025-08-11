@@ -137,8 +137,8 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Upload Bill Document')
-                    ->modalDescription('Upload the bill document to Google Drive.')
+                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
+                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Upload the bill document to Google Drive.")
                     ->modalSubmitActionLabel('Upload')
                     ->form([
                         Forms\Components\FileUpload::make('bill_relation_document')
