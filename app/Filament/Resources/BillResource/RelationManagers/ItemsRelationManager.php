@@ -69,6 +69,7 @@ class ItemsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255)
+                    ->default('Custom Item')
                     ->disabled(fn ($get) => $get('service_selector') && $get('service_selector') !== 'custom'),
 
                 Forms\Components\TextInput::make('amount')
@@ -77,6 +78,7 @@ class ItemsRelationManager extends RelationManager
                     ->inputMode('decimal')
                     ->step('0.01')
                     ->prefix('€')
+                    ->default(0)
                     ->disabled(fn ($get) => $get('service_selector') && $get('service_selector') !== 'custom'),
 
                 Forms\Components\TextInput::make('discount')
@@ -104,6 +106,31 @@ class ItemsRelationManager extends RelationManager
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
+                    ->before(function (array $data) {
+                        // Ensure description and amount are set if a service was selected
+                        if (isset($data['service_selector']) && $data['service_selector'] !== 'custom') {
+                            $branchService = BranchService::with('serviceType')->find($data['service_selector']);
+                            if ($branchService) {
+                                $bill = $this->getOwnerRecord();
+                                $serviceName = $branchService->serviceType->name;
+                                $serviceDate = $bill->file->service_date ?? now();
+                                $data['description'] = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
+                                $data['amount'] = $branchService->day_cost ?? 0;
+                            }
+                        }
+                        
+                        // Ensure description has a value
+                        if (empty($data['description'])) {
+                            $data['description'] = 'Custom Item';
+                        }
+                        
+                        // Ensure amount has a value
+                        if (empty($data['amount'])) {
+                            $data['amount'] = 0;
+                        }
+                        
+                        return $data;
+                    })
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
                     }),
