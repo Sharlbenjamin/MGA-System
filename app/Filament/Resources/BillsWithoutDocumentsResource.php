@@ -149,7 +149,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->relationship('branch', 'branch_name')
                     ->label('Branch'),
             ])
-                        ->actions([
+            ->actions([
                 Action::make('upload_bill_doc')
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
