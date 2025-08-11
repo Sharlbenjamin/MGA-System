@@ -137,14 +137,16 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference} (ID: {$record->id})")
-                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name} (Record ID: {$record->id})")
+                    ->modalHeading("Upload Bill Document")
+                    ->modalDescription("Upload document for this bill")
 
                     ->extraAttributes([
                         'data-action-name' => 'upload_bill_doc',
                     ])
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
+                        Forms\Components\Hidden::make('bill_id')
+                            ->default(fn (Bill $record): string => (string) $record->id),
                         Forms\Components\FileUpload::make('bill_document')
                             ->label('Upload Bill Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
@@ -161,12 +163,26 @@ class BillsWithoutDocumentsResource extends Resource
                             ->maxFiles(1),
                     ])
                     ->action(function (Bill $record, array $data) {
+                        // Get the correct record from the hidden field
+                        $billId = $data['bill_id'] ?? $record->id;
+                        $correctRecord = Bill::find($billId);
+                        
+                        if (!$correctRecord) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Record not found')
+                                ->body('The bill record could not be found.')
+                                ->send();
+                            return;
+                        }
+                        
                         // Debug: Log the record being processed
                         Log::info('Bill upload action called with record:', [
-                            'record_id' => $record->id,
-                            'record_name' => $record->name,
-                            'file_reference' => $record->file->mga_reference ?? 'N/A',
-                            'patient_name' => $record->file->patient->name ?? 'N/A'
+                            'original_record_id' => $record->id,
+                            'correct_record_id' => $correctRecord->id,
+                            'record_name' => $correctRecord->name,
+                            'file_reference' => $correctRecord->file->mga_reference ?? 'N/A',
+                            'patient_name' => $correctRecord->file->patient->name ?? 'N/A'
                         ]);
                         
                         try {
@@ -216,19 +232,19 @@ class BillsWithoutDocumentsResource extends Resource
                                 
                                 // Generate the proper filename format
                                 $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
-                                $fileName = 'Bill ' . $record->name . ' ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
+                                $fileName = 'Bill ' . $correctRecord->name . ' ' . $correctRecord->file->mga_reference . ' - ' . $correctRecord->file->patient->name . '.' . $originalExtension;
                                 Log::info('Bill doc file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
                                 // Upload to Google Drive using the service
                                 $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
-                                $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $record);
+                                $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $correctRecord);
                                 
                                 if ($uploadResult) {
                                     Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
                                     
                                     // Update the Bill record with the Google Drive link
-                                    $record->bill_google_link = $uploadResult;
-                                    $record->save();
+                                    $correctRecord->bill_google_link = $uploadResult;
+                                    $correctRecord->save();
                                     
                                     Notification::make()
                                         ->success()
