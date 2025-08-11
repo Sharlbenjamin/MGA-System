@@ -94,18 +94,25 @@ class PatientResource extends Resource
                             ->label('Age')
                             ->disabled()
                             ->dehydrated(false)
-                            ->getStateUsing(function ($get) {
-                                $dob = $get('dob');
-                                if (!$dob) return 'N/A';
-                                return \Carbon\Carbon::parse($dob)->diff(\Carbon\Carbon::now())->format('%y years, %m months');
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                if ($record && $record->dob) {
+                                    $age = \Carbon\Carbon::parse($record->dob)->diff(\Carbon\Carbon::now())->format('%y years, %m months');
+                                    $component->state($age);
+                                } else {
+                                    $component->state('N/A');
+                                }
                             }),
                         Forms\Components\TextInput::make('files_count_display')
                             ->label('Total Files')
                             ->disabled()
                             ->dehydrated(false)
-                            ->getStateUsing(function ($record) {
-                                if (!$record) return '0';
-                                return $record->files_count ?? $record->files()->count();
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                if ($record) {
+                                    $count = $record->files_count ?? $record->files()->count();
+                                    $component->state($count);
+                                } else {
+                                    $component->state('0');
+                                }
                             }),
                     ])
                     ->columns(2)

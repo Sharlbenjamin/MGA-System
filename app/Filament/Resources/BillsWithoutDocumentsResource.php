@@ -170,6 +170,8 @@ class BillsWithoutDocumentsResource extends Resource
                     ])
                     ->requiresConfirmation()
                     ->form([
+                        Forms\Components\Hidden::make('bill_id')
+                            ->default(fn (Bill $record): string => $record->id),
                         FileUpload::make('bill_document')
                             ->label('Bill Document')
                             ->acceptedFileTypes(['application/pdf'])
@@ -180,26 +182,36 @@ class BillsWithoutDocumentsResource extends Resource
                             ->directory('temp-bills'),
                     ])
                     ->action(function (array $data, Bill $record): void {
+                        // Get the bill ID from the form data to ensure we're working with the correct record
+                        $billId = $data['bill_id'] ?? $record->id;
+                        
+                        // Fetch the bill fresh from the database to ensure we have the correct record
+                        $bill = Bill::find($billId);
+                        
+                        if (!$bill) {
+                            Log::error('Bill not found', ['bill_id' => $billId, 'record_id' => $record->id]);
+                            Notification::make()
+                                ->title('Upload Failed')
+                                ->body('Bill not found. Please try again.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+                        
                         // Add debugging to ensure we're working with the correct record
                         Log::info('Upload bill action triggered', [
                             'record_id' => $record->id,
+                            'bill_id' => $bill->id,
                             'record_name' => $record->name,
-                            'file_reference' => $record->file->mga_reference ?? 'N/A',
+                            'bill_name' => $bill->name,
+                            'file_reference' => $bill->file->mga_reference ?? 'N/A',
                             'data_keys' => array_keys($data),
                             'action_name' => "upload_bill_{$record->id}",
                             'timestamp' => now()->toISOString()
                         ]);
                         
-                        // Verify the record is the correct one
-                        if (!$record->exists) {
-                            Log::error('Invalid record provided to upload action', ['record_id' => $record->id ?? 'null']);
-                            Notification::make()
-                                ->title('Upload Failed')
-                                ->body('Invalid record selected. Please try again.')
-                                ->danger()
-                                ->send();
-                            return;
-                        }
+                        // Use the fetched bill instead of the passed record
+                        $record = $bill;
                         
                         try {
                             $uploadService = new UploadBillToGoogleDrive(app(GoogleDriveFolderService::class));
