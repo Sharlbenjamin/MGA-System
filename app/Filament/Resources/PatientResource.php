@@ -223,24 +223,6 @@ class PatientResource extends Resource
                     ->icon('heroicon-o-currency-dollar')
                     ->url(fn (Patient $record): string => PatientResource::getUrl('financial', ['record' => $record]))
                     ->openUrlInNewTab(),
-                Tables\Actions\Action::make('duplicate')
-                    ->label('Duplicate')
-                    ->icon('heroicon-o-document-duplicate')
-                    ->action(function (Patient $record) {
-                        $newPatient = $record->replicate();
-                        $newPatient->name = $record->name . ' (Copy)';
-                        $newPatient->save();
-                        
-                        \Filament\Notifications\Notification::make()
-                            ->success()
-                            ->title('Patient Duplicated')
-                            ->body("Patient '{$newPatient->name}' has been created successfully.")
-                            ->send();
-                    })
-                    ->requiresConfirmation()
-                    ->modalHeading('Duplicate Patient')
-                    ->modalDescription('This will create a copy of this patient with "(Copy)" appended to the name. Continue?')
-                    ->modalSubmitActionLabel('Duplicate'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkAction::make('export')
