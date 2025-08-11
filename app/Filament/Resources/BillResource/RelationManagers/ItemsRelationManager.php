@@ -21,7 +21,7 @@ class ItemsRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('branch_service_id')
+                Forms\Components\Select::make('service_selector')
                     ->label('Select Service')
                     ->options(function () {
                         $bill = $this->getOwnerRecord();
@@ -69,7 +69,7 @@ class ItemsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255)
-                    ->visible(fn ($get) => $get('branch_service_id') === 'custom'),
+                    ->visible(fn ($get) => $get('service_selector') === 'custom'),
 
                 Forms\Components\TextInput::make('amount')
                     ->required()
@@ -77,7 +77,7 @@ class ItemsRelationManager extends RelationManager
                     ->inputMode('decimal')
                     ->step('0.01')
                     ->prefix('€')
-                    ->visible(fn ($get) => $get('branch_service_id') === 'custom'),
+                    ->visible(fn ($get) => $get('service_selector') === 'custom'),
 
                 Forms\Components\TextInput::make('discount')
                     ->numeric()
@@ -104,6 +104,24 @@ class ItemsRelationManager extends RelationManager
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
+                    ->mutateFormDataBeforeCreate(function (array $data): array {
+                        // If a service was selected, ensure description and amount are set
+                        if (isset($data['service_selector']) && $data['service_selector'] !== 'custom') {
+                            $branchService = BranchService::with('serviceType')->find($data['service_selector']);
+                            if ($branchService) {
+                                $bill = $this->getOwnerRecord();
+                                $serviceName = $branchService->serviceType->name;
+                                $serviceDate = $bill->file->service_date ?? now();
+                                $data['description'] = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
+                                $data['amount'] = $branchService->day_cost ?? 0;
+                            }
+                        }
+                        
+                        // Remove the service_selector field as it's not part of the model
+                        unset($data['service_selector']);
+                        
+                        return $data;
+                    })
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
                     }),
