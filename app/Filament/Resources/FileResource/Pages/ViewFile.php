@@ -588,7 +588,7 @@ class ViewFile extends ViewRecord
                             TextInput::make('preferred_contact')->label('Preferred Contact')->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')->disabled(),
                             TextInput::make('distance')->label('Distance (Car)')->disabled(),
                         ])
-                        ->columns(6)
+                        ->columns(5)
                         ->default(function ($get, $record) {
                             $branches = $record->availableBranches();
                             $selectedBranches = $branches['cityBranches']; // Start with city branches
