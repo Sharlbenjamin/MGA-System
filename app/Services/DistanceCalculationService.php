@@ -87,18 +87,40 @@ class DistanceCalculationService
     public function calculateFileToBranchDistance($file)
     {
         if (!$file->address) {
+            \Log::warning('Distance calculation failed: File address is empty', ['file_id' => $file->id]);
             return null;
         }
 
         $providerBranch = $file->providerBranch;
         if (!$providerBranch) {
+            \Log::warning('Distance calculation failed: No provider branch found', ['file_id' => $file->id]);
             return null;
         }
 
         $operationContact = $providerBranch->operationContact;
-        if (!$operationContact || !$operationContact->address) {
+        if (!$operationContact) {
+            \Log::warning('Distance calculation failed: No operation contact found', [
+                'file_id' => $file->id, 
+                'branch_id' => $providerBranch->id
+            ]);
             return null;
         }
+
+        if (!$operationContact->address) {
+            \Log::warning('Distance calculation failed: Operation contact address is empty', [
+                'file_id' => $file->id, 
+                'branch_id' => $providerBranch->id,
+                'contact_id' => $operationContact->id
+            ]);
+            return null;
+        }
+
+        \Log::info('Distance calculation attempt', [
+            'file_id' => $file->id,
+            'file_address' => $file->address,
+            'branch_id' => $providerBranch->id,
+            'contact_address' => $operationContact->address
+        ]);
 
         return $this->calculateDistance($file->address, $operationContact->address);
     }

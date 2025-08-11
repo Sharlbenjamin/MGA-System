@@ -584,7 +584,6 @@ class ViewFile extends ViewRecord
                         ->schema([
                             Checkbox::make('selected')->label('Select')->default(false),
                             TextInput::make('name')->label('Branch Name')->disabled(),
-                            TextInput::make('provider')->label('Provider Name')->disabled(),
                             TextInput::make('day_cost')->label('Day Cost (€)')->disabled(),
                             TextInput::make('preferred_contact')->label('Preferred Contact')->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')->disabled(),
                             TextInput::make('distance')->label('Distance (Car)')->disabled(),
