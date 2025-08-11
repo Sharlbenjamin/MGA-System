@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillsWithoutDocumentsResource\Pages;
-use App\Models\Gop as Bill;
+use App\Models\Gop;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -154,8 +154,8 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference} (ID: {$record->id})")
-                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->type} (Record ID: {$record->id})")
+                    ->modalHeading(fn (Gop $record): string => "Upload Bill for {$record->file->mga_reference} (ID: {$record->id})")
+                    ->modalDescription(fn (Gop $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->type} (Record ID: {$record->id})")
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
@@ -173,7 +173,7 @@ class BillsWithoutDocumentsResource extends Resource
                             ->preserveFilenames()
                             ->maxFiles(1),
                     ])
-                    ->action(function (Bill $record, array $data) {
+                    ->action(function (Gop $record, array $data) {
                         try {
                             if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
