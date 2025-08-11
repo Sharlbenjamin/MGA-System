@@ -6,17 +6,17 @@
         selectedIndex: -1,
         
         async searchSimilar() {
-            const name = $wire.get('patient_name');
-            const clientId = $wire.get('client_id');
+            const name = $wire.get('data.patient_name');
+            const clientId = $wire.get('data.client_id');
             
-            if (name.length < 2) {
+            if (name && name.length < 2) {
                 this.similarPatients = [];
                 this.showSuggestions = false;
                 return;
             }
             
             try {
-                const response = await fetch(`/api/patients/search-similar?name=${encodeURIComponent(name)}&client_id=${clientId || ''}`);
+                const response = await fetch(`/api/patients/search-similar?name=${encodeURIComponent(name || '')}&client_id=${clientId || ''}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -31,8 +31,8 @@
         },
         
         async checkDuplicate() {
-            const name = $wire.get('patient_name');
-            const clientId = $wire.get('client_id');
+            const name = $wire.get('data.patient_name');
+            const clientId = $wire.get('data.client_id');
             
             if (!name || !clientId) {
                 this.duplicatePatient = null;
@@ -62,7 +62,7 @@
         },
         
         selectPatient(patient) {
-            $wire.set('patient_name', patient.name);
+            $wire.set('data.patient_name', patient.name);
             this.showSuggestions = false;
             this.selectedIndex = -1;
         },
@@ -93,11 +93,11 @@
         }
     }" 
     x-init="
-        $watch('$wire.patient_name', () => {
+        $watch('$wire.data.patient_name', () => {
             searchSimilar();
             checkDuplicate();
         });
-        $watch('$wire.client_id', () => {
+        $watch('$wire.data.client_id', () => {
             searchSimilar();
             checkDuplicate();
         });
@@ -109,7 +109,7 @@
                 id="{{ $getId() }}"
                 name="{{ $getName() }}"
                 value="{{ $getState() }}"
-                x-model="$wire.patient_name"
+                x-model="$wire.data.patient_name"
                 @keydown="handleKeydown($event)"
                 @blur="setTimeout(() => showSuggestions = false, 200)"
                 @focus="if (similarPatients.length > 0) showSuggestions = true"
@@ -166,15 +166,14 @@
         
         <!-- Duplicate Warning -->
         <div x-show="duplicatePatient" 
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-75"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             class="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            
-            <div class="flex items-start">
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform scale-95"
+             x-transition:enter-end="opacity-100 transform scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform scale-100"
+             x-transition:leave-end="opacity-0 transform scale-95"
+             class="mt-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div class="flex">
                 <div class="flex-shrink-0">
                     <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
