@@ -598,7 +598,6 @@ class ViewFile extends ViewRecord
                                 'id' => $branch->id,
                                 'selected' => false,
                                 'name' => $branch->branch_name,
-                                'provider' => $branch->provider->name ?? 'N/A',
                                 'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
                                 'preferred_contact' => $this->getPreferredContactDisplay($branch),
                                 'distance' => $this->getDistanceToBranch($record, $branch),
