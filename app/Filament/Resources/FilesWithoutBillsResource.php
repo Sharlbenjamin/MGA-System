@@ -172,6 +172,7 @@ class FilesWithoutBillsResource extends Resource
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
+                    ->modalId(fn ($record): string => "upload-bill-{$record->id}")
                     ->modalHeading('Upload Bill Document')
                     ->modalDescription('Upload a bill document for this file.')
                     ->modalSubmitActionLabel('Upload Bill')

@@ -72,6 +72,7 @@ class BillRelationManager extends RelationManager
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
+                    ->modalId(fn ($record): string => "upload-bill-document-{$record->id}")
                     ->modalHeading('Upload Bill Document')
                     ->modalDescription('Upload the bill document to Google Drive.')
                     ->modalSubmitActionLabel('Upload')
