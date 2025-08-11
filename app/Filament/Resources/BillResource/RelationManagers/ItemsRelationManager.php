@@ -69,6 +69,7 @@ class ItemsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255)
+                    ->disabled(fn ($get) => $get('service_selector') && $get('service_selector') !== 'custom')
                     ->visible(fn ($get) => $get('service_selector') === 'custom'),
 
                 Forms\Components\TextInput::make('amount')
@@ -104,7 +105,7 @@ class ItemsRelationManager extends RelationManager
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->mutateFormDataBeforeCreate(function (array $data): array {
+                    ->mutateFormDataBeforeSave(function (array $data): array {
                         // If a service was selected, ensure description and amount are set
                         if (isset($data['service_selector']) && $data['service_selector'] !== 'custom') {
                             $branchService = BranchService::with('serviceType')->find($data['service_selector']);
