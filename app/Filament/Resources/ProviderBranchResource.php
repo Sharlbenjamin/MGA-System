@@ -16,6 +16,7 @@ use App\Models\Country;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Grid;
@@ -139,9 +140,8 @@ class ProviderBranchResource extends Resource
                             ])
                             ->visible(fn (Get $get) => $get('create_new_provider')),
 
-                        TextInput::make('new_provider_comment')
+                        Textarea::make('new_provider_comment')
                             ->label('Comment')
-                            ->textarea()
                             ->visible(fn (Get $get) => $get('create_new_provider'))
                             ->nullable(),
                     ])
