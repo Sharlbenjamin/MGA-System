@@ -79,7 +79,12 @@ class BillsWithoutDocumentsResource extends Resource
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('bill_google_link')->orWhere('bill_google_link', ''))
+            ->defaultSort('id', 'desc')
+            ->persistSortInSession()
             ->columns([
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')
                     ->searchable()
@@ -139,6 +144,11 @@ class BillsWithoutDocumentsResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference} (ID: {$record->id})")
                     ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name} (Record ID: {$record->id})")
+                    ->extraAttributes([
+                        'data-record-id' => fn (Bill $record): string => (string) $record->id,
+                        'data-record-name' => fn (Bill $record): string => $record->name ?? 'Unknown',
+                        'data-action-name' => 'upload_bill_doc',
+                    ])
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
