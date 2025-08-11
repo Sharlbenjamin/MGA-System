@@ -156,28 +156,29 @@ class BillsWithoutDocumentsResource extends Resource
                     ->label('Branch'),
             ])
             ->actions([
-                Tables\Actions\Action::make('upload_bill')
-                    ->icon('heroicon-o-cloud-arrow-up')
+                Action::make('upload_bill')
                     ->label('Upload Bill')
+                    ->icon('heroicon-o-cloud-arrow-up')
                     ->color('success')
-                    ->visible(fn (Bill $record): bool => empty($record->bill_google_link))
-                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
-                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name}")
-                    ->extraAttributes(fn (Bill $record): array => [
-                        'data-record-id' => $record->id,
-                        'data-record-name' => $record->name,
-                        'data-action-name' => "upload_bill_{$record->id}",
-                    ])
                     ->requiresConfirmation()
+                    ->modalHeading('Upload Bill Document')
+                    ->modalDescription('Upload the bill document for this record.')
+                    ->modalSubmitActionLabel('Upload Document')
                     ->form([
-                        FileUpload::make('bill_document')
-                            ->label('Bill Document')
-                            ->acceptedFileTypes(['application/pdf'])
+                        Forms\Components\FileUpload::make('bill_document')
+                            ->label('Upload Bill Document')
+                            ->acceptedFileTypes(['application/pdf', 'image/*'])
                             ->maxSize(10240) // 10MB
                             ->required()
-                            ->helperText('Upload a PDF document. The file will be automatically renamed and uploaded to Google Drive.')
                             ->disk('public')
-                            ->directory('temp-bills'),
+                            ->directory('bills')
+                            ->visibility('public')
+                            ->helperText('Upload the bill document (PDF or image)')
+                            ->storeFileNamesIn('original_filename')
+                            ->downloadable()
+                            ->openable()
+                            ->preserveFilenames()
+                            ->maxFiles(1),
                     ])
                     ->action(function (Bill $record, array $data) {
                         // Add debugging to ensure we're working with the correct record
