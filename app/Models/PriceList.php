@@ -139,23 +139,28 @@ class PriceList extends Model
     {
         $suggested = [];
         
-        if ($this->providerBranch) {
-            $branch = $this->providerBranch;
+        if ($this->providerBranch && $this->service_type_id) {
+            $branchService = $this->providerBranch->branchServices()
+                ->where('service_type_id', $this->service_type_id)
+                ->where('is_active', true)
+                ->first();
             
-            if ($branch->day_cost) {
-                $suggested['day_price'] = round($branch->day_cost * $markup, 2);
-            }
-            
-            if ($branch->weekend_cost) {
-                $suggested['weekend_price'] = round($branch->weekend_cost * $markup, 2);
-            }
-            
-            if ($branch->night_cost) {
-                $suggested['night_weekday_price'] = round($branch->night_cost * $markup, 2);
-            }
-            
-            if ($branch->weekend_night_cost) {
-                $suggested['night_weekend_price'] = round($branch->weekend_night_cost * $markup, 2);
+            if ($branchService) {
+                if ($branchService->day_cost) {
+                    $suggested['day_price'] = round($branchService->day_cost * $markup, 2);
+                }
+                
+                if ($branchService->weekend_cost) {
+                    $suggested['weekend_price'] = round($branchService->weekend_cost * $markup, 2);
+                }
+                
+                if ($branchService->night_cost) {
+                    $suggested['night_weekday_price'] = round($branchService->night_cost * $markup, 2);
+                }
+                
+                if ($branchService->weekend_night_cost) {
+                    $suggested['night_weekend_price'] = round($branchService->weekend_night_cost * $markup, 2);
+                }
             }
         }
         
@@ -181,8 +186,10 @@ class PriceList extends Model
         }
         
         if ($this->service_type_id) {
-            $serviceTypeName = $this->serviceType->name;
-            $query->whereJsonContains('service_types', $serviceTypeName);
+            $query->whereHas('branchServices', function ($q) {
+                $q->where('service_type_id', $this->service_type_id)
+                  ->where('is_active', true);
+            });
         }
         
         $branches = $query->get();
@@ -197,12 +204,34 @@ class PriceList extends Model
             ];
         }
         
+        // Get the branch services for the specified service type
+        $branchServices = collect();
+        foreach ($branches as $branch) {
+            $branchService = $branch->branchServices()
+                ->where('service_type_id', $this->service_type_id)
+                ->where('is_active', true)
+                ->first();
+            if ($branchService) {
+                $branchServices->push($branchService);
+            }
+        }
+        
+        if ($branchServices->isEmpty()) {
+            return [
+                'day_cost' => 0,
+                'weekend_cost' => 0,
+                'night_cost' => 0,
+                'weekend_night_cost' => 0,
+                'count' => 0,
+            ];
+        }
+        
         return [
-            'day_cost' => round($branches->avg('day_cost'), 2),
-            'weekend_cost' => round($branches->avg('weekend_cost'), 2),
-            'night_cost' => round($branches->avg('night_cost'), 2),
-            'weekend_night_cost' => round($branches->avg('weekend_night_cost'), 2),
-            'count' => $branches->count(),
+            'day_cost' => round($branchServices->avg('day_cost'), 2),
+            'weekend_cost' => round($branchServices->avg('weekend_cost'), 2),
+            'night_cost' => round($branchServices->avg('night_cost'), 2),
+            'weekend_night_cost' => round($branchServices->avg('weekend_night_cost'), 2),
+            'count' => $branchServices->count(),
         ];
     }
 } 

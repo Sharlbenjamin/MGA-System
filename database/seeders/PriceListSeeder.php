@@ -51,16 +51,24 @@ class PriceListSeeder extends Seeder
                     // Create provider-specific pricing for some combinations
                     $providerBranches = ProviderBranch::where('city_id', $city->id)
                         ->where('status', 'Active')
-                        ->whereJsonContains('service_types', $serviceType->name)
+                        ->whereHas('branchServices', function ($q) use ($serviceType) {
+                            $q->where('service_type_id', $serviceType->id)
+                              ->where('is_active', true);
+                        })
                         ->take(2) // Limit to 2 providers per city/service
                         ->get();
 
                     foreach ($providerBranches as $branch) {
                         // Use provider's actual costs as base and add markup
-                        $baseDayCost = $branch->day_cost ?: fake()->randomFloat(2, 60, 200);
-                        $baseWeekendCost = $branch->weekend_cost ?: $baseDayCost * 1.2;
-                        $baseNightCost = $branch->night_cost ?: $baseDayCost * 1.4;
-                        $baseWeekendNightCost = $branch->weekend_night_cost ?: $baseDayCost * 1.6;
+                        $branchService = $branch->branchServices()
+                            ->where('service_type_id', $serviceType->id)
+                            ->where('is_active', true)
+                            ->first();
+                        
+                        $baseDayCost = $branchService && $branchService->day_cost ? $branchService->day_cost : fake()->randomFloat(2, 60, 200);
+                        $baseWeekendCost = $branchService && $branchService->weekend_cost ? $branchService->weekend_cost : $baseDayCost * 1.2;
+                        $baseNightCost = $branchService && $branchService->night_cost ? $branchService->night_cost : $baseDayCost * 1.4;
+                        $baseWeekendNightCost = $branchService && $branchService->weekend_night_cost ? $branchService->weekend_night_cost : $baseDayCost * 1.6;
                         
                         $markup = fake()->randomFloat(2, 1.15, 1.35);
 

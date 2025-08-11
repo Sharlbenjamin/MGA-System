@@ -102,7 +102,7 @@ class PriceListResource extends Resource
                                         
                                         if (!$countryId || !$cityId || !$serviceTypeId) return [];
                                         
-                                        $serviceTypeName = ServiceType::find($serviceTypeId)?->name;
+
                                         
                                         $query = ProviderBranch::query()
                                             ->where('status', 'Active')
@@ -114,8 +114,11 @@ class PriceListResource extends Resource
                                         }
                                         
                                         // Filter by service type if available
-                                        if ($serviceTypeName) {
-                                            $query->whereJsonContains('service_types', $serviceTypeName);
+                                        if ($serviceTypeId) {
+                                            $query->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                                                $q->where('service_type_id', $serviceTypeId)
+                                                  ->where('is_active', true);
+                                            });
                                         }
                                         
                                         // If no city-specific branches, try country-wide branches
@@ -127,23 +130,29 @@ class PriceListResource extends Resource
                                                 ->whereHas('provider', function ($q) use ($countryId) {
                                                     $q->where('country_id', $countryId);
                                                 })
-                                                ->when($serviceTypeName, function ($q) use ($serviceTypeName) {
-                                                    $q->whereJsonContains('service_types', $serviceTypeName);
+                                                ->when($serviceTypeId, function ($q) use ($serviceTypeId) {
+                                                    $q->whereHas('branchServices', function ($subQ) use ($serviceTypeId) {
+                                                        $subQ->where('service_type_id', $serviceTypeId)
+                                                             ->where('is_active', true);
+                                                    });
                                                 })
                                                 ->with('provider')
                                                 ->get();
                                         }
                                         
-                                        // Sort by day_cost (lowest first), then by provider name, then by branch name
+                                        // Sort by provider name, then by branch name
                                         $branches = $branches->sortBy([
-                                            ['day_cost', 'asc'],
                                             ['provider.name', 'asc'],
                                             ['branch_name', 'asc']
                                         ]);
                                         
-                                        return $branches->mapWithKeys(function ($branch) {
+                                        return $branches->mapWithKeys(function ($branch) use ($serviceTypeId) {
                                             $providerName = $branch->provider->name ?? 'Unknown Provider';
-                                            $dayCost = $branch->day_cost ? "€" . number_format($branch->day_cost, 2) : '';
+                                            $branchService = $branch->branchServices()
+                                                ->where('service_type_id', $serviceTypeId)
+                                                ->where('is_active', true)
+                                                ->first();
+                                            $dayCost = $branchService && $branchService->day_cost ? "€" . number_format($branchService->day_cost, 2) : '';
                                             $label = "{$providerName} - {$branch->branch_name}";
                                             if ($dayCost) {
                                                 $label .= " ({$dayCost})";
@@ -216,8 +225,6 @@ class PriceListResource extends Resource
                                                     return 'Select Country, City, and Service Type to see provider costs.';
                                                 }
                                                 
-                                                $serviceTypeName = ServiceType::find($serviceTypeId)?->name;
-                                                
                                                 $query = ProviderBranch::query()
                                                     ->where('status', 'Active');
                                                 
@@ -227,8 +234,11 @@ class PriceListResource extends Resource
                                                 }
                                                 
                                                 // Filter by service type if available
-                                                if ($serviceTypeName) {
-                                                    $query->whereJsonContains('service_types', $serviceTypeName);
+                                                if ($serviceTypeId) {
+                                                    $query->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                                                        $q->where('service_type_id', $serviceTypeId)
+                                                          ->where('is_active', true);
+                                                    });
                                                 }
                                                 
                                                 $branches = $query->get();
@@ -240,8 +250,11 @@ class PriceListResource extends Resource
                                                         ->whereHas('provider', function ($q) use ($countryId) {
                                                             $q->where('country_id', $countryId);
                                                         })
-                                                        ->when($serviceTypeName, function ($q) use ($serviceTypeName) {
-                                                            $q->whereJsonContains('service_types', $serviceTypeName);
+                                                        ->when($serviceTypeId, function ($q) use ($serviceTypeId) {
+                                                            $q->whereHas('branchServices', function ($subQ) use ($serviceTypeId) {
+                                                                $subQ->where('service_type_id', $serviceTypeId)
+                                                                     ->where('is_active', true);
+                                                            });
                                                         })
                                                         ->get();
                                                 }
@@ -250,30 +263,47 @@ class PriceListResource extends Resource
                                                     return 'No active provider branches found for the selected criteria.';
                                                 }
                                                 
+                                                // Get branch services for the specified service type
+                                                $branchServices = collect();
+                                                foreach ($branches as $branch) {
+                                                    $branchService = $branch->branchServices()
+                                                        ->where('service_type_id', $serviceTypeId)
+                                                        ->where('is_active', true)
+                                                        ->first();
+                                                    if ($branchService) {
+                                                        $branchServices->push($branchService);
+                                                    }
+                                                }
+                                                
+                                                if ($branchServices->isEmpty()) {
+                                                    return 'No active branch services found for the selected criteria.';
+                                                }
+                                                
                                                 // Sort by day_cost to get lowest costs
-                                                $branches = $branches->sortBy('day_cost');
+                                                $branchServices = $branchServices->sortBy('day_cost');
                                                 
-                                                $lowestDayCost = $branches->first()->day_cost ? round($branches->first()->day_cost, 2) : 0;
-                                                $lowestWeekendCost = $branches->min('weekend_cost') ? round($branches->min('weekend_cost'), 2) : 0;
-                                                $lowestNightCost = $branches->min('night_cost') ? round($branches->min('night_cost'), 2) : 0;
-                                                $lowestWeekendNightCost = $branches->min('weekend_night_cost') ? round($branches->min('weekend_night_cost'), 2) : 0;
+                                                $lowestDayCost = $branchServices->first()->day_cost ? round($branchServices->first()->day_cost, 2) : 0;
+                                                $lowestWeekendCost = $branchServices->min('weekend_cost') ? round($branchServices->min('weekend_cost'), 2) : 0;
+                                                $lowestNightCost = $branchServices->min('night_cost') ? round($branchServices->min('night_cost'), 2) : 0;
+                                                $lowestWeekendNightCost = $branchServices->min('weekend_night_cost') ? round($branchServices->min('weekend_night_cost'), 2) : 0;
                                                 
-                                                $result = "{$branches->count()} active provider(s) found\n\n";
+                                                $result = "{$branchServices->count()} active branch service(s) found\n\n";
                                                 $result .= "Lowest Costs:\n";
                                                 $result .= "• Day Cost: €{$lowestDayCost}\n";
                                                 $result .= "• Weekend Cost: €{$lowestWeekendCost}\n";
                                                 $result .= "• Night Weekday: €{$lowestNightCost}\n";
                                                 $result .= "• Night Weekend: €{$lowestWeekendNightCost}\n\n";
                                                 
-                                                if ($branches->count() <= 5) {
+                                                if ($branchServices->count() <= 5) {
                                                     $result .= "Provider Details (sorted by cost):\n";
-                                                    foreach ($branches as $branch) {
+                                                    foreach ($branchServices as $branchService) {
+                                                        $branch = $branchService->providerBranch;
                                                         $providerName = $branch->provider->name ?? 'N/A';
-                                                        $dayCost = $branch->day_cost ? "€" . number_format($branch->day_cost, 2) : 'N/A';
+                                                        $dayCost = $branchService->day_cost ? "€" . number_format($branchService->day_cost, 2) : 'N/A';
                                                         $result .= "• {$providerName} - {$branch->branch_name} ({$dayCost})\n";
                                                     }
                                                 } else {
-                                                    $result .= "Showing lowest costs from {$branches->count()} providers";
+                                                    $result .= "Showing lowest costs from {$branchServices->count()} branch services";
                                                 }
                                                 
                                                 return $result;

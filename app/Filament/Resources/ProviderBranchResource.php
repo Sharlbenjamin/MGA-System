@@ -6,6 +6,7 @@ use App\Filament\Resources\ProviderBranchResource\RelationManagers\BillRelationM
 use App\Filament\Resources\ProviderBranchResource\Pages;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\ContactRelationManager;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\BankAccountRelationManager;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\BranchServicesRelationManager;
 use App\Models\ProviderBranch;
 use App\Models\Provider;
 use App\Models\ServiceType;
@@ -224,53 +225,10 @@ class ProviderBranchResource extends Resource
                             ])
                             ->required(),
 
-                        Grid::make(2)
-                            ->schema([
-                                TextInput::make('day_cost')
-                                    ->label('Day Cost')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->step(0.01)
-                                    ->nullable(),
 
-                                TextInput::make('night_cost')
-                                    ->label('Night Cost')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->step(0.01)
-                                    ->nullable(),
-
-                                TextInput::make('weekend_cost')
-                                    ->label('Weekend Cost')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->step(0.01)
-                                    ->nullable(),
-
-                                TextInput::make('weekend_night_cost')
-                                    ->label('Weekend Night Cost')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->step(0.01)
-                                    ->nullable(),
-                            ]),
 
                         Section::make('Services')
                             ->schema([
-                                Select::make('service_types')
-                                    ->label('Service Types')
-                                    ->options(ServiceType::pluck('name', 'name'))
-                                    ->multiple()
-                                    ->searchable()
-                                    ->preload()
-                                    ->formatStateUsing(function ($state) {
-                                        if (is_string($state)) {
-                                            return explode(',', $state);
-                                        }
-                                        return is_array($state) ? $state : [];
-                                    })
-                                    ->dehydrateStateUsing(fn ($state) => is_array($state) ? $state : []),
-
                                 Grid::make(3)
                                     ->schema([
                                         Toggle::make('emergency')->label('Emergency')->inline(),
@@ -300,15 +258,7 @@ class ProviderBranchResource extends Resource
                 TextColumn::make('branch_name')->label('Branch Name')->sortable()->searchable(),
                 TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
                 TextColumn::make('cities.name')->label('Cities')->sortable()->searchable(),
-                TextColumn::make('service_types')
-                    ->label('Service Types')
-                    ->formatStateUsing(function ($state) {
-                        if (is_array($state)) {
-                            return implode(', ', $state);
-                        }
-                        return $state ?? 'No Service Types';
-                    })
-                    ->sortable(),
+
                 BadgeColumn::make('status')
                     ->colors([
                         'success' => 'Active',
@@ -317,10 +267,6 @@ class ProviderBranchResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('priority')->sortable(),
-                TextColumn::make('day_cost')->label('Day Cost'),
-                TextColumn::make('night_cost')->label('Night Cost'),
-                TextColumn::make('weekend_cost')->label('Weekend Cost'),
-                TextColumn::make('weekend_night_cost')->label('Weekend Night Cost'),
             ])
             ->filters([
                 SelectFilter::make('provider')
@@ -341,21 +287,7 @@ class ProviderBranchResource extends Resource
                     ->searchable()
                     ->preload(),
 
-                SelectFilter::make('service_type')
-                    ->label('Service Type')
-                    ->options(function () {
-                        return ServiceType::pluck('name', 'name')->toArray();
-                    })
-                    ->query(function (Builder $query, array $data) {
-                        if (!empty($data['values'])) {
-                            $query->where(function ($q) use ($data) {
-                                foreach ($data['values'] as $serviceType) {
-                                    $q->orWhereJsonContains('service_types', $serviceType);
-                                }
-                            });
-                        }
-                        return $query;
-                    }),
+
 
                 SelectFilter::make('status')
                     ->label('Status')
@@ -377,16 +309,7 @@ class ProviderBranchResource extends Resource
                     ->label('Country')
                     ->collapsible(),
 
-                Group::make('service_types')
-                    ->label('Service Type')
-                    ->collapsible()
-                    ->getTitleFromRecordUsing(function ($record) {
-                        $serviceTypes = $record->service_types;
-                        if (is_array($serviceTypes)) {
-                            return implode(', ', $serviceTypes);
-                        }
-                        return $serviceTypes ?? 'No Service Types';
-                    }),
+
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -405,6 +328,7 @@ class ProviderBranchResource extends Resource
             ContactRelationManager::class,
             BankAccountRelationManager::class,
             BillRelationManager::class,
+            BranchServicesRelationManager::class,
         ];
     }
 
@@ -430,7 +354,6 @@ class ProviderBranchResource extends Resource
             'Status' => $record->status ?? 'Unknown',
             'Priority' => $record->priority ?? 'Unknown',
             'Cities' => $record->cities?->pluck('name')->implode(', ') ?? 'Unknown',
-            'Service Types' => is_array($record->service_types) ? implode(', ', $record->service_types) : ($record->service_types ?? 'Unknown'),
         ];
     }
 

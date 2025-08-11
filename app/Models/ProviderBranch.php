@@ -22,9 +22,8 @@ class ProviderBranch extends Model
 
     protected $fillable = [
         'provider_id', 'branch_name', 'city_id', 'province_id', 'status',
-        'priority', 'service_types', 'all_country',
-        'communication_method', 'day_cost', 'night_cost', 'weekend_cost',
-        'weekend_night_cost', 'emergency', 'pediatrician_emergency', 'dental',
+        'priority', 'all_country',
+        'communication_method', 'emergency', 'pediatrician_emergency', 'dental',
         'pediatrician', 'gynecology', 'urology', 'cardiology', 'ophthalmology',
         'trauma_orthopedics', 'surgery', 'intensive_care', 'obstetrics_delivery',
         'hyperbaric_chamber','gop_contact_id','operation_contact_id','financial_contact_id'
@@ -33,12 +32,7 @@ class ProviderBranch extends Model
     protected $casts = [
         'id' => 'integer',
         'provider_id' => 'integer',
-        'service_types' => 'array',
         'cities' => 'array',
-        'day_cost' => 'decimal:2',
-        'night_cost' => 'decimal:2',
-        'weekend_cost' => 'decimal:2',
-        'weekend_night_cost' => 'decimal:2'
     ];
 
     public function provider(): BelongsTo
@@ -81,13 +75,7 @@ class ProviderBranch extends Model
         return $this->belongsTo(Contact::class, 'financial_contact_id');
     }
 
-    public function serviceTypes()
-    {
-        return $this->belongsToMany(ServiceType::class, null, 'service_types')
-            ->using(function ($value) {
-                return ServiceType::whereIn('name', explode(',', $value))->get();
-            });
-    }
+
 
     public function tasks()
     {
@@ -102,6 +90,11 @@ class ProviderBranch extends Model
     public function priceLists(): HasMany
     {
         return $this->hasMany(PriceList::class);
+    }
+
+    public function branchServices(): HasMany
+    {
+        return $this->hasMany(BranchService::class);
     }
 
     public function notifyBranch($type, $data)

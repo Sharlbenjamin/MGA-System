@@ -37,4 +37,9 @@ class ServiceType extends Model
     {
         return $this->hasMany(PriceList::class);
     }
+
+    public function branchServices(): HasMany
+    {
+        return $this->hasMany(BranchService::class);
+    }
 }

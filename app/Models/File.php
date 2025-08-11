@@ -64,6 +64,18 @@ class File extends Model
         return $this->belongsTo(ProviderBranch::class);
     }
 
+    public function getBranchServicesForServiceType()
+    {
+        if (!$this->service_type_id || !$this->provider_branch_id) {
+            return collect();
+        }
+
+        return $this->providerBranch->branchServices()
+            ->where('service_type_id', $this->service_type_id)
+            ->where('is_active', true)
+            ->get();
+    }
+
     public function medicalReports(): HasMany
     {
         return $this->hasMany(MedicalReport::class); // Ensure 'file_id' is the correct foreign key
@@ -146,11 +158,14 @@ class File extends Model
 
     public function fileBranches()
     {
-        $serviceTypeName = ServiceType::find($this->service_type_id)?->name;
+        $serviceTypeId = $this->service_type_id;
 
         return \App\Models\ProviderBranch::query()
-            ->when($serviceTypeName, fn ($query) =>
-                $query->whereJsonContains('service_types', $serviceTypeName)
+            ->when($serviceTypeId, fn ($query) =>
+                $query->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                    $q->where('service_type_id', $serviceTypeId)
+                      ->where('is_active', true);
+                })
             )
             ->when($this->city_id, fn ($query) =>
                 $query->where('city_id', $this->city_id)
@@ -163,13 +178,16 @@ class File extends Model
 
     public function availableBranches()
     {
-        $serviceTypeName = $this->serviceType?->name;
+        $serviceTypeId = $this->service_type_id;
 
         // If service type is 2, ignore country/city filters
         if ($this->service_type_id == 2) {
             $allBranches = \App\Models\ProviderBranch::query()
                 ->where('status', 'Active')
-                ->whereJsonContains('service_types', $serviceTypeName)
+                ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                    $q->where('service_type_id', $serviceTypeId)
+                      ->where('is_active', true);
+                })
                 ->orderBy('priority', 'asc')
                 ->get();
 
@@ -183,7 +201,10 @@ class File extends Model
         if (!$this->country_id) {
             $allBranches = \App\Models\ProviderBranch::query()
                 ->where('status', 'Active')
-                ->whereJsonContains('service_types', $serviceTypeName)
+                ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                    $q->where('service_type_id', $serviceTypeId)
+                      ->where('is_active', true);
+                })
                 ->orderBy('priority', 'asc')
                 ->get();
 
@@ -196,7 +217,10 @@ class File extends Model
         // Filter branches by city (direct or via pivot) or all_country
         $cityBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
-            ->whereJsonContains('service_types', $serviceTypeName)
+            ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                $q->where('service_type_id', $serviceTypeId)
+                  ->where('is_active', true);
+            })
             ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
             ->where(function ($q) {
                 $q->where('all_country', true)
@@ -208,7 +232,10 @@ class File extends Model
         // Filter branches by province or all_country
         $provinceBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
-            ->whereJsonContains('service_types', $serviceTypeName)
+            ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                $q->where('service_type_id', $serviceTypeId)
+                  ->where('is_active', true);
+            })
             ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
             ->where(function ($q) {
                 $q->where('all_country', true)

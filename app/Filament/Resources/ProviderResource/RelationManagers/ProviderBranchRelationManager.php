@@ -69,18 +69,7 @@ class ProviderBranchRelationManager extends RelationManager
                     '6' => '6', '7' => '7', '8' => '8', '9' => '9', '10' => '10',
                 ])->required(),
 
-            Select::make('service_types')
-                ->label('Service Types')
-                ->multiple()
-                ->options(ServiceType::pluck('name', 'name'))
-                ->searchable()
-                ->required(),
-            //Select::make('communication_method')->label('Communication Method')->options(['Email' => 'Email', 'WhatsApp' => 'WhatsApp', 'Phone' => 'Phone'])->required(),
 
-            TextInput::make('day_cost')->label('Day Cost')->numeric()->nullable(),
-            TextInput::make('night_cost')->label('Night Cost')->numeric()->nullable(),
-            TextInput::make('weekend_cost')->label('Weekend Cost')->numeric()->nullable(),
-            TextInput::make('weekend_night_cost')->label('Weekend Night Cost')->numeric()->nullable(),
 
             Section::make('Medical Services')
                 ->schema([
@@ -109,10 +98,7 @@ class ProviderBranchRelationManager extends RelationManager
             ->recordTitleAttribute('Branches')
             ->columns([
             TextColumn::make('cities.name')->label('City')->sortable()->searchable(),
-            TextColumn::make('service_types')
-                ->label('Service Types')
-                ->badge()
-                ->formatStateUsing(fn ($state) => is_string($state) ? $state : implode(', ', (array) $state)), // ✅ Convert array to string
+
 
             TextColumn::make('communication_method')->label('Contact Method')->sortable(),
             ])
