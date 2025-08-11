@@ -156,18 +156,14 @@ class BillsWithoutDocumentsResource extends Resource
                     ->label('Branch'),
             ])
             ->actions([
-                Action::make('upload_bill')
-                    ->label('Upload Bill')
-                    ->icon('heroicon-o-cloud-arrow-up')
+                Action::make('upload_bill_doc')
+                    ->label('Upload Bill Doc')
+                    ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
-                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name}")
+                    ->modalHeading('Upload Bill Document')
+                    ->modalDescription('Upload the bill document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
-                    ->extraAttributes(fn (Bill $record): array => [
-                        'data-record-id' => $record->id,
-                        'data-record-name' => $record->name,
-                    ])
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
                             ->label('Upload Bill Document')
@@ -185,89 +181,95 @@ class BillsWithoutDocumentsResource extends Resource
                             ->maxFiles(1),
                     ])
                     ->action(function (Bill $record, array $data) {
-                        // Add debugging to ensure we're working with the correct record
-                        Log::info('Upload bill action triggered', [
-                            'record_id' => $record->id,
-                            'record_name' => $record->name,
-                            'file_reference' => $record->file->mga_reference ?? 'N/A',
-                            'data_keys' => array_keys($data),
-                            'timestamp' => now()->toISOString()
-                        ]);
-                        
                         try {
-                            $uploadService = new UploadBillToGoogleDrive(app(GoogleDriveFolderService::class));
-                            
-                            // Get the uploaded file
-                            $filePath = $data['bill_document'];
-                            
-                            // Handle both array and string file paths
-                            if (is_array($filePath)) {
-                                $filePath = $filePath[0] ?? null;
-                            }
-                            
-                            if (!$filePath) {
+                            if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
-                                    ->title('Upload Failed')
-                                    ->body('No file was uploaded.')
                                     ->danger()
+                                    ->title('No document uploaded')
+                                    ->body('Please upload a document first.')
                                     ->send();
                                 return;
                             }
+
+                            // Handle the uploaded file properly
+                            $uploadedFile = $data['bill_document'];
                             
-                            $fileContent = Storage::disk('public')->get($filePath);
+                            // Log the uploaded file data for debugging
+                            Log::info('Bill doc upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
                             
-                            if (!$fileContent) {
+                            // If it's an array (multiple files), take the first one
+                            if (is_array($uploadedFile)) {
+                                $uploadedFile = $uploadedFile[0] ?? null;
+                            }
+                            
+                            if (!$uploadedFile) {
                                 Notification::make()
-                                    ->title('Upload Failed')
-                                    ->body('Could not read the uploaded file.')
                                     ->danger()
+                                    ->title('Invalid file data')
+                                    ->body('The uploaded file data is invalid.')
                                     ->send();
                                 return;
                             }
-                            
-                            // Generate filename: Bill_{MGA_Reference}_{Bill_Name}.pdf
-                            $fileName = "Bill_{$record->file->mga_reference}_{$record->name}.pdf";
-                            
-                            // Ensure the file has a Google Drive folder
-                            if (empty($record->file->google_drive_link)) {
-                                $folderService = app(GoogleDriveFolderService::class);
-                                $folderService->generateGoogleDriveFolder($record->file);
-                                $record->refresh();
-                            }
-                            
-                            // Upload to Google Drive
-                            $googleDriveLink = $uploadService->uploadBillToGoogleDrive($fileContent, $fileName, $record);
-                            
-                            if ($googleDriveLink) {
-                                // Update the bill with the Google Drive link
-                                $record->update(['bill_google_link' => $googleDriveLink]);
+
+                            // Handle the uploaded file properly using Storage facade
+                            try {
+                                // Get the file content using Storage facade
+                                $content = Storage::disk('public')->get($uploadedFile);
                                 
-                                // Clean up the temporary file
-                                Storage::disk('public')->delete($filePath);
+                                if ($content === false) {
+                                    Log::error('Bill doc file not found in storage:', ['path' => $uploadedFile]);
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('File not found')
+                                        ->body('The uploaded file could not be found in storage.')
+                                        ->send();
+                                    return;
+                                }
                                 
+                                // Generate the proper filename format
+                                $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
+                                $fileName = 'Bill ' . $record->name . ' ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
+                                Log::info('Bill doc file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                
+                                // Upload to Google Drive using the service
+                                $uploadService = new UploadBillToGoogleDrive(app(GoogleDriveFolderService::class));
+                                $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $record);
+                                
+                                if ($uploadResult) {
+                                    Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
+                                    
+                                    // Update the bill record with the Google Drive link
+                                    $record->bill_google_link = $uploadResult;
+                                    $record->save();
+                                    
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Bill document uploaded successfully')
+                                        ->body('Bill document has been uploaded to Google Drive.')
+                                        ->send();
+                                } else {
+                                    Log::error('Failed to upload bill to Google Drive');
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Google Drive upload failed')
+                                        ->body('The file was saved locally but failed to upload to Google Drive.')
+                                        ->send();
+                                }
+                            } catch (\Exception $e) {
+                                Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
                                 Notification::make()
-                                    ->title('Upload Successful')
-                                    ->body("Bill '{$record->name}' for file '{$record->file->mga_reference}' has been uploaded to Google Drive successfully.")
-                                    ->success()
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('Upload Failed')
-                                    ->body('Failed to upload bill to Google Drive. Please try again.')
                                     ->danger()
+                                    ->title('File access error')
+                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
                                     ->send();
+                                return;
                             }
                         } catch (\Exception $e) {
-                            Log::error('Bill upload failed: ' . $e->getMessage(), [
-                                'record_id' => $record->id,
-                                'record_name' => $record->name,
-                                'file_reference' => $record->file->mga_reference ?? 'N/A'
-                            ]);
-                            
+                            Log::error('Bill upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
                             Notification::make()
-                                ->title('Upload Failed')
-                                ->body('An error occurred while uploading the bill: ' . $e->getMessage())
                                 ->danger()
+                                ->title('Upload error')
+                                ->body('An error occurred during upload: ' . $e->getMessage())
                                 ->send();
                         }
                     })
