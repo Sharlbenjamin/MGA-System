@@ -128,7 +128,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ]),
             ])
             ->actions([
-                Action::make('upload_bill_doc')
+                Tables\Actions\Action::make('upload_bill_doc')
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
