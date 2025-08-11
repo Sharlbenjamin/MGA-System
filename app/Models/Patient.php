@@ -160,4 +160,85 @@ class Patient extends Model
             ->where('client_id', $clientId)
             ->first();
     }
+
+    /**
+     * Get patient's age in years and months
+     */
+    public function getAgeAttribute()
+    {
+        if (!$this->dob) {
+            return null;
+        }
+        
+        return \Carbon\Carbon::parse($this->dob)->diff(\Carbon\Carbon::now());
+    }
+
+    /**
+     * Get patient's age as formatted string
+     */
+    public function getAgeFormattedAttribute()
+    {
+        if (!$this->age) {
+            return 'N/A';
+        }
+        
+        return $this->age->format('%y years, %m months');
+    }
+
+    /**
+     * Get patient's age in years only
+     */
+    public function getAgeYearsAttribute()
+    {
+        if (!$this->age) {
+            return null;
+        }
+        
+        return $this->age->y;
+    }
+
+    /**
+     * Get financial summary for the patient
+     */
+    public function getFinancialSummaryAttribute()
+    {
+        return [
+            'invoices_total' => $this->invoices_total,
+            'invoices_paid' => $this->invoices_total_paid,
+            'invoices_outstanding' => $this->invoices_total_outstanding,
+            'bills_total' => $this->bills_total,
+            'bills_paid' => $this->bills_total_paid,
+            'bills_outstanding' => $this->bills_total_outstanding,
+            'profit_total' => $this->profit_total,
+            'profit_paid' => $this->profit_total_paid,
+            'profit_outstanding' => $this->profit_total_outstanding,
+        ];
+    }
+
+    /**
+     * Check if patient has any outstanding financial obligations
+     */
+    public function hasOutstandingFinancials()
+    {
+        return $this->invoices_total_outstanding > 0 || $this->bills_total_outstanding > 0;
+    }
+
+    /**
+     * Get recent files for the patient
+     */
+    public function getRecentFiles($limit = 5)
+    {
+        return $this->files()
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Get patient's full display name with client
+     */
+    public function getFullDisplayNameAttribute()
+    {
+        return "{$this->name} - {$this->client->company_name}";
+    }
 }
