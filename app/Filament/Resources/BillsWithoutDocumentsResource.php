@@ -167,7 +167,7 @@ class BillsWithoutDocumentsResource extends Resource
                             ->preserveFilenames()
                             ->maxFiles(1),
                     ])
-                    ->action(function ($record, array $data = []) {
+                    ->action(function (Bill $record, array $data) {
                         try {
                             // Debug: Log which record is being processed
                             Log::info('Processing upload for record:', [
