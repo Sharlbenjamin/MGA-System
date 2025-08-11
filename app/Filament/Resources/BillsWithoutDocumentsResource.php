@@ -143,7 +143,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file))
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
-                Action::make('upload_bill_document')
+                Action::make('upload_bill_document_bills_without_docs')
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')

@@ -67,7 +67,7 @@ class BillRelationManager extends RelationManager
                     ]),
             ])
             ->actions([
-                Action::make('upload_bill_relation')
+                Action::make('upload_bill_relation_manager')
                     ->label('Upload Document')
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
