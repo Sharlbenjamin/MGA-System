@@ -150,31 +150,32 @@ class BillsWithoutDocumentsResource extends Resource
                     ->label('Branch'),
             ])
             ->actions([
-                Action::make('upload_bill_doc')
-                    ->label('Upload Bill Doc')
-                    ->icon('heroicon-o-document-arrow-up')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
-                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name}")
-                    ->modalSubmitActionLabel('Upload Document')
-                    ->form([
-                        Forms\Components\FileUpload::make('bill_document')
-                            ->label('Upload Bill Document')
-                            ->acceptedFileTypes(['application/pdf', 'image/*'])
-                            ->maxSize(10240) // 10MB
-                            ->required()
-                            ->disk('public')
-                            ->directory('bills')
-                            ->visibility('public')
-                            ->helperText('Upload the bill document (PDF or image)')
-                            ->storeFileNamesIn('original_filename')
-                            ->downloadable()
-                            ->openable()
-                            ->preserveFilenames()
-                            ->maxFiles(1),
-                    ])
-                    ->action(function (Bill $record, array $data) {
+                function (Bill $record) {
+                    return Action::make('upload_bill_document_' . $record->id)
+                        ->label('Upload Bill Document')
+                        ->icon('heroicon-o-document-arrow-up')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading("Upload Bill for {$record->file->mga_reference}")
+                        ->modalDescription("Patient: {$record->file->patient->name} - Bill: {$record->name}")
+                        ->modalSubmitActionLabel('Upload Document')
+                        ->form([
+                            Forms\Components\FileUpload::make('bill_document')
+                                ->label('Upload Bill Document')
+                                ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                ->maxSize(10240) // 10MB
+                                ->required()
+                                ->disk('public')
+                                ->directory('bills')
+                                ->visibility('public')
+                                ->helperText('Upload the bill document (PDF or image)')
+                                ->storeFileNamesIn('original_filename')
+                                ->downloadable()
+                                ->openable()
+                                ->preserveFilenames()
+                                ->maxFiles(1),
+                        ])
+                        ->action(function (Bill $record, array $data) {
                         try {
                             if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
@@ -266,8 +267,8 @@ class BillsWithoutDocumentsResource extends Resource
                                 ->body('An error occurred during upload: ' . $e->getMessage())
                                 ->send();
                         }
-                    })
-                    ->modalSubmitActionLabel('Upload to Google Drive'),
+                    });
+                },
 
                 Tables\Actions\Action::make('view_in_google_drive')
                     ->icon('heroicon-o-link')
