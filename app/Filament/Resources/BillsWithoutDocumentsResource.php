@@ -79,12 +79,7 @@ class BillsWithoutDocumentsResource extends Resource
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('bill_google_link')->orWhere('bill_google_link', ''))
-            ->defaultSort('id', 'desc')
-            ->persistSortInSession()
             ->columns([
-                Tables\Columns\TextColumn::make('id')
-                    ->label('ID')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')
                     ->searchable()
@@ -144,7 +139,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference} (ID: {$record->id})")
                     ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name} (Record ID: {$record->id})")
-                    ->modalId(fn (Bill $record): string => "upload_bill_modal_{$record->id}")
+
                     ->extraAttributes([
                         'data-action-name' => 'upload_bill_doc',
                     ])
@@ -266,6 +261,11 @@ class BillsWithoutDocumentsResource extends Resource
                                 ->send();
                         }
                     }),
+                Tables\Actions\Action::make('upload_doc')
+                    ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file) . '#bills')
+                    ->icon('heroicon-o-cloud-arrow-up')
+                    ->label('Upload Doc')
+                    ->color('success'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
