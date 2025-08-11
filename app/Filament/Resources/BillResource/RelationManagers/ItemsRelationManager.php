@@ -9,6 +9,8 @@ use Filament\Support\RawJs;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Tables;
+use App\Models\BranchService;
+use App\Models\ServiceType;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -19,22 +21,72 @@ class ItemsRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\Select::make('service_selection')
+                    ->label('Service Selection')
+                    ->options([
+                        'custom' => 'Custom Item',
+                        'service' => 'Select from Services',
+                    ])
+                    ->default('service')
+                    ->reactive()
+                    ->required(),
+
+                Forms\Components\Select::make('branch_service_id')
+                    ->label('Select Service')
+                    ->options(function () {
+                        $bill = $this->getOwnerRecord();
+                        if (!$bill || !$bill->branch_id) {
+                            return [];
+                        }
+
+                        return BranchService::where('provider_branch_id', $bill->branch_id)
+                            ->where('is_active', true)
+                            ->with('serviceType')
+                            ->get()
+                            ->mapWithKeys(function ($branchService) {
+                                $serviceName = $branchService->serviceType->name;
+                                $cost = $branchService->day_cost ?? 0;
+                                return [$branchService->id => "{$serviceName} - €{$cost}"];
+                            });
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn ($get) => $get('service_selection') === 'service')
+                    ->reactive()
+                    ->afterStateUpdated(function ($state, $set, $get) {
+                        if ($state) {
+                            $branchService = BranchService::with('serviceType')->find($state);
+                            if ($branchService) {
+                                $bill = $this->getOwnerRecord();
+                                $serviceName = $branchService->serviceType->name;
+                                $serviceDate = $bill->file->service_date ?? now();
+                                $description = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
+                                
+                                $set('description', $description);
+                                $set('amount', $branchService->day_cost ?? 0);
+                            }
+                        }
+                    }),
+
                 Forms\Components\TextInput::make('description')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->visible(fn ($get) => $get('service_selection') === 'custom'),
 
                 Forms\Components\TextInput::make('amount')
                     ->required()
                     ->numeric()
                     ->inputMode('decimal')
                     ->step('0.01')
-                    ->prefix('€'),
+                    ->prefix('€')
+                    ->visible(fn ($get) => $get('service_selection') === 'custom'),
 
                 Forms\Components\TextInput::make('discount')
                     ->numeric()
                     ->inputMode('decimal')
                     ->step('0.01')
-                    ->prefix('€')->default('0'),
+                    ->prefix('€')
+                    ->default('0'),
             ]);
     }
 
