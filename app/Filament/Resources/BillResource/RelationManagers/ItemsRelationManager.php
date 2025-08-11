@@ -69,7 +69,6 @@ class ItemsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255)
-                    ->default('Custom Item')
                     ->disabled(fn ($get) => $get('service_selector') && $get('service_selector') !== 'custom'),
 
                 Forms\Components\TextInput::make('amount')
@@ -78,7 +77,6 @@ class ItemsRelationManager extends RelationManager
                     ->inputMode('decimal')
                     ->step('0.01')
                     ->prefix('€')
-                    ->default(0)
                     ->disabled(fn ($get) => $get('service_selector') && $get('service_selector') !== 'custom'),
 
                 Forms\Components\TextInput::make('discount')
@@ -106,8 +104,8 @@ class ItemsRelationManager extends RelationManager
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->before(function (array $data) {
-                        // Ensure description and amount are set if a service was selected
+                    ->using(function (array $data) {
+                        // If a service was selected, ensure description and amount are set
                         if (isset($data['service_selector']) && $data['service_selector'] !== 'custom') {
                             $branchService = BranchService::with('serviceType')->find($data['service_selector']);
                             if ($branchService) {
@@ -119,17 +117,10 @@ class ItemsRelationManager extends RelationManager
                             }
                         }
                         
-                        // Ensure description has a value
-                        if (empty($data['description'])) {
-                            $data['description'] = 'Custom Item';
-                        }
+                        // Remove the service_selector field as it's not part of the model
+                        unset($data['service_selector']);
                         
-                        // Ensure amount has a value
-                        if (empty($data['amount'])) {
-                            $data['amount'] = 0;
-                        }
-                        
-                        return $data;
+                        return $this->getRelationship()->create($data);
                     })
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
