@@ -159,8 +159,8 @@ class GopWithoutDocsResource extends Resource
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Upload GOP Document')
-                    ->modalDescription('Upload the GOP document for this record.')
+                    ->modalHeading(fn (Gop $record): string => "Upload GOP for {$record->file->mga_reference}")
+                    ->modalDescription(fn (Gop $record): string => "Patient: {$record->file->patient->name} - GOP: {$record->name}")
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('gop_document')
