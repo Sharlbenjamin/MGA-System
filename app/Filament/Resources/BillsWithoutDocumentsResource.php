@@ -164,7 +164,10 @@ class BillsWithoutDocumentsResource extends Resource
                     ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
                     ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name}")
                     ->modalSubmitActionLabel('Upload Document')
-                    ->modalId(fn (Bill $record): string => "upload_bill_modal_{$record->id}")
+                    ->extraAttributes(fn (Bill $record): array => [
+                        'data-record-id' => $record->id,
+                        'data-record-name' => $record->name,
+                    ])
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
                             ->label('Upload Bill Document')
