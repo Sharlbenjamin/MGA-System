@@ -14,6 +14,21 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // Debug table actions for bills without documents
+    document.addEventListener('click', function(e) {
+        const uploadButton = e.target.closest('[data-record-id]');
+        if (uploadButton && uploadButton.textContent.includes('Upload Bill')) {
+            const recordId = uploadButton.getAttribute('data-record-id');
+            const recordName = uploadButton.getAttribute('data-record-name');
+            console.log('Upload button clicked:', {
+                recordId: recordId,
+                recordName: recordName,
+                button: uploadButton,
+                timestamp: new Date().toISOString()
+            });
+        }
+    });
 });
 
 // Function to copy text to clipboard

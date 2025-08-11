@@ -80,8 +80,14 @@ class BillsWithoutDocumentsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('bill_google_link')->orWhere('bill_google_link', ''))
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('bill_google_link')->orWhere('bill_google_link', '')->orderBy('id', 'desc'))
+            ->defaultSort('id', 'desc')
+            ->persistSortInSession()
             ->columns([
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
@@ -151,12 +157,18 @@ class BillsWithoutDocumentsResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('upload_bill')
+                    ->name(fn (Bill $record): string => "upload_bill_{$record->id}")
                     ->icon('heroicon-o-cloud-arrow-up')
                     ->label('Upload Bill')
                     ->color('success')
                     ->visible(fn (Bill $record): bool => empty($record->bill_google_link))
                     ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
-                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name}")
+                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name}")
+                    ->extraAttributes(fn (Bill $record): array => [
+                        'data-record-id' => $record->id,
+                        'data-record-name' => $record->name,
+                    ])
+                    ->requiresConfirmation()
                     ->form([
                         FileUpload::make('bill_document')
                             ->label('Bill Document')
@@ -168,6 +180,27 @@ class BillsWithoutDocumentsResource extends Resource
                             ->directory('temp-bills'),
                     ])
                     ->action(function (array $data, Bill $record): void {
+                        // Add debugging to ensure we're working with the correct record
+                        Log::info('Upload bill action triggered', [
+                            'record_id' => $record->id,
+                            'record_name' => $record->name,
+                            'file_reference' => $record->file->mga_reference ?? 'N/A',
+                            'data_keys' => array_keys($data),
+                            'action_name' => "upload_bill_{$record->id}",
+                            'timestamp' => now()->toISOString()
+                        ]);
+                        
+                        // Verify the record is the correct one
+                        if (!$record->exists) {
+                            Log::error('Invalid record provided to upload action', ['record_id' => $record->id ?? 'null']);
+                            Notification::make()
+                                ->title('Upload Failed')
+                                ->body('Invalid record selected. Please try again.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+                        
                         try {
                             $uploadService = new UploadBillToGoogleDrive(app(GoogleDriveFolderService::class));
                             
@@ -221,7 +254,7 @@ class BillsWithoutDocumentsResource extends Resource
                                 
                                 Notification::make()
                                     ->title('Upload Successful')
-                                    ->body("Bill has been uploaded to Google Drive successfully.")
+                                    ->body("Bill '{$record->name}' for file '{$record->file->mga_reference}' has been uploaded to Google Drive successfully.")
                                     ->success()
                                     ->send();
                             } else {
@@ -232,7 +265,11 @@ class BillsWithoutDocumentsResource extends Resource
                                     ->send();
                             }
                         } catch (\Exception $e) {
-                            Log::error('Bill upload failed: ' . $e->getMessage());
+                            Log::error('Bill upload failed: ' . $e->getMessage(), [
+                                'record_id' => $record->id,
+                                'record_name' => $record->name,
+                                'file_reference' => $record->file->mga_reference ?? 'N/A'
+                            ]);
                             
                             Notification::make()
                                 ->title('Upload Failed')
