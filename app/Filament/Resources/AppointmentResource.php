@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
+use App\Services\DistanceCalculationService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -46,6 +47,15 @@ class AppointmentResource extends Resource
             Tables\Columns\TextColumn::make('service_date')->label('Service Date')->date(),
             Tables\Columns\TextColumn::make('service_time')->label('Service Time'),
             Tables\Columns\TextColumn::make('status')->label('Status')->badge(),
+            Tables\Columns\TextColumn::make('distance')
+                ->label('Distance (Car)')
+                ->getStateUsing(function ($record) {
+                    $distanceService = app(DistanceCalculationService::class);
+                    $distanceData = $distanceService->calculateFileToBranchDistance($record->file);
+                    return $distanceService->getFormattedDistance($distanceData);
+                })
+                ->description(fn ($record) => $record->file->address ? 'From: ' . $record->file->address : 'No file address')
+                ->alignCenter(),
             Tables\Columns\TextColumn::make('created_at')->label('Created')->dateTime(),
         ]) ->actions([
             Tables\Actions\EditAction::make(),

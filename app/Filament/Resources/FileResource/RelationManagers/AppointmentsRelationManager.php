@@ -16,6 +16,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Columns\TextColumn;
+use App\Services\DistanceCalculationService;
 
 class AppointmentsRelationManager extends RelationManager
 {
@@ -50,6 +51,15 @@ class AppointmentsRelationManager extends RelationManager
                 TextColumn::make('service_date')->label('Service Date')->date(),
                 TextColumn::make('service_time')->label('Service Time'),
                 TextColumn::make('status')->label('Status')->badge()->color(fn (string $state): string => match ($state) {'Confirmed' => 'success','Available' => 'info','Requested' => 'warning','Cancelled' => 'danger',}),
+                TextColumn::make('distance')
+                    ->label('Distance (Car)')
+                    ->getStateUsing(function ($record) {
+                        $distanceService = app(DistanceCalculationService::class);
+                        $distanceData = $distanceService->calculateFileToBranchDistance($record->file);
+                        return $distanceService->getFormattedDistance($distanceData);
+                    })
+                    ->description(fn ($record) => $record->file->address ? 'From: ' . $record->file->address : 'No file address')
+                    ->alignCenter(),
             ])
             ->headerActions([
                 Action::make('create_appointment')

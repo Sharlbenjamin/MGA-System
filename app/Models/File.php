@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\GoogleCalendar as GoogleCalendarService;
 use App\Services\GoogleMeetService;
 use App\Services\GoogleDriveFolderService;
+use App\Services\DistanceCalculationService;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class File extends Model
@@ -324,6 +325,28 @@ class File extends Model
     public function generateGoogleMeetLink()
     {
         return app(GoogleMeetService::class)->generateMeetLink($this);
+    }
+
+    /**
+     * Get distance to provider branch operation contact
+     *
+     * @return array|null
+     */
+    public function getDistanceToBranch()
+    {
+        return app(DistanceCalculationService::class)->calculateFileToBranchDistance($this);
+    }
+
+    /**
+     * Get formatted distance to provider branch operation contact
+     *
+     * @return string
+     */
+    public function getFormattedDistanceToBranch()
+    {
+        $distanceService = app(DistanceCalculationService::class);
+        $distanceData = $this->getDistanceToBranch();
+        return $distanceService->getFormattedDistance($distanceData);
     }
 
     /**
