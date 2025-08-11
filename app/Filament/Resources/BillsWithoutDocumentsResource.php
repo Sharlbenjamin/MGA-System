@@ -93,17 +93,6 @@ class BillsWithoutDocumentsResource extends Resource
                     ->label('Patient')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('file.patient.client.company_name')
-                    ->label('Client')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('provider.name')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('branch.branch_name')
-                    ->label('Branch')
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('total_amount')
                     ->money('EUR')
                     ->sortable(),
@@ -120,34 +109,6 @@ class BillsWithoutDocumentsResource extends Resource
                         'Paid' => 'success',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\IconColumn::make('bill_google_link')
-                    ->label('Google Drive')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->getStateUsing(fn (Bill $record): bool => !empty($record->bill_google_link)),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'Draft' => 'Draft',
-                        'Sent' => 'Sent',
-                        'Unpaid' => 'Unpaid',
-                        'Partial' => 'Partial',
-                        'Paid' => 'Paid',
-                    ]),
-                Tables\Filters\SelectFilter::make('provider_id')
-                    ->relationship('provider', 'name')
-                    ->label('Provider'),
-                Tables\Filters\SelectFilter::make('branch_id')
-                    ->relationship('branch', 'branch_name')
-                    ->label('Branch'),
             ])
             ->actions([
                 Action::make('upload_bill_doc')
