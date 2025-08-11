@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillsWithoutDocumentsResource\Pages;
-use App\Models\Gop;
+use App\Models\Bill;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -19,7 +19,7 @@ use App\Services\GoogleDriveFolderService;
 
 class BillsWithoutDocumentsResource extends Resource
 {
-    protected static ?string $model = Gop::class;
+    protected static ?string $model = Bill::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
     protected static ?string $navigationGroup = 'Stages';
@@ -30,15 +30,7 @@ class BillsWithoutDocumentsResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::where('type', 'In')
-            ->where(function ($query) {
-                $query->whereNull('gop_google_drive_link')
-                      ->orWhere('gop_google_drive_link', '');
-            })
-            ->whereHas('file', function ($fileQuery) {
-                $fileQuery->where('status', 'Assisted');
-            })
-            ->count();
+        return static::getModel()::whereNull('bill_google_link')->orWhere('bill_google_link', '')->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -86,14 +78,7 @@ class BillsWithoutDocumentsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('type', 'In')
-                ->where(function ($query) {
-                    $query->whereNull('gop_google_drive_link')
-                          ->orWhere('gop_google_drive_link', '');
-                })
-                ->whereHas('file', function ($fileQuery) {
-                    $fileQuery->where('status', 'Assisted');
-                }))
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('bill_google_link')->orWhere('bill_google_link', ''))
             ->columns([
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')
@@ -107,26 +92,24 @@ class BillsWithoutDocumentsResource extends Resource
                     ->label('Client')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('type')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'In' => 'success',
-                        'Out' => 'warning',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('amount')
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Bill Name')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('total_amount')
                     ->money('EUR')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('date')
+                Tables\Columns\TextColumn::make('due_date')
                     ->date()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'Not Sent' => 'gray',
+                        'Draft' => 'gray',
                         'Sent' => 'info',
-                        'Updated' => 'warning',
-                        'Cancelled' => 'danger',
+                        'Unpaid' => 'warning',
+                        'Partial' => 'warning',
+                        'Paid' => 'success',
                         default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('created_at')
@@ -135,17 +118,13 @@ class BillsWithoutDocumentsResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('type')
-                    ->options([
-                        'In' => 'In',
-                        'Out' => 'Out',
-                    ]),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'Not Sent' => 'Not Sent',
+                        'Draft' => 'Draft',
                         'Sent' => 'Sent',
-                        'Updated' => 'Updated',
-                        'Cancelled' => 'Cancelled',
+                        'Unpaid' => 'Unpaid',
+                        'Partial' => 'Partial',
+                        'Paid' => 'Paid',
                     ]),
             ])
             ->actions([
@@ -154,8 +133,8 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(fn (Gop $record): string => "Upload Bill for {$record->file->mga_reference} (ID: {$record->id})")
-                    ->modalDescription(fn (Gop $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->type} (Record ID: {$record->id})")
+                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference} (ID: {$record->id})")
+                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name} (Record ID: {$record->id})")
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
@@ -173,7 +152,7 @@ class BillsWithoutDocumentsResource extends Resource
                             ->preserveFilenames()
                             ->maxFiles(1),
                     ])
-                    ->action(function (Gop $record, array $data) {
+                    ->action(function (Bill $record, array $data) {
                         try {
                             if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
@@ -221,19 +200,18 @@ class BillsWithoutDocumentsResource extends Resource
                                 
                                 // Generate the proper filename format
                                 $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
-                                $fileName = 'Bill ' . $record->type . ' ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
+                                $fileName = 'Bill ' . $record->name . ' ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
                                 Log::info('Bill doc file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
                                 // Upload to Google Drive using the service
-                                $uploadService = new \App\Services\UploadGopToGoogleDrive(new \App\Services\GoogleDriveFolderService());
-                                $uploadResult = $uploadService->uploadGopToGoogleDrive($content, $fileName, $record);
+                                $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
+                                $uploadResult = $uploadService->upload($content, $fileName);
                                 
                                 if ($uploadResult) {
                                     Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
                                     
-                                    // Update the GOP record with the Google Drive link
-                                    $record->gop_google_drive_link = $uploadResult;
-                                    $record->status = 'Sent';
+                                    // Update the Bill record with the Google Drive link
+                                    $record->bill_google_link = $uploadResult;
                                     $record->save();
                                     
                                     Notification::make()
