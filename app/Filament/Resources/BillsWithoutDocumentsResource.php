@@ -128,6 +128,10 @@ class BillsWithoutDocumentsResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('view_file')
+                    ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file))
+                    ->icon('heroicon-o-eye')
+                    ->label('View File'),
                 Action::make('upload_bill_doc')
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
@@ -205,7 +209,7 @@ class BillsWithoutDocumentsResource extends Resource
                                 
                                 // Upload to Google Drive using the service
                                 $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
-                                $uploadResult = $uploadService->upload($content, $fileName);
+                                $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $record);
                                 
                                 if ($uploadResult) {
                                     Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
