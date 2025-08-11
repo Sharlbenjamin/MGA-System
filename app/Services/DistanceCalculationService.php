@@ -42,6 +42,13 @@ class DistanceCalculationService
                 'key' => $this->apiKey,
             ]);
 
+            Log::info('Distance Matrix API Response', [
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+                'origin' => $originAddress,
+                'destination' => $destinationAddress
+            ]);
+
             if ($response->successful()) {
                 $data = $response->json();
 
@@ -56,15 +63,24 @@ class DistanceCalculationService
                             'duration_seconds' => $element['duration']['value'],
                             'duration_minutes' => round($element['duration']['value'] / 60, 1),
                         ];
+                    } else {
+                        Log::warning('Distance Matrix element status not OK', [
+                            'element_status' => $element['status'],
+                            'element' => $element
+                        ]);
                     }
+                } else {
+                    Log::warning('Distance Matrix response not OK', [
+                        'response_status' => $data['status'] ?? 'unknown',
+                        'data' => $data
+                    ]);
                 }
+            } else {
+                Log::error('Distance Matrix API request failed', [
+                    'status_code' => $response->status(),
+                    'response_body' => $response->body()
+                ]);
             }
-
-            Log::warning('Distance calculation failed', [
-                'origin' => $originAddress,
-                'destination' => $destinationAddress,
-                'response' => $response->json() ?? 'No response'
-            ]);
 
             return null;
         } catch (\Exception $e) {
