@@ -21,25 +21,15 @@ class ItemsRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('service_selection')
-                    ->label('Service Selection')
-                    ->options([
-                        'custom' => 'Custom Item',
-                        'service' => 'Select from Services',
-                    ])
-                    ->default('service')
-                    ->reactive()
-                    ->required(),
-
                 Forms\Components\Select::make('branch_service_id')
                     ->label('Select Service')
                     ->options(function () {
                         $bill = $this->getOwnerRecord();
                         if (!$bill || !$bill->branch_id) {
-                            return [];
+                            return ['custom' => 'Custom Item'];
                         }
 
-                        return BranchService::where('provider_branch_id', $bill->branch_id)
+                        $services = BranchService::where('provider_branch_id', $bill->branch_id)
                             ->where('is_active', true)
                             ->with('serviceType')
                             ->get()
@@ -48,13 +38,17 @@ class ItemsRelationManager extends RelationManager
                                 $cost = $branchService->day_cost ?? 0;
                                 return [$branchService->id => "{$serviceName} - €{$cost}"];
                             });
+
+                        // Add custom option
+                        $services->put('custom', 'Custom Item');
+                        
+                        return $services;
                     })
                     ->searchable()
                     ->preload()
-                    ->visible(fn ($get) => $get('service_selection') === 'service')
                     ->reactive()
                     ->afterStateUpdated(function ($state, $set, $get) {
-                        if ($state) {
+                        if ($state && $state !== 'custom') {
                             $branchService = BranchService::with('serviceType')->find($state);
                             if ($branchService) {
                                 $bill = $this->getOwnerRecord();
@@ -65,13 +59,17 @@ class ItemsRelationManager extends RelationManager
                                 $set('description', $description);
                                 $set('amount', $branchService->day_cost ?? 0);
                             }
+                        } else {
+                            // Clear fields when custom is selected
+                            $set('description', '');
+                            $set('amount', '');
                         }
                     }),
 
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255)
-                    ->visible(fn ($get) => $get('service_selection') === 'custom'),
+                    ->visible(fn ($get) => $get('branch_service_id') === 'custom'),
 
                 Forms\Components\TextInput::make('amount')
                     ->required()
@@ -79,7 +77,7 @@ class ItemsRelationManager extends RelationManager
                     ->inputMode('decimal')
                     ->step('0.01')
                     ->prefix('€')
-                    ->visible(fn ($get) => $get('service_selection') === 'custom'),
+                    ->visible(fn ($get) => $get('branch_service_id') === 'custom'),
 
                 Forms\Components\TextInput::make('discount')
                     ->numeric()
