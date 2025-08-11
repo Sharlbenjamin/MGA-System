@@ -144,11 +144,11 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
                 Action::make('upload_bill_doc')
+                    ->id(fn ($record): string => "upload-bill-doc-{$record->id}")
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalId(fn ($record): string => "upload-bill-doc-{$record->id}")
                     ->modalHeading(fn ($record): string => "Upload Bill Document - {$record->file->patient->name} ({$record->file->mga_reference})")
                     ->modalDescription('Upload a bill document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
