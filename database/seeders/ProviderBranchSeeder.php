@@ -16,10 +16,9 @@ class ProviderBranchSeeder extends Seeder
         ProviderBranch::create([
             'provider_id' => 1,
             'branch_name' => 'Dr. Helen House Call',
-            'city_id' => 11,
+            'city_id' => null,
             'status' => 'Active',
             'priority' => 1,
-            'service_types' => json_encode(['General Practice']),
         ]);
     }
 }
