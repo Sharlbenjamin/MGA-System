@@ -182,12 +182,15 @@ class FileResource extends Resource
                         'Void' => 'gray',
                     }),
                 
-                Tables\Columns\TextColumn::make('gops_sum')
+                Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
                     ->formatStateUsing(fn ($state) => $state > 0 ? '€' . number_format($state, 2) : '€0.00')
-                    ->sum('gops', 'amount', fn ($query) => $query->where('type', 'In')),
+                    ->getStateUsing(function ($record) {
+                        $firstGopIn = $record->gops()->where('type', 'In')->first();
+                        return $firstGopIn ? $firstGopIn->amount : 0;
+                    }),
                 
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
