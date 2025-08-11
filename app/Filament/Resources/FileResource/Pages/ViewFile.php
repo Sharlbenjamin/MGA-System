@@ -576,6 +576,7 @@ class ViewFile extends ViewRecord
                                 'provider' => $branch->provider->name ?? 'N/A',
                                 'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
                                 'preferred_contact' => $this->getPreferredContactDisplay($branch),
+                                'distance' => $this->getDistanceToBranch($record, $branch),
                             ])->toArray());
                         }),
                     
@@ -587,8 +588,9 @@ class ViewFile extends ViewRecord
                             TextInput::make('provider')->label('Provider Name')->disabled(),
                             TextInput::make('day_cost')->label('Day Cost (€)')->disabled(),
                             TextInput::make('preferred_contact')->label('Preferred Contact')->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')->disabled(),
+                            TextInput::make('distance')->label('Distance (Car)')->disabled(),
                         ])
-                        ->columns(5)
+                        ->columns(6)
                         ->default(function ($get, $record) {
                             $branches = $record->availableBranches();
                             $selectedBranches = $branches['cityBranches']; // Start with city branches
@@ -600,6 +602,7 @@ class ViewFile extends ViewRecord
                                 'provider' => $branch->provider->name ?? 'N/A',
                                 'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
                                 'preferred_contact' => $this->getPreferredContactDisplay($branch),
+                                'distance' => $this->getDistanceToBranch($record, $branch),
                             ])->toArray();
                         })
                         ->addActionLabel('Add More Branches')
@@ -1494,5 +1497,22 @@ class ViewFile extends ViewRecord
 
         // Just return the preferred contact method
         return $operationContact->preferred_contact ?? 'N/A';
+    }
+
+    private function getDistanceToBranch($file, $branch)
+    {
+        if (!$file->address) {
+            return 'N/A';
+        }
+
+        $operationContact = $branch->operationContact;
+        if (!$operationContact || !$operationContact->address) {
+            return 'N/A';
+        }
+
+        $distanceService = app(\App\Services\DistanceCalculationService::class);
+        $distanceData = $distanceService->calculateDistance($file->address, $operationContact->address);
+        
+        return $distanceService->getFormattedDistance($distanceData);
     }
 }
