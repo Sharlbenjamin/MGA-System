@@ -34,7 +34,7 @@ class ContactController extends Controller
         NotificationService::success(
             auth()->user(),
             'Contact Created',
-            "Contact '{$contact->name}' has been created successfully.",
+            "Contact '{$contact->title}' has been created successfully.",
             route('contacts.show', $contact),
             'View Contact'
         );
@@ -42,7 +42,7 @@ class ContactController extends Controller
         // Notify admins about new contact
         NotificationService::notifyAdmins(
             'New Contact Added',
-            "A new contact '{$contact->name}' has been added by " . auth()->user()->name,
+            "A new contact '{$contact->title}' has been added by " . auth()->user()->name,
             'info',
             route('contacts.show', $contact),
             'View Contact'
@@ -75,7 +75,7 @@ class ContactController extends Controller
         NotificationService::info(
             auth()->user(),
             'Contact Updated',
-            "Contact '{$contact->name}' has been updated successfully.",
+            "Contact '{$contact->title}' has been updated successfully.",
             route('contacts.show', $contact),
             'View Contact'
         );
@@ -87,7 +87,7 @@ class ContactController extends Controller
 
     public function destroy(Request $request, Contact $contact): RedirectResponse
     {
-        $contactName = $contact->name;
+        $contactName = $contact->title;
         $contact->delete();
 
         // Send notification about contact deletion

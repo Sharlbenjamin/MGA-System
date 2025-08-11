@@ -38,10 +38,10 @@ class Gop extends Model
             Notification::make()->title('GOP Notification')->body('This file doesn\'t have a branch')->danger()->send();
             return false;
         }
-        $gopContact = $branch->contacts()->where('name', 'like', '%GOP%')->first();
+        $gopContact = $branch->contacts()->where('title', 'like', '%GOP%')->first();
 
         if (!$gopContact?->email) {
-            Notification::make()->title('GOP Notification')->body('This branch doesn\'t have a GOP contact')->danger()->send();
+            Notification::make()->title('GOP Notification')->body('This branch doesn\'t have a GOP Contact')->danger()->send();
             return false;
         }
 

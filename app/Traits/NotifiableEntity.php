@@ -44,15 +44,24 @@ trait NotifiableEntity
     {
         $contact = $this->primaryContact($reason);
         if (!$contact) {
-            Notification::make()->title("No ".$parent." Contact Found")->body("No {$reason} contact found")->danger()->send();
+            $contactTypeText = match ($reason) {
+                'Appointment' => 'Operation Contact',
+                'File' => 'Operation Contact',
+                'GOP' => 'GOP Contact',
+                'Financial' => 'Financial Contact',
+                'Invoice' => 'Financial Contact',
+                'Balance' => 'Financial Contact',
+                default => $reason . ' Contact',
+            };
+            Notification::make()->title("No {$contactTypeText} Found")->body("No {$contactTypeText} found for this {$parent}")->danger()->send();
             return;
         }
 
         match ($contact->preferred_contact) {
             'Phone', 'Second Phone' => $this->notifyByPhone($data, $status),
             'Email', 'Second Email' => $this->notifyByEmail($reason, $status, $data, $parent, $message),
-            'First Whatsapp', 'Second Whatsapp' => $this->notifyByWhatsapp($data),
-            'First SMS', 'Second SMS' => $this->notifyBySms($data),
+            'first_whatsapp', 'second_whatsapp' => $this->notifyByWhatsapp($data),
+            default => null,
         };
     }
 
@@ -64,12 +73,24 @@ trait NotifiableEntity
         Notification::make()->title('Phone Notification')->body("Call the" .$recipient)->send();
 
 
+        // Get the contact type for better task description
+        $contactType = $this->detectNotificationReason($data);
+        $contactTypeText = match ($contactType) {
+            'Appointment' => 'Operation Contact',
+            'File' => 'Operation Contact',
+            'GOP' => 'GOP Contact',
+            'Financial' => 'Financial Contact',
+            'Invoice' => 'Financial Contact',
+            'Balance' => 'Financial Contact',
+            default => 'Contact',
+        };
+
         Task::create([
             'taskable_id' => $data->id,
             'taskable_type' => get_class($data),
             'department' => 'Operation',
-            'title' => 'Phone Call Required', // Use `$status` directly
-            'description' => 'Call the recipient', // Fallback case
+            'title' => 'Phone Call Required - ' . $contactTypeText,
+            'description' => "Call the {$contactTypeText} for manual follow-up",
             'due_date' => now()->addMinutes(30),
             'user_id' => Auth::id(),
             'file_id' => $file_id,

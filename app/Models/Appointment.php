@@ -30,7 +30,7 @@ class Appointment extends Model
 
         // When an appointment is created, log a comment and notify the branch
         static::creating(function ($appointment) {
-            // Check if provider has email directly, or if branch has operation contact
+            // Check if provider has email directly, or if branch has Operation Contact
             $providerHasEmail = $appointment->providerBranch->provider && $appointment->providerBranch->provider->email;
             $branchHasContact = $appointment->providerBranch->primaryContact('Appointment');
             

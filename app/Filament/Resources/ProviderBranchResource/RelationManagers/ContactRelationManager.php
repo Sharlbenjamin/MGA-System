@@ -25,12 +25,7 @@ class ContactRelationManager extends RelationManager
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            Select::make('name')->multiple()->label('Contact Name')->required()->helperText('Dynamic names (Operation, Financial, GOP, Appointment)')->options([
-                'Operation' => 'Operation',
-                'Financial' => 'Financial',
-                'GOP' => 'GOP',
-                'Appointment' => 'Appointment',
-            ]),
+            TextInput::make('name')->label('Contact Name')->required()->helperText('Enter the contact name (e.g., Operation, Financial, GOP, Appointment)'),
             TextInput::make('title')->label('Name')->nullable(),
             TextInput::make('email')->label('Email')->email()->unique('contacts', 'email', ignoreRecord: true)->nullable(),
             TextInput::make('second_email')->label('Second Email')->email()->nullable(),
@@ -47,10 +42,8 @@ class ContactRelationManager extends RelationManager
                     'Second Phone' => 'Second Phone',
                     'Email'        => 'Email',
                     'Second Email' => 'Second Email',
-                    'First Whatsapp' => 'First Whatsapp',
-                    'Second Whatsapp' => 'Second Whatsapp',
-                    'First SMS' => 'First SMS',
-                    'Second SMS' => 'Second SMS',
+                    'first_whatsapp' => 'First Whatsapp',
+                    'second_whatsapp' => 'Second Whatsapp',
                 ])
                 ->nullable(),
 
@@ -73,7 +66,8 @@ class ContactRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('name')->sortable()->searchable(),
                 TextColumn::make('email')->sortable()->searchable(),
-                TextColumn::make('phone')->sortable()->searchable(),
+                TextColumn::make('phone_number')->label('Phone')->sortable()->searchable(),
+                TextColumn::make('address')->label('Address')->sortable()->searchable()->limit(50),
             ])
             ->filters([
                 // Add any filters here if needed

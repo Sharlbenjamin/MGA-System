@@ -161,7 +161,7 @@ final class ContactControllerTest extends TestCase
         $this->assertEquals($contactable->id, $contact->contactable_id);
         $this->assertEquals($contactable_type, $contact->contactable_type);
         $this->assertEquals($type, $contact->type);
-        $this->assertEquals($name, $contact->name);
+        $this->assertEquals($name, $contact->title);
         $this->assertEquals($country->id, $contact->country_id);
         $this->assertEquals($city->id, $contact->city_id);
         $this->assertEquals($preferred_contact, $contact->preferred_contact);

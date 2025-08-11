@@ -753,11 +753,11 @@ class ViewFile extends ViewRecord
                 continue;
             }
 
-            // Get the operation contact for the branch
+            // Get the Operation Contact for the branch
             $operationContact = $providerBranch->operationContact();
             
             if (!$operationContact) {
-                $skippedBranches[] = $providerBranch->branch_name . ' (No operation contact)';
+                $skippedBranches[] = $providerBranch->branch_name . ' (No Operation Contact)';
                 continue;
             }
 
@@ -1348,7 +1348,7 @@ class ViewFile extends ViewRecord
             'taskable_type' => \App\Models\File::class,
             'department' => 'Operation',
             'title' => 'Phone Call Required - ' . $providerBranch->branch_name,
-            'description' => "Call {$providerBranch->branch_name} to confirm appointment. Contact: {$gopContact->name} - {$gopContact->phone_number}. File: {$record->mga_reference}",
+            'description' => "Call {$providerBranch->branch_name} to confirm appointment. GOP Contact: {$gopContact->title} - {$gopContact->phone_number}. File: {$record->mga_reference}",
             'due_date' => now()->addHours(2),
             'user_id' => Auth::id(),
             'file_id' => $record->id,

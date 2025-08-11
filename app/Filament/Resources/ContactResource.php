@@ -53,11 +53,7 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
         Select::make('provider_id')->label('Select Provider')->options(Provider::pluck('name', 'id'))->visible(fn ($get) => $get('type') === 'Provider')->nullable()->searchable(),
         Select::make('branch_id')->label('Select Branch')->options(ProviderBranch::pluck('branch_name', 'id'))->visible(fn ($get) => $get('type') === 'Branch')->nullable()->searchable(),
         Select::make('patient_id')->label('Select Patient')->options(Patient::pluck('name', 'id'))->visible(fn ($get) => $get('type') === 'Patient')->nullable()->searchable(),
-        Select::make('name')->multiple()->label('Contact Name')->required()->helperText('Dynamic names (Operation, Financial, GOP)')->options([
-            'Operation' => 'Operation',
-            'Financial' => 'Financial',
-            'GOP' => 'GOP',
-        ]),
+        TextInput::make('name')->label('Contact Name')->required()->helperText('Enter the contact name (e.g., Operation, Financial, GOP)'),
         TextInput::make('title')->label('Title')->nullable(),
         TextInput::make('email')->label('Email')->email()->unique('contacts', 'email', ignoreRecord: true)->nullable(),
         TextInput::make('second_email')->label('Second Email')->email()->nullable(),
@@ -74,10 +70,8 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
                 'Second Phone' => 'Second Phone',
                 'Email'        => 'Email',
                 'Second Email' => 'Second Email',
-                'First Whatsapp' => 'First Whatsapp',
-                'Second Whatsapp' => 'Second Whatsapp',
-                'First SMS' => 'First SMS',
-                'Second SMS' => 'Second SMS',
+                'first_whatsapp' => 'First Whatsapp',
+                'second_whatsapp' => 'Second Whatsapp',
             ])
             ->required(),
 
@@ -103,6 +97,7 @@ public static function table(Tables\Table $table): Tables\Table
             TextColumn::make('title')->label('Title')->sortable()->searchable(),
             TextColumn::make('email')->label('Email')->sortable()->searchable(),
             TextColumn::make('phone_number')->label('Phone')->sortable(),
+            TextColumn::make('address')->label('Address')->sortable()->searchable()->limit(50),
             TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
             TextColumn::make('city.name')->label('City')->sortable()->searchable(),
             BadgeColumn::make('preferred_contact')->label('Preferred Contact')
@@ -111,6 +106,8 @@ public static function table(Tables\Table $table): Tables\Table
                     'Second Phone' => 'warning',
                     'Email'        => 'success',
                     'Second Email' => 'danger',
+                    'first_whatsapp' => 'success',
+                    'second_whatsapp' => 'success',
                 ]),
 
             BadgeColumn::make('status')->label('Status')

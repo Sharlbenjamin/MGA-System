@@ -182,12 +182,12 @@ class FileResource extends Resource
                         'Void' => 'gray',
                     }),
                 
-                Tables\Columns\TextColumn::make('gops_count')
+                Tables\Columns\TextColumn::make('gops_sum')
                     ->label('GOP')
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
-                    ->formatStateUsing(fn ($state) => $state > 0 ? '✓' : '✗')
-                    ->counts('gops', fn ($query) => $query->where('type', 'In')->where('status', '=', 'Sent')),
+                    ->formatStateUsing(fn ($state) => $state > 0 ? '€' . number_format($state, 2) : '€0.00')
+                    ->sum('gops', 'amount', fn ($query) => $query->where('type', 'In')),
                 
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')

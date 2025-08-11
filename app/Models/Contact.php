@@ -19,33 +19,10 @@ class Contact extends Model
         'city_id' => 'integer',
     ];
 
-    // Accessor for name field to convert comma-separated string to array
-    public function getNameAttribute($value)
-    {
-        if (is_string($value) && str_contains($value, ',')) {
-            return array_map('trim', explode(',', $value));
-        }
-        return [$value];
-    }
-
-    // Mutator for name field to convert array to comma-separated string
-    public function setNameAttribute($value)
-    {
-        if (is_array($value)) {
-            $this->attributes['name'] = implode(', ', $value);
-        } else {
-            $this->attributes['name'] = $value;
-        }
-    }
-
-    // Get name as string for display
+    // Get name as string for display (kept for backward compatibility)
     public function getNameStringAttribute()
     {
-        $names = $this->name;
-        if (is_array($names)) {
-            return implode(', ', $names);
-        }
-        return $names;
+        return $this->name;
     }
 
     public function contactable(): MorphTo
@@ -110,8 +87,8 @@ class Contact extends Model
             'Second Phone' => ['type' => 'phone', 'value' => $this->second_phone],
             'Email' => ['type' => 'email', 'value' => $this->email],
             'Second Email' => ['type' => 'email', 'value' => $this->second_email],
-            'WhatsApp' => ['type' => 'whatsapp', 'value' => $this->first_whatsapp],
-            'Second WhatsApp' => ['type' => 'whatsapp', 'value' => $this->second_whatsapp],
+            'first_whatsapp' => ['type' => 'whatsapp', 'value' => $this->first_whatsapp],
+            'second_whatsapp' => ['type' => 'whatsapp', 'value' => $this->second_whatsapp],
             default => null,
         };
     }
