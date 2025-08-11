@@ -82,15 +82,20 @@ class BillsWithoutDocumentsResource extends Resource
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('bill_google_link')->orWhere('bill_google_link', ''))
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('file.patient.name')
                     ->label('Patient')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('file.patient.client.company_name')
+                    ->label('Client')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Bill Name')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('total_amount')
@@ -109,15 +114,33 @@ class BillsWithoutDocumentsResource extends Resource
                         'Paid' => 'success',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'Draft' => 'Draft',
+                        'Sent' => 'Sent',
+                        'Unpaid' => 'Unpaid',
+                        'Partial' => 'Partial',
+                        'Paid' => 'Paid',
+                    ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('view_file')
+                    ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file))
+                    ->icon('heroicon-o-eye')
+                    ->label('View File'),
                 Action::make('upload_bill_doc')
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
-                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name}")
+                    ->modalHeading('Upload Bill Document')
+                    ->modalDescription('Upload the bill document for this record.')
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
@@ -136,16 +159,6 @@ class BillsWithoutDocumentsResource extends Resource
                             ->maxFiles(1),
                     ])
                     ->action(function (Bill $record, array $data) {
-                        // Add debugging to see which record is being processed
-                        Log::info('=== BILL UPLOAD ACTION TRIGGERED ===', [
-                            'record_id' => $record->id,
-                            'record_name' => $record->name,
-                            'file_reference' => $record->file->mga_reference ?? 'N/A',
-                            'patient_name' => $record->file->patient->name ?? 'N/A',
-                            'timestamp' => now()->toISOString(),
-                            'data_keys' => array_keys($data)
-                        ]);
-                        
                         try {
                             if (!isset($data['bill_document']) || empty($data['bill_document'])) {
                                 Notification::make()
