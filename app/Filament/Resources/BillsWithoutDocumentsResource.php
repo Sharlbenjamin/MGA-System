@@ -15,9 +15,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Services\UploadBillToGoogleDrive;
-use Filament\Forms\Components\FileUpload;
 use App\Services\GoogleDriveFolderService;
-use Filament\Tables\Columns\IconColumn;
 
 class BillsWithoutDocumentsResource extends Resource
 {
@@ -130,17 +128,13 @@ class BillsWithoutDocumentsResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\Action::make('view_file')
-                    ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file))
-                    ->icon('heroicon-o-eye')
-                    ->label('View File'),
                 Action::make('upload_bill_doc')
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Upload Bill Document')
-                    ->modalDescription('Upload the bill document for this record.')
+                    ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
+                    ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Bill: {$record->name}")
                     ->modalSubmitActionLabel('Upload Document')
                     ->form([
                         Forms\Components\FileUpload::make('bill_document')
@@ -251,26 +245,6 @@ class BillsWithoutDocumentsResource extends Resource
                                 ->send();
                         }
                     }),
-
-                Tables\Actions\Action::make('view_in_google_drive')
-                    ->icon('heroicon-o-link')
-                    ->label('View in Google Drive')
-                    ->color('info')
-                    ->visible(fn (Bill $record): bool => !empty($record->bill_google_link))
-                    ->url(fn (Bill $record): string => $record->bill_google_link)
-                    ->openUrlInNewTab(),
-
-                Tables\Actions\Action::make('view_file')
-                    ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file))
-                    ->icon('heroicon-o-eye')
-                    ->label('View File'),
-
-                Tables\Actions\Action::make('edit_bill')
-                    ->url(fn (Bill $record): string => route('filament.admin.resources.bills.edit', $record))
-                    ->icon('heroicon-o-pencil')
-                    ->label('Edit Bill')
-                    ->color('primary'),
-
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
