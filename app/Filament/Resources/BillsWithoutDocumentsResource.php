@@ -144,7 +144,6 @@ class BillsWithoutDocumentsResource extends Resource
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
                 Action::make('upload_bill_doc')
-                    ->id(fn ($record): string => "upload-bill-doc-{$record->id}")
                     ->label('Upload Bill Doc')
                     ->icon('heroicon-o-document-arrow-up')
                     ->color('success')
