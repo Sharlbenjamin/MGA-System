@@ -78,7 +78,25 @@ class BillsWithoutDocumentsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('bill_google_link')->orWhere('bill_google_link', ''))
+            ->modifyQueryUsing(function (Builder $query) {
+                $query->whereNull('bill_google_link')->orWhere('bill_google_link', '');
+                
+                // Add debugging to see what records are being loaded
+                \Log::info('BillsWithoutDocuments query executed', [
+                    'sql' => $query->toSql(),
+                    'bindings' => $query->getBindings()
+                ]);
+                
+                // Get the actual records to debug
+                $records = $query->get();
+                \Log::info('BillsWithoutDocuments records loaded', [
+                    'count' => $records->count(),
+                    'record_ids' => $records->pluck('id')->toArray(),
+                    'file_references' => $records->pluck('file.mga_reference')->toArray()
+                ]);
+                
+                return $query;
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')
@@ -120,6 +138,11 @@ class BillsWithoutDocumentsResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                // Add a debug column to show the record ID
+                Tables\Columns\TextColumn::make('id')
+                    ->label('Record ID')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -136,6 +159,43 @@ class BillsWithoutDocumentsResource extends Resource
                     ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file))
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
+                Action::make('test_modal')
+                    ->label('Test Modal')
+                    ->icon('heroicon-o-bug')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn (Bill $record): string => "Test Modal for {$record->file->mga_reference}")
+                    ->modalDescription(fn (Bill $record): string => "This is a test modal for record ID: {$record->id}")
+                    ->modalSubmitActionLabel('Test')
+                    ->uniqueId(fn (Bill $record): string => "test_modal_{$record->id}")
+                    ->action(function (Bill $record) {
+                        Log::info('Test modal action triggered for record:', [
+                            'record_id' => $record->id,
+                            'file_reference' => $record->file->mga_reference
+                        ]);
+                        
+                        Notification::make()
+                            ->success()
+                            ->title('Test Modal Working')
+                            ->body("Modal for record {$record->id} is working correctly!")
+                            ->send();
+                    }),
+                Action::make('debug_record')
+                    ->label('Debug Record')
+                    ->icon('heroicon-o-information-circle')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Debug Information')
+                    ->modalDescription(fn (Bill $record): string => "Record ID: {$record->id}\nFile Reference: {$record->file->mga_reference}\nPatient: {$record->file->patient->name}")
+                    ->modalSubmitActionLabel('OK')
+                    ->uniqueId(fn (Bill $record): string => "debug_record_{$record->id}")
+                    ->action(function (Bill $record) {
+                        Notification::make()
+                            ->info()
+                            ->title('Debug Info')
+                            ->body("Record ID: {$record->id} - File: {$record->file->mga_reference}")
+                            ->send();
+                    }),
                 Action::make('upload_bill_doc')
                     ->label('Upload Bill Document')
                     ->icon('heroicon-o-document-arrow-up')
@@ -144,6 +204,9 @@ class BillsWithoutDocumentsResource extends Resource
                     ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
                     ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Upload the bill document to Google Drive.")
                     ->modalSubmitActionLabel('Upload')
+                    ->uniqueId(fn (Bill $record): string => "upload_bill_doc_{$record->id}")
+                    ->modalWidth('lg')
+                    ->closeModalByClickingAway(false)
                     ->form([
                         Forms\Components\FileUpload::make('bill_relation_document')
                             ->label('Upload Bill Document')
@@ -162,6 +225,25 @@ class BillsWithoutDocumentsResource extends Resource
                     ])
                     ->action(function (Bill $record, array $data) {
                         try {
+                            // Add debugging information
+                            Log::info('Upload bill action triggered for record:', [
+                                'record_id' => $record->id,
+                                'file_reference' => $record->file->mga_reference,
+                                'patient_name' => $record->file->patient->name,
+                                'data_keys' => array_keys($data),
+                                'action_name' => 'upload_bill_doc',
+                                'timestamp' => now()->toISOString()
+                            ]);
+                            
+                            // Also log the record details to ensure it's the correct one
+                            Log::info('Record details:', [
+                                'id' => $record->id,
+                                'name' => $record->name,
+                                'file_id' => $record->file_id,
+                                'provider_id' => $record->provider_id,
+                                'branch_id' => $record->branch_id
+                            ]);
+                            
                             if (!isset($data['bill_relation_document']) || empty($data['bill_relation_document'])) {
                                 Notification::make()
                                     ->danger()
@@ -254,11 +336,6 @@ class BillsWithoutDocumentsResource extends Resource
                                 ->send();
                         }
                     }),
-                Tables\Actions\Action::make('upload_doc')
-                    ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file) . '#bills')
-                    ->icon('heroicon-o-cloud-arrow-up')
-                    ->label('Upload Doc')
-                    ->color('success'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
