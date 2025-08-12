@@ -156,46 +156,7 @@ class ShouldBePaidResource extends Resource
                         'Unpaid' => 'Unpaid',
                         'Partial' => 'Partial',
                     ]),
-                // 1. Overdue Bills with status unpaid
-                Tables\Filters\Filter::make('overdue_unpaid')
-                    ->label('Overdue Bills (Unpaid/Partial)')
-                    ->query(function (Builder $query): Builder {
-                        return $query->where('due_date', '<', now());
-                    })
-                    ->toggle()
-                    ->persist()
-                    ->indicateUsing(function (): array {
-                        return ['overdue_unpaid' => 'Overdue Bills (Unpaid/Partial)'];
-                    }),
-                // 2. BK Received Bills - Unpaid bills with files that have paid invoices
-                Tables\Filters\Filter::make('bk_received')
-                    ->label('BK Received Bills')
-                    ->query(function (Builder $query): Builder {
-                        return $query->whereHas('file', function (Builder $fileQuery) {
-                                       $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
-                                           $invoiceQuery->where('status', 'Paid');
-                                       });
-                                   });
-                    })
-                    ->toggle()
-                    ->persist()
-                    ->indicateUsing(function (): array {
-                        return ['bk_received' => 'BK Received Bills'];
-                    }),
-                // 3. Missing Documents - Bills without bill_google_link
-                Tables\Filters\Filter::make('missing_documents')
-                    ->label('Missing Documents')
-                    ->query(function (Builder $query): Builder {
-                        return $query->where(function (Builder $subQuery) {
-                            $subQuery->whereNull('bill_google_link')
-                                   ->orWhere('bill_google_link', '');
-                        });
-                    })
-                    ->toggle()
-                    ->persist()
-                    ->indicateUsing(function (): array {
-                        return ['missing_documents' => 'Missing Documents'];
-                    }),
+                // Temporarily removed custom filters to test basic functionality
 
             ])
             ->actions([
