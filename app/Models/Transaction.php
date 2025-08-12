@@ -200,6 +200,31 @@ class Transaction extends Model
     }
 
     /**
+     * Attach bills to transaction without marking them as paid (for draft transactions)
+     */
+    public function attachBillsForDraft(array $billIds)
+    {
+        foreach ($billIds as $billId) {
+            $bill = Bill::find($billId);
+            if ($bill) {
+                // Check if the bill is already attached
+                if (!$this->bills()->where('bill_id', $bill->id)->exists()) {
+                    // Attach with the remaining amount as paid_amount (not the full amount)
+                    $remainingAmount = $bill->total_amount - $bill->paid_amount;
+                    $this->bills()->attach($bill->id, [
+                        'amount_paid' => $remainingAmount
+                    ]);
+                    
+                    // Don't update the bill status - keep it as is
+                }
+            }
+        }
+
+        // Recalculate bank charges after attaching bills
+        $this->calculateBankCharges();
+    }
+
+    /**
      * Check if the attachment is a Google Drive link
      */
     public function isGoogleDriveAttachment(): bool
@@ -238,5 +263,39 @@ class Transaction extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Finalize the transaction and mark attached bills as paid
+     */
+    public function finalizeTransaction()
+    {
+        if ($this->status !== 'Draft') {
+            throw new \Exception('Only draft transactions can be finalized');
+        }
+
+        // Mark all attached bills as paid
+        $this->bills()->each(function ($bill) {
+            $amountPaid = $bill->pivot->amount_paid ?? 0;
+            
+            // Update the bill's paid amount
+            $bill->paid_amount += $amountPaid;
+            $bill->payment_date = $this->date;
+            
+            // Check if the bill is now fully paid
+            if ($bill->paid_amount >= $bill->total_amount) {
+                $bill->status = 'Paid';
+            } else {
+                $bill->status = 'Partial';
+            }
+            
+            $bill->save();
+        });
+
+        // Update transaction status
+        $this->status = 'Completed';
+        $this->save();
+
+        return $this;
     }
 }

@@ -257,4 +257,20 @@ class Bill extends Model
     {
         return $this->branch?->branch_name ?? 'No Branch';
     }
+
+    /**
+     * Get the provider's bank account IBAN
+     */
+    public function getProviderBankIbanAttribute(): string
+    {
+        return $this->provider?->bankAccounts?->first()?->iban ?? 'No IBAN';
+    }
+
+    /**
+     * Get the provider's bank account details
+     */
+    public function getProviderBankAccountAttribute()
+    {
+        return $this->provider?->bankAccounts?->first();
+    }
 }

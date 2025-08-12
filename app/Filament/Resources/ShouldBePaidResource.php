@@ -7,14 +7,17 @@ use App\Filament\Resources\BillResource\Pages\EditBill;
 use App\Models\Bill;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Components;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Grouping\Group;
+use Illuminate\Support\Facades\DB;
 
 class ShouldBePaidResource extends Resource
 {
@@ -47,7 +50,7 @@ class ShouldBePaidResource extends Resource
     {
         return parent::getEloquentQuery()
             ->whereIn('status', ['Unpaid', 'Partial'])
-            ->with(['provider', 'branch', 'file.providerBranch.provider'])
+            ->with(['provider.bankAccounts', 'branch', 'file.providerBranch.provider'])
             ->orderBy('due_date', 'asc');
     }
 
@@ -71,7 +74,7 @@ class ShouldBePaidResource extends Resource
                     ->collapsible(),
             ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
-                'provider',
+                'provider.bankAccounts',
                 'branch',
                 'file'
             ]))
@@ -85,6 +88,21 @@ class ShouldBePaidResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->label('Branch'),
+                Tables\Columns\TextColumn::make('provider_bank_iban')
+                    ->label('Provider Bank IBAN')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('IBAN copied to clipboard')
+                    ->copyMessageDuration(1500)
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Providers with Bank Accounts')
+                            ->using(function ($query) {
+                                return $query->whereHas('provider.bankAccounts')->count();
+                            })
+                            ->formatStateUsing(fn ($state) => $state . ' providers')
+                    ),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->searchable()
@@ -102,7 +120,14 @@ class ShouldBePaidResource extends Resource
                     ->money('EUR')
                     ->sortable()
                     ->state(fn (Bill $record) => $record->total_amount - $record->paid_amount)
-                    ->summarize(Sum::make('remaining_amount')->label('Total Outstanding')->prefix('€')),
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total Outstanding')
+                            ->using(function ($query) {
+                                return $query->sum(DB::raw('total_amount - paid_amount'));
+                            })
+                            ->formatStateUsing(fn ($state) => '€' . number_format($state, 2))
+                    ),
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(),
                 Tables\Columns\BadgeColumn::make('bill_google_link')
                     ->label('Google Drive')
@@ -161,6 +186,15 @@ class ShouldBePaidResource extends Resource
                     ->indicateUsing(function (): array {
                         return ['missing_documents' => 'Missing Documents'];
                     }),
+                // 4. Providers with Bank Accounts - Bills from providers that have bank accounts
+                Tables\Filters\Filter::make('providers_with_bank_accounts')
+                    ->label('Providers with Bank Accounts')
+                    ->query(function (Builder $query): Builder {
+                        return $query->whereHas('provider.bankAccounts');
+                    })
+                    ->indicateUsing(function (): array {
+                        return ['providers_with_bank_accounts' => 'Providers with Bank Accounts'];
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -171,6 +205,159 @@ class ShouldBePaidResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\BulkAction::make('create_payment')
+                    ->label('Create Payment Transaction')
+                    ->icon('heroicon-o-currency-euro')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Create Payment Transaction')
+                    ->modalDescription('This will create a new outflow transaction for the selected bills. You can review and modify the details before saving.')
+                    ->modalSubmitActionLabel('Create Transaction')
+                    ->form([
+                        Forms\Components\Select::make('related_type')
+                            ->label('Related Type')
+                            ->options([
+                                'Provider' => 'Provider',
+                                'Branch' => 'Branch',
+                            ])
+                            ->default('Provider')
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Clear related_id when type changes
+                                $set('related_id', null);
+                            }),
+                        Forms\Components\Select::make('related_id')
+                            ->label('Related Provider/Branch')
+                            ->options(function ($get, $records) {
+                                $relatedType = $get('related_type');
+                                if (!$relatedType || !$records) return [];
+                                
+                                // Get unique providers/branches from selected bills
+                                $billIds = collect($records)->pluck('id');
+                                $bills = \App\Models\Bill::whereIn('id', $billIds)
+                                    ->with(['provider.bankAccounts', 'branch'])
+                                    ->get();
+                                
+                                if ($relatedType === 'Provider') {
+                                    return $bills->pluck('provider')
+                                        ->filter()
+                                        ->unique('id')
+                                        ->mapWithKeys(function ($provider) {
+                                            $iban = $provider->bankAccounts->first()?->iban ?? 'No IBAN';
+                                            return [$provider->id => "{$provider->name} ({$iban})"];
+                                        });
+                                } else {
+                                    return $bills->pluck('branch')
+                                        ->filter()
+                                        ->unique('id')
+                                        ->pluck('branch_name', 'id');
+                                }
+                            })
+                            ->searchable()
+                            ->required()
+                            ->disabled(fn ($get) => !$get('related_type')),
+                        Forms\Components\TextInput::make('name')
+                            ->label('Transaction Name')
+                            ->required()
+                            ->default(function ($records) {
+                                if (!$records) return '';
+                                
+                                $billIds = collect($records)->pluck('id');
+                                $bills = \App\Models\Bill::whereIn('id', $billIds)
+                                    ->with('file')
+                                    ->get();
+                                
+                                $fileReferences = $bills->pluck('file.mga_reference')
+                                    ->filter()
+                                    ->unique()
+                                    ->take(3); // Limit to first 3 references
+                                
+                                $references = $fileReferences->implode(', ');
+                                if ($fileReferences->count() > 3) {
+                                    $references .= ' and ' . ($fileReferences->count() - 3) . ' more';
+                                }
+                                
+                                return 'Transaction on ' . now()->format('Y-m-d') . ' for ' . $references;
+                            }),
+                        Forms\Components\TextInput::make('amount')
+                            ->label('Total Amount')
+                            ->numeric()
+                            ->required()
+                            ->default(function ($records) {
+                                if (!$records) return 0;
+                                
+                                $billIds = collect($records)->pluck('id');
+                                $bills = \App\Models\Bill::whereIn('id', $billIds)->get();
+                                
+                                return $bills->sum(function ($bill) {
+                                    return $bill->total_amount - $bill->paid_amount;
+                                });
+                            })
+                            ->prefix('€'),
+                        Forms\Components\DatePicker::make('date')
+                            ->label('Transaction Date')
+                            ->default(now())
+                            ->required(),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Notes')
+                            ->rows(3)
+                            ->placeholder('Optional notes for this transaction'),
+                        Forms\Components\Placeholder::make('provider_iban_info')
+                            ->label('Provider Bank Information')
+                            ->content(function ($records) {
+                                if (!$records) return 'No bills selected';
+                                
+                                $billIds = collect($records)->pluck('id');
+                                $bills = \App\Models\Bill::whereIn('id', $billIds)
+                                    ->with(['provider.bankAccounts'])
+                                    ->get();
+                                
+                                $providers = $bills->pluck('provider')
+                                    ->filter()
+                                    ->unique('id');
+                                
+                                $ibanInfo = [];
+                                foreach ($providers as $provider) {
+                                    $bankAccount = $provider->bankAccounts->first();
+                                    if ($bankAccount) {
+                                        $ibanInfo[] = "{$provider->name}: {$bankAccount->iban}";
+                                    } else {
+                                        $ibanInfo[] = "{$provider->name}: No IBAN available";
+                                    }
+                                }
+                                
+                                return implode("\n", $ibanInfo);
+                            })
+                            ->visible(fn ($records) => !empty($records)),
+                    ])
+                    ->action(function ($data, $records) {
+                        // Create the transaction
+                        $transaction = new \App\Models\Transaction();
+                        $transaction->type = 'Outflow';
+                        $transaction->related_type = $data['related_type'];
+                        $transaction->related_id = $data['related_id'];
+                        $transaction->name = $data['name'];
+                        $transaction->amount = $data['amount'];
+                        $transaction->date = $data['date'];
+                        $transaction->notes = $data['notes'] ?? null;
+                        $transaction->status = 'Draft'; // Start as draft so user can review
+                        $transaction->save();
+                        
+                        // Attach the selected bills to the transaction without marking them as paid
+                        $billIds = collect($records)->pluck('id');
+                        $transaction->attachBillsForDraft($billIds);
+                        
+                        // Show success notification
+                        \Filament\Notifications\Notification::make()
+                            ->title('Transaction Created')
+                            ->body('Payment transaction has been created successfully. You can review and finalize it.')
+                            ->success()
+                            ->send();
+                        
+                        // Redirect to the transaction edit page
+                        return redirect()->route('filament.admin.resources.transactions.edit', ['record' => $transaction->id]);
+                    }),
             ]);
     }
 

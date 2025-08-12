@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use App\Exports\ClientBalanceExport;
 use Maatwebsite\Excel\Facades\Excel;
+use Filament\Tables\Columns\Summarizers\Sum;
 
 class InvoiceRelationManager extends RelationManager
 {
@@ -53,9 +54,22 @@ class InvoiceRelationManager extends RelationManager
                     'Unpaid' => 'danger',
                 }),
                 Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
-                Tables\Columns\TextColumn::make('total_amount')->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('paid_amount')->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('Remaining_Amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->sortable()->searchable()->money('EUR'),
+                Tables\Columns\TextColumn::make('total_amount')
+                    ->sortable()
+                    ->searchable()
+                    ->money('EUR')
+                    ->summarize(Sum::make()->label('Total Amount')->money('EUR')),
+                Tables\Columns\TextColumn::make('paid_amount')
+                    ->sortable()
+                    ->searchable()
+                    ->money('EUR')
+                    ->summarize(Sum::make()->label('Total Paid')->money('EUR')),
+                Tables\Columns\TextColumn::make('Remaining_Amount')
+                    ->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)
+                    ->sortable()
+                    ->searchable()
+                    ->money('EUR')
+                    ->summarize(Sum::make()->label('Total Remaining')->money('EUR')),
                 Tables\Columns\TextColumn::make('invoice_google_link')
                     ->label('PDF')
                     ->weight('underline')->color('info')
@@ -65,6 +79,7 @@ class InvoiceRelationManager extends RelationManager
             ])
             ->filters([
                 SelectFilter::make('status')
+                    ->multiple()
                     ->options([
                         'Draft' => 'Draft',
                         'Posted' => 'Posted',

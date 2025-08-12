@@ -18,6 +18,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -183,6 +184,13 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('amount'),
                 Tables\Columns\TextColumn::make('type')->searchable()
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'Draft' => 'gray',
+                        'Completed' => 'success',
+                        'Pending' => 'warning',
+                    ])
+                    ->default('Completed'),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('client_reference')
                     ->label('Client Reference')
@@ -244,6 +252,7 @@ class TransactionResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
+                Tables\Filters\SelectFilter::make('status')->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])->multiple(),
                 Tables\Filters\SelectFilter::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->multiple()->preload(),
                 Tables\Filters\Filter::make('missing_documents')
                     ->label('Missed Documents')
@@ -385,6 +394,33 @@ class TransactionResource extends Resource
                         }
                     }),
                 Tables\Actions\EditAction::make(),
+                Action::make('finalizeTransaction')
+                    ->label('Finalize Transaction')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Finalize Transaction')
+                    ->modalDescription('This will mark all attached bills as paid and complete the transaction. This action cannot be undone.')
+                    ->modalSubmitActionLabel('Finalize')
+                    ->visible(fn ($record) => $record->status === 'Draft')
+                    ->action(function ($record) {
+                        try {
+                            $record->finalizeTransaction();
+                            
+                            Notification::make()
+                                ->success()
+                                ->title('Transaction Finalized')
+                                ->body('Transaction has been finalized and bills have been marked as paid.')
+                                ->send();
+                                
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Finalization Failed')
+                                ->body('Error finalizing transaction: ' . $e->getMessage())
+                                ->send();
+                        }
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
