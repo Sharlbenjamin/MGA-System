@@ -125,10 +125,14 @@ class ShouldBePaidResource extends Resource
                         if (!$firstInvoice) {
                             return 'BK Not Received';
                         }
-                        return $firstInvoice->status === 'Paid' ? 'BK Received' : 'BK Not Received';
+                        return $firstInvoice->status;
                     })
                     ->colors([
-                        'BK Received' => 'success',
+                        'Paid' => 'success',
+                        'Unpaid' => 'danger',
+                        'Partial' => 'warning',
+                        'Draft' => 'gray',
+                        'Sent' => 'info',
                         'BK Not Received' => 'danger',
                     ])
                     ->size('sm')
