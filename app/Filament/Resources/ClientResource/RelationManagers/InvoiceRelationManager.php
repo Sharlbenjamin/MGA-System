@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 use App\Exports\ClientBalanceExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 
 class InvoiceRelationManager extends RelationManager
 {
@@ -69,7 +70,12 @@ class InvoiceRelationManager extends RelationManager
                     ->sortable()
                     ->searchable()
                     ->money('EUR')
-                    ->summarize(Sum::make()->label('Total Remaining')->state(fn ($query) => $query->sum('total_amount') - $query->sum('paid_amount'))->money('EUR')),
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total Remaining')
+                            ->using(fn ($query) => $query->sum('total_amount') - $query->sum('paid_amount'))
+                            ->money('EUR')
+                    ),
                 Tables\Columns\TextColumn::make('invoice_google_link')
                     ->label('PDF')
                     ->weight('underline')->color('info')

@@ -130,8 +130,7 @@ class ShouldBePaidResource extends Resource
                 Tables\Columns\BadgeColumn::make('has_iban')
                     ->label('Has IBAN')
                     ->state(fn (Bill $record): string => $record->provider_bank_iban !== 'No IBAN' ? 'Yes' : 'No')
-                    ->color(fn (Bill $record): string => $record->provider_bank_iban !== 'No IBAN' ? 'success' : 'danger')
-                    ->summarize(Count::make()->label('Bills with IBAN')),
+                    ->color(fn (Bill $record): string => $record->provider_bank_iban !== 'No IBAN' ? 'success' : 'danger'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('provider')
