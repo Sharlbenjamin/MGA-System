@@ -87,14 +87,6 @@ class BillsWithoutDocumentsResource extends Resource
                     'bindings' => $query->getBindings()
                 ]);
                 
-                // Get the actual records to debug
-                $records = $query->get();
-                \Log::info('BillsWithoutDocuments records loaded', [
-                    'count' => $records->count(),
-                    'record_ids' => $records->pluck('id')->toArray(),
-                    'file_references' => $records->pluck('file.mga_reference')->toArray()
-                ]);
-                
                 return $query;
             })
             ->columns([
@@ -138,11 +130,6 @@ class BillsWithoutDocumentsResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                // Add a debug column to show the record ID
-                Tables\Columns\TextColumn::make('id')
-                    ->label('Record ID')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -167,7 +154,6 @@ class BillsWithoutDocumentsResource extends Resource
                     ->modalHeading(fn (Bill $record): string => "Test Modal for {$record->file->mga_reference}")
                     ->modalDescription(fn (Bill $record): string => "This is a test modal for record ID: {$record->id}")
                     ->modalSubmitActionLabel('Test')
-                    ->uniqueId(fn (Bill $record): string => "test_modal_{$record->id}")
                     ->action(function (Bill $record) {
                         Log::info('Test modal action triggered for record:', [
                             'record_id' => $record->id,
@@ -188,7 +174,6 @@ class BillsWithoutDocumentsResource extends Resource
                     ->modalHeading('Debug Information')
                     ->modalDescription(fn (Bill $record): string => "Record ID: {$record->id}\nFile Reference: {$record->file->mga_reference}\nPatient: {$record->file->patient->name}")
                     ->modalSubmitActionLabel('OK')
-                    ->uniqueId(fn (Bill $record): string => "debug_record_{$record->id}")
                     ->action(function (Bill $record) {
                         Notification::make()
                             ->info()
@@ -204,10 +189,27 @@ class BillsWithoutDocumentsResource extends Resource
                     ->modalHeading(fn (Bill $record): string => "Upload Bill for {$record->file->mga_reference}")
                     ->modalDescription(fn (Bill $record): string => "Patient: {$record->file->patient->name} - Upload the bill document to Google Drive.")
                     ->modalSubmitActionLabel('Upload')
-                    ->uniqueId(fn (Bill $record): string => "upload_bill_doc_{$record->id}")
                     ->modalWidth('lg')
                     ->closeModalByClickingAway(false)
                     ->form([
+                        Forms\Components\Select::make('selected_bill_id')
+                            ->label('Select Bill to Upload')
+                            ->options(function () {
+                                // Get all bills without documents
+                                $bills = \App\Models\Bill::whereNull('bill_google_link')
+                                    ->orWhere('bill_google_link', '')
+                                    ->with(['file.patient', 'provider', 'branch'])
+                                    ->get();
+                                
+                                return $bills->mapWithKeys(function ($bill) {
+                                    $label = "ID: {$bill->id} - {$bill->file->mga_reference} - {$bill->file->patient->name} - {$bill->name}";
+                                    return [$bill->id => $label];
+                                });
+                            })
+                            ->searchable()
+                            ->required()
+                            ->default(fn (Bill $record) => $record->id)
+                            ->helperText('Choose which bill to upload the document for'),
                         Forms\Components\FileUpload::make('bill_relation_document')
                             ->label('Upload Bill Document')
                             ->acceptedFileTypes(['application/pdf', 'image/*'])
@@ -225,23 +227,37 @@ class BillsWithoutDocumentsResource extends Resource
                     ])
                     ->action(function (Bill $record, array $data) {
                         try {
+                            // Get the selected bill
+                            $selectedBillId = $data['selected_bill_id'] ?? $record->id;
+                            $selectedBill = \App\Models\Bill::with(['file.patient'])->find($selectedBillId);
+                            
+                            if (!$selectedBill) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Bill not found')
+                                    ->body('The selected bill could not be found.')
+                                    ->send();
+                                return;
+                            }
+                            
                             // Add debugging information
-                            Log::info('Upload bill action triggered for record:', [
-                                'record_id' => $record->id,
-                                'file_reference' => $record->file->mga_reference,
-                                'patient_name' => $record->file->patient->name,
+                            Log::info('Upload bill action triggered:', [
+                                'original_record_id' => $record->id,
+                                'selected_bill_id' => $selectedBillId,
+                                'selected_bill_file_reference' => $selectedBill->file->mga_reference,
+                                'selected_bill_patient_name' => $selectedBill->file->patient->name,
                                 'data_keys' => array_keys($data),
                                 'action_name' => 'upload_bill_doc',
                                 'timestamp' => now()->toISOString()
                             ]);
                             
                             // Also log the record details to ensure it's the correct one
-                            Log::info('Record details:', [
-                                'id' => $record->id,
-                                'name' => $record->name,
-                                'file_id' => $record->file_id,
-                                'provider_id' => $record->provider_id,
-                                'branch_id' => $record->branch_id
+                            Log::info('Selected bill details:', [
+                                'id' => $selectedBill->id,
+                                'name' => $selectedBill->name,
+                                'file_id' => $selectedBill->file_id,
+                                'provider_id' => $selectedBill->provider_id,
+                                'branch_id' => $selectedBill->branch_id
                             ]);
                             
                             if (!isset($data['bill_relation_document']) || empty($data['bill_relation_document'])) {
@@ -290,24 +306,24 @@ class BillsWithoutDocumentsResource extends Resource
                                 
                                 // Generate the proper filename format
                                 $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
-                                $fileName = 'Bill ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
+                                $fileName = 'Bill ' . $selectedBill->file->mga_reference . ' - ' . $selectedBill->file->patient->name . '.' . $originalExtension;
                                 Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
                                 // Upload to Google Drive using the service
                                 $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
-                                $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $record);
+                                $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $selectedBill);
                                 
                                 if ($uploadResult) {
                                     Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
                                     
-                                    // Update the bill record with the Google Drive link
-                                    $record->bill_google_link = $uploadResult;
-                                    $record->save();
+                                    // Update the selected bill record with the Google Drive link
+                                    $selectedBill->bill_google_link = $uploadResult;
+                                    $selectedBill->save();
                                     
                                     Notification::make()
                                         ->success()
                                         ->title('Bill document uploaded successfully')
-                                        ->body('Bill document has been uploaded to Google Drive.')
+                                        ->body("Bill document has been uploaded to Google Drive for: {$selectedBill->file->mga_reference}")
                                         ->send();
                                 } else {
                                     Log::error('Failed to upload bill to Google Drive');
