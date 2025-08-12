@@ -75,11 +75,7 @@ class ShouldBePaidResource extends Resource
                     ->collapsible()
                     ->getTitleFromRecordUsing(fn (Bill $record): string => $record->branch?->branch_name ?? 'No Branch'),
             ])
-            ->modifyQueryUsing(fn (Builder $query) => $query->with([
-                'provider.bankAccounts',
-                'branch',
-                'file.invoices'
-            ]))
+            // Removed modifyQueryUsing as it conflicts with getEloquentQuery
             ->defaultSort('due_date', 'asc')
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')
