@@ -66,12 +66,14 @@ class ShouldBePaidResource extends Resource
     {
         return $table
             ->groups([
-                Group::make('provider.name')
+                Group::make('provider_id')
                     ->label('Provider')
-                    ->collapsible(),
-                Group::make('branch.branch_name')
+                    ->collapsible()
+                    ->getTitleFromRecordUsing(fn (Bill $record): string => $record->provider?->name ?? 'No Provider'),
+                Group::make('branch_id')
                     ->label('Branch')
-                    ->collapsible(),
+                    ->collapsible()
+                    ->getTitleFromRecordUsing(fn (Bill $record): string => $record->branch?->branch_name ?? 'No Branch'),
             ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
                 'provider.bankAccounts',
@@ -121,14 +123,18 @@ class ShouldBePaidResource extends Resource
                             ->formatStateUsing(fn ($state) => '€' . number_format($state, 2))
                     ),
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(),
-                Tables\Columns\BadgeColumn::make('invoice_status')
-                    ->label('Invoice Status')
+                Tables\Columns\BadgeColumn::make('bk_status')
+                    ->label('BK Status')
+                    ->state(function (Bill $record): string {
+                        $firstInvoice = $record->file?->invoices?->first();
+                        if (!$firstInvoice) {
+                            return 'BK Not Received';
+                        }
+                        return $firstInvoice->status === 'Paid' ? 'BK Received' : 'BK Not Received';
+                    })
                     ->colors([
-                        'Unpaid' => 'danger',
-                        'Partial' => 'warning',
-                        'Paid' => 'success',
-                        'Draft' => 'gray',
-                        'No Invoice' => 'gray',
+                        'BK Received' => 'success',
+                        'BK Not Received' => 'danger',
                     ]),
                 Tables\Columns\BadgeColumn::make('bill_google_link')
                     ->label('Google Drive')

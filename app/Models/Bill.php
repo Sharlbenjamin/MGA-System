@@ -275,10 +275,14 @@ class Bill extends Model
     }
 
     /**
-     * Get the first invoice status for this bill's file
+     * Get the BK status for this bill's file
      */
-    public function getInvoiceStatusAttribute(): string
+    public function getBkStatusAttribute(): string
     {
-        return $this->file?->invoices?->first()?->status ?? 'No Invoice';
+        $firstInvoice = $this->file?->invoices?->first();
+        if (!$firstInvoice) {
+            return 'BK Not Received';
+        }
+        return $firstInvoice->status === 'Paid' ? 'BK Received' : 'BK Not Received';
     }
 }
