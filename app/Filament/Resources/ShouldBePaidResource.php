@@ -130,7 +130,9 @@ class ShouldBePaidResource extends Resource
                     ->colors([
                         'BK Received' => 'success',
                         'BK Not Received' => 'danger',
-                    ]),
+                    ])
+                    ->size('sm')
+                    ->extraAttributes(['class' => 'font-semibold']),
                 Tables\Columns\BadgeColumn::make('bill_google_link')
                     ->label('Google Drive')
                     ->state(fn (Bill $record): string => $record->bill_google_link ? 'Linked' : 'Missing')
@@ -155,7 +157,43 @@ class ShouldBePaidResource extends Resource
                         'Unpaid' => 'Unpaid',
                         'Partial' => 'Partial',
                     ]),
-                // Temporarily removed custom filters to test basic functionality
+                // 1. Overdue Bills with status unpaid
+                Tables\Filters\Filter::make('overdue_unpaid')
+                    ->label('Overdue Bills (Unpaid/Partial)')
+                    ->query(function (Builder $query): Builder {
+                        return $query->where('due_date', '<', now());
+                    })
+                    ->toggle()
+                    ->indicateUsing(function (): array {
+                        return ['overdue_unpaid' => 'Overdue Bills (Unpaid/Partial)'];
+                    }),
+                // 2. BK Received Bills - Unpaid bills with files that have paid invoices
+                Tables\Filters\Filter::make('bk_received')
+                    ->label('BK Received Bills')
+                    ->query(function (Builder $query): Builder {
+                        return $query->whereHas('file', function (Builder $fileQuery) {
+                                       $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
+                                           $invoiceQuery->where('status', 'Paid');
+                                       });
+                                   });
+                    })
+                    ->toggle()
+                    ->indicateUsing(function (): array {
+                        return ['bk_received' => 'BK Received Bills'];
+                    }),
+                // 3. Missing Documents - Bills without bill_google_link
+                Tables\Filters\Filter::make('missing_documents')
+                    ->label('Missing Documents')
+                    ->query(function (Builder $query): Builder {
+                        return $query->where(function (Builder $subQuery) {
+                            $subQuery->whereNull('bill_google_link')
+                                   ->orWhere('bill_google_link', '');
+                        });
+                    })
+                    ->toggle()
+                    ->indicateUsing(function (): array {
+                        return ['missing_documents' => 'Missing Documents'];
+                    }),
 
             ])
             ->actions([
