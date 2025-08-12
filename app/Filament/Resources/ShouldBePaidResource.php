@@ -50,8 +50,7 @@ class ShouldBePaidResource extends Resource
     {
         return parent::getEloquentQuery()
             ->whereIn('status', ['Unpaid', 'Partial'])
-            ->with(['provider.bankAccounts', 'branch', 'file.providerBranch.provider', 'file.invoices'])
-            ->orderBy('due_date', 'asc');
+            ->with(['provider.bankAccounts', 'branch', 'file.providerBranch.provider', 'file.invoices']);
     }
 
     public static function form(Form $form): Form
