@@ -78,7 +78,7 @@ class DebugProviderGrouping extends Command
         $this->info("\n=== Testing Filament Grouping Logic ===");
         
         $groupedByProviderName = $bills->groupBy(function ($bill) {
-            return $bill->provider?->name ?? 'No Provider';
+            return $bill->provider ? $bill->provider->name : 'No Provider';
         });
         
         $this->info("Groups by provider name: " . $groupedByProviderName->count());
