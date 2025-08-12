@@ -47,6 +47,7 @@ class ShouldBePaidResource extends Resource
     {
         return parent::getEloquentQuery()
             ->whereIn('status', ['Unpaid', 'Partial'])
+            ->with(['provider', 'branch', 'file.providerBranch.provider'])
             ->orderBy('due_date', 'asc');
     }
 
@@ -62,13 +63,28 @@ class ShouldBePaidResource extends Resource
     {
         return $table
             ->groups([
-                Group::make('provider.name')->label('Provider')->collapsible(),
-                Group::make('branch.branch_name')->label('Branch')->collapsible(),
+                Group::make('provider_name')
+                    ->label('Provider')
+                    ->collapsible(),
+                Group::make('branch_name')
+                    ->label('Branch')
+                    ->collapsible(),
             ])
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'provider',
+                'branch',
+                'file'
+            ]))
             ->defaultSort('due_date', 'asc')
             ->columns([
-                Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
-                Tables\Columns\TextColumn::make('branch.branch_name')->searchable()->sortable()->label('Branch'),
+                Tables\Columns\TextColumn::make('provider_name')
+                    ->searchable()
+                    ->sortable()
+                    ->label('Provider'),
+                Tables\Columns\TextColumn::make('branch_name')
+                    ->searchable()
+                    ->sortable()
+                    ->label('Branch'),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->searchable()
@@ -77,21 +93,35 @@ class ShouldBePaidResource extends Resource
                     ->openUrlInNewTab()
                     ->color(fn (Bill $record) => $record->file?->google_drive_link ? 'primary' : 'gray'),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
-                Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid'])->summarize(Count::make('status')->label('Number of Bills')),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors(['danger' => 'Unpaid', 'warning' => 'Partial'])
+                    ->summarize(Count::make()->label('Total Bills')),
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
-                Tables\Columns\TextColumn::make('remaining_amount')->money('EUR')->sortable()->state(fn (Bill $record) => $record->total_amount - $record->paid_amount),
+                Tables\Columns\TextColumn::make('remaining_amount')
+                    ->money('EUR')
+                    ->sortable()
+                    ->state(fn (Bill $record) => $record->total_amount - $record->paid_amount)
+                    ->summarize(Sum::make('remaining_amount')->label('Total Outstanding')->prefix('€')),
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(),
                 Tables\Columns\BadgeColumn::make('bill_google_link')
                     ->label('Google Drive')
                     ->state(fn (Bill $record): string => $record->bill_google_link ? 'Linked' : 'Missing')
                     ->color(fn (Bill $record): string => $record->bill_google_link ? 'success' : 'danger')
-                    ->summarize(Count::make('bill_google_link')->label('Total Bills'))
+                    ->summarize(Count::make()->label('Total Bills'))
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('provider.name')->relationship('provider', 'name')->label('Provider')->searchable()->multiple(),
-                Tables\Filters\SelectFilter::make('branch.branch_name')->relationship('branch', 'branch_name')->label('Branch')->searchable()->multiple(),
+                Tables\Filters\SelectFilter::make('provider')
+                    ->relationship('provider', 'name')
+                    ->label('Provider')
+                    ->searchable()
+                    ->multiple(),
+                Tables\Filters\SelectFilter::make('branch')
+                    ->relationship('branch', 'branch_name')
+                    ->label('Branch')
+                    ->searchable()
+                    ->multiple(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Unpaid' => 'Unpaid',

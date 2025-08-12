@@ -223,4 +223,38 @@ class Bill extends Model
         }
         return $this->due_date->isPast();
     }
+
+    /**
+     * Ensure provider and branch relationships are populated from file if missing
+     */
+    public function ensureProviderAndBranchRelationships()
+    {
+        if (!$this->provider_id && $this->file && $this->file->providerBranch && $this->file->providerBranch->provider) {
+            $this->provider_id = $this->file->providerBranch->provider_id;
+        }
+        
+        if (!$this->branch_id && $this->file && $this->file->provider_branch_id) {
+            $this->branch_id = $this->file->provider_branch_id;
+        }
+        
+        if ($this->isDirty(['provider_id', 'branch_id'])) {
+            $this->save();
+        }
+    }
+
+    /**
+     * Get the provider name with fallback
+     */
+    public function getProviderNameAttribute(): string
+    {
+        return $this->provider?->name ?? 'No Provider';
+    }
+
+    /**
+     * Get the branch name with fallback
+     */
+    public function getBranchNameAttribute(): string
+    {
+        return $this->branch?->branch_name ?? 'No Branch';
+    }
 }

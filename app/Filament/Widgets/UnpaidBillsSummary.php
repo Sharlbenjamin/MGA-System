@@ -12,73 +12,49 @@ class UnpaidBillsSummary extends BaseWidget
 
     protected function getStats(): array
     {
-        // Get providers that have unpaid bills with paid invoices
-        $providersNeedingPayment = Bill::whereIn('bills.status', ['Unpaid', 'Partial'])
-            ->whereHas('file', function ($query) {
-                $query->whereNotNull('provider_branch_id')
-                    ->whereHas('invoices', function ($invoiceQuery) {
-                        $invoiceQuery->where('status', 'Paid');
-                    });
-            })
-            ->join('files', 'bills.file_id', '=', 'files.id')
-            ->join('provider_branches', 'files.provider_branch_id', '=', 'provider_branches.id')
-            ->distinct('provider_branches.provider_id')
-            ->count('provider_branches.provider_id');
+        // Get all unpaid/partial bills with relationships
+        $unpaidBills = Bill::whereIn('status', ['Unpaid', 'Partial'])
+            ->with(['provider', 'branch', 'file.invoices'])
+            ->get();
 
-        // Total amount of unpaid bills with paid invoices
-        $totalUnpaidAmount = Bill::whereIn('status', ['Unpaid', 'Partial'])
-            ->whereHas('file', function ($query) {
-                $query->whereHas('invoices', function ($invoiceQuery) {
-                    $invoiceQuery->where('status', 'Paid');
-                });
-            })
-            ->sum(DB::raw('total_amount - paid_amount'));
+        // Bills with paid invoices (BK received bills)
+        $billsWithPaidInvoices = $unpaidBills->filter(function ($bill) {
+            return $bill->file && $bill->file->invoices->where('status', 'Paid')->count() > 0;
+        });
+
+        // Providers needing payment (with paid invoices)
+        $providersNeedingPayment = $billsWithPaidInvoices
+            ->pluck('provider_id')
+            ->filter()
+            ->unique()
+            ->count();
+
+        // Total outstanding amount (with paid invoices)
+        $totalUnpaidAmount = $billsWithPaidInvoices->sum(function ($bill) {
+            return $bill->total_amount - $bill->paid_amount;
+        });
 
         // Number of bills with paid invoices
-        $invoicePaidBills = Bill::whereIn('status', ['Unpaid', 'Partial'])
-            ->whereHas('file', function ($query) {
-                $query->whereHas('invoices', function ($invoiceQuery) {
-                    $invoiceQuery->where('status', 'Paid');
-                });
-            })
+        $invoicePaidBills = $billsWithPaidInvoices->count();
+
+        // All providers needing payment (all unpaid bills)
+        $allProvidersNeedingPayment = $unpaidBills
+            ->pluck('provider_id')
+            ->filter()
+            ->unique()
             ->count();
 
-        // Total amount of bills with paid invoices
-        $invoicePaidAmount = Bill::whereIn('status', ['Unpaid', 'Partial'])
-            ->whereHas('file', function ($query) {
-                $query->whereHas('invoices', function ($invoiceQuery) {
-                    $invoiceQuery->where('status', 'Paid');
-                });
-            })
-            ->sum(DB::raw('total_amount - paid_amount'));
+        // Total outstanding amount (all unpaid bills)
+        $allTotalUnpaidAmount = $unpaidBills->sum(function ($bill) {
+            return $bill->total_amount - $bill->paid_amount;
+        });
 
-        // Get providers that have unpaid bills (without invoice filter)
-        $allProvidersNeedingPayment = Bill::whereIn('bills.status', ['Unpaid', 'Partial'])
-            ->whereHas('file', function ($query) {
-                $query->whereNotNull('provider_branch_id');
-            })
-            ->join('files', 'bills.file_id', '=', 'files.id')
-            ->join('provider_branches', 'files.provider_branch_id', '=', 'provider_branches.id')
-            ->distinct('provider_branches.provider_id')
-            ->count('provider_branches.provider_id');
+        // Number of all unpaid bills
+        $allUnpaidBills = $unpaidBills->count();
 
-        // Total amount of all unpaid bills (without invoice filter)
-        $allTotalUnpaidAmount = Bill::whereIn('status', ['Unpaid', 'Partial'])
-            ->sum(DB::raw('total_amount - paid_amount'));
-
-        // Number of all unpaid bills (without invoice filter)
-        $allUnpaidBills = Bill::whereIn('status', ['Unpaid', 'Partial'])
-            ->count();
-
-        // Total amount of all unpaid bills (without invoice filter)
-        $allUnpaidAmount = Bill::whereIn('status', ['Unpaid', 'Partial'])
-            ->sum(DB::raw('total_amount - paid_amount'));
-
-        // Fetch unpaid bills, group by bank account, and count the groups
-        $totalTransfers = Bill::whereIn('status', ['Unpaid', 'Partial'])
-            ->whereNotNull('bank_account_id')
-            ->groupBy('bank_account_id')
-            ->count();
+        // Bills with bank accounts (for transfers)
+        $billsWithBankAccounts = $unpaidBills->whereNotNull('bank_account_id');
+        $totalTransfers = $billsWithBankAccounts->pluck('bank_account_id')->unique()->count();
 
         return [
             Stat::make('Providers Need Payment', $providersNeedingPayment)
@@ -111,12 +87,12 @@ class UnpaidBillsSummary extends BaseWidget
                 ->descriptionIcon('heroicon-m-document')
                 ->color('warning'),
             
-            Stat::make('Invoice Paid Amount', '€' . number_format($invoicePaidAmount, 2))
+            Stat::make('Invoice Paid Amount', '€' . number_format($totalUnpaidAmount, 2))
                 ->description('Amount with paid invoices')
                 ->descriptionIcon('heroicon-m-currency-euro')
                 ->color('success'),
 
-            Stat::make('All Unpaid Amount', '€' . number_format($allUnpaidAmount, 2))
+            Stat::make('All Unpaid Amount', '€' . number_format($allTotalUnpaidAmount, 2))
                 ->description('All unpaid amount')
                 ->descriptionIcon('heroicon-m-currency-euro')
                 ->color('warning'),
