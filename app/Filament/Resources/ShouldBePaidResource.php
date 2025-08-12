@@ -50,7 +50,7 @@ class ShouldBePaidResource extends Resource
     {
         return parent::getEloquentQuery()
             ->whereIn('status', ['Unpaid', 'Partial'])
-            ->with(['provider.bankAccounts', 'branch', 'file.providerBranch.provider'])
+            ->with(['provider.bankAccounts', 'branch', 'file.providerBranch.provider', 'file.invoices'])
             ->orderBy('due_date', 'asc');
     }
 
@@ -66,19 +66,17 @@ class ShouldBePaidResource extends Resource
     {
         return $table
             ->groups([
-                Group::make('provider_id')
+                Group::make('provider.name')
                     ->label('Provider')
-                    ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Bill $record): string => $record->provider?->name ?? 'No Provider'),
-                Group::make('branch_id')
+                    ->collapsible(),
+                Group::make('branch.branch_name')
                     ->label('Branch')
-                    ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Bill $record): string => $record->branch?->branch_name ?? 'No Branch'),
+                    ->collapsible(),
             ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
                 'provider.bankAccounts',
                 'branch',
-                'file'
+                'file.invoices'
             ]))
             ->defaultSort('due_date', 'asc')
             ->columns([
@@ -123,16 +121,22 @@ class ShouldBePaidResource extends Resource
                             ->formatStateUsing(fn ($state) => '€' . number_format($state, 2))
                     ),
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(),
+                Tables\Columns\BadgeColumn::make('invoice_status')
+                    ->label('Invoice Status')
+                    ->colors([
+                        'Unpaid' => 'danger',
+                        'Partial' => 'warning',
+                        'Paid' => 'success',
+                        'Draft' => 'gray',
+                        'No Invoice' => 'gray',
+                    ]),
                 Tables\Columns\BadgeColumn::make('bill_google_link')
                     ->label('Google Drive')
                     ->state(fn (Bill $record): string => $record->bill_google_link ? 'Linked' : 'Missing')
                     ->color(fn (Bill $record): string => $record->bill_google_link ? 'success' : 'danger')
                     ->summarize(Count::make()->label('Total Bills'))
                     ->toggleable(isToggledHiddenByDefault: false),
-                Tables\Columns\BadgeColumn::make('has_iban')
-                    ->label('Has IBAN')
-                    ->state(fn (Bill $record): string => $record->provider_bank_iban !== 'No IBAN' ? 'Yes' : 'No')
-                    ->color(fn (Bill $record): string => $record->provider_bank_iban !== 'No IBAN' ? 'success' : 'danger'),
+
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('provider')

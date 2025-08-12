@@ -273,4 +273,12 @@ class Bill extends Model
     {
         return $this->provider?->bankAccounts?->first();
     }
+
+    /**
+     * Get the first invoice status for this bill's file
+     */
+    public function getInvoiceStatusAttribute(): string
+    {
+        return $this->file?->invoices?->first()?->status ?? 'No Invoice';
+    }
 }
