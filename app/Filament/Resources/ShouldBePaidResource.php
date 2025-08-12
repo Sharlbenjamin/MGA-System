@@ -94,15 +94,7 @@ class ShouldBePaidResource extends Resource
                     ->sortable()
                     ->copyable()
                     ->copyMessage('IBAN copied to clipboard')
-                    ->copyMessageDuration(1500)
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('Providers with Bank Accounts')
-                            ->using(function ($query) {
-                                return $query->whereHas('provider.bankAccounts')->count();
-                            })
-                            ->formatStateUsing(fn ($state) => $state . ' providers')
-                    ),
+                    ->copyMessageDuration(1500),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->searchable()
@@ -135,6 +127,11 @@ class ShouldBePaidResource extends Resource
                     ->color(fn (Bill $record): string => $record->bill_google_link ? 'success' : 'danger')
                     ->summarize(Count::make()->label('Total Bills'))
                     ->toggleable(isToggledHiddenByDefault: false),
+                Tables\Columns\BadgeColumn::make('has_iban')
+                    ->label('Has IBAN')
+                    ->state(fn (Bill $record): string => $record->provider_bank_iban !== 'No IBAN' ? 'Yes' : 'No')
+                    ->color(fn (Bill $record): string => $record->provider_bank_iban !== 'No IBAN' ? 'success' : 'danger')
+                    ->summarize(Count::make()->label('Bills with IBAN')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('provider')
@@ -186,15 +183,7 @@ class ShouldBePaidResource extends Resource
                     ->indicateUsing(function (): array {
                         return ['missing_documents' => 'Missing Documents'];
                     }),
-                // 4. Providers with Bank Accounts - Bills from providers that have bank accounts
-                Tables\Filters\Filter::make('providers_with_bank_accounts')
-                    ->label('Providers with Bank Accounts')
-                    ->query(function (Builder $query): Builder {
-                        return $query->whereHas('provider.bankAccounts');
-                    })
-                    ->indicateUsing(function (): array {
-                        return ['providers_with_bank_accounts' => 'Providers with Bank Accounts'];
-                    }),
+
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
