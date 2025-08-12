@@ -164,9 +164,9 @@ class ShouldBePaidResource extends Resource
                 Tables\Filters\Filter::make('overdue_unpaid')
                     ->label('Overdue Bills (Unpaid/Partial)')
                     ->query(function (Builder $query): Builder {
-                        return $query->where('due_date', '<', now())
-                                   ->whereIn('status', ['Unpaid', 'Partial']);
+                        return $query->where('due_date', '<', now());
                     })
+                    ->toggle()
                     ->indicateUsing(function (): array {
                         return ['overdue_unpaid' => 'Overdue Bills (Unpaid/Partial)'];
                     }),
@@ -174,13 +174,13 @@ class ShouldBePaidResource extends Resource
                 Tables\Filters\Filter::make('bk_received')
                     ->label('BK Received Bills')
                     ->query(function (Builder $query): Builder {
-                        return $query->whereIn('status', ['Unpaid', 'Partial'])
-                                   ->whereHas('file', function (Builder $fileQuery) {
+                        return $query->whereHas('file', function (Builder $fileQuery) {
                                        $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
                                            $invoiceQuery->where('status', 'Paid');
                                        });
                                    });
                     })
+                    ->toggle()
                     ->indicateUsing(function (): array {
                         return ['bk_received' => 'BK Received Bills'];
                     }),
@@ -188,9 +188,12 @@ class ShouldBePaidResource extends Resource
                 Tables\Filters\Filter::make('missing_documents')
                     ->label('Missing Documents')
                     ->query(function (Builder $query): Builder {
-                        return $query->whereNull('bill_google_link')
+                        return $query->where(function (Builder $subQuery) {
+                            $subQuery->whereNull('bill_google_link')
                                    ->orWhere('bill_google_link', '');
+                        });
                     })
+                    ->toggle()
                     ->indicateUsing(function (): array {
                         return ['missing_documents' => 'Missing Documents'];
                     }),
