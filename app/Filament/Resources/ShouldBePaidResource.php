@@ -66,12 +66,14 @@ class ShouldBePaidResource extends Resource
     {
         return $table
             ->groups([
-                Group::make('provider_name')
+                Group::make('provider_id')
                     ->label('Provider')
-                    ->collapsible(),
-                Group::make('branch_name')
+                    ->collapsible()
+                    ->getTitleFromRecordUsing(fn (Bill $record): string => $record->provider?->name ?? 'No Provider'),
+                Group::make('branch_id')
                     ->label('Branch')
-                    ->collapsible(),
+                    ->collapsible()
+                    ->getTitleFromRecordUsing(fn (Bill $record): string => $record->branch?->branch_name ?? 'No Branch'),
             ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
                 'provider.bankAccounts',
@@ -80,11 +82,11 @@ class ShouldBePaidResource extends Resource
             ]))
             ->defaultSort('due_date', 'asc')
             ->columns([
-                Tables\Columns\TextColumn::make('provider_name')
+                Tables\Columns\TextColumn::make('provider.name')
                     ->searchable()
                     ->sortable()
                     ->label('Provider'),
-                Tables\Columns\TextColumn::make('branch_name')
+                Tables\Columns\TextColumn::make('branch.branch_name')
                     ->searchable()
                     ->sortable()
                     ->label('Branch'),
