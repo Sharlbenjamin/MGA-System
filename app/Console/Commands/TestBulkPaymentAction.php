@@ -31,9 +31,9 @@ class TestBulkPaymentAction extends Command
         // Display the bills
         foreach ($unpaidBills as $bill) {
             $this->line("- Bill: {$bill->name}");
-            $this->line("  Provider: {$bill->provider?->name ?? 'No Provider'}");
-            $this->line("  Branch: {$bill->branch?->branch_name ?? 'No Branch'}");
-            $this->line("  File: {$bill->file?->mga_reference ?? 'No File'}");
+            $this->line("  Provider: " . ($bill->provider ? $bill->provider->name : 'No Provider'));
+            $this->line("  Branch: " . ($bill->branch ? $bill->branch->branch_name : 'No Branch'));
+            $this->line("  File: " . ($bill->file ? $bill->file->mga_reference : 'No File'));
             $this->line("  Amount: €" . number_format($bill->total_amount - $bill->paid_amount, 2));
             $this->line("---");
         }
