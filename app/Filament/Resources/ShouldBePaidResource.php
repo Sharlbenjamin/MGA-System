@@ -76,7 +76,7 @@ class ShouldBePaidResource extends Resource
                     ->getTitleFromRecordUsing(fn (Bill $record): string => $record->branch?->branch_name ?? 'No Branch'),
             ])
             // Removed modifyQueryUsing as it conflicts with getEloquentQuery
-            ->defaultSort('due_date', 'asc')
+            // Removed defaultSort to prevent conflicts with grouping
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')
                     ->searchable()
@@ -163,6 +163,7 @@ class ShouldBePaidResource extends Resource
                         return $query->where('due_date', '<', now());
                     })
                     ->toggle()
+                    ->persist()
                     ->indicateUsing(function (): array {
                         return ['overdue_unpaid' => 'Overdue Bills (Unpaid/Partial)'];
                     }),
@@ -177,6 +178,7 @@ class ShouldBePaidResource extends Resource
                                    });
                     })
                     ->toggle()
+                    ->persist()
                     ->indicateUsing(function (): array {
                         return ['bk_received' => 'BK Received Bills'];
                     }),
@@ -190,6 +192,7 @@ class ShouldBePaidResource extends Resource
                         });
                     })
                     ->toggle()
+                    ->persist()
                     ->indicateUsing(function (): array {
                         return ['missing_documents' => 'Missing Documents'];
                     }),
