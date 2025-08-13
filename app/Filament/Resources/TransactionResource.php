@@ -143,96 +143,165 @@ class TransactionResource extends Resource
                             ->columnSpanFull(),
                         
                         // Individual copiable fields for each bank detail
-                        Forms\Components\View::make('components.copyable-field')
-                            ->viewData(function (callable $get) {
+                        Forms\Components\TextInput::make('provider_iban_display')
+                            ->label('IBAN')
+                            ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
-                                $iban = '';
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
-                                    $iban = $provider?->bankAccounts()->first()?->iban ?? '';
+                                    return $provider?->bankAccounts()->first()?->iban ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
-                                    $iban = $branch?->bankAccounts()->first()?->iban ?? '';
+                                    return $branch?->bankAccounts()->first()?->iban ?? '';
                                 }
-                                
-                                return [
-                                    'label' => 'IBAN',
-                                    'value' => $iban,
-                                    'id' => 'provider_iban_field'
-                                ];
+                                return '';
                             })
-                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                            ->disabled()
+                            ->reactive()
+                            ->visible(fn ($get) => $get('type') === 'Outflow')
+                            ->helperText('Click to copy')
+                            ->suffixAction(
+                                \Filament\Forms\Components\Actions\Action::make('copy_iban')
+                                    ->icon('heroicon-o-clipboard')
+                                    ->action(function (callable $get) {
+                                        $relatedType = $get('related_type');
+                                        $relatedId = $get('related_id');
+                                        
+                                        $iban = '';
+                                        if ($relatedType === 'Provider') {
+                                            $provider = \App\Models\Provider::find($relatedId);
+                                            $iban = $provider?->bankAccounts()->first()?->iban ?? '';
+                                        } elseif ($relatedType === 'Branch') {
+                                            $branch = \App\Models\ProviderBranch::find($relatedId);
+                                            $iban = $branch?->bankAccounts()->first()?->iban ?? '';
+                                        }
+                                        
+                                        return "navigator.clipboard.writeText('{$iban}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'IBAN copied to clipboard!' } })); });";
+                                    })
+                            ),
                         
-                        Forms\Components\View::make('components.copyable-field')
-                            ->viewData(function (callable $get) {
+                        Forms\Components\TextInput::make('provider_beneficiary_display')
+                            ->label('Beneficiary Name')
+                            ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
-                                $beneficiary = '';
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
-                                    $beneficiary = $provider?->bankAccounts()->first()?->beneficiary_name ?? '';
+                                    return $provider?->bankAccounts()->first()?->beneficiary_name ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
-                                    $beneficiary = $branch?->bankAccounts()->first()?->beneficiary_name ?? '';
+                                    return $branch?->bankAccounts()->first()?->beneficiary_name ?? '';
                                 }
-                                
-                                return [
-                                    'label' => 'Beneficiary Name',
-                                    'value' => $beneficiary,
-                                    'id' => 'provider_beneficiary_field'
-                                ];
+                                return '';
                             })
-                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                            ->disabled()
+                            ->reactive()
+                            ->visible(fn ($get) => $get('type') === 'Outflow')
+                            ->helperText('Click to copy')
+                            ->suffixAction(
+                                \Filament\Forms\Components\Actions\Action::make('copy_beneficiary')
+                                    ->icon('heroicon-o-clipboard')
+                                    ->action(function (callable $get) {
+                                        $relatedType = $get('related_type');
+                                        $relatedId = $get('related_id');
+                                        
+                                        $beneficiary = '';
+                                        if ($relatedType === 'Provider') {
+                                            $provider = \App\Models\Provider::find($relatedId);
+                                            $beneficiary = $provider?->bankAccounts()->first()?->beneficiary_name ?? '';
+                                        } elseif ($relatedType === 'Branch') {
+                                            $branch = \App\Models\ProviderBranch::find($relatedId);
+                                            $beneficiary = $branch?->bankAccounts()->first()?->beneficiary_name ?? '';
+                                        }
+                                        
+                                        return "navigator.clipboard.writeText('{$beneficiary}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'Beneficiary name copied to clipboard!' } })); });";
+                                    })
+                            ),
                         
-                        Forms\Components\View::make('components.copyable-field')
-                            ->viewData(function (callable $get) {
+                        Forms\Components\TextInput::make('provider_swift_display')
+                            ->label('SWIFT')
+                            ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
-                                $swift = '';
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
-                                    $swift = $provider?->bankAccounts()->first()?->swift ?? '';
+                                    return $provider?->bankAccounts()->first()?->swift ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
-                                    $swift = $branch?->bankAccounts()->first()?->swift ?? '';
+                                    return $branch?->bankAccounts()->first()?->swift ?? '';
                                 }
-                                
-                                return [
-                                    'label' => 'SWIFT',
-                                    'value' => $swift,
-                                    'id' => 'provider_swift_field'
-                                ];
+                                return '';
                             })
-                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                            ->disabled()
+                            ->reactive()
+                            ->visible(fn ($get) => $get('type') === 'Outflow')
+                            ->helperText('Click to copy')
+                            ->suffixAction(
+                                \Filament\Forms\Components\Actions\Action::make('copy_swift')
+                                    ->icon('heroicon-o-clipboard')
+                                    ->action(function (callable $get) {
+                                        $relatedType = $get('related_type');
+                                        $relatedId = $get('related_id');
+                                        
+                                        $swift = '';
+                                        if ($relatedType === 'Provider') {
+                                            $provider = \App\Models\Provider::find($relatedId);
+                                            $swift = $provider?->bankAccounts()->first()?->swift ?? '';
+                                        } elseif ($relatedType === 'Branch') {
+                                            $branch = \App\Models\ProviderBranch::find($relatedId);
+                                            $swift = $branch?->bankAccounts()->first()?->swift ?? '';
+                                        }
+                                        
+                                        return "navigator.clipboard.writeText('{$swift}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'SWIFT copied to clipboard!' } })); });";
+                                    })
+                            ),
                         
-                        Forms\Components\View::make('components.copyable-field')
-                            ->viewData(function (callable $get) {
+                        Forms\Components\TextInput::make('provider_country_display')
+                            ->label('Country')
+                            ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
-                                $country = '';
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
-                                    $country = $provider?->bankAccounts()->first()?->country?->name ?? '';
+                                    return $provider?->bankAccounts()->first()?->country?->name ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
-                                    $country = $branch?->bankAccounts()->first()?->country?->name ?? '';
+                                    return $branch?->bankAccounts()->first()?->country?->name ?? '';
                                 }
-                                
-                                return [
-                                    'label' => 'Country',
-                                    'value' => $country,
-                                    'id' => 'provider_country_field'
-                                ];
+                                return '';
                             })
-                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                            ->disabled()
+                            ->reactive()
+                            ->visible(fn ($get) => $get('type') === 'Outflow')
+                            ->helperText('Click to copy')
+                            ->suffixAction(
+                                \Filament\Forms\Components\Actions\Action::make('copy_country')
+                                    ->icon('heroicon-o-clipboard')
+                                    ->action(function (callable $get) {
+                                        $relatedType = $get('related_type');
+                                        $relatedId = $get('related_id');
+                                        
+                                        $country = '';
+                                        if ($relatedType === 'Provider') {
+                                            $provider = \App\Models\Provider::find($relatedId);
+                                            $country = $provider?->bankAccounts()->first()?->country?->name ?? '';
+                                        } elseif ($relatedType === 'Branch') {
+                                            $branch = \App\Models\ProviderBranch::find($relatedId);
+                                            $country = $branch?->bankAccounts()->first()?->country?->name ?? '';
+                                        }
+                                        
+                                        return "navigator.clipboard.writeText('{$country}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'Country copied to clipboard!' } })); });";
+                                    })
+                            ),
                         
-                        Forms\Components\View::make('components.copyable-field')
-                            ->viewData(function (callable $get) {
+                        Forms\Components\TextInput::make('provider_reason_display')
+                            ->label('Transaction Reason')
+                            ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
@@ -260,15 +329,48 @@ class TransactionResource extends Resource
                                 }
                                 
                                 $billNames = $bills->pluck('name')->implode(', ');
-                                $reason = $billNames ? "Payment for {$billNames}" : "Payment for services";
-                                
-                                return [
-                                    'label' => 'Transaction Reason',
-                                    'value' => $reason,
-                                    'id' => 'provider_reason_field'
-                                ];
+                                return $billNames ? "Payment for {$billNames}" : "Payment for services";
                             })
-                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                            ->disabled()
+                            ->reactive()
+                            ->visible(fn ($get) => $get('type') === 'Outflow')
+                            ->helperText('Click to copy')
+                            ->suffixAction(
+                                \Filament\Forms\Components\Actions\Action::make('copy_reason')
+                                    ->icon('heroicon-o-clipboard')
+                                    ->action(function (callable $get) {
+                                        $relatedType = $get('related_type');
+                                        $relatedId = $get('related_id');
+                                        
+                                        // Get bills for the transaction reason
+                                        $bills = collect();
+                                        if ($relatedType === 'Provider') {
+                                            $bills = \App\Models\Bill::query()
+                                                ->whereHas('file', function ($query) use ($relatedId) {
+                                                    $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
+                                                        $providerQuery->where('providers.id', $relatedId);
+                                                    })
+                                                    ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
+                                                        $branchQuery->where('provider_branches.provider_id', $relatedId);
+                                                    });
+                                                })
+                                                ->whereIn('status', ['Unpaid', 'Partial'])
+                                                ->get();
+                                        } elseif ($relatedType === 'Branch') {
+                                            $bills = \App\Models\Bill::query()
+                                                ->whereHas('file', function ($query) use ($relatedId) {
+                                                    $query->where('provider_branch_id', $relatedId);
+                                                })
+                                                ->whereIn('status', ['Unpaid', 'Partial'])
+                                                ->get();
+                                        }
+                                        
+                                        $billNames = $bills->pluck('name')->implode(', ');
+                                        $reason = $billNames ? "Payment for {$billNames}" : "Payment for services";
+                                        
+                                        return "navigator.clipboard.writeText('{$reason}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'Transaction reason copied to clipboard!' } })); });";
+                                    })
+                            ),
                     ])
                     ->visible(fn ($get) => $get('type') === 'Outflow' && in_array($get('related_type'), ['Provider', 'Branch']))
                     ->collapsible()
