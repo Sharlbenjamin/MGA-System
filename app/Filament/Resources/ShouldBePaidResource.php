@@ -239,13 +239,13 @@ class ShouldBePaidResource extends Resource
                             'bill_ids' => $records->pluck('id')->implode(',')
                         ];
                         
-                        // Debug: Log the URL and parameters
+                        $url = route('filament.admin.resources.transactions.create', $params);
                         Log::info('Transaction create URL:', [
-                            'url' => route('filament.admin.resources.transactions.create', $params),
+                            'url' => $url,
                             'params' => $params
                         ]);
                         
-                        return route('filament.admin.resources.transactions.create', $params);
+                        return $url;
                     })
                     ->openUrlInNewTab(),
             ]);

@@ -52,7 +52,12 @@ class TransactionResource extends Resource
                     'Expense' => 'Expense',
                 ])->required()->default(function () {
                     $type = request()->get('type');
-                    Log::info('Transaction type default:', ['type' => $type]);
+                    $allParams = request()->all();
+                    Log::info('Transaction form defaults:', [
+                        'type' => $type,
+                        'all_params' => $allParams,
+                        'url' => request()->url()
+                    ]);
                     return $type;
                 }),
                 Forms\Components\Select::make('related_type')->options(fn ($get) => Self::relatedTypes($get('type')))->required()->searchable()->reactive()->default(fn () => request()->get('related_type')),
