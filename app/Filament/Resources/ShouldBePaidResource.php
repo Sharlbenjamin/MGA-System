@@ -214,6 +214,11 @@ class ShouldBePaidResource extends Resource
                     ->icon('heroicon-o-currency-euro')
                     ->color('success')
                     ->url(function ($records) {
+                        // Check if records is null or empty
+                        if (!$records || $records->isEmpty()) {
+                            return route('filament.admin.resources.transactions.create');
+                        }
+                        
                         // Get the first bill to determine the provider
                         $firstBill = $records->first();
                         if (!$firstBill) {
