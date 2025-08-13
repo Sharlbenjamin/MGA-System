@@ -66,7 +66,197 @@ class TransactionResource extends Resource
                 Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Patient')->required()->options(Patient::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Patient')->searchable()->default(fn () => request()->get('related_id')),
-                Forms\Components\Select::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->required()->default(fn () => request()->get('bank_account_id')),
+                Forms\Components\Select::make('bank_account_id')
+                    ->relationship('bankAccount', 'beneficiary_name', function ($query) {
+                        return $query->where('type', 'Internal');
+                    })
+                    ->required()
+                    ->default(fn () => request()->get('bank_account_id')),
+                
+                // Display provider/branch bank account details for Outflow transactions
+                Forms\Components\Section::make('Provider Bank Account Details')
+                    ->description('Bank account information for the selected provider/branch (for Outflow transactions)')
+                    ->schema([
+                        Forms\Components\Placeholder::make('provider_bank_details')
+                            ->label('Bank Account Information')
+                            ->content(function (callable $get) {
+                                $type = $get('type');
+                                $relatedType = $get('related_type');
+                                $relatedId = $get('related_id');
+                                
+                                if ($type !== 'Outflow' || !$relatedId) {
+                                    return 'Select "Outflow" as transaction type and choose a provider/branch to see bank details.';
+                                }
+                                
+                                $bankAccount = null;
+                                
+                                if ($relatedType === 'Provider') {
+                                    $provider = \App\Models\Provider::find($relatedId);
+                                    $bankAccount = $provider?->bankAccounts()->first();
+                                } elseif ($relatedType === 'Branch') {
+                                    $branch = \App\Models\ProviderBranch::find($relatedId);
+                                    $bankAccount = $branch?->bankAccounts()->first();
+                                }
+                                
+                                if (!$bankAccount) {
+                                    return 'No bank account found for the selected provider/branch.';
+                                }
+                                
+                                // Get bills for the transaction reason
+                                $bills = collect();
+                                if ($relatedType === 'Provider') {
+                                    $bills = \App\Models\Bill::query()
+                                        ->whereHas('file', function ($query) use ($relatedId) {
+                                            $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
+                                                $providerQuery->where('providers.id', $relatedId);
+                                            })
+                                            ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
+                                                $branchQuery->where('provider_branches.provider_id', $relatedId);
+                                            });
+                                        })
+                                        ->whereIn('status', ['Unpaid', 'Partial'])
+                                        ->get();
+                                } elseif ($relatedType === 'Branch') {
+                                    $bills = \App\Models\Bill::query()
+                                        ->whereHas('file', function ($query) use ($relatedId) {
+                                            $query->where('provider_branch_id', $relatedId);
+                                        })
+                                        ->whereIn('status', ['Unpaid', 'Partial'])
+                                        ->get();
+                                }
+                                
+                                $billNames = $bills->pluck('name')->implode(', ');
+                                $reason = $billNames ? "Payment for {$billNames}" : "Payment for services";
+                                
+                                $details = [
+                                    'IBAN: ' . $bankAccount->iban,
+                                    'Beneficiary Name: ' . $bankAccount->beneficiary_name,
+                                    'SWIFT: ' . $bankAccount->swift,
+                                    'Country: ' . ($bankAccount->country?->name ?? 'N/A'),
+                                    'Reason: ' . $reason
+                                ];
+                                
+                                return implode("\n", $details);
+                            })
+                            ->visible(fn ($get) => $get('type') === 'Outflow')
+                            ->columnSpanFull(),
+                        
+                        // Individual copiable fields for each bank detail
+                        Forms\Components\TextInput::make('provider_iban')
+                            ->label('IBAN')
+                            ->default(function (callable $get) {
+                                $relatedType = $get('related_type');
+                                $relatedId = $get('related_id');
+                                
+                                if ($relatedType === 'Provider') {
+                                    $provider = \App\Models\Provider::find($relatedId);
+                                    return $provider?->bankAccounts()->first()?->iban ?? '';
+                                } elseif ($relatedType === 'Branch') {
+                                    $branch = \App\Models\ProviderBranch::find($relatedId);
+                                    return $branch?->bankAccounts()->first()?->iban ?? '';
+                                }
+                                return '';
+                            })
+                            ->disabled()
+                            ->copyable()
+                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                        
+                        Forms\Components\TextInput::make('provider_beneficiary')
+                            ->label('Beneficiary Name')
+                            ->default(function (callable $get) {
+                                $relatedType = $get('related_type');
+                                $relatedId = $get('related_id');
+                                
+                                if ($relatedType === 'Provider') {
+                                    $provider = \App\Models\Provider::find($relatedId);
+                                    return $provider?->bankAccounts()->first()?->beneficiary_name ?? '';
+                                } elseif ($relatedType === 'Branch') {
+                                    $branch = \App\Models\ProviderBranch::find($relatedId);
+                                    return $branch?->bankAccounts()->first()?->beneficiary_name ?? '';
+                                }
+                                return '';
+                            })
+                            ->disabled()
+                            ->copyable()
+                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                        
+                        Forms\Components\TextInput::make('provider_swift')
+                            ->label('SWIFT')
+                            ->default(function (callable $get) {
+                                $relatedType = $get('related_type');
+                                $relatedId = $get('related_id');
+                                
+                                if ($relatedType === 'Provider') {
+                                    $provider = \App\Models\Provider::find($relatedId);
+                                    return $provider?->bankAccounts()->first()?->swift ?? '';
+                                } elseif ($relatedType === 'Branch') {
+                                    $branch = \App\Models\ProviderBranch::find($relatedId);
+                                    return $branch?->bankAccounts()->first()?->swift ?? '';
+                                }
+                                return '';
+                            })
+                            ->disabled()
+                            ->copyable()
+                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                        
+                        Forms\Components\TextInput::make('provider_country')
+                            ->label('Country')
+                            ->default(function (callable $get) {
+                                $relatedType = $get('related_type');
+                                $relatedId = $get('related_id');
+                                
+                                if ($relatedType === 'Provider') {
+                                    $provider = \App\Models\Provider::find($relatedId);
+                                    return $provider?->bankAccounts()->first()?->country?->name ?? '';
+                                } elseif ($relatedType === 'Branch') {
+                                    $branch = \App\Models\ProviderBranch::find($relatedId);
+                                    return $branch?->bankAccounts()->first()?->country?->name ?? '';
+                                }
+                                return '';
+                            })
+                            ->disabled()
+                            ->copyable()
+                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                        
+                        Forms\Components\TextInput::make('provider_reason')
+                            ->label('Transaction Reason')
+                            ->default(function (callable $get) {
+                                $relatedType = $get('related_type');
+                                $relatedId = $get('related_id');
+                                
+                                // Get bills for the transaction reason
+                                $bills = collect();
+                                if ($relatedType === 'Provider') {
+                                    $bills = \App\Models\Bill::query()
+                                        ->whereHas('file', function ($query) use ($relatedId) {
+                                            $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
+                                                $providerQuery->where('providers.id', $relatedId);
+                                            })
+                                            ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
+                                                $branchQuery->where('provider_branches.provider_id', $relatedId);
+                                            });
+                                        })
+                                        ->whereIn('status', ['Unpaid', 'Partial'])
+                                        ->get();
+                                } elseif ($relatedType === 'Branch') {
+                                    $bills = \App\Models\Bill::query()
+                                        ->whereHas('file', function ($query) use ($relatedId) {
+                                            $query->where('provider_branch_id', $relatedId);
+                                        })
+                                        ->whereIn('status', ['Unpaid', 'Partial'])
+                                        ->get();
+                                }
+                                
+                                $billNames = $bills->pluck('name')->implode(', ');
+                                return $billNames ? "Payment for {$billNames}" : "Payment for services";
+                            })
+                            ->disabled()
+                            ->copyable()
+                            ->visible(fn ($get) => $get('type') === 'Outflow'),
+                    ])
+                    ->visible(fn ($get) => $get('type') === 'Outflow' && in_array($get('related_type'), ['Provider', 'Branch']))
+                    ->collapsible()
+                    ->collapsed(false),
                 Forms\Components\TextInput::make('name')->required()->maxLength(255)->default(fn () => request()->get('name')),
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
