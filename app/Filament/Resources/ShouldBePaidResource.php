@@ -309,31 +309,8 @@ class ShouldBePaidResource extends Resource
                             ->placeholder('Optional notes for this transaction'),
                         Forms\Components\Placeholder::make('provider_iban_info')
                             ->label('Provider Bank Information')
-                            ->content(function ($get, $records) {
-                                if (!$records) return 'No bills selected';
-                                
-                                $billIds = collect($records)->pluck('id')->toArray();
-                                $bills = \App\Models\Bill::whereIn('id', $billIds)
-                                    ->with(['provider.bankAccounts'])
-                                    ->get();
-                                
-                                $providers = $bills->pluck('provider')
-                                    ->filter()
-                                    ->unique('id');
-                                
-                                $ibanInfo = [];
-                                foreach ($providers as $provider) {
-                                    $bankAccount = $provider->bankAccounts->first();
-                                    if ($bankAccount) {
-                                        $ibanInfo[] = "{$provider->name}: {$bankAccount->iban}";
-                                    } else {
-                                        $ibanInfo[] = "{$provider->name}: No IBAN available";
-                                    }
-                                }
-                                
-                                return implode("\n", $ibanInfo);
-                            })
-                            ->visible(fn ($get, $records) => !empty($records)),
+                            ->content('Provider bank information will be displayed here when bills are selected.')
+                            ->visible(false),
                     ])
                     ->action(function ($data, $records) {
                         // Create the transaction
