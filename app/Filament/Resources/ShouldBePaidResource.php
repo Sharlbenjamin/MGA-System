@@ -215,6 +215,11 @@ class ShouldBePaidResource extends Resource
                     ->icon('heroicon-o-currency-euro')
                     ->color('success')
                     ->url(function ($records) {
+                        Log::info('Bulk action URL function called', [
+                            'records_count' => $records ? $records->count() : 0,
+                            'records_null' => $records === null
+                        ]);
+                        
                         // Check if records is null or empty
                         if (!$records || $records->isEmpty()) {
                             return route('filament.admin.resources.transactions.create');
