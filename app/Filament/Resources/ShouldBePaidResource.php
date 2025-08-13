@@ -239,7 +239,9 @@ class ShouldBePaidResource extends Resource
                             'bill_ids' => $records->pluck('id')->implode(',')
                         ];
                         
-                        $url = route('filament.admin.resources.transactions.create', $params);
+                        $baseUrl = route('filament.admin.resources.transactions.create');
+                        $url = $baseUrl . '?' . http_build_query($params);
+                        
                         Log::info('Transaction create URL:', [
                             'url' => $url,
                             'params' => $params
