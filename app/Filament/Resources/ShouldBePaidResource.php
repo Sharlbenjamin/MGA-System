@@ -231,6 +231,15 @@ class ShouldBePaidResource extends Resource
                             return redirect()->route('filament.admin.resources.transactions.create');
                         }
                         
+                        // Get bill names for the transaction name
+                        $billNames = $records->pluck('name')->take(3); // Take first 3 bill names
+                        $name = 'Payment for ' . $billNames->implode(', ');
+                        
+                        // If there are more than 3 bills, add a count
+                        if ($records->count() > 3) {
+                            $name .= ' and ' . ($records->count() - 3) . ' more';
+                        }
+                        
                         // Create URL with pre-filled parameters
                         $params = [
                             'type' => 'Outflow',
@@ -240,7 +249,7 @@ class ShouldBePaidResource extends Resource
                                 return $bill->total_amount - $bill->paid_amount;
                             }),
                             'date' => now()->format('Y-m-d'),
-                            'name' => 'Payment for ' . $records->count() . ' bills',
+                            'name' => $name,
                             'bill_ids' => $records->pluck('id')->implode(',')
                         ];
                         
