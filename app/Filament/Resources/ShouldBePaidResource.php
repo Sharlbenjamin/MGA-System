@@ -18,6 +18,7 @@ use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Grouping\Group;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ShouldBePaidResource extends Resource
 {
@@ -237,6 +238,12 @@ class ShouldBePaidResource extends Resource
                             'name' => 'Payment for ' . $records->count() . ' bills',
                             'bill_ids' => $records->pluck('id')->implode(',')
                         ];
+                        
+                        // Debug: Log the URL and parameters
+                        Log::info('Transaction create URL:', [
+                            'url' => route('filament.admin.resources.transactions.create', $params),
+                            'params' => $params
+                        ]);
                         
                         return route('filament.admin.resources.transactions.create', $params);
                     })

@@ -50,7 +50,11 @@ class TransactionResource extends Resource
                     'Income' => 'Income',
                     'Outflow' => 'Outflow',
                     'Expense' => 'Expense',
-                ])->required()->default(fn () => request()->get('type')),
+                ])->required()->default(function () {
+                    $type = request()->get('type');
+                    Log::info('Transaction type default:', ['type' => $type]);
+                    return $type;
+                }),
                 Forms\Components\Select::make('related_type')->options(fn ($get) => Self::relatedTypes($get('type')))->required()->searchable()->reactive()->default(fn () => request()->get('related_type')),
                     // I want to select an invoice if realted_type is Client
                 Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client')->searchable()->default(fn () => request()->get('related_id')),
