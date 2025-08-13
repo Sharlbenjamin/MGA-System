@@ -23,6 +23,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 
@@ -106,6 +108,13 @@ class TransactionResource extends Resource
                 ->live()
                 ->visible(fn ($get) => $get('related_type') === 'Provider' || $get('related_type') === 'Branch')
                 ->default(function ($record = null) {
+                    // Handle bill_ids parameter (comma-separated list from bulk action)
+                    if (request()->get('bill_ids')) {
+                        $billIds = explode(',', request()->get('bill_ids'));
+                        return array_filter($billIds); // Remove empty values
+                    }
+                    
+                    // Handle single bill_id parameter
                     if (request()->get('bill_id')) {
                         return [request()->get('bill_id')];
                     }
@@ -328,7 +337,7 @@ class TransactionResource extends Resource
                             $uploadedFile = $data['transaction_document_main'];
                             
                             // Log the uploaded file data for debugging
-                            \Log::info('Transaction upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
+                            Log::info('Transaction upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
                             
                             // If it's an array (multiple files), take the first one
                             if (is_array($uploadedFile)) {
@@ -347,10 +356,10 @@ class TransactionResource extends Resource
                             // Handle the uploaded file properly using Storage facade
                             try {
                                 // Get the file content using Storage facade
-                                $content = \Storage::disk('public')->get($uploadedFile);
+                                $content = Storage::disk('public')->get($uploadedFile);
                                 
                                 if ($content === false) {
-                                    \Log::error('Transaction file not found in storage:', ['path' => $uploadedFile]);
+                                    Log::error('Transaction file not found in storage:', ['path' => $uploadedFile]);
                                     Notification::make()
                                         ->danger()
                                         ->title('File not found')
@@ -362,7 +371,7 @@ class TransactionResource extends Resource
                                 // Generate the proper filename format
                                 $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
                                 $fileName = 'Transaction ' . $record->name . ' - ' . $record->date->format('Y-m-d') . '.' . $originalExtension;
-                                \Log::info('Transaction file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
+                                Log::info('Transaction file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
                                 // Here you would upload to Google Drive
                                 // For now, we'll just update the transaction with the file path
@@ -376,7 +385,7 @@ class TransactionResource extends Resource
                                     ->send();
                                     
                             } catch (\Exception $e) {
-                                \Log::error('Transaction file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
+                                Log::error('Transaction file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
                                 Notification::make()
                                     ->danger()
                                     ->title('File access error')
@@ -385,7 +394,7 @@ class TransactionResource extends Resource
                                 return;
                             }
                         } catch (\Exception $e) {
-                            \Log::error('Transaction upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
+                            Log::error('Transaction upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
                             Notification::make()
                                 ->danger()
                                 ->title('Upload error')
