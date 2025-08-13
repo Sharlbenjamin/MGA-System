@@ -214,21 +214,21 @@ class ShouldBePaidResource extends Resource
                     ->label('Create Payment Transaction')
                     ->icon('heroicon-o-currency-euro')
                     ->color('success')
-                    ->url(function ($records) {
-                        Log::info('Bulk action URL function called', [
+                    ->action(function ($records) {
+                        Log::info('Bulk action function called', [
                             'records_count' => $records ? $records->count() : 0,
                             'records_null' => $records === null
                         ]);
                         
                         // Check if records is null or empty
                         if (!$records || $records->isEmpty()) {
-                            return route('filament.admin.resources.transactions.create');
+                            return redirect()->route('filament.admin.resources.transactions.create');
                         }
                         
                         // Get the first bill to determine the provider
                         $firstBill = $records->first();
                         if (!$firstBill) {
-                            return route('filament.admin.resources.transactions.create');
+                            return redirect()->route('filament.admin.resources.transactions.create');
                         }
                         
                         // Create URL with pre-filled parameters
@@ -252,9 +252,8 @@ class ShouldBePaidResource extends Resource
                             'params' => $params
                         ]);
                         
-                        return $url;
-                    })
-                    ->openUrlInNewTab(),
+                        return redirect()->away($url);
+                    }),
             ]);
     }
 
