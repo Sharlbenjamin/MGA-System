@@ -82,7 +82,7 @@ class BillsWithoutDocumentsResource extends Resource
                 $query->whereNull('bill_google_link')->orWhere('bill_google_link', '');
                 
                 // Add debugging to see what records are being loaded
-                \Log::info('BillsWithoutDocuments query executed', [
+                Log::info('BillsWithoutDocuments query executed', [
                     'sql' => $query->toSql(),
                     'bindings' => $query->getBindings()
                 ]);

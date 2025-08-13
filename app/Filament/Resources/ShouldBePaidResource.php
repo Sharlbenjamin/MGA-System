@@ -238,7 +238,7 @@ class ShouldBePaidResource extends Resource
                                 if (!$relatedType || !$records) return [];
                                 
                                 // Get unique providers/branches from selected bills
-                                $billIds = collect($records)->pluck('id');
+                                $billIds = collect($records)->pluck('id')->toArray();
                                 $bills = \App\Models\Bill::whereIn('id', $billIds)
                                     ->with(['provider.bankAccounts', 'branch'])
                                     ->get();
@@ -267,7 +267,7 @@ class ShouldBePaidResource extends Resource
                             ->default(function ($records) {
                                 if (!$records) return '';
                                 
-                                $billIds = collect($records)->pluck('id');
+                                $billIds = collect($records)->pluck('id')->toArray();
                                 $bills = \App\Models\Bill::whereIn('id', $billIds)
                                     ->with('file')
                                     ->get();
@@ -291,7 +291,7 @@ class ShouldBePaidResource extends Resource
                             ->default(function ($records) {
                                 if (!$records) return 0;
                                 
-                                $billIds = collect($records)->pluck('id');
+                                $billIds = collect($records)->pluck('id')->toArray();
                                 $bills = \App\Models\Bill::whereIn('id', $billIds)->get();
                                 
                                 return $bills->sum(function ($bill) {
@@ -309,10 +309,10 @@ class ShouldBePaidResource extends Resource
                             ->placeholder('Optional notes for this transaction'),
                         Forms\Components\Placeholder::make('provider_iban_info')
                             ->label('Provider Bank Information')
-                            ->content(function ($records) {
+                            ->content(function ($get, $records) {
                                 if (!$records) return 'No bills selected';
                                 
-                                $billIds = collect($records)->pluck('id');
+                                $billIds = collect($records)->pluck('id')->toArray();
                                 $bills = \App\Models\Bill::whereIn('id', $billIds)
                                     ->with(['provider.bankAccounts'])
                                     ->get();
@@ -333,7 +333,7 @@ class ShouldBePaidResource extends Resource
                                 
                                 return implode("\n", $ibanInfo);
                             })
-                            ->visible(fn ($records) => !empty($records)),
+                            ->visible(fn ($get, $records) => !empty($records)),
                     ])
                     ->action(function ($data, $records) {
                         // Create the transaction
@@ -349,7 +349,7 @@ class ShouldBePaidResource extends Resource
                         $transaction->save();
                         
                         // Attach the selected bills to the transaction without marking them as paid
-                        $billIds = collect($records)->pluck('id');
+                        $billIds = collect($records)->pluck('id')->toArray();
                         $transaction->attachBillsForDraft($billIds);
                         
                         // Show success notification
