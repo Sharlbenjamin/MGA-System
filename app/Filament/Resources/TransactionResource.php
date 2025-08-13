@@ -79,6 +79,7 @@ class TransactionResource extends Resource
                     ->schema([
                         Forms\Components\Placeholder::make('provider_bank_details')
                             ->label('Bank Account Information')
+                            ->reactive()
                             ->content(function (callable $get) {
                                 $type = $get('type');
                                 $relatedType = $get('related_type');
@@ -159,6 +160,7 @@ class TransactionResource extends Resource
                             })
                             ->disabled()
                             ->copyable()
+                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                         
                         Forms\Components\TextInput::make('provider_beneficiary')
@@ -178,6 +180,7 @@ class TransactionResource extends Resource
                             })
                             ->disabled()
                             ->copyable()
+                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                         
                         Forms\Components\TextInput::make('provider_swift')
@@ -197,6 +200,7 @@ class TransactionResource extends Resource
                             })
                             ->disabled()
                             ->copyable()
+                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                         
                         Forms\Components\TextInput::make('provider_country')
@@ -216,6 +220,7 @@ class TransactionResource extends Resource
                             })
                             ->disabled()
                             ->copyable()
+                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                         
                         Forms\Components\TextInput::make('provider_reason')
@@ -252,6 +257,7 @@ class TransactionResource extends Resource
                             })
                             ->disabled()
                             ->copyable()
+                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                     ])
                     ->visible(fn ($get) => $get('type') === 'Outflow' && in_array($get('related_type'), ['Provider', 'Branch']))
