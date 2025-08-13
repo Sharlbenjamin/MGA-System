@@ -264,7 +264,7 @@ class ShouldBePaidResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->label('Transaction Name')
                             ->required()
-                            ->default(function ($records) {
+                            ->default(function ($get, $records) {
                                 if (!$records) return '';
                                 
                                 $billIds = collect($records)->pluck('id')->toArray();
@@ -288,7 +288,7 @@ class ShouldBePaidResource extends Resource
                             ->label('Total Amount')
                             ->numeric()
                             ->required()
-                            ->default(function ($records) {
+                            ->default(function ($get, $records) {
                                 if (!$records) return 0;
                                 
                                 $billIds = collect($records)->pluck('id')->toArray();
