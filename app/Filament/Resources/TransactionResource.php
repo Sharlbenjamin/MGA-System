@@ -143,89 +143,96 @@ class TransactionResource extends Resource
                             ->columnSpanFull(),
                         
                         // Individual copiable fields for each bank detail
-                        Forms\Components\TextInput::make('provider_iban')
-                            ->label('IBAN')
-                            ->default(function (callable $get) {
+                        Forms\Components\View::make('components.copyable-field')
+                            ->viewData(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
+                                $iban = '';
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
-                                    return $provider?->bankAccounts()->first()?->iban ?? '';
+                                    $iban = $provider?->bankAccounts()->first()?->iban ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
-                                    return $branch?->bankAccounts()->first()?->iban ?? '';
+                                    $iban = $branch?->bankAccounts()->first()?->iban ?? '';
                                 }
-                                return '';
+                                
+                                return [
+                                    'label' => 'IBAN',
+                                    'value' => $iban,
+                                    'id' => 'provider_iban_field'
+                                ];
                             })
-                            ->disabled()
-                            ->copyable()
-                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                         
-                        Forms\Components\TextInput::make('provider_beneficiary')
-                            ->label('Beneficiary Name')
-                            ->default(function (callable $get) {
+                        Forms\Components\View::make('components.copyable-field')
+                            ->viewData(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
+                                $beneficiary = '';
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
-                                    return $provider?->bankAccounts()->first()?->beneficiary_name ?? '';
+                                    $beneficiary = $provider?->bankAccounts()->first()?->beneficiary_name ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
-                                    return $branch?->bankAccounts()->first()?->beneficiary_name ?? '';
+                                    $beneficiary = $branch?->bankAccounts()->first()?->beneficiary_name ?? '';
                                 }
-                                return '';
+                                
+                                return [
+                                    'label' => 'Beneficiary Name',
+                                    'value' => $beneficiary,
+                                    'id' => 'provider_beneficiary_field'
+                                ];
                             })
-                            ->disabled()
-                            ->copyable()
-                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                         
-                        Forms\Components\TextInput::make('provider_swift')
-                            ->label('SWIFT')
-                            ->default(function (callable $get) {
+                        Forms\Components\View::make('components.copyable-field')
+                            ->viewData(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
+                                $swift = '';
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
-                                    return $provider?->bankAccounts()->first()?->swift ?? '';
+                                    $swift = $provider?->bankAccounts()->first()?->swift ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
-                                    return $branch?->bankAccounts()->first()?->swift ?? '';
+                                    $swift = $branch?->bankAccounts()->first()?->swift ?? '';
                                 }
-                                return '';
+                                
+                                return [
+                                    'label' => 'SWIFT',
+                                    'value' => $swift,
+                                    'id' => 'provider_swift_field'
+                                ];
                             })
-                            ->disabled()
-                            ->copyable()
-                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                         
-                        Forms\Components\TextInput::make('provider_country')
-                            ->label('Country')
-                            ->default(function (callable $get) {
+                        Forms\Components\View::make('components.copyable-field')
+                            ->viewData(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
+                                $country = '';
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
-                                    return $provider?->bankAccounts()->first()?->country?->name ?? '';
+                                    $country = $provider?->bankAccounts()->first()?->country?->name ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
-                                    return $branch?->bankAccounts()->first()?->country?->name ?? '';
+                                    $country = $branch?->bankAccounts()->first()?->country?->name ?? '';
                                 }
-                                return '';
+                                
+                                return [
+                                    'label' => 'Country',
+                                    'value' => $country,
+                                    'id' => 'provider_country_field'
+                                ];
                             })
-                            ->disabled()
-                            ->copyable()
-                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                         
-                        Forms\Components\TextInput::make('provider_reason')
-                            ->label('Transaction Reason')
-                            ->default(function (callable $get) {
+                        Forms\Components\View::make('components.copyable-field')
+                            ->viewData(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
                                 
@@ -253,11 +260,14 @@ class TransactionResource extends Resource
                                 }
                                 
                                 $billNames = $bills->pluck('name')->implode(', ');
-                                return $billNames ? "Payment for {$billNames}" : "Payment for services";
+                                $reason = $billNames ? "Payment for {$billNames}" : "Payment for services";
+                                
+                                return [
+                                    'label' => 'Transaction Reason',
+                                    'value' => $reason,
+                                    'id' => 'provider_reason_field'
+                                ];
                             })
-                            ->disabled()
-                            ->copyable()
-                            ->reactive()
                             ->visible(fn ($get) => $get('type') === 'Outflow'),
                     ])
                     ->visible(fn ($get) => $get('type') === 'Outflow' && in_array($get('related_type'), ['Provider', 'Branch']))
