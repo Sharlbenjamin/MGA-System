@@ -9,6 +9,8 @@ use Filament\Support\RawJs;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Tables;
+use App\Models\FileFee;
+use App\Models\BillItem;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -19,6 +21,75 @@ class ItemsRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\Select::make('item_selector')
+                    ->label('Select Item')
+                    ->options(function () {
+                        $invoice = $this->getOwnerRecord();
+                        if (!$invoice || !$invoice->file_id) {
+                            return ['custom' => 'Custom Item'];
+                        }
+
+                        $options = collect();
+
+                        // Add bill items from the file's bills
+                        $billItems = BillItem::whereHas('bill', function ($query) use ($invoice) {
+                            $query->where('file_id', $invoice->file_id);
+                        })->get();
+
+                        foreach ($billItems as $billItem) {
+                            $options->put(
+                                "bill_item_{$billItem->id}", 
+                                "Bill Item: {$billItem->description} - €{$billItem->amount}"
+                            );
+                        }
+
+                        // Add file fees
+                        $fileFees = FileFee::with('serviceType', 'country', 'city')->get();
+                        
+                        foreach ($fileFees as $fileFee) {
+                            $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
+                            $countryName = $fileFee->country ? $fileFee->country->name : '';
+                            $cityName = $fileFee->city ? $fileFee->city->name : '';
+                            
+                            $location = trim("{$countryName} {$cityName}");
+                            $label = $location ? "{$serviceName} ({$location}) - €{$fileFee->amount}" : "{$serviceName} - €{$fileFee->amount}";
+                            
+                            $options->put("file_fee_{$fileFee->id}", $label);
+                        }
+
+                        // Add custom option
+                        $options->put('custom', 'Custom Item');
+                        
+                        return $options;
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->reactive()
+                    ->afterStateUpdated(function ($state, $set, $get) {
+                        if ($state && $state !== 'custom') {
+                            if (str_starts_with($state, 'bill_item_')) {
+                                $billItemId = str_replace('bill_item_', '', $state);
+                                $billItem = BillItem::find($billItemId);
+                                if ($billItem) {
+                                    $set('description', $billItem->description);
+                                    $set('amount', $billItem->amount);
+                                }
+                            } elseif (str_starts_with($state, 'file_fee_')) {
+                                $fileFeeId = str_replace('file_fee_', '', $state);
+                                $fileFee = FileFee::with('serviceType')->find($fileFeeId);
+                                if ($fileFee) {
+                                    $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
+                                    $set('description', $serviceName);
+                                    $set('amount', $fileFee->amount);
+                                }
+                            }
+                        } else {
+                            // Clear fields when custom is selected
+                            $set('description', '');
+                            $set('amount', '');
+                        }
+                    }),
+
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255),
@@ -34,7 +105,8 @@ class ItemsRelationManager extends RelationManager
                     ->numeric()
                     ->inputMode('decimal')
                     ->step('0.01')
-                    ->prefix('€')->default('0'),
+                    ->prefix('€')
+                    ->default('0'),
             ]);
     }
 
@@ -54,6 +126,32 @@ class ItemsRelationManager extends RelationManager
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
+                    ->using(function (array $data) {
+                        // If an item was selected, ensure description and amount are set
+                        if (isset($data['item_selector']) && $data['item_selector'] !== 'custom') {
+                            if (str_starts_with($data['item_selector'], 'bill_item_')) {
+                                $billItemId = str_replace('bill_item_', '', $data['item_selector']);
+                                $billItem = BillItem::find($billItemId);
+                                if ($billItem) {
+                                    $data['description'] = $billItem->description;
+                                    $data['amount'] = $billItem->amount;
+                                }
+                            } elseif (str_starts_with($data['item_selector'], 'file_fee_')) {
+                                $fileFeeId = str_replace('file_fee_', '', $data['item_selector']);
+                                $fileFee = FileFee::with('serviceType')->find($fileFeeId);
+                                if ($fileFee) {
+                                    $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
+                                    $data['description'] = $serviceName;
+                                    $data['amount'] = $fileFee->amount;
+                                }
+                            }
+                        }
+                        
+                        // Remove the item_selector field as it's not part of the model
+                        unset($data['item_selector']);
+                        
+                        return $this->getRelationship()->create($data);
+                    })
                     ->after(function ($record) {
                         $record->invoice->calculateTotal();
                     }),
