@@ -273,9 +273,18 @@
         </div>
 
         <div style="text-align: left; font-size: 0.8em; margin-bottom: 10px; position: absolute; bottom: 85px; width: 100%; padding-left: 5%;">
-            <p>
-                For online payment, <a href="{{$invoice->payment_link}}" style="color: #0000FF; text-decoration: none;">click here</a> to access the payment page
-            </p>
+            @if($invoice->payment_link)
+                <p>
+                    For online payment, <a href="{{ $invoice->payment_link }}" style="color: #0000FF; text-decoration: underline;">click here</a> to access the payment page
+                </p>
+                <p style="font-size: 0.9em; margin-top: 5px;">
+                    If the button doesn't work, click the link below: <span style="color: #0000FF;">{{ $invoice->payment_link }}</span>
+                </p>
+            @else
+                <p>
+                    Payment link will be available once the invoice is generated.
+                </p>
+            @endif
         </div>
         <div class="footer">
             <div class="footer-grid">
