@@ -67,19 +67,19 @@ class PatientResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('gop_contact_id')
                             ->label('GOP Contact')
-                            ->options(Contact::pluck('title', 'id'))
+                            ->options(Contact::pluck('name', 'id'))
                             ->searchable()
                             ->nullable()
                             ->placeholder('Select GOP contact'),
                         Forms\Components\Select::make('operation_contact_id')
                             ->label('Operation Contact')
-                            ->options(Contact::pluck('title', 'id'))
+                            ->options(Contact::pluck('name', 'id'))
                             ->searchable()
                             ->nullable()
                             ->placeholder('Select operation contact'),
                         Forms\Components\Select::make('financial_contact_id')
                             ->label('Financial Contact')
-                            ->options(Contact::pluck('title', 'id'))
+                            ->options(Contact::pluck('name', 'id'))
                             ->searchable()
                             ->nullable()
                             ->placeholder('Select financial contact'),

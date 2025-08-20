@@ -53,9 +53,9 @@ class ClientResource extends Resource
 
                 TextInput::make('initials')->maxLength(10)->required(),
                 TextInput::make('number_requests')->numeric()->required()->default(0),
-                Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
-                Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
-                Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('title', 'id'))->searchable()->nullable(),
+                            Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
+            Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
+            Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
                 TextInput::make('phone')->label('Phone')->tel()->nullable(),
                 TextInput::make('email')->label('Email')->email()->nullable(),
             ]);

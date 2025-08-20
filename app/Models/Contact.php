@@ -17,6 +17,10 @@ class Contact extends Model
     protected $casts = [
         'country_id' => 'integer',
         'city_id' => 'integer',
+        'client_id' => 'integer',
+        'provider_id' => 'integer',
+        'branch_id' => 'integer',
+        'patient_id' => 'integer',
     ];
 
     // Get name as string for display (kept for backward compatibility)
