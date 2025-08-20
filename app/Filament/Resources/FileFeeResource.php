@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables;
+use Filament\Tables\Grouping\Group;
 
 class FileFeeResource extends Resource
 {
@@ -38,7 +39,12 @@ class FileFeeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->groups([
+                Group::make('country.name')->label('Country')->collapsible(),
+                Group::make('serviceType.name')->label('Service Type')->collapsible(),
+            ])
             ->modifyQueryUsing(fn ($query) => $query->with(['country', 'serviceType', 'city']))
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('serviceType.name')
                     ->searchable(query: fn ($query, $search) => $query->whereHas('serviceType', fn ($query) => $query->where('name', 'like', "%{$search}%"))),
@@ -62,8 +68,7 @@ class FileFeeResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-            ])
-            ->defaultSort('created_at', 'desc');
+            ]);
     }
 
     public static function getRelations(): array
