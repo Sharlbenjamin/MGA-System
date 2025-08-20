@@ -38,15 +38,13 @@ class FileFeeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['country', 'serviceType', 'city']))
             ->columns([
                 Tables\Columns\TextColumn::make('serviceType.name')
-                    ->sortable(query: fn ($query, $direction) => $query->orderBy('service_types.name', $direction))
                     ->searchable(query: fn ($query, $search) => $query->whereHas('serviceType', fn ($query) => $query->where('name', 'like', "%{$search}%"))),
                 Tables\Columns\TextColumn::make('country.name')
-                    ->sortable(query: fn ($query, $direction) => $query->orderBy('countries.name', $direction))
                     ->searchable(query: fn ($query, $search) => $query->whereHas('country', fn ($query) => $query->where('name', 'like', "%{$search}%"))),
                 Tables\Columns\TextColumn::make('city.name')
-                    ->sortable(query: fn ($query, $direction) => $query->orderBy('cities.name', $direction))
                     ->searchable(query: fn ($query, $search) => $query->whereHas('city', fn ($query) => $query->where('name', 'like', "%{$search}%"))),
                 Tables\Columns\TextColumn::make('amount')
                     ->money('eur')
@@ -64,14 +62,6 @@ class FileFeeResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-            ])
-            ->groups([
-                Tables\Grouping\Group::make('country')
-                    ->getTitleFromRecordUsing(fn (FileFee $record): string => $record->country?->name ?? 'No Country')
-                    ->collapsible(),
-                Tables\Grouping\Group::make('service_type')
-                    ->getTitleFromRecordUsing(fn (FileFee $record): string => $record->serviceType?->name ?? 'No Service Type')
-                    ->collapsible(),
             ])
             ->defaultSort('created_at', 'desc');
     }
