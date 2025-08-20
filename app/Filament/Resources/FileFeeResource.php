@@ -39,13 +39,21 @@ class FileFeeResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('serviceType.name'),
-                Tables\Columns\TextColumn::make('country.name'),
-                Tables\Columns\TextColumn::make('city.name'),
+                Tables\Columns\TextColumn::make('serviceType.name')
+                    ->sortable(query: fn ($query, $direction) => $query->orderBy('service_types.name', $direction))
+                    ->searchable(query: fn ($query, $search) => $query->whereHas('serviceType', fn ($query) => $query->where('name', 'like', "%{$search}%"))),
+                Tables\Columns\TextColumn::make('country.name')
+                    ->sortable(query: fn ($query, $direction) => $query->orderBy('countries.name', $direction))
+                    ->searchable(query: fn ($query, $search) => $query->whereHas('country', fn ($query) => $query->where('name', 'like', "%{$search}%"))),
+                Tables\Columns\TextColumn::make('city.name')
+                    ->sortable(query: fn ($query, $direction) => $query->orderBy('cities.name', $direction))
+                    ->searchable(query: fn ($query, $search) => $query->whereHas('city', fn ($query) => $query->where('name', 'like', "%{$search}%"))),
                 Tables\Columns\TextColumn::make('amount')
-                    ->money('eur'),
+                    ->money('eur')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime(),
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
                 //
