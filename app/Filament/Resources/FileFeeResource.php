@@ -56,7 +56,16 @@ class FileFeeResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ])
+            ->groups([
+                'country' => Tables\Grouping\Group::make()
+                    ->getTitleFromRecordUsing(fn (FileFee $record): string => $record->country?->name ?? 'No Country')
+                    ->collapsible(),
+                'service_type' => Tables\Grouping\Group::make()
+                    ->getTitleFromRecordUsing(fn (FileFee $record): string => $record->serviceType?->name ?? 'No Service Type')
+                    ->collapsible(),
+            ])
+            ->defaultGroup('country');
     }
 
     public static function getRelations(): array
