@@ -58,10 +58,10 @@ class FileFeeResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ])
             ->groups([
-                'country' => Tables\Grouping\Group::make()
+                Tables\Grouping\Group::make('country')
                     ->getTitleFromRecordUsing(fn (FileFee $record): string => $record->country?->name ?? 'No Country')
                     ->collapsible(),
-                'service_type' => Tables\Grouping\Group::make()
+                Tables\Grouping\Group::make('service_type')
                     ->getTitleFromRecordUsing(fn (FileFee $record): string => $record->serviceType?->name ?? 'No Service Type')
                     ->collapsible(),
             ])
