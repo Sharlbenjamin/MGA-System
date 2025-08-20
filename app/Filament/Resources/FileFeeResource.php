@@ -73,7 +73,7 @@ class FileFeeResource extends Resource
                     ->getTitleFromRecordUsing(fn (FileFee $record): string => $record->serviceType?->name ?? 'No Service Type')
                     ->collapsible(),
             ])
-            ->defaultGroup('country');
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getRelations(): array
