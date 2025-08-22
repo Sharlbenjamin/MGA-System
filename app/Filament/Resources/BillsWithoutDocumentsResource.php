@@ -155,15 +155,28 @@ class BillsWithoutDocumentsResource extends Resource
                     ->modalDescription(fn (Bill $record): string => "This is a test modal for record ID: {$record->id}")
                     ->modalSubmitActionLabel('Test')
                     ->action(function (Bill $record) {
+                        // Get the fresh record to ensure we have the latest data
+                        $freshRecord = Bill::with(['file.patient'])->find($record->id);
+                        
+                        if (!$freshRecord) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Record not found')
+                                ->body('The record could not be found.')
+                                ->send();
+                            return;
+                        }
+                        
                         Log::info('Test modal action triggered for record:', [
-                            'record_id' => $record->id,
-                            'file_reference' => $record->file->mga_reference
+                            'record_id' => $freshRecord->id,
+                            'file_reference' => $freshRecord->file->mga_reference,
+                            'patient_name' => $freshRecord->file->patient->name ?? 'N/A'
                         ]);
                         
                         Notification::make()
                             ->success()
                             ->title('Test Modal Working')
-                            ->body("Modal for record {$record->id} is working correctly!")
+                            ->body("Modal for record {$freshRecord->id} - File: {$freshRecord->file->mga_reference} - Patient: {$freshRecord->file->patient->name}")
                             ->send();
                     }),
                 Action::make('debug_record')
@@ -175,10 +188,28 @@ class BillsWithoutDocumentsResource extends Resource
                     ->modalDescription(fn (Bill $record): string => "Record ID: {$record->id}\nFile Reference: {$record->file->mga_reference}\nPatient: {$record->file->patient->name}")
                     ->modalSubmitActionLabel('OK')
                     ->action(function (Bill $record) {
+                        // Get the fresh record to ensure we have the latest data
+                        $freshRecord = Bill::with(['file.patient'])->find($record->id);
+                        
+                        if (!$freshRecord) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Record not found')
+                                ->body('The record could not be found.')
+                                ->send();
+                            return;
+                        }
+                        
+                        Log::info('Debug action triggered for record:', [
+                            'record_id' => $freshRecord->id,
+                            'file_reference' => $freshRecord->file->mga_reference,
+                            'patient_name' => $freshRecord->file->patient->name ?? 'N/A'
+                        ]);
+                        
                         Notification::make()
                             ->info()
                             ->title('Debug Info')
-                            ->body("Record ID: {$record->id} - File: {$record->file->mga_reference}")
+                            ->body("Record ID: {$freshRecord->id} - File: {$freshRecord->file->mga_reference} - Patient: {$freshRecord->file->patient->name}")
                             ->send();
                     }),
                 Action::make('upload_bill_doc')
