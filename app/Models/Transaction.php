@@ -234,6 +234,22 @@ class Transaction extends Model
     }
 
     /**
+     * Check if the attachment is an uploaded file
+     */
+    public function isUploadedFile(): bool
+    {
+        return $this->attachment_path && str_starts_with($this->attachment_path, 'transactions/');
+    }
+
+    /**
+     * Check if the attachment is a URL
+     */
+    public function isUrl(): bool
+    {
+        return $this->attachment_path && str_starts_with($this->attachment_path, 'http');
+    }
+
+    /**
      * Get the attachment display text
      */
     public function getAttachmentDisplayText(): string
@@ -243,10 +259,20 @@ class Transaction extends Model
         }
         
         if ($this->isGoogleDriveAttachment()) {
-            return 'View Document';
+            return 'View Google Drive Document';
         }
         
-        return 'Document Link';
+        if (str_starts_with($this->attachment_path, 'http')) {
+            return 'View Document Link';
+        }
+        
+        if (str_starts_with($this->attachment_path, 'transactions/')) {
+            // Extract original filename from path if possible
+            $filename = basename($this->attachment_path);
+            return 'Download: ' . $filename;
+        }
+        
+        return 'View Document';
     }
 
     /**
