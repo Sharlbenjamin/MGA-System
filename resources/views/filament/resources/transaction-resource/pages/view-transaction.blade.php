@@ -373,10 +373,10 @@
                                                class="text-blue-600 hover:text-blue-800 underline">
                                                 {{ $bill->provider->name }}
                                             </a>
-                                        @elseif($bill->providerBranch)
-                                            <a href="{{ route('filament.admin.resources.provider-branches.overview', $bill->providerBranch->id) }}" 
+                                        @elseif($bill->branch)
+                                            <a href="{{ route('filament.admin.resources.provider-branches.overview', $bill->branch->id) }}" 
                                                class="text-blue-600 hover:text-blue-800 underline">
-                                                {{ $bill->providerBranch->name }}
+                                                {{ $bill->branch->name }}
                                             </a>
                                         @else
                                             N/A

@@ -24,7 +24,7 @@ class ViewTransaction extends ViewRecord
             'invoices.file.patient.client',
             'bills.file.patient.client',
             'bills.provider',
-            'bills.providerBranch',
+            'bills.branch',
             'bankAccount'
         ]);
         
