@@ -420,4 +420,9 @@ class UploadStageDocument extends Page implements HasForms, HasTable
     {
         return [];
     }
+
+    public function getContent(): ?string
+    {
+        return null;
+    }
 }
