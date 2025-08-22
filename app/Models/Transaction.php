@@ -23,6 +23,7 @@ class Transaction extends Model
         'attachment_path',
         'bank_charges',
         'charges_covered_by_client',
+        'status',
     ];
 
     protected $casts = [

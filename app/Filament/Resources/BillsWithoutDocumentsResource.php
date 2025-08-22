@@ -148,7 +148,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->label('View File'),
                 Action::make('test_modal')
                     ->label('Test Modal')
-                    ->icon('heroicon-o-bug')
+                    ->icon('heroicon-o-exclamation-triangle')
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading(fn (Bill $record): string => "Test Modal for {$record->file->mga_reference}")

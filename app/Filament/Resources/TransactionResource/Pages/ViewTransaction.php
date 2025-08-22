@@ -21,8 +21,10 @@ class ViewTransaction extends ViewRecord
     {
         // Load the record with all necessary relationships
         $record = $this->record->load([
-            'invoices.file.bills',
-            'bills.file',
+            'invoices.file.patient.client',
+            'bills.file.patient.client',
+            'bills.provider',
+            'bills.providerBranch',
             'bankAccount'
         ]);
         
@@ -47,13 +49,12 @@ class ViewTransaction extends ViewRecord
         $totalInvoices = $invoices->sum('total_amount');
         $totalProfit = $totalInvoices - $totalCost;
         
-
-        
         return [
             'record' => $record,
             'filesCount' => $filesCount,
             'totalCost' => $totalCost,
             'totalProfit' => $totalProfit,
+            'totalInvoices' => $totalInvoices,
         ];
     }
 
