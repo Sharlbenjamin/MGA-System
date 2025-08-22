@@ -402,12 +402,7 @@ class UploadStageDocument extends Page implements HasForms, HasTable
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('upload')
-                ->label('Upload Document')
-                ->form($this->form->getSchema())
-                ->action('submit')
-                ->button()
-                ->color('primary'),
+            // Remove the problematic action for now - the form is already displayed on the page
         ];
     }
 
