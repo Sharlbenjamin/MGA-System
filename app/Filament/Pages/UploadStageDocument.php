@@ -15,22 +15,13 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Notifications\Notification;
-use Filament\Tables\Table;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Filament\Actions\Action;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 
-class UploadStageDocument extends Page implements HasForms, HasTable
+class UploadStageDocument extends Page implements HasForms
 {
-    use InteractsWithForms, InteractsWithTable;
+    use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
     protected static ?string $navigationGroup = 'Stages';
@@ -59,8 +50,7 @@ class UploadStageDocument extends Page implements HasForms, HasTable
                             ->searchable()
                             ->required()
                             ->reactive()
-                            ->afterStateUpdated(fn (Set $set) => $set('stage_input', null))
-                            ->afterStateUpdated(fn () => $this->resetTableFilters()),
+                            ->afterStateUpdated(fn (Set $set) => $set('stage_input', null)),
 
                         Select::make('stage')
                             ->label('Stage')
@@ -75,8 +65,7 @@ class UploadStageDocument extends Page implements HasForms, HasTable
                             ])
                             ->required()
                             ->reactive()
-                            ->afterStateUpdated(fn (Set $set) => $set('stage_input', null))
-                            ->afterStateUpdated(fn () => $this->resetTableFilters()),
+                            ->afterStateUpdated(fn (Set $set) => $set('stage_input', null)),
 
                         Select::make('stage_input')
                             ->label('Stage Input')
@@ -100,8 +89,7 @@ class UploadStageDocument extends Page implements HasForms, HasTable
                             })
                             ->searchable()
                             ->required()
-                            ->reactive()
-                            ->afterStateUpdated(fn () => $this->resetTableFilters()),
+                            ->reactive(),
 
                         FileUpload::make('document')
                             ->label('Document')
@@ -336,93 +324,8 @@ class UploadStageDocument extends Page implements HasForms, HasTable
         }
     }
 
-    public function table(Table $table): Table
-    {
-        return $table
-            ->query(
-                File::query()
-                    ->where('status', '!=', 'Void')
-                    ->where(function (Builder $query) {
-                        $query->whereNull('google_drive_link')
-                              ->orWhere('google_drive_link', '');
-                    })
-            )
-            ->columns([
-                TextColumn::make('mga_reference')
-                    ->label('MGA Reference')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('patient.name')
-                    ->label('Patient')
-                    ->searchable()
-                    ->sortable(),
-
-                BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'New',
-                        'info' => 'Handling',
-                        'primary' => 'Available',
-                        'success' => 'Confirmed',
-                        'danger' => 'Requesting GOP',
-                        'gray' => 'Assisted',
-                        'secondary' => 'Hold',
-                    ]),
-
-                TextColumn::make('service_date')
-                    ->label('Service Date')
-                    ->date()
-                    ->sortable(),
-
-                TextColumn::make('created_at')
-                    ->label('Created')
-                    ->dateTime()
-                    ->sortable(),
-            ])
-            ->filters([
-                SelectFilter::make('status')
-                    ->options([
-                        'New' => 'New',
-                        'Handling' => 'Handling',
-                        'Available' => 'Available',
-                        'Confirmed' => 'Confirmed',
-                        'Requesting GOP' => 'Requesting GOP',
-                        'Assisted' => 'Assisted',
-                        'Hold' => 'Hold',
-                    ]),
-            ])
-            ->actions([
-                // Add actions if needed
-            ])
-            ->bulkActions([
-                // Add bulk actions if needed
-            ]);
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            // Remove the problematic action for now - the form is already displayed on the page
-        ];
-    }
-
     public function getTitle(): string
     {
         return 'Upload Stage Document';
-    }
-
-    protected function getHeaderWidgets(): array
-    {
-        return [];
-    }
-
-    protected function getFooterWidgets(): array
-    {
-        return [];
-    }
-
-    public function getContent(): ?string
-    {
-        return null;
     }
 }
