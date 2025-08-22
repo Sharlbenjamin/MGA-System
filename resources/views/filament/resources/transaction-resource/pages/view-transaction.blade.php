@@ -162,7 +162,7 @@
                                 $client = \App\Models\Client::find($this->record->related_id);
                             @endphp
                             @if($client)
-                                <a href="{{ route('filament.admin.resources.clients.view', $client->id) }}" 
+                                <a href="{{ route('filament.admin.resources.clients.overview', $client->id) }}" 
                                    class="text-blue-600 hover:text-blue-800 underline">
                                     {{ $client->company_name ?? $client->name }}
                                 </a>
@@ -174,7 +174,7 @@
                                 $provider = \App\Models\Provider::find($this->record->related_id);
                             @endphp
                             @if($provider)
-                                <a href="{{ route('filament.admin.resources.providers.view', $provider->id) }}" 
+                                <a href="{{ route('filament.admin.resources.providers.overview', $provider->id) }}" 
                                    class="text-blue-600 hover:text-blue-800 underline">
                                     {{ $provider->name }}
                                 </a>
@@ -186,7 +186,7 @@
                                 $branch = \App\Models\ProviderBranch::find($this->record->related_id);
                             @endphp
                             @if($branch)
-                                <a href="{{ route('filament.admin.resources.provider-branches.view', $branch->id) }}" 
+                                <a href="{{ route('filament.admin.resources.provider-branches.overview', $branch->id) }}" 
                                    class="text-blue-600 hover:text-blue-800 underline">
                                     {{ $branch->name }}
                                 </a>
