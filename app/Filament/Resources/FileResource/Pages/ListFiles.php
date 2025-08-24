@@ -33,7 +33,7 @@ class ListFiles extends ListRecords
                 ->color('success')
                 ->modalHeading('Upload Screenshot & Extract Data')
                 ->modalDescription('Upload a screenshot and use OCR to extract patient information')
-                ->modalSubmitActionLabel('Process & Create File')
+                ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Cancel')
                 ->form([
                     Section::make('Step 1: Select Client & Upload Image')
@@ -101,54 +101,106 @@ class ListFiles extends ListRecords
                                 ])
                         ])
                         ->columns(1)
+                        ->visible(fn ($get) => $get('screenshot') && $get('client_id'))
                 ])
-                ->action(function (array $data) {
-                    try {
-                        DB::beginTransaction();
-                        
-                        // Get the OCR service
-                        $ocrService = app(OcrService::class);
-                        
-                        // Extract text from the uploaded image
-                        $imagePath = Storage::disk('public')->path($data['screenshot']);
-                        $extractedData = $ocrService->extractTextFromImage($imagePath);
-                        
-                        // Clean the extracted data
-                        $cleanedData = $ocrService->cleanExtractedData($extractedData);
-                        
-                        // Determine gender from name
-                        $gender = $ocrService->determineGenderFromName($cleanedData['patient_name']);
-                        
-                        // Find or create patient
-                        $patient = $this->findOrCreatePatient($data['client_id'], $cleanedData, $gender);
-                        
-                        // Create the file
-                        $file = $this->createFile($patient, $cleanedData, $data);
-                        
-                        DB::commit();
-                        
-                        // Show success notification
-                        Notification::make()
-                            ->success()
-                            ->title('File Created Successfully')
-                            ->body("File {$file->mga_reference} has been created for patient {$patient->name}")
-                            ->send();
-                        
-                        // Redirect to the created file
-                        return redirect()->to(FileResource::getUrl('view', ['record' => $file]));
-                        
-                    } catch (\Exception $e) {
-                        DB::rollBack();
-                        
-                        Notification::make()
-                            ->danger()
-                            ->title('Error Creating File')
-                            ->body('An error occurred while creating the file: ' . $e->getMessage())
-                            ->send();
-                        
-                        return null;
-                    }
-                })
+                ->extraModalFooterActions([
+                    Actions\Action::make('process_image')
+                        ->label('Process Image')
+                        ->color('warning')
+                        ->icon('heroicon-o-cog')
+                        ->action(function (array $data) {
+                            if (!$data['screenshot'] || !$data['client_id']) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Missing Information')
+                                    ->body('Please select a client and upload a screenshot first.')
+                                    ->send();
+                                return;
+                            }
+                            
+                            try {
+                                // Get the OCR service
+                                $ocrService = app(OcrService::class);
+                                
+                                // Extract text from the uploaded image
+                                $imagePath = Storage::disk('public')->path($data['screenshot']);
+                                $extractedData = $ocrService->extractTextFromImage($imagePath);
+                                
+                                // Clean the extracted data
+                                $cleanedData = $ocrService->cleanExtractedData($extractedData);
+                                
+                                // Update the form with extracted data
+                                $this->form->fill([
+                                    'patient_name' => $cleanedData['patient_name'],
+                                    'date_of_birth' => $cleanedData['date_of_birth'],
+                                    'client_reference' => $cleanedData['client_reference'],
+                                    'patient_address' => $cleanedData['patient_address'],
+                                    'symptoms' => $cleanedData['symptoms'],
+                                    'extra_field' => $cleanedData['extra_field'],
+                                ]);
+                                
+                                Notification::make()
+                                    ->success()
+                                    ->title('Image Processed Successfully')
+                                    ->body('Text has been extracted from the image. Please review and edit the information below.')
+                                    ->send();
+                                    
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Processing Failed')
+                                    ->body('Failed to process the image: ' . $e->getMessage())
+                                    ->send();
+                            }
+                        })
+                        ->visible(fn ($get) => $get('screenshot') && $get('client_id')),
+                    
+                    Actions\Action::make('create_file')
+                        ->label('Create File')
+                        ->color('success')
+                        ->icon('heroicon-o-plus')
+                        ->action(function (array $data) {
+                            try {
+                                DB::beginTransaction();
+                                
+                                // Get the OCR service for gender determination
+                                $ocrService = app(OcrService::class);
+                                
+                                // Determine gender from name
+                                $gender = $ocrService->determineGenderFromName($data['patient_name']);
+                                
+                                // Find or create patient
+                                $patient = $this->findOrCreatePatient($data['client_id'], $data, $gender);
+                                
+                                // Create the file
+                                $file = $this->createFile($patient, $data, $data);
+                                
+                                DB::commit();
+                                
+                                // Show success notification
+                                Notification::make()
+                                    ->success()
+                                    ->title('File Created Successfully')
+                                    ->body("File {$file->mga_reference} has been created for patient {$patient->name}")
+                                    ->send();
+                                
+                                // Redirect to the created file
+                                return redirect()->to(FileResource::getUrl('view', ['record' => $file]));
+                                
+                            } catch (\Exception $e) {
+                                DB::rollBack();
+                                
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Error Creating File')
+                                    ->body('An error occurred while creating the file: ' . $e->getMessage())
+                                    ->send();
+                                
+                                return null;
+                            }
+                        })
+                        ->visible(fn ($get) => $get('patient_name') && $get('service_type_id')),
+                ])
                 ->modalWidth('4xl'),
         ];
     }

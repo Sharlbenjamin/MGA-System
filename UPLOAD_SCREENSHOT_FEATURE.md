@@ -6,6 +6,7 @@ The Upload Screenshot feature allows users to upload an image of patient informa
 
 ## Features
 
+- **Two-Step Workflow**: Separate buttons for processing and creating
 - **Image Upload**: Support for JPG, PNG, JPEG formats up to 10MB
 - **OCR Processing**: Automatic text extraction from uploaded images
 - **Data Extraction**: Extracts up to 7 fields:
@@ -19,15 +20,24 @@ The Upload Screenshot feature allows users to upload an image of patient informa
 - **Gender Detection**: Automatically determines gender from patient name (defaults to Female)
 - **Duplicate Prevention**: Checks for existing patients before creating new ones
 - **Data Review**: Allows editing of extracted data before file creation
+- **Smart Button Visibility**: Buttons appear only when appropriate actions are available
 
 ## How to Use
 
+### Two-Step Process:
+
+**Step 1: Upload and Process**
 1. Navigate to the FileResource list view
 2. Click the "Upload Screenshot" button in the header actions
 3. Select a client from the dropdown
 4. Upload a screenshot of the patient information
-5. Review and edit the extracted data
-6. Click "Process & Create File" to create the new file
+5. Click the **"Process Image"** button to extract data using OCR
+6. The extracted data will populate the form fields automatically
+
+**Step 2: Review and Create**
+7. Review and edit the extracted data in the form fields
+8. Fill in any missing required fields (Service Type is required)
+9. Click the **"Create File"** button to create the new file
 
 ## Implementation Details
 
