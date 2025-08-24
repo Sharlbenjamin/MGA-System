@@ -33,11 +33,11 @@ class ListFiles extends ListRecords
                 ->color('success')
                 ->modalHeading('Upload Screenshot & Extract Data')
                 ->modalDescription('Upload a screenshot and use OCR to extract patient information')
-                ->modalSubmitAction(false)
+                ->modalSubmitActionLabel('Process Image & Continue')
                 ->modalCancelActionLabel('Cancel')
                 ->form([
-                    Section::make('Step 1: Select Client & Upload Image')
-                        ->description('First select a client, then upload the screenshot')
+                    Section::make('Upload Screenshot for OCR Processing')
+                        ->description('Select a client and upload a screenshot to extract patient information')
                         ->schema([
                             Select::make('client_id')
                                 ->label('Client')
@@ -45,7 +45,7 @@ class ListFiles extends ListRecords
                                 ->required()
                                 ->searchable()
                                 ->preload()
-                                ->live(),
+                                ->helperText('Select the client for this patient'),
                             
                             FileUpload::make('screenshot')
                                 ->label('Screenshot')
@@ -58,196 +58,76 @@ class ListFiles extends ListRecords
                                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg'])
                                 ->helperText('Upload a clear screenshot of the patient information. Supported formats: JPG, PNG. Max size: 10MB.')
                         ])
-                        ->columns(1),
-                    
-                    Section::make('Step 2: Review Extracted Data')
-                        ->description('Review and edit the extracted information before creating the file')
-                        ->schema([
-                            Grid::make(2)
-                                ->schema([
-                                    TextInput::make('patient_name')
-                                        ->label('Patient Name')
-                                        ->required(),
-                                    
-                                    DatePicker::make('date_of_birth')
-                                        ->label('Date of Birth')
-                                        ->nullable(),
-                                    
-                                    TextInput::make('client_reference')
-                                        ->label('Client Reference')
-                                        ->nullable(),
-                                    
-                                    Select::make('service_type_id')
-                                        ->label('Service Type')
-                                        ->options(ServiceType::pluck('name', 'id'))
-                                        ->searchable()
-                                        ->preload()
-                                        ->required(),
-                                    
-                                    Textarea::make('patient_address')
-                                        ->label('Patient Address')
-                                        ->rows(2)
-                                        ->nullable(),
-                                    
-                                    Textarea::make('symptoms')
-                                        ->label('Symptoms')
-                                        ->rows(2)
-                                        ->nullable(),
-                                    
-                                    Textarea::make('extra_field')
-                                        ->label('Additional Information')
-                                        ->rows(2)
-                                        ->nullable(),
-                                ])
-                        ])
                         ->columns(1)
                 ])
-                ->extraModalFooterActions([
-                    Actions\Action::make('process_image')
-                        ->label('Process Image')
-                        ->color('warning')
-                        ->icon('heroicon-o-cog')
-                        ->action(function (array $data) {
-                            // Debug: Show all form data
-                            $allData = json_encode($data, JSON_PRETTY_PRINT);
-                            
-                            // Validate required fields for processing
-                            $hasScreenshot = !empty($data['screenshot']) && 
-                                           (is_string($data['screenshot']) || 
-                                            (is_array($data['screenshot']) && !empty($data['screenshot'])));
-                            
-                            if (!$hasScreenshot) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Missing Screenshot')
-                                    ->body("Form data: {$allData}. Please upload a screenshot first.")
-                                    ->send();
-                                return;
-                            }
-                            
-                            if (empty($data['client_id'])) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Missing Client')
-                                    ->body('Please select a client first.')
-                                    ->send();
-                                return;
-                            }
-                            
-                            try {
-                                // Get the OCR service
-                                $ocrService = app(OcrService::class);
-                                
-                                // Handle file upload path - it might be a string or array
-                                $screenshotPath = is_array($data['screenshot']) ? $data['screenshot'][0] : $data['screenshot'];
-                                
-                                // Extract text from the uploaded image
-                                $imagePath = Storage::disk('public')->path($screenshotPath);
-                                $extractedData = $ocrService->extractTextFromImage($imagePath);
-                                
-                                // Clean the extracted data
-                                $cleanedData = $ocrService->cleanExtractedData($extractedData);
-                                
-                                // Update the form with extracted data
-                                $this->form->fill([
-                                    'patient_name' => $cleanedData['patient_name'],
-                                    'date_of_birth' => $cleanedData['date_of_birth'],
-                                    'client_reference' => $cleanedData['client_reference'],
-                                    'patient_address' => $cleanedData['patient_address'],
-                                    'symptoms' => $cleanedData['symptoms'],
-                                    'extra_field' => $cleanedData['extra_field'],
-                                ]);
-                                
-                                Notification::make()
-                                    ->success()
-                                    ->title('Image Processed Successfully')
-                                    ->body('Text has been extracted from the image. Please review and edit the information below.')
-                                    ->send();
-                                    
-                            } catch (\Exception $e) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Processing Failed')
-                                    ->body('Failed to process the image: ' . $e->getMessage())
-                                    ->send();
-                            }
-                        })
-                        ->visible(fn () => true),
+                ->action(function (array $data) {
+                    // Validate required fields
+                    if (empty($data['screenshot'])) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Missing Screenshot')
+                            ->body('Please upload a screenshot first.')
+                            ->send();
+                        return;
+                    }
                     
-                    Actions\Action::make('create_file')
-                        ->label('Create File')
-                        ->color('success')
-                        ->icon('heroicon-o-plus')
-                        ->action(function (array $data) {
-                            // Validate required fields for file creation
-                            if (empty($data['patient_name'])) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Missing Patient Name')
-                                    ->body('Please process the image first or enter a patient name.')
-                                    ->send();
-                                return;
-                            }
-                            
-                            if (empty($data['service_type_id'])) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Missing Service Type')
-                                    ->body('Please select a service type.')
-                                    ->send();
-                                return;
-                            }
-                            
-                            if (empty($data['client_id'])) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Missing Client')
-                                    ->body('Please select a client.')
-                                    ->send();
-                                return;
-                            }
-                            
-                            try {
-                                DB::beginTransaction();
-                                
-                                // Get the OCR service for gender determination
-                                $ocrService = app(OcrService::class);
-                                
-                                // Determine gender from name
-                                $gender = $ocrService->determineGenderFromName($data['patient_name']);
-                                
-                                // Find or create patient
-                                $patient = $this->findOrCreatePatient($data['client_id'], $data, $gender);
-                                
-                                // Create the file
-                                $file = $this->createFile($patient, $data, $data);
-                                
-                                DB::commit();
-                                
-                                // Show success notification
-                                Notification::make()
-                                    ->success()
-                                    ->title('File Created Successfully')
-                                    ->body("File {$file->mga_reference} has been created for patient {$patient->name}")
-                                    ->send();
-                                
-                                // Redirect to the created file
-                                return redirect()->to(FileResource::getUrl('view', ['record' => $file]));
-                                
-                            } catch (\Exception $e) {
-                                DB::rollBack();
-                                
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Error Creating File')
-                                    ->body('An error occurred while creating the file: ' . $e->getMessage())
-                                    ->send();
-                                
-                                return null;
-                            }
-                        })
-                        ->visible(fn () => true),
-                ])
+                    if (empty($data['client_id'])) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Missing Client')
+                            ->body('Please select a client first.')
+                            ->send();
+                        return;
+                    }
+                    
+                    try {
+                        // Get the OCR service
+                        $ocrService = app(OcrService::class);
+                        
+                        // Handle file upload path - it might be a string or array
+                        $screenshotPath = is_array($data['screenshot']) ? $data['screenshot'][0] : $data['screenshot'];
+                        
+                        // Extract text from the uploaded image
+                        $imagePath = Storage::disk('public')->path($screenshotPath);
+                        $extractedData = $ocrService->extractTextFromImage($imagePath);
+                        
+                        // Clean the extracted data
+                        $cleanedData = $ocrService->cleanExtractedData($extractedData);
+                        
+                        // Determine gender from name
+                        $gender = $ocrService->determineGenderFromName($cleanedData['patient_name']);
+                        
+                        // Store the extracted data in session for the create page
+                        session([
+                            'ocr_extracted_data' => [
+                                'client_id' => $data['client_id'],
+                                'patient_name' => $cleanedData['patient_name'],
+                                'date_of_birth' => $cleanedData['date_of_birth'],
+                                'client_reference' => $cleanedData['client_reference'],
+                                'patient_address' => $cleanedData['patient_address'],
+                                'symptoms' => $cleanedData['symptoms'],
+                                'extra_field' => $cleanedData['extra_field'],
+                                'gender' => $gender,
+                            ]
+                        ]);
+                        
+                        Notification::make()
+                            ->success()
+                            ->title('Image Processed Successfully')
+                            ->body('Redirecting to create file page with extracted data...')
+                            ->send();
+                        
+                        // Redirect to the create file page
+                        return redirect()->to(FileResource::getUrl('create'));
+                        
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Processing Failed')
+                            ->body('Failed to process the image: ' . $e->getMessage())
+                            ->send();
+                    }
+                })
                 ->modalWidth('4xl'),
         ];
     }

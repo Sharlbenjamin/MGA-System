@@ -11,6 +11,37 @@ use Filament\Notifications\Notification;
 class CreateFile extends CreateRecord
 {
     protected static string $resource = FileResource::class;
+    
+    public function mount(): void
+    {
+        parent::mount();
+        
+        // Check if we have OCR extracted data in session
+        if (session()->has('ocr_extracted_data')) {
+            $ocrData = session('ocr_extracted_data');
+            
+            // Pre-fill the form with OCR data
+            $this->form->fill([
+                'new_patient' => true,
+                'patient_name' => $ocrData['patient_name'] ?? '',
+                'patient_dob' => $ocrData['date_of_birth'] ?? '',
+                'patient_gender' => $ocrData['gender'] ?? 'Female',
+                'client_reference' => $ocrData['client_reference'] ?? '',
+                'address' => $ocrData['patient_address'] ?? '',
+                'symptoms' => $ocrData['symptoms'] ?? '',
+            ]);
+            
+            // Clear the session data
+            session()->forget('ocr_extracted_data');
+            
+            // Show notification
+            Notification::make()
+                ->success()
+                ->title('OCR Data Loaded')
+                ->body('Data extracted from your screenshot has been pre-filled. Please review and complete the form.')
+                ->send();
+        }
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
