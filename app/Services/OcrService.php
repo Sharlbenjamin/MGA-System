@@ -82,27 +82,65 @@ class OcrService
         return $this->parseExtractedText($text);
         */
         
-        // For now, return sample data that would be extracted
-        // TODO: Replace with actual OCR processing
-        // The image has been validated and is ready for OCR processing
-        
-        // You can integrate with real OCR services:
-        // 1. Google Vision API (recommended)
-        // 2. AWS Textract
-        // 3. Tesseract OCR
-        
-        // For demonstration purposes, returning sample data
-        // In production, replace this with actual OCR text extraction
-        return [
-            'patient_name' => 'John Doe',
-            'date_of_birth' => '1990-05-15',
-            'client_reference' => 'REF123456',
-            'service_type' => 'Medical Consultation',
-            'patient_address' => '123 Main Street, City, Country',
-            'symptoms' => 'Headache, fever, fatigue',
-            'extra_field' => 'Allergies: None',
-            'confidence' => 85
-        ];
+        // Real OCR processing using Tesseract
+        try {
+            // Check if Tesseract is available
+            $tesseractPath = exec('which tesseract');
+            if (empty($tesseractPath)) {
+                throw new \Exception('Tesseract not found. Please install Tesseract OCR.');
+            }
+            
+            // Create a temporary output file for Tesseract
+            $tempOutputFile = tempnam(sys_get_temp_dir(), 'ocr_output_');
+            
+            // Run Tesseract OCR on the image
+            $command = "tesseract \"{$imagePath}\" \"{$tempOutputFile}\" --psm 6 -l eng";
+            $output = [];
+            $returnCode = 0;
+            
+            exec($command . ' 2>&1', $output, $returnCode);
+            
+            if ($returnCode !== 0) {
+                throw new \Exception('Tesseract OCR failed: ' . implode("\n", $output));
+            }
+            
+            // Read the extracted text
+            $extractedText = file_get_contents($tempOutputFile . '.txt');
+            
+            // Clean up temporary files
+            @unlink($tempOutputFile);
+            @unlink($tempOutputFile . '.txt');
+            
+            if (empty($extractedText)) {
+                throw new \Exception('No text was extracted from the image');
+            }
+            
+            Log::info('OCR text extracted', [
+                'image_path' => $imagePath,
+                'extracted_text' => $extractedText
+            ]);
+            
+            // Parse the extracted text to find structured data
+            return $this->parseExtractedText($extractedText);
+            
+        } catch (\Exception $e) {
+            Log::error('OCR processing failed', [
+                'error' => $e->getMessage(),
+                'image_path' => $imagePath
+            ]);
+            
+            // Fallback to sample data if OCR fails
+            return [
+                'patient_name' => 'OCR Failed - ' . $e->getMessage(),
+                'date_of_birth' => '',
+                'client_reference' => '',
+                'service_type' => '',
+                'patient_address' => '',
+                'symptoms' => '',
+                'extra_field' => 'OCR Error: ' . $e->getMessage(),
+                'confidence' => 0
+            ];
+        }
     }
     
     /**
