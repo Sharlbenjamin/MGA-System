@@ -85,31 +85,31 @@ class OcrService
         // Real OCR processing using Tesseract
         try {
             // Check if Tesseract is available
-            $tesseractPath = exec('which tesseract');
+            $tesseractPath = \exec('which tesseract');
             if (empty($tesseractPath)) {
                 throw new \Exception('Tesseract not found. Please install Tesseract OCR.');
             }
             
             // Create a temporary output file for Tesseract
-            $tempOutputFile = tempnam(sys_get_temp_dir(), 'ocr_output_');
+            $tempOutputFile = \tempnam(\sys_get_temp_dir(), 'ocr_output_');
             
             // Run Tesseract OCR on the image
             $command = "tesseract \"{$imagePath}\" \"{$tempOutputFile}\" --psm 6 -l eng";
             $output = [];
             $returnCode = 0;
             
-            exec($command . ' 2>&1', $output, $returnCode);
+            \exec($command . ' 2>&1', $output, $returnCode);
             
             if ($returnCode !== 0) {
                 throw new \Exception('Tesseract OCR failed: ' . implode("\n", $output));
             }
             
             // Read the extracted text
-            $extractedText = file_get_contents($tempOutputFile . '.txt');
+            $extractedText = \file_get_contents($tempOutputFile . '.txt');
             
             // Clean up temporary files
-            @unlink($tempOutputFile);
-            @unlink($tempOutputFile . '.txt');
+            @\unlink($tempOutputFile);
+            @\unlink($tempOutputFile . '.txt');
             
             if (empty($extractedText)) {
                 throw new \Exception('No text was extracted from the image');
