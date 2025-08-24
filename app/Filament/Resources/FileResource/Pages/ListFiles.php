@@ -101,7 +101,6 @@ class ListFiles extends ListRecords
                                 ])
                         ])
                         ->columns(1)
-                        ->visible(fn ($get) => $get('screenshot') && $get('client_id'))
                 ])
                 ->extraModalFooterActions([
                     Actions\Action::make('process_image')
@@ -109,11 +108,21 @@ class ListFiles extends ListRecords
                         ->color('warning')
                         ->icon('heroicon-o-cog')
                         ->action(function (array $data) {
-                            if (!$data['screenshot'] || !$data['client_id']) {
+                            // Validate required fields for processing
+                            if (empty($data['screenshot'])) {
                                 Notification::make()
                                     ->danger()
-                                    ->title('Missing Information')
-                                    ->body('Please select a client and upload a screenshot first.')
+                                    ->title('Missing Screenshot')
+                                    ->body('Please upload a screenshot first.')
+                                    ->send();
+                                return;
+                            }
+                            
+                            if (empty($data['client_id'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Missing Client')
+                                    ->body('Please select a client first.')
                                     ->send();
                                 return;
                             }
@@ -153,13 +162,41 @@ class ListFiles extends ListRecords
                                     ->send();
                             }
                         })
-                        ->visible(fn ($get) => $get('screenshot') && $get('client_id')),
+                        ->visible(fn () => true),
                     
                     Actions\Action::make('create_file')
                         ->label('Create File')
                         ->color('success')
                         ->icon('heroicon-o-plus')
                         ->action(function (array $data) {
+                            // Validate required fields for file creation
+                            if (empty($data['patient_name'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Missing Patient Name')
+                                    ->body('Please process the image first or enter a patient name.')
+                                    ->send();
+                                return;
+                            }
+                            
+                            if (empty($data['service_type_id'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Missing Service Type')
+                                    ->body('Please select a service type.')
+                                    ->send();
+                                return;
+                            }
+                            
+                            if (empty($data['client_id'])) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Missing Client')
+                                    ->body('Please select a client.')
+                                    ->send();
+                                return;
+                            }
+                            
                             try {
                                 DB::beginTransaction();
                                 
@@ -199,7 +236,7 @@ class ListFiles extends ListRecords
                                 return null;
                             }
                         })
-                        ->visible(fn ($get) => $get('patient_name') && $get('service_type_id')),
+                        ->visible(fn () => true),
                 ])
                 ->modalWidth('4xl'),
         ];
