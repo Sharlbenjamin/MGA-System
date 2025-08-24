@@ -20,6 +20,12 @@ class CreateFile extends CreateRecord
         if (session()->has('ocr_extracted_data')) {
             $ocrData = session('ocr_extracted_data');
             
+            // Generate MGA reference if client_id is provided
+            $mgaReference = '';
+            if (!empty($ocrData['client_id'])) {
+                $mgaReference = \App\Models\File::generateMGAReference($ocrData['client_id'], 'client');
+            }
+            
             // Pre-fill the form with OCR data
             $this->form->fill([
                 'new_patient' => true,
@@ -31,15 +37,8 @@ class CreateFile extends CreateRecord
                 'address' => $ocrData['patient_address'] ?? '',
                 'symptoms' => $ocrData['symptoms'] ?? '',
                 'status' => 'New',
+                'mga_reference' => $mgaReference,
             ]);
-            
-            // Generate MGA reference if client_id is provided
-            if (!empty($ocrData['client_id'])) {
-                $mgaReference = \App\Models\File::generateMGAReference($ocrData['client_id'], 'client');
-                $this->form->fill([
-                    'mga_reference' => $mgaReference
-                ]);
-            }
             
             // Clear the session data
             session()->forget('ocr_extracted_data');
