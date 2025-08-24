@@ -33,6 +33,14 @@ class CreateFile extends CreateRecord
                 'status' => 'New',
             ]);
             
+            // Generate MGA reference if client_id is provided
+            if (!empty($ocrData['client_id'])) {
+                $mgaReference = \App\Models\File::generateMGAReference($ocrData['client_id'], 'client');
+                $this->form->fill([
+                    'mga_reference' => $mgaReference
+                ]);
+            }
+            
             // Clear the session data
             session()->forget('ocr_extracted_data');
             
