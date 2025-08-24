@@ -63,8 +63,10 @@ The Upload Screenshot feature allows users to upload an image of patient informa
 
 **Step 2: Review and Create**
 7. Review and edit the extracted data in the create file form
-8. Fill in any missing required fields (Service Type is required)
-9. Click **"Create"** to create the new file
+8. The **Client** field will be pre-filled with the selected client name
+9. The **Status** will automatically be set to "New"
+10. Fill in any missing required fields (Service Type is required)
+11. Click **"Create"** to create the new file
 
 ### Text Input Format
 

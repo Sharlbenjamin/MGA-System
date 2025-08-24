@@ -86,6 +86,7 @@ class FileResource extends Resource
             Select::make('client_id')->options(Client::where('status', 'Active')->pluck('company_name', 'id'))->searchable()->preload()->required()->live()->afterStateUpdated(function ($state, callable $set) {
                     $set('mga_reference', File::generateMGAReference($state, 'client'));
                 })
+                ->label('Client')
                 ->hidden(fn ($get) => !$get('new_patient')),
             TextInput::make('mga_reference')->label('MGA Reference')->required()->readOnly()->unique(ignoreRecord: true)->helperText('Auto-generated based on the patient'),
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
@@ -100,7 +101,7 @@ class FileResource extends Resource
                       ->where('is_active', true);
                 });
             })->orderBy('priority', 'asc')->pluck('branch_name', 'id'))->reactive(),
-            Select::make('status')->options(['New' => 'New','Handling' => 'Handling','Available' => 'Available', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required(),
+            Select::make('status')->options(['New' => 'New','Handling' => 'Handling','Available' => 'Available', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required()->live(),
             DatePicker::make('service_date')->label('Service Date')->nullable(),
             TimePicker::make('service_time')->label('Service Time')->nullable(),
             TextInput::make('email')->label('Email')->email()->nullable(),

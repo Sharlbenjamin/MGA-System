@@ -26,9 +26,11 @@ class CreateFile extends CreateRecord
                 'patient_name' => $ocrData['patient_name'] ?? '',
                 'patient_dob' => $ocrData['date_of_birth'] ?? '',
                 'patient_gender' => $ocrData['gender'] ?? 'Female',
+                'client_id' => $ocrData['client_id'] ?? '',
                 'client_reference' => $ocrData['client_reference'] ?? '',
                 'address' => $ocrData['patient_address'] ?? '',
                 'symptoms' => $ocrData['symptoms'] ?? '',
+                'status' => 'New',
             ]);
             
             // Clear the session data
@@ -45,6 +47,9 @@ class CreateFile extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Ensure status is set to "New" for new files
+        $data['status'] = 'New';
+        
         if ($data['new_patient']) {
             // Check for duplicate patient
             $duplicate = Patient::findDuplicate($data['patient_name'], $data['client_id']);
