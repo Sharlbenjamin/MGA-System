@@ -45,17 +45,31 @@ class OcrService
      */
     private function simulateOcrExtraction($imagePath): array
     {
-        // This is a placeholder implementation
-        // In production, you would:
-        // 1. Use Google Vision API: https://cloud.google.com/vision
-        // 2. Use AWS Textract: https://aws.amazon.com/textract/
-        // 3. Use Tesseract OCR: https://github.com/tesseract-ocr/tesseract
+        // Validate that the image file exists
+        if (!file_exists($imagePath)) {
+            Log::error('Image file not found', ['path' => $imagePath]);
+            throw new \Exception('Image file not found');
+        }
+        
+        // Get image information
+        $imageInfo = getimagesize($imagePath);
+        if ($imageInfo === false) {
+            Log::error('Invalid image file', ['path' => $imagePath]);
+            throw new \Exception('Invalid image file');
+        }
+        
+        Log::info('Processing image', [
+            'path' => $imagePath,
+            'width' => $imageInfo[0],
+            'height' => $imageInfo[1],
+            'type' => $imageInfo[2]
+        ]);
         
         // For now, return sample data that would be extracted
         // In a real implementation, you would:
-        // 1. Load the image using GD or Imagick
-        // 2. Send to OCR service (Google Vision, AWS Textract, etc.)
-        // 3. Parse the returned text to extract structured data
+        // 1. Use Google Vision API: https://cloud.google.com/vision
+        // 2. Use AWS Textract: https://aws.amazon.com/textract/
+        // 3. Use Tesseract OCR: https://github.com/tesseract-ocr/tesseract
         
         // Example of how to integrate with Google Vision API:
         /*
@@ -69,6 +83,16 @@ class OcrService
         */
         
         // For now, return sample data that would be extracted
+        // TODO: Replace with actual OCR processing
+        // The image has been validated and is ready for OCR processing
+        
+        // You can integrate with real OCR services:
+        // 1. Google Vision API (recommended)
+        // 2. AWS Textract
+        // 3. Tesseract OCR
+        
+        // For demonstration purposes, returning sample data
+        // In production, replace this with actual OCR text extraction
         return [
             'patient_name' => 'John Doe',
             'date_of_birth' => '1990-05-15',

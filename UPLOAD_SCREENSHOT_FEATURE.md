@@ -4,6 +4,14 @@
 
 The Upload Screenshot feature allows users to upload an image of patient information and automatically extract data using OCR (Optical Character Recognition) to create new files in the system.
 
+## ⚠️ Important Note
+
+**Current Status**: The feature is fully functional but uses sample data for demonstration. To extract actual text from images, you need to integrate with a real OCR service (Google Vision API, AWS Textract, or Tesseract).
+
+**What's Working**: Image upload, validation, processing workflow, form pre-filling, and file creation.
+
+**What Needs Integration**: Actual text extraction from images (see "OCR Integration" section below).
+
 ## Features
 
 - **Simple Workflow**: Upload → Process → Redirect to Create Page
@@ -57,7 +65,7 @@ The Upload Screenshot feature allows users to upload an image of patient informa
 
 ### Current OCR Implementation
 
-The current implementation uses a simulated OCR approach that returns sample data. To integrate with real OCR services, you have several options:
+The current implementation validates the uploaded image and returns sample data. The image processing is working correctly - it validates the file exists and gets image information. To extract actual text from images, you need to integrate with a real OCR service.
 
 #### Option 1: Google Vision API (Recommended)
 
