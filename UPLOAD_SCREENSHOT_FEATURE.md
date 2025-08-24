@@ -68,8 +68,9 @@ The Upload Screenshot feature allows users to upload an image of patient informa
 
 ### Text Input Format
 
-The system can parse text in various formats, including bullet-point style:
+The system can parse text in various formats, including:
 
+#### Bullet-point style:
 ```
 • Address: 3, University Halls, Newcastle Rd, Galway, Ireland 
 • Telephone: +353833206224 
@@ -79,6 +80,32 @@ The system can parse text in various formats, including bullet-point style:
 • Nationality: Brazilian
 • Kind of assistance: Medical center
 ```
+
+#### Structured format:
+```
+Date: 2025-08-24
+Medical Provider: Med Guard Assistance
+Phone: +353 637030722
+Our Reference: 1506580-01 / 09455350
+Patient: Luiza Valentina Reis Soares
+Policy Number: 09455350
+D.O.B: 1999-04-14
+Symptoms: Pain or discomfort
+```
+
+#### Pipe-separated format:
+```
+1506580-01 | Luiza Valentina Reis Soares | 09455350
+```
+
+The system automatically detects and extracts:
+- **Patient Name**: From "Patient:" field or pipe-separated format
+- **Date of Birth**: From "DOB:", "D.O.B:", or "Date of Birth:" fields
+- **Client Reference**: From "Our Reference:", "Reference number:" fields
+- **Service Type**: From "Medical Provider:", "Kind of assistance:" fields
+- **Patient Address**: From "Address:" field
+- **Symptoms**: From "Symptoms:" field
+- **Extra Information**: Phone numbers, policy numbers, nationality, etc.
 
 ## Implementation Details
 

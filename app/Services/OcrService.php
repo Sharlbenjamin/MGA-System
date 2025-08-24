@@ -203,6 +203,18 @@ class OcrService
             // Skip empty lines
             if (empty($line)) continue;
             
+            // Look for patient name patterns (multiple formats)
+            if (preg_match('/Patient\s*:\s*(.+)/i', $line, $matches)) {
+                $data['patient_name'] = trim($matches[1]);
+            }
+            
+            // Look for patient name in pipe-separated format
+            if (preg_match('/(\d{7}-\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)/i', $line, $matches)) {
+                $data['client_reference'] = trim($matches[1]);
+                $data['patient_name'] = trim($matches[2]);
+                $data['extra_field'] = 'Policy: ' . trim($matches[3]);
+            }
+            
             // Look for address patterns (bullet point format)
             if (preg_match('/•\s*Address\s*:\s*(.+)/i', $line, $matches)) {
                 $data['patient_address'] = trim($matches[1]);
@@ -210,11 +222,21 @@ class OcrService
             
             // Look for telephone patterns
             if (preg_match('/•\s*Telephone\s*:\s*(.+)/i', $line, $matches)) {
-                $data['extra_field'] = 'Phone: ' . trim($matches[1]);
+                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
+            }
+            
+            // Look for phone patterns (non-bullet)
+            if (preg_match('/Phone\s*:\s*(.+)/i', $line, $matches)) {
+                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
             }
             
             // Look for DOB patterns (bullet point format)
             if (preg_match('/•\s*DOB\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
+                $data['date_of_birth'] = $matches[1];
+            }
+            
+            // Look for D.O.B patterns (with dots)
+            if (preg_match('/D\.O\.B\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
                 $data['date_of_birth'] = $matches[1];
             }
             
@@ -223,8 +245,18 @@ class OcrService
                 $data['symptoms'] = trim($matches[1]);
             }
             
+            // Look for symptoms patterns (non-bullet)
+            if (preg_match('/Symptoms\s*:\s*(.+)/i', $line, $matches)) {
+                $data['symptoms'] = trim($matches[1]);
+            }
+            
             // Look for reference number patterns (bullet point format)
             if (preg_match('/•\s*Our\s+Reference\s+number\s*:\s*(.+)/i', $line, $matches)) {
+                $data['client_reference'] = trim($matches[1]);
+            }
+            
+            // Look for Our Reference patterns (non-bullet)
+            if (preg_match('/Our\s+Reference\s*:\s*(.+)/i', $line, $matches)) {
                 $data['client_reference'] = trim($matches[1]);
             }
             
@@ -235,6 +267,16 @@ class OcrService
             
             // Look for assistance type patterns
             if (preg_match('/•\s*Kind\s+of\s+assistance\s*:\s*(.+)/i', $line, $matches)) {
+                $data['service_type'] = trim($matches[1]);
+            }
+            
+            // Look for Policy Number patterns
+            if (preg_match('/Policy\s+Number\s*:\s*(.+)/i', $line, $matches)) {
+                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Policy: ' . trim($matches[1]);
+            }
+            
+            // Look for Medical Provider patterns
+            if (preg_match('/Medical\s+Provider\s*:\s*(.+)/i', $line, $matches)) {
                 $data['service_type'] = trim($matches[1]);
             }
             
