@@ -108,9 +108,8 @@ class ListFiles extends ListRecords
                         ->color('warning')
                         ->icon('heroicon-o-cog')
                         ->action(function (array $data) {
-                            // Debug: Show what we received
-                            $screenshotData = $data['screenshot'] ?? 'NOT_SET';
-                            $screenshotType = gettype($screenshotData);
+                            // Debug: Show all form data
+                            $allData = json_encode($data, JSON_PRETTY_PRINT);
                             
                             // Validate required fields for processing
                             $hasScreenshot = !empty($data['screenshot']) && 
@@ -121,7 +120,7 @@ class ListFiles extends ListRecords
                                 Notification::make()
                                     ->danger()
                                     ->title('Missing Screenshot')
-                                    ->body("Screenshot data: {$screenshotData} (type: {$screenshotType}). Please upload a screenshot first.")
+                                    ->body("Form data: {$allData}. Please upload a screenshot first.")
                                     ->send();
                                 return;
                             }
