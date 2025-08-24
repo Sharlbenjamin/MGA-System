@@ -108,12 +108,20 @@ class ListFiles extends ListRecords
                         ->color('warning')
                         ->icon('heroicon-o-cog')
                         ->action(function (array $data) {
+                            // Debug: Show what we received
+                            $screenshotData = $data['screenshot'] ?? 'NOT_SET';
+                            $screenshotType = gettype($screenshotData);
+                            
                             // Validate required fields for processing
-                            if (empty($data['screenshot'])) {
+                            $hasScreenshot = !empty($data['screenshot']) && 
+                                           (is_string($data['screenshot']) || 
+                                            (is_array($data['screenshot']) && !empty($data['screenshot'])));
+                            
+                            if (!$hasScreenshot) {
                                 Notification::make()
                                     ->danger()
                                     ->title('Missing Screenshot')
-                                    ->body('Please upload a screenshot first.')
+                                    ->body("Screenshot data: {$screenshotData} (type: {$screenshotType}). Please upload a screenshot first.")
                                     ->send();
                                 return;
                             }
@@ -131,8 +139,11 @@ class ListFiles extends ListRecords
                                 // Get the OCR service
                                 $ocrService = app(OcrService::class);
                                 
+                                // Handle file upload path - it might be a string or array
+                                $screenshotPath = is_array($data['screenshot']) ? $data['screenshot'][0] : $data['screenshot'];
+                                
                                 // Extract text from the uploaded image
-                                $imagePath = Storage::disk('public')->path($data['screenshot']);
+                                $imagePath = Storage::disk('public')->path($screenshotPath);
                                 $extractedData = $ocrService->extractTextFromImage($imagePath);
                                 
                                 // Clean the extracted data
