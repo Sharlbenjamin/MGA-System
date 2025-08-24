@@ -21,9 +21,12 @@ The Upload Screenshot feature allows users to upload an image of patient informa
 
 ## Features
 
-- **Simple Workflow**: Upload → Process → Redirect to Create Page
-- **Image Upload**: Support for JPG, PNG, JPEG formats up to 10MB
-- **OCR Processing**: Automatic text extraction from uploaded images
+- **Dual Input Methods**: 
+  - **Image Upload**: Support for JPG, PNG, JPEG formats up to 10MB
+  - **Text Input**: Paste text directly containing patient information
+- **Smart Processing**: 
+  - OCR processing for images using Tesseract (when available)
+  - Direct text parsing for pasted content
 - **Data Extraction**: Extracts up to 7 fields:
   - Patient Name
   - Date of Birth
@@ -32,6 +35,13 @@ The Upload Screenshot feature allows users to upload an image of patient informa
   - Patient Address
   - Symptoms
   - Additional Information (optional)
+- **Text Format Support**: Handles bullet-point formatted text like:
+  ```
+  • Address: 3, University Halls, Newcastle Rd, Galway, Ireland
+  • DOB: 1999-04-14
+  • Symptoms: numbness in hands
+  • Our Reference number: 1506580-01
+  ```
 - **Gender Detection**: Automatically determines gender from name (defaults to Female)
 - **Duplicate Prevention**: Checks for existing patients before creating new ones
 - **Pre-filled Forms**: Extracted data automatically populates the create file form
@@ -41,18 +51,34 @@ The Upload Screenshot feature allows users to upload an image of patient informa
 
 ### Simple Two-Step Process:
 
-**Step 1: Upload and Process**
+**Step 1: Input and Process**
 1. Navigate to the FileResource list view
-2. Click the "Upload Screenshot" button in the header actions
+2. Click the **"Extract Patient Data"** button in the header actions
 3. Select a client from the dropdown
-4. Upload a screenshot of the patient information
-5. Click **"Process Image & Continue"** to extract data using OCR
+4. Choose your input method:
+   - **Upload Screenshot**: Upload an image of patient information
+   - **Paste Text**: Paste text containing patient information
+5. Click **"Process & Continue"** to extract data
 6. You'll be redirected to the create file page with pre-filled data
 
 **Step 2: Review and Create**
 7. Review and edit the extracted data in the create file form
 8. Fill in any missing required fields (Service Type is required)
 9. Click **"Create"** to create the new file
+
+### Text Input Format
+
+The system can parse text in various formats, including bullet-point style:
+
+```
+• Address: 3, University Halls, Newcastle Rd, Galway, Ireland 
+• Telephone: +353833206224 
+• DOB: 1999-04-14
+• Symptoms: numbness in hands
+• Our Reference number: 1506580-01
+• Nationality: Brazilian
+• Kind of assistance: Medical center
+```
 
 ## Implementation Details
 

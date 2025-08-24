@@ -41,6 +41,37 @@ class OcrService
     }
     
     /**
+     * Extract text data from a string input
+     */
+    public function extractTextFromString(string $text): array
+    {
+        try {
+            Log::info('Processing text input', ['text_length' => strlen($text)]);
+            
+            // Parse the text to find structured data
+            $extractedData = $this->parseExtractedText($text);
+            
+            return $extractedData;
+        } catch (\Exception $e) {
+            Log::error('Text processing failed', [
+                'error' => $e->getMessage(),
+                'text_length' => strlen($text)
+            ]);
+            
+            return [
+                'patient_name' => '',
+                'date_of_birth' => '',
+                'client_reference' => '',
+                'service_type' => '',
+                'patient_address' => '',
+                'symptoms' => '',
+                'extra_field' => '',
+                'confidence' => 0
+            ];
+        }
+    }
+    
+    /**
      * Simulate OCR extraction - in production, replace with actual OCR service
      */
     private function simulateOcrExtraction($imagePath): array
@@ -148,7 +179,7 @@ class OcrService
     
     /**
      * Parse extracted text to find structured data
-     * This method would analyze the OCR text and extract specific fields
+     * This method analyzes the text and extracts specific fields
      */
     private function parseExtractedText($text): array
     {
@@ -163,42 +194,80 @@ class OcrService
             'confidence' => 0
         ];
         
-        // Example parsing logic (you would customize this based on your document format)
+        // Split text into lines and process each line
         $lines = explode("\n", $text);
         
         foreach ($lines as $line) {
             $line = trim($line);
             
-            // Look for patient name patterns
-            if (preg_match('/(?:patient|name|full name)[\s:]+(.+)/i', $line, $matches)) {
-                $data['patient_name'] = trim($matches[1]);
-            }
+            // Skip empty lines
+            if (empty($line)) continue;
             
-            // Look for date of birth patterns
-            if (preg_match('/(?:dob|date of birth|birth date)[\s:]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i', $line, $matches)) {
-                $data['date_of_birth'] = $matches[1];
-            }
-            
-            // Look for client reference patterns
-            if (preg_match('/(?:reference|ref|client ref)[\s:]+([A-Z0-9]+)/i', $line, $matches)) {
-                $data['client_reference'] = trim($matches[1]);
-            }
-            
-            // Look for service type patterns
-            if (preg_match('/(?:service|consultation|treatment)[\s:]+(.+)/i', $line, $matches)) {
-                $data['service_type'] = trim($matches[1]);
-            }
-            
-            // Look for address patterns
-            if (preg_match('/(?:address|location)[\s:]+(.+)/i', $line, $matches)) {
+            // Look for address patterns (bullet point format)
+            if (preg_match('/•\s*Address\s*:\s*(.+)/i', $line, $matches)) {
                 $data['patient_address'] = trim($matches[1]);
             }
             
-            // Look for symptoms patterns
-            if (preg_match('/(?:symptoms|complaints)[\s:]+(.+)/i', $line, $matches)) {
+            // Look for telephone patterns
+            if (preg_match('/•\s*Telephone\s*:\s*(.+)/i', $line, $matches)) {
+                $data['extra_field'] = 'Phone: ' . trim($matches[1]);
+            }
+            
+            // Look for DOB patterns (bullet point format)
+            if (preg_match('/•\s*DOB\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
+                $data['date_of_birth'] = $matches[1];
+            }
+            
+            // Look for symptoms patterns (bullet point format)
+            if (preg_match('/•\s*Symptoms\s*:\s*(.+)/i', $line, $matches)) {
                 $data['symptoms'] = trim($matches[1]);
             }
+            
+            // Look for reference number patterns (bullet point format)
+            if (preg_match('/•\s*Our\s+Reference\s+number\s*:\s*(.+)/i', $line, $matches)) {
+                $data['client_reference'] = trim($matches[1]);
+            }
+            
+            // Look for nationality patterns
+            if (preg_match('/•\s*Nationality\s*:\s*(.+)/i', $line, $matches)) {
+                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Nationality: ' . trim($matches[1]);
+            }
+            
+            // Look for assistance type patterns
+            if (preg_match('/•\s*Kind\s+of\s+assistance\s*:\s*(.+)/i', $line, $matches)) {
+                $data['service_type'] = trim($matches[1]);
+            }
+            
+            // Also handle non-bullet point formats
+            if (preg_match('/(?:address|location)\s*:\s*(.+)/i', $line, $matches)) {
+                $data['patient_address'] = trim($matches[1]);
+            }
+            
+            if (preg_match('/(?:dob|date of birth|birth date)\s*:\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i', $line, $matches)) {
+                $data['date_of_birth'] = $matches[1];
+            }
+            
+            if (preg_match('/(?:reference|ref|client ref)\s*:\s*([A-Z0-9\-]+)/i', $line, $matches)) {
+                $data['client_reference'] = trim($matches[1]);
+            }
+            
+            if (preg_match('/(?:symptoms|complaints)\s*:\s*(.+)/i', $line, $matches)) {
+                $data['symptoms'] = trim($matches[1]);
+            }
+            
+            if (preg_match('/(?:service|consultation|treatment|assistance)\s*:\s*(.+)/i', $line, $matches)) {
+                $data['service_type'] = trim($matches[1]);
+            }
         }
+        
+        // Set confidence based on how many fields were found
+        $foundFields = 0;
+        foreach ($data as $key => $value) {
+            if ($key !== 'confidence' && !empty($value)) {
+                $foundFields++;
+            }
+        }
+        $data['confidence'] = min(100, ($foundFields / 7) * 100);
         
         return $data;
     }
