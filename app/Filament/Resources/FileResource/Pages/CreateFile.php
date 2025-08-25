@@ -26,6 +26,22 @@ class CreateFile extends CreateRecord
                 $mgaReference = \App\Models\File::generateMGAReference($ocrData['client_id'], 'client');
             }
             
+            // Map country and city names to IDs
+            $countryId = null;
+            $cityId = null;
+            
+            if (!empty($ocrData['country'])) {
+                $country = \App\Models\Country::where('name', 'like', '%' . $ocrData['country'] . '%')->first();
+                $countryId = $country ? $country->id : null;
+            }
+            
+            if (!empty($ocrData['city']) && $countryId) {
+                $city = \App\Models\City::where('name', 'like', '%' . $ocrData['city'] . '%')
+                    ->where('country_id', $countryId)
+                    ->first();
+                $cityId = $city ? $city->id : null;
+            }
+            
             // Pre-fill the form with OCR data
             $this->form->fill([
                 'new_patient' => true,
@@ -36,6 +52,10 @@ class CreateFile extends CreateRecord
                 'client_reference' => $ocrData['client_reference'] ?? '',
                 'address' => $ocrData['patient_address'] ?? '',
                 'symptoms' => $ocrData['symptoms'] ?? '',
+                'phone' => $ocrData['phone'] ?? '',
+                'service_type_id' => $ocrData['service_type'] ?? '',
+                'country_id' => $countryId,
+                'city_id' => $cityId,
                 'status' => 'New',
                 'mga_reference' => $mgaReference,
             ]);

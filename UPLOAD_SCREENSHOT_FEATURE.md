@@ -65,8 +65,10 @@ The Upload Screenshot feature allows users to upload an image of patient informa
 7. Review and edit the extracted data in the create file form
 8. The **Client** field will be pre-filled with the selected client name
 9. The **Status** will automatically be set to "New"
-10. Fill in any missing required fields (Service Type is required)
-11. Click **"Create"** to create the new file
+10. **Phone**, **Country**, and **City** will be automatically extracted and populated
+11. **Service Type** will be mapped (e.g., "Medical center" → "Clinic Visit")
+12. Fill in any missing required fields
+13. Click **"Create"** to create the new file
 
 ### Text Input Format
 
@@ -104,10 +106,12 @@ The system automatically detects and extracts:
 - **Patient Name**: From "Patient:" field or pipe-separated format
 - **Date of Birth**: From "DOB:", "D.O.B:", or "Date of Birth:" fields
 - **Client Reference**: From "Our Reference:", "Reference number:" fields
-- **Service Type**: From "Medical Provider:", "Kind of assistance:" fields
+- **Service Type**: From "Medical Provider:", "Kind of assistance:" fields (maps "Medical center" to "Clinic Visit")
 - **Patient Address**: From "Address:" field
+- **Phone**: From "Phone:", "Telephone:" fields
+- **Country & City**: Automatically extracted from the address
 - **Symptoms**: From "Symptoms:" field
-- **Extra Information**: Phone numbers, policy numbers, nationality, etc.
+- **Extra Information**: Policy numbers, nationality, etc.
 
 ## Implementation Details
 

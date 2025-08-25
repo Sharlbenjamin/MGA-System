@@ -112,6 +112,16 @@ class Bill extends Model
             if ($bill->isDirty('file_id')) {
                 $bill->name = static::generateBillNumber($bill);
             }
+            
+            // Auto-populate provider_id and branch_id from file if they're missing
+            if ((!$bill->provider_id || !$bill->branch_id) && $bill->file) {
+                if (!$bill->provider_id && $bill->file->providerBranch && $bill->file->providerBranch->provider) {
+                    $bill->provider_id = $bill->file->providerBranch->provider_id;
+                }
+                if (!$bill->branch_id && $bill->file->provider_branch_id) {
+                    $bill->branch_id = $bill->file->provider_branch_id;
+                }
+            }
         });
 
         static::updated(function ($bill) {

@@ -191,6 +191,9 @@ class OcrService
             'patient_address' => '',
             'symptoms' => '',
             'extra_field' => '',
+            'phone' => '',
+            'country' => '',
+            'city' => '',
             'confidence' => 0
         ];
         
@@ -222,11 +225,13 @@ class OcrService
             
             // Look for telephone patterns
             if (preg_match('/•\s*Telephone\s*:\s*(.+)/i', $line, $matches)) {
+                $data['phone'] = trim($matches[1]);
                 $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
             }
             
             // Look for phone patterns (non-bullet)
             if (preg_match('/Phone\s*:\s*(.+)/i', $line, $matches)) {
+                $data['phone'] = trim($matches[1]);
                 $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
             }
             
@@ -280,6 +285,13 @@ class OcrService
                 $data['service_type'] = trim($matches[1]);
             }
             
+            // Parse address to extract city and country
+            if (!empty($data['patient_address'])) {
+                $addressParts = $this->parseAddress($data['patient_address']);
+                $data['city'] = $addressParts['city'] ?? '';
+                $data['country'] = $addressParts['country'] ?? '';
+            }
+            
             // Also handle non-bullet point formats
             if (preg_match('/(?:address|location)\s*:\s*(.+)/i', $line, $matches)) {
                 $data['patient_address'] = trim($matches[1]);
@@ -311,7 +323,63 @@ class OcrService
         }
         $data['confidence'] = min(100, ($foundFields / 7) * 100);
         
+        // Map service types to database IDs
+        $data['service_type'] = $this->mapServiceType($data['service_type']);
+        
         return $data;
+    }
+    
+    /**
+     * Parse address to extract city and country
+     */
+    private function parseAddress(string $address): array
+    {
+        $result = ['city' => '', 'country' => ''];
+        
+        // Common patterns for address parsing
+        $patterns = [
+            // Pattern: "3, University Halls, Newcastle Rd, Galway, Ireland"
+            '/.*?,\s*([^,]+),\s*([^,]+)$/i' => ['city', 'country'],
+            
+            // Pattern: "Street, City, Country"
+            '/.*?,\s*([^,]+),\s*([^,]+)$/i' => ['city', 'country'],
+            
+            // Pattern: "Address, City, Country"
+            '/.*?,\s*([^,]+),\s*([^,]+)$/i' => ['city', 'country'],
+        ];
+        
+        foreach ($patterns as $pattern => $fields) {
+            if (preg_match($pattern, $address, $matches)) {
+                if (isset($matches[1]) && isset($matches[2])) {
+                    $result[$fields[0]] = trim($matches[1]);
+                    $result[$fields[1]] = trim($matches[2]);
+                    break;
+                }
+            }
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Map service type names to database IDs
+     */
+    private function mapServiceType(string $serviceType): string
+    {
+        $serviceType = strtolower(trim($serviceType));
+        
+        $mappings = [
+            'medical center' => '5', // Clinic Visit
+            'medical centre' => '5', // Clinic Visit
+            'clinic' => '5', // Clinic Visit
+            'clinic visit' => '5', // Clinic Visit
+            'house call' => '1',
+            'telemedicine' => '2',
+            'hospital visit' => '3',
+            'dental clinic' => '4',
+        ];
+        
+        return $mappings[$serviceType] ?? $serviceType;
     }
     
     /**
@@ -352,6 +420,9 @@ class OcrService
             'patient_address' => trim($data['patient_address'] ?? ''),
             'symptoms' => trim($data['symptoms'] ?? ''),
             'extra_field' => trim($data['extra_field'] ?? ''),
+            'phone' => trim($data['phone'] ?? ''),
+            'country' => trim($data['country'] ?? ''),
+            'city' => trim($data['city'] ?? ''),
             'confidence' => (int) ($data['confidence'] ?? 0)
         ];
     }

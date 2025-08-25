@@ -66,14 +66,24 @@ class ShouldBePaidResource extends Resource
     {
         return $table
             ->groups([
-                Group::make('provider_id')
+                Group::make('provider')
                     ->label('Provider')
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Bill $record): string => $record->provider?->name ?? 'No Provider'),
-                Group::make('branch_id')
+                    ->getTitleFromRecordUsing(function (Bill $record): string {
+                        if (!$record->provider) {
+                            return 'No Provider';
+                        }
+                        return $record->provider->name ?? 'Unknown Provider';
+                    }),
+                Group::make('branch')
                     ->label('Branch')
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Bill $record): string => $record->branch?->branch_name ?? 'No Branch'),
+                    ->getTitleFromRecordUsing(function (Bill $record): string {
+                        if (!$record->branch) {
+                            return 'No Branch';
+                        }
+                        return $record->branch->branch_name ?? 'Unknown Branch';
+                    }),
             ])
             // Removed modifyQueryUsing as it conflicts with getEloquentQuery
             // Removed defaultSort to prevent conflicts with grouping
