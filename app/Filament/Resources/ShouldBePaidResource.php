@@ -85,28 +85,38 @@ class ShouldBePaidResource extends Resource
                         return $record->branch->branch_name ?? 'Unknown Branch';
                     }),
             ])
-            // Removed modifyQueryUsing as it conflicts with getEloquentQuery
-            // Removed defaultSort to prevent conflicts with grouping
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['provider', 'branch', 'file.providerBranch.provider', 'file.invoices']))
+            ->defaultSort('due_date', 'asc')
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')
                     ->searchable()
-                    ->sortable()
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query
+                            ->orderBy('provider_id', $direction);
+                    })
                     ->label('Provider'),
                 Tables\Columns\TextColumn::make('branch.branch_name')
                     ->searchable()
-                    ->sortable()
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query
+                            ->orderBy('branch_id', $direction);
+                    })
                     ->label('Branch'),
                 Tables\Columns\TextColumn::make('provider_bank_iban')
                     ->label('Provider Bank IBAN')
                     ->searchable()
-                    ->sortable()
+                    ->sortable(false)
                     ->copyable()
                     ->copyMessage('IBAN copied to clipboard')
                     ->copyMessageDuration(1500),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->searchable()
-                    ->sortable()
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query
+                            ->join('files', 'bills.file_id', '=', 'files.id')
+                            ->orderBy('files.mga_reference', $direction);
+                    })
                     ->url(fn (Bill $record) => $record->file?->google_drive_link)
                     ->openUrlInNewTab()
                     ->color(fn (Bill $record) => $record->file?->google_drive_link ? 'primary' : 'gray'),
@@ -118,7 +128,7 @@ class ShouldBePaidResource extends Resource
                 Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('remaining_amount')
                     ->money('EUR')
-                    ->sortable()
+                    ->sortable(false)
                     ->state(fn (Bill $record) => $record->total_amount - $record->paid_amount)
                     ->summarize(
                         Summarizer::make()
@@ -128,7 +138,11 @@ class ShouldBePaidResource extends Resource
                             })
                             ->formatStateUsing(fn ($state) => '€' . number_format($state, 2))
                     ),
-                Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query
+                            ->join('files', 'bills.file_id', '=', 'files.id')
+                            ->orderBy('files.status', $direction);
+                    }),
                 Tables\Columns\BadgeColumn::make('bk_status')
                     ->label('BK Status')
                     ->state(function (Bill $record): string {
