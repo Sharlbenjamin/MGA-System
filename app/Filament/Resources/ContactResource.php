@@ -34,6 +34,7 @@ use Filament\Tables\Filters\SelectFilter;
 class ContactResource extends Resource
 {
     protected static ?string $model = Contact::class;
+    protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?string $navigationGroup = 'Admin'; // ✅ Group under User Management
 protected static ?int $navigationSort = 4; // ✅ Controls menu order
@@ -126,6 +127,10 @@ public static function table(Tables\Table $table): Tables\Table
                     'Patient'  => 'Patient',
                 ]),
         ])
+        ->actions([
+            Tables\Actions\ViewAction::make(),
+            Tables\Actions\EditAction::make(),
+        ])
         ->bulkActions([
             Tables\Actions\DeleteBulkAction::make(),
         ]);
@@ -142,6 +147,7 @@ public static function table(Tables\Table $table): Tables\Table
         return [
             'index' => Pages\ListContacts::route('/'),
             'create' => Pages\CreateContact::route('/create'),
+            'show' => Pages\ShowContact::route('/{record}'),
             'edit' => Pages\EditContact::route('/{record}/edit'),
         ];
     }
@@ -150,4 +156,9 @@ public static function table(Tables\Table $table): Tables\Table
 {
     return parent::getEloquentQuery()->with('contactable');
 }
+
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return ContactResource::getUrl('show', ['record' => $record]);
+    }
 }

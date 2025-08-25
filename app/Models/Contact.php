@@ -96,4 +96,27 @@ class Contact extends Model
             default => null,
         };
     }
+
+    /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName()
+    {
+        return 'id';
+    }
+
+    /**
+     * Resolve the model binding for the route.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        // Handle both integer and UUID formats
+        if (is_numeric($value)) {
+            // For old integer IDs, try to find by casting to string
+            return static::where('id', '=', $value)->first();
+        }
+        
+        // For UUIDs, use the default behavior
+        return parent::resolveRouteBinding($value, $field);
+    }
 }
