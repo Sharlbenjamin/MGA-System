@@ -101,6 +101,7 @@ class TestShouldBePaidComplete extends Command
         $this->info('\n9. Testing file relationship sorting...');
         $fileSortedQuery = (clone $baseQuery)
             ->join('files', 'bills.file_id', '=', 'files.id')
+            ->whereIn('bills.status', ['Unpaid', 'Partial'])
             ->orderBy('files.mga_reference', 'asc');
         $fileSortedBills = $fileSortedQuery->get();
         $this->line("File sorted bills count: " . $fileSortedBills->count());

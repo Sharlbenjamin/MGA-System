@@ -115,6 +115,7 @@ class ShouldBePaidResource extends Resource
                     ->sortable(query: function (Builder $query, string $direction): Builder {
                         return $query
                             ->join('files', 'bills.file_id', '=', 'files.id')
+                            ->whereIn('bills.status', ['Unpaid', 'Partial'])
                             ->orderBy('files.mga_reference', $direction);
                     })
                     ->url(fn (Bill $record) => $record->file?->google_drive_link)
@@ -141,6 +142,7 @@ class ShouldBePaidResource extends Resource
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(query: function (Builder $query, string $direction): Builder {
                         return $query
                             ->join('files', 'bills.file_id', '=', 'files.id')
+                            ->whereIn('bills.status', ['Unpaid', 'Partial'])
                             ->orderBy('files.status', $direction);
                     }),
                 Tables\Columns\BadgeColumn::make('bk_status')
