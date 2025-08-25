@@ -110,7 +110,46 @@ class Contact extends Model
      */
     public function getRouteKey()
     {
-        return $this->getAttribute($this->getRouteKeyName());
+        $key = $this->getAttribute($this->getRouteKeyName());
+        // Ensure we return the key as a string for consistency
+        return (string) $key;
+    }
+
+    /**
+     * Find the model instance for the given route key value.
+     */
+    public static function findByRouteKey($value)
+    {
+        // First try the standard approach
+        $model = static::find($value);
+        if ($model) {
+            return $model;
+        }
+
+        // If that fails and it's numeric, try to find by string comparison
+        if (is_numeric($value)) {
+            $model = static::where('id', '=', $value)->first();
+            if ($model) {
+                return $model;
+            }
+        }
+
+        // Try to find by string comparison for any value
+        $model = static::where('id', '=', (string) $value)->first();
+        if ($model) {
+            return $model;
+        }
+
+        // If still not found and it's numeric, try a more aggressive search
+        if (is_numeric($value)) {
+            // Try to find by LIKE for partial matches
+            $model = static::where('id', 'LIKE', '%' . $value . '%')->first();
+            if ($model) {
+                return $model;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -118,22 +157,13 @@ class Contact extends Model
      */
     public function resolveRouteBinding($value, $field = null)
     {
-        // Handle both integer and UUID formats
-        if (is_numeric($value)) {
-            // For old integer IDs, try multiple approaches
-            $contact = static::where('id', '=', $value)->first();
-            if (!$contact) {
-                $contact = static::where('id', '=', (string) $value)->first();
-            }
-            if (!$contact) {
-                $contact = static::whereRaw('CAST(id AS CHAR) = ?', [$value])->first();
-            }
-            if ($contact) {
-                return $contact;
-            }
+        // Use our custom method to handle both integer and UUID formats
+        $contact = static::findByRouteKey($value);
+        if ($contact) {
+            return $contact;
         }
         
-        // For UUIDs, use the default behavior
+        // Fallback to default behavior
         return parent::resolveRouteBinding($value, $field);
     }
 }
