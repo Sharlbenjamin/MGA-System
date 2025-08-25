@@ -91,10 +91,10 @@ protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a pho
 public static function table(Tables\Table $table): Tables\Table
 {
     return $table
-        ->recordUrl(fn (Contact $record): string => ContactResource::getUrl('show', ['record' => $record]))
+        ->recordUrl(fn (Contact $record): string => ContactResource::getUrl('edit', ['record' => $record]))
         ->columns([
             TextColumn::make('type')->label('Type')->sortable(),
-            TextColumn::make('name')->label('Name')->sortable()->searchable()->url(fn (Contact $record): string => ContactResource::getUrl('show', ['record' => $record])),
+            TextColumn::make('name')->label('Name')->sortable()->searchable()->url(fn (Contact $record): string => ContactResource::getUrl('edit', ['record' => $record])),
             TextColumn::make('entity_name')->label('Entity Name')->sortable(),
             TextColumn::make('title')->label('Title')->sortable()->searchable(),
             TextColumn::make('email')->label('Email')->sortable()->searchable(),
@@ -129,7 +129,6 @@ public static function table(Tables\Table $table): Tables\Table
                 ]),
         ])
         ->actions([
-            Tables\Actions\ViewAction::make(),
             Tables\Actions\EditAction::make(),
         ])
         ->bulkActions([
@@ -148,7 +147,6 @@ public static function table(Tables\Table $table): Tables\Table
         return [
             'index' => Pages\ListContacts::route('/'),
             'create' => Pages\CreateContact::route('/create'),
-            'show' => Pages\ShowContact::route('/{record}'),
             'edit' => Pages\EditContact::route('/{record}/edit'),
         ];
     }
@@ -160,6 +158,6 @@ public static function table(Tables\Table $table): Tables\Table
 
     public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return ContactResource::getUrl('show', ['record' => $record]);
+        return ContactResource::getUrl('edit', ['record' => $record]);
     }
 }
