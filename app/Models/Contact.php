@@ -106,14 +106,31 @@ class Contact extends Model
     }
 
     /**
+     * Get the route key value.
+     */
+    public function getRouteKey()
+    {
+        return $this->getAttribute($this->getRouteKeyName());
+    }
+
+    /**
      * Resolve the model binding for the route.
      */
     public function resolveRouteBinding($value, $field = null)
     {
         // Handle both integer and UUID formats
         if (is_numeric($value)) {
-            // For old integer IDs, try to find by casting to string
-            return static::where('id', '=', $value)->first();
+            // For old integer IDs, try multiple approaches
+            $contact = static::where('id', '=', $value)->first();
+            if (!$contact) {
+                $contact = static::where('id', '=', (string) $value)->first();
+            }
+            if (!$contact) {
+                $contact = static::whereRaw('CAST(id AS CHAR) = ?', [$value])->first();
+            }
+            if ($contact) {
+                return $contact;
+            }
         }
         
         // For UUIDs, use the default behavior
