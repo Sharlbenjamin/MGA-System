@@ -66,41 +66,21 @@ class ShouldBePaidResource extends Resource
     {
         return $table
             ->groups([
-                Group::make('provider')
-                    ->label('Provider')
-                    ->collapsible()
-                    ->getTitleFromRecordUsing(function (Bill $record): string {
-                        if (!$record->provider) {
-                            return 'No Provider';
-                        }
-                        return $record->provider->name ?? 'Unknown Provider';
-                    }),
-                Group::make('branch')
-                    ->label('Branch')
-                    ->collapsible()
-                    ->getTitleFromRecordUsing(function (Bill $record): string {
-                        if (!$record->branch) {
-                            return 'No Branch';
-                        }
-                        return $record->branch->branch_name ?? 'Unknown Branch';
-                    }),
+                Group::make('provider.name')->label('Provider')->collapsible(),
+                Group::make('branch.branch_name')->label('Branch')->collapsible(),
             ])
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['provider', 'branch', 'file.providerBranch.provider', 'file.invoices']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'provider', 'branch', 'file.providerBranch.provider', 'file.invoices'
+            ]))
             ->defaultSort('due_date', 'asc')
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')
                     ->searchable()
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query
-                            ->orderBy('provider_id', $direction);
-                    })
+                    ->sortable()
                     ->label('Provider'),
                 Tables\Columns\TextColumn::make('branch.branch_name')
                     ->searchable()
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query
-                            ->orderBy('branch_id', $direction);
-                    })
+                    ->sortable()
                     ->label('Branch'),
                 Tables\Columns\TextColumn::make('provider_bank_iban')
                     ->label('Provider Bank IBAN')
@@ -115,7 +95,6 @@ class ShouldBePaidResource extends Resource
                     ->sortable(query: function (Builder $query, string $direction): Builder {
                         return $query
                             ->join('files', 'bills.file_id', '=', 'files.id')
-                            ->whereIn('bills.status', ['Unpaid', 'Partial'])
                             ->orderBy('files.mga_reference', $direction);
                     })
                     ->url(fn (Bill $record) => $record->file?->google_drive_link)
@@ -142,7 +121,6 @@ class ShouldBePaidResource extends Resource
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(query: function (Builder $query, string $direction): Builder {
                         return $query
                             ->join('files', 'bills.file_id', '=', 'files.id')
-                            ->whereIn('bills.status', ['Unpaid', 'Partial'])
                             ->orderBy('files.status', $direction);
                     }),
                 Tables\Columns\BadgeColumn::make('bk_status')
