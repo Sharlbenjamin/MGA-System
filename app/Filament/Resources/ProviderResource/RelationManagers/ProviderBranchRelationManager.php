@@ -20,6 +20,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\ProviderBranch;
 
 class ProviderBranchRelationManager extends RelationManager
 {
@@ -97,10 +98,26 @@ class ProviderBranchRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('Branches')
             ->columns([
-            TextColumn::make('cities.name')->label('City')->sortable()->searchable(),
+                TextColumn::make('branch_name')
+                    ->label('Branch Name')
+                    ->sortable()
+                    ->searchable(),
+                
+                TextColumn::make('cities.name')
+                    ->label('City')
+                    ->sortable()
+                    ->searchable(),
 
+                TextColumn::make('branchServices.serviceType.name')
+                    ->label('Services')
+                    ->listWithLineBreaks()
+                    ->bulleted()
+                    ->limitList(3)
+                    ->expandableLimitedList(),
 
-            TextColumn::make('communication_method')->label('Contact Method')->sortable(),
+                TextColumn::make('communication_method')
+                    ->label('Contact Method')
+                    ->sortable(),
             ])
             ->filters([
                 //
@@ -109,7 +126,12 @@ class ProviderBranchRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('Edit')
+                    ->url(fn (ProviderBranch $record): string => 
+                        \App\Filament\Resources\ProviderBranchResource::getUrl('edit', ['record' => $record])
+                    )
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary'),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
