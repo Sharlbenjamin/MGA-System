@@ -114,25 +114,6 @@ class ProviderBranchRelationManager extends RelationManager
                 TextColumn::make('communication_method')
                     ->label('Contact Method')
                     ->sortable(),
-                
-                TextColumn::make('cities.name')
-                    ->label('Cities')
-                    ->formatStateUsing(function ($state, $record) {
-                        $cities = $record->cities;
-                        if (!$cities || $cities->isEmpty()) {
-                            return 'No cities assigned';
-                        }
-                        
-                        $cityNames = $cities->pluck('name')->take(2);
-                        $displayText = $cityNames->implode(', ');
-                        
-                        if ($cities->count() > 2) {
-                            $displayText .= ' +' . ($cities->count() - 2);
-                        }
-                        
-                        return $displayText;
-                    })
-                    ->width(200),
             ])
             ->filters([
                 //
