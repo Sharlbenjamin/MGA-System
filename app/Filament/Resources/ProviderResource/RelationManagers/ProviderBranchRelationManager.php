@@ -106,7 +106,8 @@ class ProviderBranchRelationManager extends RelationManager
                 TextColumn::make('cities.name')
                     ->label('City')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->width(150),
 
                 TextColumn::make('branchServices.serviceType.name')
                     ->label('Services')
