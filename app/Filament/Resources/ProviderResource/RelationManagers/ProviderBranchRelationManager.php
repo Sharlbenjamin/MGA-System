@@ -115,7 +115,7 @@ class ProviderBranchRelationManager extends RelationManager
                     ->label('Contact Method')
                     ->sortable(),
                 
-                TextColumn::make('cities')
+                TextColumn::make('cities.name')
                     ->label('Cities')
                     ->formatStateUsing(function ($state, $record) {
                         $cities = $record->cities;
