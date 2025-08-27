@@ -225,7 +225,31 @@ class ProviderBranchResource extends Resource
                             ])
                             ->required(),
 
+                        Section::make('Direct Contact Information')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        TextInput::make('email')
+                                            ->label('Branch Email')
+                                            ->email()
+                                            ->nullable()
+                                            ->helperText('Direct email for this branch. Takes priority over contact relationships.'),
 
+                                        TextInput::make('phone')
+                                            ->label('Branch Phone')
+                                            ->tel()
+                                            ->nullable()
+                                            ->helperText('Direct phone for this branch. Takes priority over contact relationships.'),
+
+                                        TextInput::make('address')
+                                            ->label('Branch Address')
+                                            ->columnSpan(2)
+                                            ->nullable()
+                                            ->helperText('Direct address for this branch. Takes priority over contact relationships.'),
+                                    ]),
+                            ])
+                            ->collapsible()
+                            ->collapsed(),
 
                         Section::make('Services')
                             ->schema([
@@ -248,7 +272,7 @@ class ProviderBranchResource extends Resource
                             ])
                             ->collapsible(),
 
-                        Section::make('Contact Information')
+                        Section::make('Contact Relationships')
                             ->schema([
                                 Grid::make(3)
                                     ->schema([
@@ -257,25 +281,29 @@ class ProviderBranchResource extends Resource
                                             ->options(Contact::pluck('name', 'id'))
                                             ->searchable()
                                             ->nullable()
-                                            ->placeholder('Select GOP contact'),
+                                            ->placeholder('Select GOP contact')
+                                            ->helperText('Fallback contact for GOP-related communications'),
 
                                         Select::make('operation_contact_id')
                                             ->label('Operation Contact')
                                             ->options(Contact::pluck('name', 'id'))
                                             ->searchable()
                                             ->nullable()
-                                            ->placeholder('Select operation contact'),
+                                            ->placeholder('Select operation contact')
+                                            ->helperText('Fallback contact for operational communications'),
 
                                         Select::make('financial_contact_id')
                                             ->label('Financial Contact')
                                             ->options(Contact::pluck('name', 'id'))
                                             ->searchable()
                                             ->nullable()
-                                            ->placeholder('Select financial contact'),
+                                            ->placeholder('Select financial contact')
+                                            ->helperText('Fallback contact for financial communications'),
                                     ]),
                             ])
                             ->collapsible()
-                            ->collapsed(),
+                            ->collapsed()
+                            ->description('These contacts are used as fallbacks when direct contact fields are empty.'),
                     ]),
             ]);
     }
@@ -287,6 +315,9 @@ class ProviderBranchResource extends Resource
                 TextColumn::make('branch_name')->label('Branch Name')->sortable()->searchable(),
                 TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
                 TextColumn::make('cities.name')->label('Cities')->sortable()->searchable(),
+                TextColumn::make('email')->label('Branch Email')->searchable()->toggleable(),
+                TextColumn::make('phone')->label('Branch Phone')->searchable()->toggleable(),
+                TextColumn::make('address')->label('Branch Address')->searchable()->toggleable()->limit(50),
 
                 BadgeColumn::make('status')
                     ->colors([
@@ -316,14 +347,20 @@ class ProviderBranchResource extends Resource
                     ->searchable()
                     ->preload(),
 
-
-
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([
                         'Active' => 'Active',
                         'Hold' => 'Hold',
                     ]),
+
+                Filter::make('has_direct_email')
+                    ->label('Has Direct Email')
+                    ->query(fn (Builder $query): Builder => $query->whereNotNull('email')),
+
+                Filter::make('has_direct_phone')
+                    ->label('Has Direct Phone')
+                    ->query(fn (Builder $query): Builder => $query->whereNotNull('phone')),
             ])
             ->groups([
                 Group::make('provider.name')
@@ -337,8 +374,6 @@ class ProviderBranchResource extends Resource
                 Group::make('provider.country.name')
                     ->label('Country')
                     ->collapsible(),
-
-
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -383,6 +418,8 @@ class ProviderBranchResource extends Resource
             'Status' => $record->status ?? 'Unknown',
             'Priority' => $record->priority ?? 'Unknown',
             'Cities' => $record->cities?->pluck('name')->implode(', ') ?? 'Unknown',
+            'Email' => $record->email ?? 'No direct email',
+            'Phone' => $record->phone ?? 'No direct phone',
         ];
     }
 

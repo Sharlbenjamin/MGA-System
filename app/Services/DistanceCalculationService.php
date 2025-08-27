@@ -95,7 +95,7 @@ class DistanceCalculationService
     }
 
     /**
-     * Calculate distance between File address and Provider Branch Operation Contact address
+     * Calculate distance between File address and Provider Branch address
      *
      * @param \App\Models\File $file
      * @return array|null
@@ -113,9 +113,22 @@ class DistanceCalculationService
             return null;
         }
 
+        // First try to use the direct address field on the branch
+        if ($providerBranch->address) {
+            \Log::info('Distance calculation using direct branch address', [
+                'file_id' => $file->id,
+                'file_address' => $file->address,
+                'branch_id' => $providerBranch->id,
+                'branch_address' => $providerBranch->address
+            ]);
+
+            return $this->calculateDistance($file->address, $providerBranch->address);
+        }
+
+        // Fallback to operation contact address
         $operationContact = $providerBranch->operationContact;
         if (!$operationContact) {
-            \Log::warning('Distance calculation failed: No operation contact found', [
+            \Log::warning('Distance calculation failed: No branch address or operation contact found', [
                 'file_id' => $file->id, 
                 'branch_id' => $providerBranch->id
             ]);
@@ -123,7 +136,7 @@ class DistanceCalculationService
         }
 
         if (!$operationContact->address) {
-            \Log::warning('Distance calculation failed: Operation contact address is empty', [
+            \Log::warning('Distance calculation failed: No branch address or operation contact address', [
                 'file_id' => $file->id, 
                 'branch_id' => $providerBranch->id,
                 'contact_id' => $operationContact->id
@@ -131,7 +144,7 @@ class DistanceCalculationService
             return null;
         }
 
-        \Log::info('Distance calculation attempt', [
+        \Log::info('Distance calculation using operation contact address', [
             'file_id' => $file->id,
             'file_address' => $file->address,
             'branch_id' => $providerBranch->id,
