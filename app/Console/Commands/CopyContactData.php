@@ -31,19 +31,19 @@ class CopyContactData extends Command
             if ($branch->operationContact) {
                 $contact = $branch->operationContact;
                 
-                if (!$updateData['email'] && $contact->email) {
+                if (!isset($updateData['email']) && $contact->email) {
                     $updateData['email'] = $contact->preferred_contact === 'Email' ? $contact->email : 
                                          ($contact->preferred_contact === 'Second Email' ? $contact->second_email : 
                                          ($contact->email ?: $contact->second_email));
                 }
                 
-                if (!$updateData['phone'] && $contact->phone_number) {
+                if (!isset($updateData['phone']) && $contact->phone_number) {
                     $updateData['phone'] = $contact->preferred_contact === 'Phone' ? $contact->phone_number : 
                                          ($contact->preferred_contact === 'Second Phone' ? $contact->second_phone : 
                                          ($contact->phone_number ?: $contact->second_phone));
                 }
                 
-                if (!$updateData['address'] && $contact->address) {
+                if (!isset($updateData['address']) && $contact->address) {
                     $updateData['address'] = $contact->address;
                 }
             }
@@ -52,19 +52,19 @@ class CopyContactData extends Command
             if ($branch->gopContact) {
                 $contact = $branch->gopContact;
                 
-                if (!$updateData['email'] && $contact->email) {
+                if (!isset($updateData['email']) && $contact->email) {
                     $updateData['email'] = $contact->preferred_contact === 'Email' ? $contact->email : 
                                          ($contact->preferred_contact === 'Second Email' ? $contact->second_email : 
                                          ($contact->email ?: $contact->second_email));
                 }
                 
-                if (!$updateData['phone'] && $contact->phone_number) {
+                if (!isset($updateData['phone']) && $contact->phone_number) {
                     $updateData['phone'] = $contact->preferred_contact === 'Phone' ? $contact->phone_number : 
                                          ($contact->preferred_contact === 'Second Phone' ? $contact->second_phone : 
                                          ($contact->phone_number ?: $contact->second_phone));
                 }
                 
-                if (!$updateData['address'] && $contact->address) {
+                if (!isset($updateData['address']) && $contact->address) {
                     $updateData['address'] = $contact->address;
                 }
             }
@@ -73,19 +73,19 @@ class CopyContactData extends Command
             if ($branch->financialContact) {
                 $contact = $branch->financialContact;
                 
-                if (!$updateData['email'] && $contact->email) {
+                if (!isset($updateData['email']) && $contact->email) {
                     $updateData['email'] = $contact->preferred_contact === 'Email' ? $contact->email : 
                                          ($contact->preferred_contact === 'Second Email' ? $contact->second_email : 
                                          ($contact->email ?: $contact->second_email));
                 }
                 
-                if (!$updateData['phone'] && $contact->phone_number) {
+                if (!isset($updateData['phone']) && $contact->phone_number) {
                     $updateData['phone'] = $contact->preferred_contact === 'Phone' ? $contact->phone_number : 
                                          ($contact->preferred_contact === 'Second Phone' ? $contact->second_phone : 
                                          ($contact->phone_number ?: $contact->second_phone));
                 }
                 
-                if (!$updateData['address'] && $contact->address) {
+                if (!isset($updateData['address']) && $contact->address) {
                     $updateData['address'] = $contact->address;
                 }
             }
