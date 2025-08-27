@@ -558,72 +558,13 @@ class ViewFile extends ViewRecord
                 ->openUrlInNewTab(false)->color('success'),
             Action::make('requestAppointments')
                 ->label('Request Appointments')
-                ->modalHeading('Select Branches for Appointment Request')
-                ->modalWidth('4xl')
-                ->form([
-                    Toggle::make('searchByProvince')
-                        ->label('Search by Province')
-                        ->default(false)
-                        ->live()
-                        ->afterStateUpdated(function ($state, $set, $record) {
-                            $branches = $record->availableBranches();
-                            $selectedBranches = $state ? $branches['allBranches'] : $branches['cityBranches'];
-
-                            $set('selected_branches', $selectedBranches->map(fn ($branch) => [
-                                'id' => $branch->id,
-                                'selected' => false,
-                                'name' => $branch->branch_name,
-                                'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-                                'preferred_contact' => $this->getPreferredContactDisplay($branch),
-                                'distance' => $this->getDistanceToBranch($record, $branch),
-                            ])->toArray());
-                        }),
-                    
-                    Repeater::make('selected_branches')
-                        ->label('Available Branches')
-                        ->schema([
-                            Checkbox::make('selected')->label('Select')->default(false),
-                            TextInput::make('name')->label('Branch Name')->disabled(),
-                            TextInput::make('day_cost')->label('Day Cost (€)')->disabled(),
-                            TextInput::make('preferred_contact')->label('Preferred Contact')->default(fn ($get) => optional($get('contact'))->preferred_contact ?? 'N/A')->disabled(),
-                            TextInput::make('distance')->label('Distance (Car)')->disabled(),
-                        ])
-                        ->columns(5)
-                        ->default(function ($get, $record) {
-                            $branches = $record->availableBranches();
-                            $selectedBranches = $branches['cityBranches']; // Start with city branches
-
-                            return $selectedBranches->map(fn ($branch) => [
-                                'id' => $branch->id,
-                                'selected' => false,
-                                'name' => $branch->branch_name,
-                                'day_cost' => $branch->day_cost ? '€' . number_format($branch->day_cost, 2) : 'N/A',
-                                'preferred_contact' => $this->getPreferredContactDisplay($branch),
-                                'distance' => $this->getDistanceToBranch($record, $branch),
-                            ])->toArray();
-                        })
-                        ->addActionLabel('Add More Branches')
-                        ->addAction(function ($get, $set, $record) {
-                            // This will be handled by the custom action
-                        }),
-                    
-                    Repeater::make('custom_emails')
-                        ->label('Custom Email Addresses')
-                        ->schema([
-                            TextInput::make('email')
-                                ->label('Email Address')
-                                ->email()
-                                ->required()
-                                ->placeholder('Enter email address'),
-                        ])
-                        ->columns(1)
-                        ->default([])
-                        ->addActionLabel('Add Custom Email')
-                        ->reorderable(false)
-                        ->collapsible()
-                        ->collapsed(),
-                ])
-                ->modalButton('Send Requests')
+                ->modalHeading('Select Provider Branches for Appointment Request')
+                ->modalWidth('7xl')
+                ->modalContent(view('filament.file.modals.request-appointments-table', [
+                    'file' => fn() => $this->record,
+                    'branches' => fn() => $this->record->availableBranches(),
+                ]))
+                ->modalSubmitActionLabel('Send Appointment Requests')
                 ->action(fn (array $data, $record) => $this->bulkSendRequests($data, $record)),
 
             Action::make('confirmTelemedicine')
