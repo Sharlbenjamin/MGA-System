@@ -178,14 +178,14 @@
                         @endphp
                         <tr class="branch-row hover:bg-gray-50" 
                             data-branch-id="{{ $branch->id }}"
-                            data-branch-name="{{ strtolower($branch->branch_name) }}"
-                            data-provider-name="{{ strtolower($branch->provider->name) }}"
+                            data-branch-name="{{ strtolower($branch->branch_name ?? '') }}"
+                            data-provider-name="{{ strtolower($branch->provider?->name ?? '') }}"
                             data-service-type="{{ $branch->branchServices->where('service_type_id', $file->service_type_id)->first()?->service_type_id }}"
-                            data-country="{{ strtolower($branch->provider->country->name) }}"
-                            data-status="{{ strtolower($branch->provider->status) }}"
+                            data-country="{{ strtolower($branch->provider?->country?->name ?? '') }}"
+                            data-status="{{ strtolower($branch->provider?->status ?? '') }}"
                             data-has-email="{{ $hasEmail ? 'true' : 'false' }}"
                             data-has-phone="{{ $hasPhone ? 'true' : 'false' }}"
-                            data-priority="{{ $branch->priority }}">
+                            data-priority="{{ $branch->priority ?? '0' }}">
                             <td class="px-4 py-3">
                                 <input type="checkbox" name="selected_branches[]" value="{{ $branch->id }}" 
                                        class="branch-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
@@ -198,11 +198,11 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->provider->name }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->priority }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->provider->country->name }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->provider?->name ?? 'N/A' }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->priority ?? 'N/A' }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->provider?->country?->name ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900">
-                                {{ $branch->cities->pluck('name')->implode(', ') ?: 'N/A' }}
+                                {{ $branch->cities ? $branch->cities->pluck('name')->implode(', ') : 'N/A' }}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-900">
                                 @if($cost)
@@ -236,9 +236,9 @@
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
-                                    {{ $branch->provider->status === 'Active' ? 'bg-green-100 text-green-800' : 
-                                       ($branch->provider->status === 'Potential' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                    {{ $branch->provider->status }}
+                                    {{ ($branch->provider?->status ?? '') === 'Active' ? 'bg-green-100 text-green-800' : 
+                                       (($branch->provider?->status ?? '') === 'Potential' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                    {{ $branch->provider?->status ?? 'N/A' }}
                                 </span>
                             </td>
                         </tr>
