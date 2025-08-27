@@ -91,6 +91,22 @@ class DiagnosePatientsTable extends Command
             $this->warn('  - Model expects "country" but table has "country_id" column');
         }
 
+        // Add this check to verify the model is correct
+        try {
+            $patient = new \App\Models\Patient();
+            $fillable = $patient->getFillable();
+            $hasCountryInModel = in_array('country', $fillable);
+            $hasCountryIdInModel = in_array('country_id', $fillable);
+            
+            if ($hasCountryInModel && !$hasCountryIdInModel) {
+                $this->warn('  - Model fillable array has "country" but should have "country_id"');
+            } elseif (!$hasCountryInModel && $hasCountryIdInModel) {
+                $this->info('  ✅ Model fillable array correctly uses "country_id"');
+            }
+        } catch (\Exception $e) {
+            $this->warn('  - Could not check model fillable array: ' . $e->getMessage());
+        }
+
         return 0;
     }
 }
