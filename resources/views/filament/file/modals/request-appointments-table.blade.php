@@ -8,7 +8,7 @@
 <div class="space-y-6">
     <!-- Header with File Info -->
     <div class="bg-gray-50 p-4 rounded-lg border">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div class="grid grid-cols-4 gap-4 text-sm">
             <div>
                 <span class="font-semibold text-gray-700">MGA Reference:</span>
                 <span class="ml-2">{{ $file->mga_reference }}</span>
