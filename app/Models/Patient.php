@@ -15,7 +15,7 @@ class Patient extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
 
-    protected $fillable = ['name','client_id','dob','gender','country','gop_contact_id','operation_contact_id','financial_contact_id',];
+    protected $fillable = ['name','client_id','dob','gender','country_id','gop_contact_id','operation_contact_id','financial_contact_id',];
 
     protected $casts = [
         'id' => 'integer',
