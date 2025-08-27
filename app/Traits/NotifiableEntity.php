@@ -118,7 +118,12 @@ trait NotifiableEntity
             'Patient' => new NotifyPatientMailable($type, $data),
         };
 
-        Mail::to($this->primaryContact($reason)->email)->send($mailable);
+        // For branches, prioritize direct email over contact email
+        if ($parent === 'Branch' && $this->email) {
+            Mail::to($this->email)->send($mailable);
+        } else {
+            Mail::to($this->primaryContact($reason)->email)->send($mailable);
+        }
     }
 
     public function notifyByWhatsapp($data)

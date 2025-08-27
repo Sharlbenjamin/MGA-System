@@ -11,9 +11,9 @@
     <p>Time: <strong>{{ $appointment->service_time }}</strong></p>
     <p>Service: <strong>{{ $appointment->file->serviceType->name }}</strong></p>
     <p>Provider: <strong>{{ $appointment->providerBranch->provider->name }}</strong></p>
-    <p>Provider Preferred Phone: <strong>{{ $appointment->providerBranch->primaryContact('Appointment')->preferred_contact ?? 'N/A' }}</strong></p>
-    <p>Phone: <strong>{{ $appointment->providerBranch->primaryContact('Appointment')->phone_number ?? 'N/A' }}</strong></p>
-    <p>Phone: <strong>{{ $appointment->providerBranch->primaryContact('Appointment')->second_phone ?? 'N/A' }}</strong></p>
+    <p>Branch Email: <strong>{{ $appointment->providerBranch->email ?? 'N/A' }}</strong></p>
+    <p>Branch Phone: <strong>{{ $appointment->providerBranch->phone ?? 'N/A' }}</strong></p>
+    <p>Branch Address: <strong>{{ $appointment->providerBranch->address ?? 'N/A' }}</strong></p>
 
     <p>Follow this scheme:</p>
     <p>introduce yourself and the company</p>

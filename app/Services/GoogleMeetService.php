@@ -116,22 +116,31 @@ class GoogleMeetService
             if ($file->providerBranch && $file->providerBranch->provider) {
                 $providerEmail = null;
                 
-                // First, try to use provider's email directly
-                if ($file->providerBranch->provider->email) {
-                    $providerEmail = $file->providerBranch->provider->email;
-                    Log::info('Using provider email directly', [
+                // First, try to use branch's direct email
+                if ($file->providerBranch->email) {
+                    $providerEmail = $file->providerBranch->email;
+                    Log::info('Using branch direct email', [
                         'file_id' => $file->id,
                         'provider_email' => $providerEmail
                     ]);
                 } else {
-                    // Fallback to provider operation contact
-                    $providerOperationContact = $file->providerBranch->provider->operationContact;
-                    if ($providerOperationContact) {
-                        $providerEmail = $this->getPreferredEmail($providerOperationContact);
-                        Log::info('Using provider operation contact email', [
+                    // Fallback to provider's email directly
+                    if ($file->providerBranch->provider->email) {
+                        $providerEmail = $file->providerBranch->provider->email;
+                        Log::info('Using provider email directly', [
                             'file_id' => $file->id,
                             'provider_email' => $providerEmail
                         ]);
+                    } else {
+                        // Fallback to provider operation contact
+                        $providerOperationContact = $file->providerBranch->provider->operationContact;
+                        if ($providerOperationContact) {
+                            $providerEmail = $this->getPreferredEmail($providerOperationContact);
+                            Log::info('Using provider operation contact email', [
+                                'file_id' => $file->id,
+                                'provider_email' => $providerEmail
+                            ]);
+                        }
                     }
                 }
                 
@@ -257,22 +266,31 @@ class GoogleMeetService
         if ($file->providerBranch && $file->providerBranch->provider) {
             $providerEmail = null;
             
-            // First, try to use provider's email directly
-            if ($file->providerBranch->provider->email) {
-                $providerEmail = $file->providerBranch->provider->email;
-                Log::info('Using provider email directly for notifications', [
+            // First, try to use branch's direct email
+            if ($file->providerBranch->email) {
+                $providerEmail = $file->providerBranch->email;
+                Log::info('Using branch direct email for notifications', [
                     'file_id' => $file->id,
                     'provider_email' => $providerEmail
                 ]);
             } else {
-                // Fallback to provider operation contact
-                $providerOperationContact = $file->providerBranch->provider->operationContact;
-                if ($providerOperationContact) {
-                    $providerEmail = $this->getPreferredEmail($providerOperationContact);
-                    Log::info('Using provider operation contact email for notifications', [
+                // Fallback to provider's email directly
+                if ($file->providerBranch->provider->email) {
+                    $providerEmail = $file->providerBranch->provider->email;
+                    Log::info('Using provider email directly for notifications', [
                         'file_id' => $file->id,
                         'provider_email' => $providerEmail
                     ]);
+                } else {
+                    // Fallback to provider operation contact
+                    $providerOperationContact = $file->providerBranch->provider->operationContact;
+                    if ($providerOperationContact) {
+                        $providerEmail = $this->getPreferredEmail($providerOperationContact);
+                        Log::info('Using provider operation contact email for notifications', [
+                            'file_id' => $file->id,
+                            'provider_email' => $providerEmail
+                        ]);
+                    }
                 }
             }
             

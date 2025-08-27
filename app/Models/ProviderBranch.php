@@ -21,7 +21,7 @@ class ProviderBranch extends Model
     use HasFactory, HasContacts, NotifiableEntity;
 
     protected $fillable = [
-        'provider_id', 'branch_name', 'city_id', 'province_id', 'status',
+        'provider_id', 'branch_name', 'email', 'phone', 'address', 'city_id', 'province_id', 'status',
         'priority', 'all_country',
         'communication_method', 'emergency', 'pediatrician_emergency', 'dental',
         'pediatrician', 'gynecology', 'urology', 'cardiology', 'ophthalmology',
@@ -101,6 +101,91 @@ class ProviderBranch extends Model
     {
         $reason = $this->detectNotificationReason($data);
         $this->sendNotification($reason, $type, $data, 'Branch');
+    }
+
+    /**
+     * Get the cost for a specific service type and time period
+     */
+    public function getCostForService($serviceTypeId, $timePeriod = 'day_cost')
+    {
+        $branchService = $this->branchServices()
+            ->where('service_type_id', $serviceTypeId)
+            ->where('is_active', true)
+            ->first();
+        
+        return $branchService ? $branchService->$timePeriod : null;
+    }
+
+    /**
+     * Get all costs for a specific service type
+     */
+    public function getCostsForService($serviceTypeId)
+    {
+        $branchService = $this->branchServices()
+            ->where('service_type_id', $serviceTypeId)
+            ->where('is_active', true)
+            ->first();
+        
+        if (!$branchService) {
+            return null;
+        }
+        
+        return [
+            'day_cost' => $branchService->day_cost,
+            'night_cost' => $branchService->night_cost,
+            'weekend_cost' => $branchService->weekend_cost,
+            'weekend_night_cost' => $branchService->weekend_night_cost,
+        ];
+    }
+
+    /**
+     * Get the primary contact email (prioritizes direct email, then Operation > GOP > Financial contact)
+     */
+    public function getPrimaryEmailAttribute()
+    {
+        if ($this->email) {
+            return $this->email;
+        }
+        
+        // Priority: Operation Contact > GOP Contact > Financial Contact
+        if ($this->operationContact && $this->operationContact->email) {
+            return $this->operationContact->email;
+        }
+        
+        if ($this->gopContact && $this->gopContact->email) {
+            return $this->gopContact->email;
+        }
+        
+        if ($this->financialContact && $this->financialContact->email) {
+            return $this->financialContact->email;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get the primary contact phone (prioritizes direct phone, then Operation > GOP > Financial contact)
+     */
+    public function getPrimaryPhoneAttribute()
+    {
+        if ($this->phone) {
+            return $this->phone;
+        }
+        
+        // Priority: Operation Contact > GOP Contact > Financial Contact
+        if ($this->operationContact && $this->operationContact->phone_number) {
+            return $this->operationContact->phone_number;
+        }
+        
+        if ($this->gopContact && $this->gopContact->phone_number) {
+            return $this->gopContact->phone_number;
+        }
+        
+        if ($this->financialContact && $this->financialContact->phone_number) {
+            return $this->financialContact->phone_number;
+        }
+        
+        return null;
     }
 
 

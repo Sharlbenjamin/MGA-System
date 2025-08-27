@@ -753,11 +753,12 @@ class ViewFile extends ViewRecord
                 continue;
             }
 
-            // Get the Operation Contact for the branch
-            $operationContact = $providerBranch->operationContact();
+            // Check if branch has direct email or operation contact
+            $hasDirectEmail = $providerBranch->email;
+            $hasOperationContact = $providerBranch->operationContact();
             
-            if (!$operationContact) {
-                $skippedBranches[] = $providerBranch->branch_name . ' (No Operation Contact)';
+            if (!$hasDirectEmail && !$hasOperationContact) {
+                $skippedBranches[] = $providerBranch->branch_name . ' (No Email Contact)';
                 continue;
             }
 

@@ -17,6 +17,14 @@
     <p><strong>Symptoms:</strong> {{ $appointment->file->symptoms ?? 'N/A'}}</p>
     @endif
 
+    @if($appointment->providerBranch->address)
+    <p><strong>Branch Address:</strong> {{ $appointment->providerBranch->address }}</p>
+    @endif
+
+    @if($appointment->providerBranch->phone)
+    <p><strong>Branch Phone:</strong> {{ $appointment->providerBranch->phone }}</p>
+    @endif
+
     @else
 
     <p>Dear team,</p>
@@ -24,7 +32,6 @@
     <p>Symptoms: {{ $appointment->file->symptoms ?? 'N/A' }}</p>
     <p>Can you provide our patient with the required medical attention?</p>
     <p>We are Med Guard Assistance, a Medical and Travel Assistance Company, That provides cashless medical services to our patients by paying to our providers on their behalf.</p>
-
 
     @endif
 
