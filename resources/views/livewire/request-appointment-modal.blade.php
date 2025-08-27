@@ -168,15 +168,7 @@
                                 ↕
                             @endif
                         </th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
-                            wire:click="sortBy('country')">
-                            Country 
-                            @if($sortField === 'country')
-                                {{ $sortDirection === 'asc' ? '↑' : '↓' }}
-                            @else
-                                ↕
-                            @endif
-                        </th>
+
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             City
                         </th>
@@ -224,9 +216,13 @@
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->provider?->name ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->priority ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->provider?->country?->name ?? 'N/A' }}</td>
+
                             <td class="px-4 py-3 text-sm text-gray-900">
-                                {{ $branch->cities ? $branch->cities->pluck('name')->implode(', ') : 'N/A' }}
+                                @if($branch->cities && $branch->cities->count() > 0)
+                                    {{ $branch->cities->pluck('name')->implode(', ') }}
+                                @else
+                                    N/A
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-900">
                                 @if($cost)
@@ -248,7 +244,7 @@
                                         </span>
                                     @endif
                                     @if($hasPhone)
-                                        <button type="button" onclick="showPhoneInfo({{ $branch->id }})" 
+                                        <button type="button" wire:click="$set('selectedBranchForPhone', {{ $branch->id }})" 
                                                 class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">
                                             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
@@ -268,7 +264,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-4 py-8 text-center text-gray-500">
+                            <td colspan="9" class="px-4 py-8 text-center text-gray-500">
                                 No branches found matching your criteria.
                             </td>
                         </tr>
@@ -286,53 +282,70 @@
     </div>
 
     <!-- Phone Info Modal -->
-    <div id="phoneModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900">Contact Information</h3>
-                    <button type="button" onclick="hidePhoneModal()" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-                <div id="phoneModalContent" class="space-y-3">
-                    <!-- Content will be populated by JavaScript -->
-                </div>
-                <div class="mt-6 flex justify-end">
-                    <button type="button" onclick="hidePhoneModal()" 
-                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
-                        Close
-                    </button>
+    @if($selectedBranchForPhone)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Contact Information</h3>
+                        <button type="button" wire:click="$set('selectedBranchForPhone', null)" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    @php
+                        $phoneInfo = $this->getPhoneInfo($selectedBranchForPhone);
+                    @endphp
+                    @if($phoneInfo)
+                        <div class="space-y-3">
+                            <div class="font-medium text-gray-900">{{ $phoneInfo['branch_name'] }}</div>
+                            <div class="text-sm text-gray-600 space-y-2">
+                                @if($phoneInfo['direct_phone'])
+                                    <div><strong>Direct Phone:</strong> {{ $phoneInfo['direct_phone'] }}</div>
+                                @endif
+                                @if($phoneInfo['operation_contact']['name'])
+                                    <div><strong>Operation Contact:</strong> {{ $phoneInfo['operation_contact']['name'] }}</div>
+                                    @if($phoneInfo['operation_contact']['phone'])
+                                        <div class="ml-4">Phone: {{ $phoneInfo['operation_contact']['phone'] }}</div>
+                                    @endif
+                                    @if($phoneInfo['operation_contact']['email'])
+                                        <div class="ml-4">Email: {{ $phoneInfo['operation_contact']['email'] }}</div>
+                                    @endif
+                                @endif
+                                @if($phoneInfo['gop_contact']['name'])
+                                    <div><strong>GOP Contact:</strong> {{ $phoneInfo['gop_contact']['name'] }}</div>
+                                    @if($phoneInfo['gop_contact']['phone'])
+                                        <div class="ml-4">Phone: {{ $phoneInfo['gop_contact']['phone'] }}</div>
+                                    @endif
+                                    @if($phoneInfo['gop_contact']['email'])
+                                        <div class="ml-4">Email: {{ $phoneInfo['gop_contact']['email'] }}</div>
+                                    @endif
+                                @endif
+                                @if($phoneInfo['financial_contact']['name'])
+                                    <div><strong>Financial Contact:</strong> {{ $phoneInfo['financial_contact']['name'] }}</div>
+                                    @if($phoneInfo['financial_contact']['phone'])
+                                        <div class="ml-4">Phone: {{ $phoneInfo['financial_contact']['phone'] }}</div>
+                                    @endif
+                                    @if($phoneInfo['financial_contact']['email'])
+                                        <div class="ml-4">Email: {{ $phoneInfo['financial_contact']['email'] }}</div>
+                                    @endif
+                                @endif
+                            </div>
+                        </div>
+                    @else
+                        <div class="text-gray-500">Contact information not available.</div>
+                    @endif
+                    <div class="mt-6 flex justify-end">
+                        <button type="button" wire:click="$set('selectedBranchForPhone', null)" 
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Close
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    @endif
 </div>
 
-<script>
-function showPhoneInfo(branchId) {
-    // This would typically fetch the phone info via AJAX
-    // For now, we'll show a placeholder
-    const modal = document.getElementById('phoneModal');
-    const content = document.getElementById('phoneModalContent');
-    
-    // Find the branch data from the table
-    const row = document.querySelector('[data-branch-id="' + branchId + '"]');
-    const branchName = row.querySelector('td:nth-child(2)').textContent.trim();
-    
-    content.innerHTML = '<div class="font-medium text-gray-900">' + branchName + '</div>' +
-        '<div class="text-sm text-gray-600">' +
-        '<div><strong>Direct Phone:</strong> ' + (row.querySelector('td:nth-child(9)').textContent.includes('Phone') ? 'Available' : 'N/A') + '</div>' +
-        '<div><strong>Operation Contact:</strong> Available</div>' +
-        '<div><strong>GOP Contact:</strong> Available</div>' +
-        '</div>';
-    
-    modal.classList.remove('hidden');
-}
 
-function hidePhoneModal() {
-    document.getElementById('phoneModal').classList.add('hidden');
-}
-</script>

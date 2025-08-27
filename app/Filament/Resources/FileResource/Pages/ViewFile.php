@@ -4,10 +4,10 @@ namespace App\Filament\Resources\FileResource\Pages;
 
 use Illuminate\Support\Facades\Log;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\Section as InfolistSection;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\BadgeEntry;
-use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Components\Grid as InfolistGrid;
 use Filament\Infolists\Infolist;
 use App\Filament\Resources\FileResource;
 use Filament\Infolists\Components\Card;
@@ -32,12 +32,16 @@ use App\Filament\Widgets\CommentsWidget;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Grid;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
 use Illuminate\Support\Str;
 use App\Models\DraftMail;
 use Filament\Forms\Components\RichEditor;
 use App\Models\Task;
+use App\Models\ServiceType;
+use App\Models\Country;
 
 use Filament\Support\Colors\Color;
 
@@ -55,11 +59,11 @@ class ViewFile extends ViewRecord
         return $infolist
             ->schema([
                 // Main content with condensed layout
-                Section::make()
+                InfolistSection::make()
                     ->columns(3) // Three columns for more condensed layout
                     ->schema([
                         // Column 1: Patient & Client Info (Condensed)
-                        Section::make()->schema([
+                        InfolistSection::make()->schema([
                             Card::make()
                                 ->schema([
                                     TextEntry::make('mga_reference')
@@ -560,8 +564,9 @@ class ViewFile extends ViewRecord
                 ->label('Request Appointments')
                 ->modalHeading('Select Provider Branches for Appointment Request')
                 ->modalWidth('7xl')
-                ->modalContent(view('filament.file.modals.request-appointments-livewire', [
+                ->modalContent(view('filament.file.modals.request-appointments-table', [
                     'file' => $this->record,
+                    'branches' => $this->record->availableBranches(),
                 ]))
                 ->modalSubmitActionLabel('Send Appointment Requests')
                 ->action(fn (array $data, $record) => $this->bulkSendRequests($data, $record)),
@@ -1452,5 +1457,11 @@ class ViewFile extends ViewRecord
         $distanceData = $distanceService->calculateDistance($file->address, $operationContact->address);
         
         return $distanceService->getFormattedDistance($distanceData);
+    }
+
+    public function updateBranches()
+    {
+        // This method will be called when filters change
+        // The form will automatically update the branches list
     }
 }
