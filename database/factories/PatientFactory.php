@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use App\Models\Client;
 use App\Models\Patient;
+use App\Models\Country;
 
 class PatientFactory extends Factory
 {
@@ -26,7 +27,7 @@ class PatientFactory extends Factory
             'client_id' => Client::factory(),
             'dob' => fake()->date(),
             'gender' => fake()->randomElement(['Male', 'Female']),
-            'country' => fake()->country(),
+            'country_id' => Country::factory(),
         ];
     }
 }
