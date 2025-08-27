@@ -560,9 +560,8 @@ class ViewFile extends ViewRecord
                 ->label('Request Appointments')
                 ->modalHeading('Select Provider Branches for Appointment Request')
                 ->modalWidth('7xl')
-                ->modalContent(view('filament.file.modals.request-appointments-table', [
-                    'file' => fn() => $this->record,
-                    'branches' => fn() => $this->record->availableBranches(),
+                ->modalContent(view('filament.file.modals.request-appointments-livewire', [
+                    'file' => $this->record,
                 ]))
                 ->modalSubmitActionLabel('Send Appointment Requests')
                 ->action(fn (array $data, $record) => $this->bulkSendRequests($data, $record)),

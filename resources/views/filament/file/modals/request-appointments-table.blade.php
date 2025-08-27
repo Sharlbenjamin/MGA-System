@@ -31,7 +31,7 @@
     <!-- Filters Section -->
     <div class="bg-white p-4 rounded-lg border shadow-sm">
         <h3 class="text-lg font-semibold mb-4 text-gray-800">Filters & Options</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-4 gap-4">
             <!-- Search -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Search Branches</label>
@@ -191,7 +191,13 @@
                                        class="branch-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                             </td>
                             <td class="px-4 py-3">
-                                <div class="font-medium text-gray-900">{{ $branch->branch_name }}</div>
+                                <div class="font-medium text-gray-900">
+                                    <a href="{{ route('filament.admin.resources.provider-branches.overview', $branch) }}" 
+                                       target="_blank" 
+                                       class="text-blue-600 hover:text-blue-800 hover:underline">
+                                        {{ $branch->branch_name }}
+                                    </a>
+                                </div>
                                 @if($branch->all_country)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                         All Country
