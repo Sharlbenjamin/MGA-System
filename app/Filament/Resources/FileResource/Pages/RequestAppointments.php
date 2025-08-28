@@ -597,7 +597,12 @@ class RequestAppointments extends ListRecords
                     ->label('Send Appointment Requests')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('primary')
-                    ->action(fn () => $this->sendRequests())
+                    ->action(function ($records) {
+                        // Get the IDs of selected records
+                        $selectedIds = $records->pluck('id')->toArray();
+                        $this->selectedBranches = $selectedIds;
+                        $this->sendRequests();
+                    })
                     ->requiresConfirmation()
                     ->modalHeading('Send Appointment Requests')
                     ->modalDescription('Are you sure you want to send appointment requests to the selected providers?')
