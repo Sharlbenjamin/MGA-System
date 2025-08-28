@@ -51,4 +51,9 @@ class City extends Model
     {
         return $this->hasMany(PriceList::class);
     }
+
+    public function branchCities(): HasMany
+    {
+        return $this->hasMany(BranchCity::class);
+    }
 }
