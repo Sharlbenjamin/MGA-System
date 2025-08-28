@@ -171,11 +171,11 @@ class DebugRequestAppointmentsFilters extends Command
             $this->line("   🏥 Provider: {$branch->provider->name}");
             $this->line("   🏳️  Country: {$branch->provider->country->name}");
             
-            $cities = $branch->cities->pluck('name')->implode(', ');
-            $this->line("   🏙️  Cities: " . ($cities ?: 'None'));
+            $cities = $branch->cities ? $branch->cities->pluck('name')->implode(', ') : 'None';
+            $this->line("   🏙️  Cities: " . $cities);
             
-            $services = $branch->branchServices->pluck('serviceType.name')->implode(', ');
-            $this->line("   🏥 Services: " . ($services ?: 'None'));
+            $services = $branch->branchServices ? $branch->branchServices->pluck('serviceType.name')->implode(', ') : 'None';
+            $this->line("   🏥 Services: " . $services);
             
             $this->line("   📧 Email: " . ($branch->email ?: 'Not set'));
             $this->line("   📞 Phone: " . ($branch->phone ?: 'Not set'));
