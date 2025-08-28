@@ -576,12 +576,19 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('cityFilter')
                     ->label('City')
                     ->options(function() {
-                        // Get all cities from countries that have providers with branches
+                        // Get cities from the file's country
+                        if ($this->file->country_id) {
+                            $cities = \App\Models\City::where('country_id', $this->file->country_id)
+                                ->pluck('name', 'id');
+                            return $cities->toArray();
+                        }
+                        // Fallback: get all cities from countries that have providers with branches
                         $cities = \App\Models\City::whereHas('country', function($q) {
                             $q->whereIn('id', \App\Models\Provider::whereHas('branches')->pluck('country_id'));
                         })->pluck('name', 'id');
                         return $cities->toArray();
                     })
+                    ->default($this->file->city_id)
                     ->searchable()
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('cities', fn ($q) => $q->where('cities.id', $value)))),
 
