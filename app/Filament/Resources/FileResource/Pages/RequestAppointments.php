@@ -423,7 +423,6 @@ class RequestAppointments extends ListRecords
     {
         return $table
             ->query($this->getBranchesQuery())
-            ->checkIfRecordIsSelectedUsing(fn ($record): bool => in_array($record->id, $this->selectedBranches))
             ->columns([
                 CheckboxColumn::make('selected')
                     ->label('Select')
