@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\FileResource\Pages;
+namespace App\Filament\Resources\ProviderBranchResource\Pages;
 
 use App\Filament\Resources\FileResource;
+use App\Filament\Resources\ProviderBranchResource;
 use App\Models\File;
 use App\Models\ServiceType;
 use App\Models\Country;
@@ -35,9 +36,9 @@ use Filament\Infolists\Components\Section as InfolistSection;
 
 class RequestAppointments extends ListRecords
 {
-    protected static string $resource = FileResource::class;
+    protected static string $resource = ProviderBranchResource::class;
 
-    protected static string $view = 'filament.resources.file-resource.pages.request-appointments';
+    protected static string $view = 'filament.resources.provider-branch-resource.pages.request-appointments';
 
     public File $file;
     public $search = '';
