@@ -29,6 +29,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AppointmentRequestMail;
 use Livewire\Attributes\On;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\Section as InfolistSection;
 
 class RequestAppointments extends ListRecords
 {
@@ -566,5 +569,47 @@ class RequestAppointments extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [];
+    }
+
+    public function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                InfolistSection::make()
+                    ->schema([
+                        TextEntry::make('patient_name')
+                            ->label('Patient Name')
+                            ->getStateUsing(fn () => $this->file->patient->name),
+                        
+                        TextEntry::make('mga_reference')
+                            ->label('MGA Reference')
+                            ->getStateUsing(fn () => $this->file->mga_reference),
+                        
+                        TextEntry::make('client_reference')
+                            ->label('Client Reference')
+                            ->getStateUsing(fn () => $this->file->client_reference ?? 'N/A'),
+                        
+                        TextEntry::make('service_type')
+                            ->label('Service Type')
+                            ->getStateUsing(fn () => $this->file->serviceType->name),
+                        
+                        TextEntry::make('city')
+                            ->label('City')
+                            ->getStateUsing(fn () => $this->file->city?->name ?? 'N/A'),
+                        
+                        TextEntry::make('country')
+                            ->label('Country')
+                            ->getStateUsing(fn () => $this->file->country?->name ?? 'N/A'),
+                        
+                        TextEntry::make('address')
+                            ->label('Address')
+                            ->getStateUsing(fn () => $this->file->address ?? 'N/A'),
+                        
+                        TextEntry::make('symptoms')
+                            ->label('Symptoms')
+                            ->getStateUsing(fn () => $this->file->symptoms ?? 'N/A'),
+                    ])
+                    ->columns(4),
+            ]);
     }
 }

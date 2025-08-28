@@ -1,41 +1,7 @@
 <x-filament-panels::page>
     <div class="space-y-6 max-w-7xl mx-auto">
         <!-- Header with File Info -->
-        <x-filament::section>
-            <x-filament::info-list>
-                <x-filament::info-list.item label="Patient Name">
-                    {{ $this->file->patient->name }}
-                </x-filament::info-list.item>
-                
-                <x-filament::info-list.item label="MGA Reference">
-                    {{ $this->file->mga_reference }}
-                </x-filament::info-list.item>
-                
-                <x-filament::info-list.item label="Client Reference">
-                    {{ $this->file->client_reference ?? 'N/A' }}
-                </x-filament::info-list.item>
-                
-                <x-filament::info-list.item label="Service Type">
-                    {{ $this->file->serviceType->name }}
-                </x-filament::info-list.item>
-                
-                <x-filament::info-list.item label="City">
-                    {{ $this->file->city?->name ?? 'N/A' }}
-                </x-filament::info-list.item>
-                
-                <x-filament::info-list.item label="Country">
-                    {{ $this->file->country?->name ?? 'N/A' }}
-                </x-filament::info-list.item>
-                
-                <x-filament::info-list.item label="Address">
-                    {{ $this->file->address ?? 'N/A' }}
-                </x-filament::info-list.item>
-                
-                <x-filament::info-list.item label="Symptoms">
-                    {{ $this->file->symptoms ?? 'N/A' }}
-                </x-filament::info-list.item>
-            </x-filament::info-list>
-        </x-filament::section>
+        {{ $this->infolist }}
 
 
 
