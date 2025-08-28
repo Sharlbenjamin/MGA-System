@@ -424,8 +424,11 @@ class RequestAppointments extends ListRecords
                     ->label('Distance')
                     ->getStateUsing(function ($record) {
                         // Use the existing helper method that was working
-                        $distance = $this->getDistanceToBranch($record);
-                        return $distance ? number_format($distance, 1) . ' km' : 'N/A';
+                        $distanceData = $this->getDistanceToBranch($record);
+                        if ($distanceData && isset($distanceData['duration_minutes'])) {
+                            return number_format($distanceData['duration_minutes'], 1) . ' min';
+                        }
+                        return 'N/A';
                     }),
 
                 TextColumn::make('contact_info')
