@@ -114,8 +114,8 @@ class RequestAppointments extends ListRecords
 
     public function selectAll()
     {
-        $branches = $this->getBranchesQuery()->get();
-        $this->selectedBranches = $branches->pluck('id')->toArray();
+        $branchServices = $this->getBranchesQuery()->get();
+        $this->selectedBranches = $branchServices->pluck('providerBranch.id')->unique()->toArray();
     }
 
     public function clearSelection()
@@ -146,15 +146,16 @@ class RequestAppointments extends ListRecords
 
     protected function getBranchesQuery(): Builder
     {
-        $query = \App\Models\ProviderBranch::with([
-            'provider.country',
-            'operationContact',
-            'gopContact', 
-            'financialContact',
-            'cities',
-            'branchCities',
-            'branchServices.serviceType'
-        ]);
+        $query = \App\Models\BranchService::with([
+            'providerBranch.provider.country',
+            'providerBranch.operationContact',
+            'providerBranch.gopContact', 
+            'providerBranch.financialContact',
+            'providerBranch.cities',
+            'providerBranch.branchCities',
+            'serviceType'
+        ])
+        ->where('is_active', 1);
 
         return $query;
     }
@@ -359,33 +360,33 @@ class RequestAppointments extends ListRecords
             ->columns([
                 TextColumn::make('selected')
                     ->label('Select')
-                    ->getStateUsing(fn ($record): string => in_array($record->id, $this->selectedBranches) ? '✓' : '')
+                    ->getStateUsing(fn ($record): string => in_array($record->providerBranch->id, $this->selectedBranches) ? '✓' : '')
                     ->action(function ($record) {
-                        if (in_array($record->id, $this->selectedBranches)) {
-                            $this->selectedBranches = array_diff($this->selectedBranches, [$record->id]);
+                        if (in_array($record->providerBranch->id, $this->selectedBranches)) {
+                            $this->selectedBranches = array_diff($this->selectedBranches, [$record->providerBranch->id]);
                         } else {
-                            $this->selectedBranches[] = $record->id;
+                            $this->selectedBranches[] = $record->providerBranch->id;
                         }
                     })
                     ->alignCenter()
                     ->color('success'),
 
 
-                TextColumn::make('branch_name')
+                TextColumn::make('providerBranch.branch_name')
                     ->label('Branch Name')
                     ->sortable()
                     ->searchable()
-                    ->url(fn ($record) => \App\Filament\Resources\ProviderBranchResource::getUrl('overview', ['record' => $record]))
+                    ->url(fn ($record) => \App\Filament\Resources\ProviderBranchResource::getUrl('overview', ['record' => $record->providerBranch]))
                     ->openUrlInNewTab()
                     ->color('primary')
                     ->weight('bold'),
 
-                TextColumn::make('provider.name')
+                TextColumn::make('providerBranch.provider.name')
                     ->label('Provider')
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('priority')
+                TextColumn::make('providerBranch.priority')
                     ->label('Priority')
                     ->sortable()
                     ->badge()
@@ -400,15 +401,15 @@ class RequestAppointments extends ListRecords
                     ->label('City')
                     ->getStateUsing(function ($record) {
                         // Get cities from the branch's cities relationship
-                        $cities = $record->cities()->pluck('name')->unique()->filter()->implode(', ');
+                        $cities = $record->providerBranch->cities()->pluck('name')->unique()->filter()->implode(', ');
                         return $cities ?: 'N/A';
                     }),
 
                 TextColumn::make('cost')
                     ->label('Cost')
                     ->getStateUsing(function ($record) {
-                        // Use the existing helper method that was working
-                        $cost = $this->getCostForService($record, $this->file->service_type_id);
+                        // Get cost directly from the branch service record
+                        $cost = $record->day_cost;
                         return $cost ? '€' . number_format($cost, 2) : 'N/A';
                     }),
 
@@ -416,7 +417,7 @@ class RequestAppointments extends ListRecords
                     ->label('Distance')
                     ->getStateUsing(function ($record) {
                         // Use the existing helper method that was working
-                        $distanceData = $this->getDistanceToBranch($record);
+                        $distanceData = $this->getDistanceToBranch($record->providerBranch);
                         if ($distanceData && isset($distanceData['duration_minutes'])) {
                             return number_format($distanceData['duration_minutes'], 1) . ' min';
                         }
@@ -427,7 +428,7 @@ class RequestAppointments extends ListRecords
                     ->label('Contact Info')
                     ->getStateUsing(function ($record) {
                         // Only show email badge, remove phone functionality
-                        if ($this->hasEmail($record)) {
+                        if ($this->hasEmail($record->providerBranch)) {
                             return 'Email';
                         }
                         return 'No Email';
@@ -440,7 +441,7 @@ class RequestAppointments extends ListRecords
                     })
                     ->tooltip('Email availability'),
 
-                TextColumn::make('provider.status')
+                TextColumn::make('providerBranch.provider.status')
                     ->label('Status')
                     ->sortable()
                     ->badge()
@@ -456,14 +457,14 @@ class RequestAppointments extends ListRecords
                     ->label('Service Type')
                     ->options(ServiceType::pluck('name', 'id'))
                     ->default($this->file->service_type_id)
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('branchServices', fn ($q) => $q->where('service_type_id', $value)->where('is_active', 1)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('service_type_id', $value))),
 
                 SelectFilter::make('countryFilter')
                     ->label('Country')
                     ->options(Country::pluck('name', 'id'))
                     ->default($this->file->service_type_id === 2 ? null : $this->file->country_id)
                     ->searchable()
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('country_id', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('providerBranch.provider', fn ($q) => $q->where('country_id', $value)))),
 
                 SelectFilter::make('cityFilter')
                     ->label('City')
@@ -482,7 +483,7 @@ class RequestAppointments extends ListRecords
                     })
                     ->default($this->file->city_id)
                     ->searchable()
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('branchCities', fn ($q) => $q->where('city_id', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('providerBranch.branchCities', fn ($q) => $q->where('city_id', $value)))),
 
                 SelectFilter::make('statusFilter')
                     ->label('Provider Status')
@@ -492,15 +493,17 @@ class RequestAppointments extends ListRecords
                         'Hold' => 'Hold',
                     ])
                     ->default('Active')
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('status', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('providerBranch.provider', fn ($q) => $q->where('status', $value)))),
 
                 Filter::make('showOnlyWithEmail')
                     ->label('Show Only Branches with Email')
-                    ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->where(function($q) {
-                        $q->whereNotNull('email')->where('email', '!=', '')
-                          ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('email')->where('email', '!=', ''))
-                          ->orWhereHas('gopContact', fn($gc) => $gc->whereNotNull('email')->where('email', '!=', ''))
-                          ->orWhereHas('financialContact', fn($fc) => $fc->whereNotNull('email')->where('email', '!=', ''));
+                    ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->whereHas('providerBranch', function($q) {
+                        $q->where(function($subQ) {
+                            $subQ->whereNotNull('email')->where('email', '!=', '')
+                              ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('email')->where('email', '!=', ''))
+                              ->orWhereHas('gopContact', fn($gc) => $gc->whereNotNull('email')->where('email', '!=', ''))
+                              ->orWhereHas('financialContact', fn($fc) => $fc->whereNotNull('email')->where('email', '!=', ''));
+                        });
                     }) : $query),
 
 
@@ -511,9 +514,9 @@ class RequestAppointments extends ListRecords
                     ->icon('heroicon-o-paper-airplane')
                     ->color('primary')
                     ->action(function ($records) {
-                        // Get the IDs of selected records
-                        $selectedIds = $records->pluck('id')->toArray();
-                        $this->selectedBranches = $selectedIds;
+                        // Get the branch IDs from the selected branch services
+                        $selectedBranchIds = $records->pluck('providerBranch.id')->unique()->toArray();
+                        $this->selectedBranches = $selectedBranchIds;
                         $this->sendRequests();
                     })
                     ->requiresConfirmation()
