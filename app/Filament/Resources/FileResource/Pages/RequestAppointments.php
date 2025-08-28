@@ -395,44 +395,33 @@ class RequestAppointments extends ListRecords
                 TextColumn::make('cities')
                     ->label('City')
                     ->formatStateUsing(function ($state, $record) {
-                        // Get cities from branch_cities relationship
-                        $cities = $record->cities()->pluck('name')->unique()->filter()->implode(', ');
+                        // Use the existing logic that was working
+                        $serviceTypeId = $this->file->service_type_id;
+                        $cities = $record->cities()
+                            ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                                $q->where('service_type_id', $serviceTypeId);
+                            })
+                            ->pluck('name')
+                            ->unique()
+                            ->filter()
+                            ->implode(', ');
                         return $cities ?: 'N/A';
                     }),
 
                 TextColumn::make('cost')
                     ->label('Cost')
                     ->formatStateUsing(function ($state, $record) {
-                        // Get cost from branch_services table
-                        $serviceTypeId = $this->file->service_type_id;
-                        $branchService = $record->branchServices()
-                            ->where('service_type_id', $serviceTypeId)
-                            ->where('is_active', true)
-                            ->first();
-                        
-                        if ($branchService && $branchService->day_cost) {
-                            return '€' . number_format($branchService->day_cost, 2);
-                        }
-                        return 'N/A';
+                        // Use the existing helper method that was working
+                        $cost = $this->getCostForService($record, $this->file->service_type_id);
+                        return $cost ? '€' . number_format($cost, 2) : 'N/A';
                     }),
 
                 TextColumn::make('distance')
                     ->label('Distance')
                     ->formatStateUsing(function ($state, $record) {
-                        // Calculate distance between file address and provider branch address
-                        $fileAddress = $this->file->patient->address ?? '';
-                        $branchAddress = $record->address ?? '';
-                        
-                        if ($fileAddress && $branchAddress) {
-                            try {
-                                $distanceService = app(\App\Services\DistanceCalculationService::class);
-                                $distance = $distanceService->calculateDistance($fileAddress, $branchAddress);
-                                return number_format($distance, 1) . ' km';
-                            } catch (\Exception $e) {
-                                return 'N/A';
-                            }
-                        }
-                        return 'N/A';
+                        // Use the existing helper method that was working
+                        $distance = $this->getDistanceToBranch($record);
+                        return $distance ? number_format($distance, 1) . ' km' : 'N/A';
                     }),
 
                 TextColumn::make('contact_info')
@@ -440,19 +429,12 @@ class RequestAppointments extends ListRecords
                     ->formatStateUsing(function ($state, $record) {
                         $badges = [];
                         
-                        // Check for email in provider branch table
-                        if ($record->email || 
-                            ($record->operationContact && $record->operationContact->email) ||
-                            ($record->gopContact && $record->gopContact->email) ||
-                            ($record->financialContact && $record->financialContact->email)) {
+                        // Use the existing helper methods that were working
+                        if ($this->hasEmail($record)) {
                             $badges[] = 'Email';
                         }
                         
-                        // Check for phone in provider branch table
-                        if ($record->phone || 
-                            ($record->operationContact && $record->operationContact->phone_number) ||
-                            ($record->gopContact && $record->gopContact->phone_number) ||
-                            ($record->financialContact && $record->financialContact->phone_number)) {
+                        if ($this->hasPhone($record)) {
                             $badges[] = 'Phone';
                         }
                         
