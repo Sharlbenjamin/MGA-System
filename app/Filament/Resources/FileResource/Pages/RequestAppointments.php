@@ -253,6 +253,18 @@ class RequestAppointments extends ListRecords
         return $output;
     }
 
+    public function showPhoneModal($phoneInfo)
+    {
+        $formattedInfo = $this->formatPhoneInfo($phoneInfo);
+        
+        Notification::make()
+            ->title('Phone Information')
+            ->body($formattedInfo)
+            ->info()
+            ->persistent()
+            ->send();
+    }
+
     public function sendRequests()
     {
         $customEmails = collect($this->customEmails)
@@ -372,7 +384,7 @@ class RequestAppointments extends ListRecords
                     ->label('Branch Name')
                     ->sortable()
                     ->searchable()
-                    ->url(fn ($record) => route('filament.admin.resources.provider-branches.overview', $record))
+                    ->url(fn ($record) => \App\Filament\Resources\ProviderBranchResource::getUrl('overview', ['record' => $record]))
                     ->openUrlInNewTab()
                     ->color('primary'),
 
@@ -438,7 +450,17 @@ class RequestAppointments extends ListRecords
                         'Phone' => 'info',
                         'Email, Phone' => 'success',
                         default => 'gray',
-                    }),
+                    })
+                    ->action(function ($record) {
+                        // Show phone modal if the record has phone info
+                        if ($this->hasPhone($record)) {
+                            $phoneInfo = $this->getPhoneInfo($record->id);
+                            if ($phoneInfo) {
+                                $this->showPhoneModal($phoneInfo);
+                            }
+                        }
+                    })
+                    ->tooltip('Click to view phone details'),
 
                 TextColumn::make('provider.status')
                     ->label('Status')
