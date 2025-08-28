@@ -502,11 +502,9 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('cityFilter')
                     ->label('City')
                     ->options(function() {
-                        // Get all cities from all countries where providers exist
+                        // Get all cities from countries that have providers with branches
                         $cities = \App\Models\City::whereHas('country', function($q) {
-                            $q->whereHas('providers', function($p) {
-                                $p->whereHas('branches');
-                            });
+                            $q->whereIn('id', \App\Models\Provider::whereHas('branches')->pluck('country_id'));
                         })->pluck('name', 'id');
                         return $cities->toArray();
                     })
