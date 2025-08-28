@@ -250,7 +250,7 @@ class RequestAppointments extends ListRecords
         $output = "{$phoneInfo['branch_name']}\n\n";
         
         if ($phoneInfo['direct_phone']) {
-            $output .= "Phone: {$phoneInfo['direct_phone']}\n";
+            $output .= "Phone Number: {$phoneInfo['direct_phone']}\n";
         }
         
         if ($phoneInfo['operation_contact']['name']) {
@@ -419,7 +419,8 @@ class RequestAppointments extends ListRecords
                     ->searchable()
                     ->url(fn ($record) => \App\Filament\Resources\ProviderBranchResource::getUrl('overview', ['record' => $record]))
                     ->openUrlInNewTab()
-                    ->color('primary'),
+                    ->color('primary')
+                    ->weight('bold'),
 
                 TextColumn::make('provider.name')
                     ->label('Provider')
