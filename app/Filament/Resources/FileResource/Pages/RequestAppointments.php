@@ -17,7 +17,7 @@ class RequestAppointments extends Page
 
     protected static string $view = 'filament.resources.file-resource.pages.request-appointments';
 
-    public File $file;
+    public $file;
     public $search = '';
     public $serviceTypeFilter = '';
     public $countryFilter = '';
@@ -33,7 +33,7 @@ class RequestAppointments extends Page
 
     public function mount($record): void
     {
-        $this->file = $record;
+        $this->file = File::findOrFail($record);
         
         // Set default filters
         $this->statusFilter = 'Active';
