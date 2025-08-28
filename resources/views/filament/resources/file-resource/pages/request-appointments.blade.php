@@ -1,46 +1,41 @@
 <x-filament-panels::page>
     <div class="space-y-6 max-w-7xl mx-auto">
         <!-- Header with File Info -->
-        <div class="bg-gray-50 p-4 rounded-lg border">
-            <div class="grid grid-cols-4 gap-4 text-sm">
-                <div class="flex flex-col">
-                    <span class="font-semibold text-gray-700">Patient Name:</span>
-                    <span class="text-gray-900">{{ $this->file->patient->name }}</span>
-                </div>
-                <div class="flex flex-col">
-                    <span class="font-semibold text-gray-700">MGA Reference:</span>
-                    <span class="text-gray-900">{{ $this->file->mga_reference }}</span>
-                </div>
-                <div class="flex flex-col">
-                    <span class="font-semibold text-gray-700">Client Reference:</span>
-                    <span class="text-gray-900">{{ $this->file->client_reference ?? 'N/A' }}</span>
-                </div>
-                <div class="flex flex-col">
-                    <span class="font-semibold text-gray-700">Service Type:</span>
-                    <span class="text-gray-900">{{ $this->file->serviceType->name }}</span>
-                </div>
-            </div>
-            <div class="grid grid-cols-4 gap-4 text-sm mt-4">
-                <div class="flex flex-col">
-                    <span class="font-semibold text-gray-700">City:</span>
-                    <span class="text-gray-900">{{ $this->file->city?->name ?? 'N/A' }}</span>
-                </div>
-                <div class="flex flex-col">
-                    <span class="font-semibold text-gray-700">Country:</span>
-                    <span class="text-gray-900">{{ $this->file->country?->name ?? 'N/A' }}</span>
-                </div>
-                <div class="flex flex-col col-span-2">
-                    <span class="font-semibold text-gray-700">Address:</span>
-                    <span class="text-gray-900">{{ $this->file->address ?? 'N/A' }}</span>
-                </div>
-            </div>
-            <div class="mt-4">
-                <div class="flex flex-col">
-                    <span class="font-semibold text-gray-700">Symptoms:</span>
-                    <span class="text-gray-900">{{ $this->file->symptoms ?? 'N/A' }}</span>
-                </div>
-            </div>
-        </div>
+        <x-filament::section>
+            <x-filament::info-list>
+                <x-filament::info-list.item label="Patient Name">
+                    {{ $this->file->patient->name }}
+                </x-filament::info-list.item>
+                
+                <x-filament::info-list.item label="MGA Reference">
+                    {{ $this->file->mga_reference }}
+                </x-filament::info-list.item>
+                
+                <x-filament::info-list.item label="Client Reference">
+                    {{ $this->file->client_reference ?? 'N/A' }}
+                </x-filament::info-list.item>
+                
+                <x-filament::info-list.item label="Service Type">
+                    {{ $this->file->serviceType->name }}
+                </x-filament::info-list.item>
+                
+                <x-filament::info-list.item label="City">
+                    {{ $this->file->city?->name ?? 'N/A' }}
+                </x-filament::info-list.item>
+                
+                <x-filament::info-list.item label="Country">
+                    {{ $this->file->country?->name ?? 'N/A' }}
+                </x-filament::info-list.item>
+                
+                <x-filament::info-list.item label="Address">
+                    {{ $this->file->address ?? 'N/A' }}
+                </x-filament::info-list.item>
+                
+                <x-filament::info-list.item label="Symptoms">
+                    {{ $this->file->symptoms ?? 'N/A' }}
+                </x-filament::info-list.item>
+            </x-filament::info-list>
+        </x-filament::section>
 
 
 
