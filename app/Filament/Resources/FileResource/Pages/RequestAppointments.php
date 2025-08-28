@@ -388,7 +388,7 @@ class RequestAppointments extends ListRecords
 
                 TextColumn::make('providerBranch.priority')
                     ->label('Priority')
-                    ->sortable()
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('provider_branches.priority', $direction))
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'High' => 'danger',
@@ -532,7 +532,7 @@ class RequestAppointments extends ListRecords
                     ->label('Clear Selection')
                     ->action(fn () => $this->clearSelection()),
             ])
-            ->defaultSort('priority', 'asc')
+            ->defaultSort('provider_branches.priority', 'asc')
             ->paginated([10, 25, 50, 100]);
     }
 
