@@ -221,95 +221,7 @@ class RequestAppointments extends ListRecords
                $branch->financialContact?->email;
     }
 
-    public function hasPhone($branch)
-    {
-        return $branch->phone || 
-               $branch->operationContact?->phone_number || 
-               $branch->gopContact?->phone_number || 
-               $branch->financialContact?->phone_number;
-    }
 
-    public function getPhoneInfo($branchId)
-    {
-        $branch = \App\Models\ProviderBranch::with(['operationContact', 'gopContact', 'financialContact'])->find($branchId);
-        
-        if (!$branch) {
-            return null;
-        }
-
-        return [
-            'branch_name' => $branch->branch_name,
-            'direct_phone' => $branch->phone,
-            'operation_contact' => [
-                'name' => $branch->operationContact?->name,
-                'phone' => $branch->operationContact?->phone_number,
-                'email' => $branch->operationContact?->email,
-            ],
-            'gop_contact' => [
-                'name' => $branch->gopContact?->name,
-                'phone' => $branch->gopContact?->phone_number,
-                'email' => $branch->gopContact?->email,
-            ],
-            'financial_contact' => [
-                'name' => $branch->financialContact?->name,
-                'phone' => $branch->financialContact?->phone_number,
-                'email' => $branch->financialContact?->email,
-            ],
-        ];
-    }
-
-    public function formatPhoneInfo($phoneInfo)
-    {
-        $output = "{$phoneInfo['branch_name']}\n\n";
-        
-        if ($phoneInfo['direct_phone']) {
-            $output .= "Phone Number: {$phoneInfo['direct_phone']}\n";
-        }
-        
-        if ($phoneInfo['operation_contact']['name']) {
-            $output .= "\nOperation Contact: {$phoneInfo['operation_contact']['name']}\n";
-            if ($phoneInfo['operation_contact']['phone']) {
-                $output .= "Phone: {$phoneInfo['operation_contact']['phone']}\n";
-            }
-            if ($phoneInfo['operation_contact']['email']) {
-                $output .= "Email: {$phoneInfo['operation_contact']['email']}\n";
-            }
-        }
-        
-        if ($phoneInfo['gop_contact']['name']) {
-            $output .= "\nGOP Contact: {$phoneInfo['gop_contact']['name']}\n";
-            if ($phoneInfo['gop_contact']['phone']) {
-                $output .= "Phone: {$phoneInfo['gop_contact']['phone']}\n";
-            }
-            if ($phoneInfo['gop_contact']['email']) {
-                $output .= "Email: {$phoneInfo['gop_contact']['email']}\n";
-            }
-        }
-        
-        if ($phoneInfo['financial_contact']['name']) {
-            $output .= "\nFinancial Contact: {$phoneInfo['financial_contact']['name']}\n";
-            if ($phoneInfo['financial_contact']['phone']) {
-                $output .= "Phone: {$phoneInfo['financial_contact']['phone']}\n";
-            }
-            if ($phoneInfo['financial_contact']['email']) {
-                $output .= "Email: {$phoneInfo['financial_contact']['email']}\n";
-            }
-        }
-        
-        return $output;
-    }
-
-    public function showPhoneModal($phoneInfo)
-    {
-        $formattedInfo = $this->formatPhoneInfo($phoneInfo);
-        
-        Notification::make()
-            ->title('Phone Information')
-            ->body($formattedInfo)
-            ->info()
-            ->persistent()
-            ->send();
-    }
 
     public function sendRequests()
     {
@@ -518,36 +430,19 @@ class RequestAppointments extends ListRecords
                 TextColumn::make('contact_info')
                     ->label('Contact Info')
                     ->getStateUsing(function ($record) {
-                        $badges = [];
-                        
-                        // Use the existing helper methods that were working
+                        // Only show email badge, remove phone functionality
                         if ($this->hasEmail($record)) {
-                            $badges[] = 'Email';
+                            return 'Email';
                         }
-                        
-                        if ($this->hasPhone($record)) {
-                            $badges[] = 'Phone';
-                        }
-                        
-                        return implode(', ', $badges);
+                        return 'No Email';
                     })
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Email' => 'success',
-                        'Phone' => 'info',
-                        'Email, Phone' => 'success',
+                        'No Email' => 'gray',
                         default => 'gray',
                     })
-                    ->action(function ($record) {
-                        // Show phone modal if the record has phone info
-                        if ($this->hasPhone($record)) {
-                            $phoneInfo = $this->getPhoneInfo($record->id);
-                            if ($phoneInfo) {
-                                $this->showPhoneModal($phoneInfo);
-                            }
-                        }
-                    })
-                    ->tooltip('Click to view phone details'),
+                    ->tooltip('Email availability'),
 
                 TextColumn::make('provider.status')
                     ->label('Status')
@@ -611,14 +506,7 @@ class RequestAppointments extends ListRecords
                           ->orWhereHas('financialContact', fn($fc) => $fc->whereNotNull('email')->where('email', '!=', ''));
                     }) : $query),
 
-                Filter::make('showOnlyWithPhone')
-                    ->label('Show Only Branches with Phone')
-                    ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->where(function($q) {
-                        $q->whereNotNull('phone')->where('phone', '!=', '')
-                          ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('phone_number')->where('phone_number', '!=', ''))
-                          ->orWhereHas('gopContact', fn($gc) => $gc->whereNotNull('phone_number')->where('phone_number', '!=', ''))
-                          ->orWhereHas('financialContact', fn($fc) => $fc->whereNotNull('phone_number')->where('phone_number', '!=', ''));
-                    }) : $query),
+
             ])
             ->bulkActions([
                 BulkAction::make('sendRequests')
