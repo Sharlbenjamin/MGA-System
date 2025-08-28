@@ -156,7 +156,8 @@ class RequestAppointments extends ListRecords
             'providerBranch.branchCities',
             'serviceType'
         ])
-        ->where('is_active', 1);
+        ->join('provider_branches', 'branch_services.provider_branch_id', '=', 'provider_branches.id')
+        ->where('branch_services.is_active', 1);
 
         return $query;
     }
@@ -389,7 +390,7 @@ class RequestAppointments extends ListRecords
 
                 TextColumn::make('providerBranch.priority')
                     ->label('Priority')
-                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('provider_branches.priority', $direction))
+                    ->sortable()
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'High' => 'danger',
