@@ -217,14 +217,14 @@ class RequestAppointments extends ListRecords
 
     public function formatPhoneInfo($phoneInfo)
     {
-        $output = "**{$phoneInfo['branch_name']}**\n\n";
+        $output = "{$phoneInfo['branch_name']}\n\n";
         
         if ($phoneInfo['direct_phone']) {
-            $output .= "**Direct Phone:** {$phoneInfo['direct_phone']}\n";
+            $output .= "Phone: {$phoneInfo['direct_phone']}\n";
         }
         
         if ($phoneInfo['operation_contact']['name']) {
-            $output .= "\n**Operation Contact:** {$phoneInfo['operation_contact']['name']}\n";
+            $output .= "\nOperation Contact: {$phoneInfo['operation_contact']['name']}\n";
             if ($phoneInfo['operation_contact']['phone']) {
                 $output .= "Phone: {$phoneInfo['operation_contact']['phone']}\n";
             }
@@ -234,7 +234,7 @@ class RequestAppointments extends ListRecords
         }
         
         if ($phoneInfo['gop_contact']['name']) {
-            $output .= "\n**GOP Contact:** {$phoneInfo['gop_contact']['name']}\n";
+            $output .= "\nGOP Contact: {$phoneInfo['gop_contact']['name']}\n";
             if ($phoneInfo['gop_contact']['phone']) {
                 $output .= "Phone: {$phoneInfo['gop_contact']['phone']}\n";
             }
@@ -244,7 +244,7 @@ class RequestAppointments extends ListRecords
         }
         
         if ($phoneInfo['financial_contact']['name']) {
-            $output .= "\n**Financial Contact:** {$phoneInfo['financial_contact']['name']}\n";
+            $output .= "\nFinancial Contact: {$phoneInfo['financial_contact']['name']}\n";
             if ($phoneInfo['financial_contact']['phone']) {
                 $output .= "Phone: {$phoneInfo['financial_contact']['phone']}\n";
             }
@@ -579,35 +579,46 @@ class RequestAppointments extends ListRecords
                     ->schema([
                         TextEntry::make('patient_name')
                             ->label('Patient Name')
-                            ->getStateUsing(fn () => $this->file->patient->name),
+                            ->getStateUsing(fn () => $this->file->patient->name)
+                            ->color('danger')
+                            ->weight('bold'),
                         
                         TextEntry::make('mga_reference')
                             ->label('MGA Reference')
-                            ->getStateUsing(fn () => $this->file->mga_reference),
+                            ->getStateUsing(fn () => $this->file->mga_reference)
+                            ->color('warning')
+                            ->weight('bold'),
                         
                         TextEntry::make('client_reference')
                             ->label('Client Reference')
-                            ->getStateUsing(fn () => $this->file->client_reference ?? 'N/A'),
+                            ->getStateUsing(fn () => $this->file->client_reference ?? 'N/A')
+                            ->color('info'),
                         
                         TextEntry::make('service_type')
                             ->label('Service Type')
-                            ->getStateUsing(fn () => $this->file->serviceType->name),
+                            ->getStateUsing(fn () => $this->file->serviceType->name)
+                            ->color('success')
+                            ->weight('bold'),
                         
                         TextEntry::make('city')
                             ->label('City')
-                            ->getStateUsing(fn () => $this->file->city?->name ?? 'N/A'),
+                            ->getStateUsing(fn () => $this->file->city?->name ?? 'N/A')
+                            ->color('primary'),
                         
                         TextEntry::make('country')
                             ->label('Country')
-                            ->getStateUsing(fn () => $this->file->country?->name ?? 'N/A'),
+                            ->getStateUsing(fn () => $this->file->country?->name ?? 'N/A')
+                            ->color('primary'),
                         
                         TextEntry::make('address')
                             ->label('Address')
-                            ->getStateUsing(fn () => $this->file->address ?? 'N/A'),
+                            ->getStateUsing(fn () => $this->file->address ?? 'N/A')
+                            ->color('gray'),
                         
                         TextEntry::make('symptoms')
                             ->label('Symptoms')
-                            ->getStateUsing(fn () => $this->file->symptoms ?? 'N/A'),
+                            ->getStateUsing(fn () => $this->file->symptoms ?? 'N/A')
+                            ->color('gray'),
                     ])
                     ->columns(4),
             ]);
