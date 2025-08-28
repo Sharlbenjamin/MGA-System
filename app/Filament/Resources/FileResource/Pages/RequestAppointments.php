@@ -152,6 +152,7 @@ class RequestAppointments extends ListRecords
             'gopContact', 
             'financialContact',
             'cities',
+            'branchCities',
             'branchServices.serviceType'
         ]);
 
@@ -455,7 +456,7 @@ class RequestAppointments extends ListRecords
                     ->label('Service Type')
                     ->options(ServiceType::pluck('name', 'id'))
                     ->default($this->file->service_type_id)
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('branchServices', fn ($q) => $q->where('service_type_id', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('branchServices', fn ($q) => $q->where('service_type_id', $value)->where('is_active', 1)))),
 
                 SelectFilter::make('countryFilter')
                     ->label('Country')
@@ -481,7 +482,7 @@ class RequestAppointments extends ListRecords
                     })
                     ->default($this->file->city_id)
                     ->searchable()
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('cities', fn ($q) => $q->where('id', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('branchCities', fn ($q) => $q->where('city_id', $value)))),
 
                 SelectFilter::make('statusFilter')
                     ->label('Provider Status')
