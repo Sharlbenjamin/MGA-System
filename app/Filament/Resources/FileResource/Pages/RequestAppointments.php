@@ -496,7 +496,6 @@ class RequestAppointments extends ListRecords
                     ->label('Country')
                     ->options(Country::pluck('name', 'id'))
                     ->searchable()
-                    ->default($this->file->country_id)
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('country_id', $value)))),
 
                 SelectFilter::make('cityFilter')
@@ -523,7 +522,6 @@ class RequestAppointments extends ListRecords
 
                 Filter::make('showOnlyWithEmail')
                     ->label('Show Only Branches with Email')
-                    ->default(true)
                     ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->where(function($q) {
                         $q->whereNotNull('email')->where('email', '!=', '')
                           ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('email')->where('email', '!=', ''))
@@ -533,7 +531,6 @@ class RequestAppointments extends ListRecords
 
                 Filter::make('showOnlyWithPhone')
                     ->label('Show Only Branches with Phone')
-                    ->default(true)
                     ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->where(function($q) {
                         $q->whereNotNull('phone')->where('phone', '!=', '')
                           ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('phone_number')->where('phone_number', '!=', ''))
