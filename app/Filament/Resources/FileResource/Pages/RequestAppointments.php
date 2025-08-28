@@ -169,10 +169,22 @@ class RequestAppointments extends ListRecords
             return null;
         }
         
-        // Get branch address (try direct address first, then operation contact)
+        // Get branch address - prioritize the new direct address column
         $branchAddress = $branch->address;
+        
+        // If no direct address, fallback to operation contact address
         if (!$branchAddress && $branch->operationContact) {
             $branchAddress = $branch->operationContact->address;
+        }
+        
+        // If still no address, try GOP contact
+        if (!$branchAddress && $branch->gopContact) {
+            $branchAddress = $branch->gopContact->address;
+        }
+        
+        // If still no address, try financial contact
+        if (!$branchAddress && $branch->financialContact) {
+            $branchAddress = $branch->financialContact->address;
         }
         
         if (!$branchAddress) {
