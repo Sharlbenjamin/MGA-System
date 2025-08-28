@@ -395,16 +395,8 @@ class RequestAppointments extends ListRecords
                 TextColumn::make('cities')
                     ->label('City')
                     ->getStateUsing(function ($record) {
-                        // Use the existing logic that was working
-                        $serviceTypeId = $this->file->service_type_id;
-                        $cities = $record->cities()
-                            ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                                $q->where('service_type_id', $serviceTypeId);
-                            })
-                            ->pluck('name')
-                            ->unique()
-                            ->filter()
-                            ->implode(', ');
+                        // Get cities from the branch's cities relationship
+                        $cities = $record->cities()->pluck('name')->unique()->filter()->implode(', ');
                         return $cities ?: 'N/A';
                     }),
 
