@@ -318,6 +318,10 @@ class RequestAppointments extends ListRecords
             ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
             ->toArray();
 
+        // Debug: Log the selected branches and custom emails
+        \Log::info('Selected branches: ' . json_encode($this->selectedBranches));
+        \Log::info('Custom emails: ' . json_encode($customEmails));
+
         // If no branches or custom emails selected, show warning
         if (empty($this->selectedBranches) && empty($customEmails)) {
             Notification::make()
@@ -424,16 +428,18 @@ class RequestAppointments extends ListRecords
         return $table
             ->query($this->getBranchesQuery())
             ->columns([
-                CheckboxColumn::make('selected')
+                TextColumn::make('selected')
                     ->label('Select')
-                    ->getStateUsing(fn ($record): bool => in_array($record->id, $this->selectedBranches))
+                    ->getStateUsing(fn ($record): string => in_array($record->id, $this->selectedBranches) ? '✓' : '')
                     ->action(function ($record) {
                         if (in_array($record->id, $this->selectedBranches)) {
                             $this->selectedBranches = array_diff($this->selectedBranches, [$record->id]);
                         } else {
                             $this->selectedBranches[] = $record->id;
                         }
-                    }),
+                    })
+                    ->alignCenter()
+                    ->color('success'),
 
 
                 TextColumn::make('branch_name')
@@ -591,7 +597,7 @@ class RequestAppointments extends ListRecords
                     ->label('Send Appointment Requests')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('primary')
-                    ->action('sendRequests')
+                    ->action(fn () => $this->sendRequests())
                     ->requiresConfirmation()
                     ->modalHeading('Send Appointment Requests')
                     ->modalDescription('Are you sure you want to send appointment requests to the selected providers?')
