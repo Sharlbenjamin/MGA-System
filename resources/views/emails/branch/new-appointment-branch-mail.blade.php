@@ -21,10 +21,6 @@
     <p><strong>Branch Address:</strong> {{ $appointment->providerBranch->address }}</p>
     @endif
 
-    @if($appointment->providerBranch->phone)
-    <p><strong>Branch Phone:</strong> {{ $appointment->providerBranch->phone }}</p>
-    @endif
-
     @else
 
     <p>Dear team,</p>
