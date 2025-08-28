@@ -157,6 +157,7 @@ class RequestAppointments extends ListRecords
             'serviceType'
         ])
         ->join('provider_branches', 'branch_services.provider_branch_id', '=', 'provider_branches.id')
+        ->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
         ->where('branch_services.is_active', 1);
 
         return $query;
@@ -459,7 +460,7 @@ class RequestAppointments extends ListRecords
                     ->label('Service Type')
                     ->options(ServiceType::pluck('name', 'id'))
                     ->default($this->file->service_type_id)
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('service_type_id', $value))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('branch_services.service_type_id', $value))),
 
                 SelectFilter::make('countryFilter')
                     ->label('Country')
@@ -471,7 +472,7 @@ class RequestAppointments extends ListRecords
                     })
                     ->default($this->file->service_type_id === 2 ? null : $this->file->country_id)
                     ->searchable()
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('providerBranch.provider', fn ($q) => $q->where('country_id', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('providers.country_id', $value))),
 
                 SelectFilter::make('cityFilter')
                     ->label('City')
@@ -490,7 +491,12 @@ class RequestAppointments extends ListRecords
                     })
                     ->default($this->file->city_id)
                     ->searchable()
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('providerBranch.branchCities', fn ($q) => $q->where('city_id', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereExists(function($subQuery) use ($value) {
+                        $subQuery->select(\DB::raw(1))
+                            ->from('branch_cities')
+                            ->whereColumn('branch_cities.provider_branch_id', 'provider_branches.id')
+                            ->where('branch_cities.city_id', $value);
+                    }))),
 
                 SelectFilter::make('statusFilter')
                     ->label('Provider Status')
@@ -500,17 +506,30 @@ class RequestAppointments extends ListRecords
                         'Hold' => 'Hold',
                     ])
                     ->default('Active')
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('providerBranch.provider', fn ($q) => $q->where('status', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('providers.status', $value))),
 
                 Filter::make('showOnlyWithEmail')
                     ->label('Show Only Branches with Email')
-                    ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->whereHas('providerBranch', function($q) {
-                        $q->where(function($subQ) {
-                            $subQ->whereNotNull('email')->where('email', '!=', '')
-                              ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('email')->where('email', '!=', ''))
-                              ->orWhereHas('gopContact', fn($gc) => $gc->whereNotNull('email')->where('email', '!=', ''))
-                              ->orWhereHas('financialContact', fn($fc) => $fc->whereNotNull('email')->where('email', '!=', ''));
-                        });
+                    ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->where(function($q) {
+                        $q->whereNotNull('provider_branches.email')->where('provider_branches.email', '!=', '')
+                          ->orWhereExists(function($subQuery) {
+                              $subQuery->select(\DB::raw(1))
+                                  ->from('contacts')
+                                  ->whereColumn('contacts.id', 'provider_branches.operation_contact_id')
+                                  ->whereNotNull('contacts.email')->where('contacts.email', '!=', '');
+                          })
+                          ->orWhereExists(function($subQuery) {
+                              $subQuery->select(\DB::raw(1))
+                                  ->from('contacts')
+                                  ->whereColumn('contacts.id', 'provider_branches.gop_contact_id')
+                                  ->whereNotNull('contacts.email')->where('contacts.email', '!=', '');
+                          })
+                          ->orWhereExists(function($subQuery) {
+                              $subQuery->select(\DB::raw(1))
+                                  ->from('contacts')
+                                  ->whereColumn('contacts.id', 'provider_branches.financial_contact_id')
+                                  ->whereNotNull('contacts.email')->where('contacts.email', '!=', '');
+                          });
                     }) : $query),
 
 
