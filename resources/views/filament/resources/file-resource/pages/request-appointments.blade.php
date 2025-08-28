@@ -30,13 +30,13 @@
                 @if(count($this->customEmails) > 0)
                     <div class="mt-4 pt-4 border-t border-gray-200">
                         <button type="button" wire:click="sendRequests" 
-                                style="background-color: #059669; color: white; border: none; padding: 8px 24px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: background-color 0.2s; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);"
+                                style="background-color: #059669; color: white; border: none; padding: 8px 24px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: background-color 0.2s; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); display: inline-flex; align-items: center; justify-content: center;"
                                 onmouseover="this.style.backgroundColor='#047857'"
                                 onmouseout="this.style.backgroundColor='#059669'">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                             </svg>
-                            Send Email to Custom Addresses
+                            Send Custom Emails
                         </button>
                     </div>
                 @endif
