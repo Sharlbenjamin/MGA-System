@@ -502,11 +502,15 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('cityFilter')
                     ->label('City')
                     ->options(function() {
-                        $cities = \App\Models\City::where('country_id', $this->file->country_id)->pluck('name', 'id');
+                        // Get all cities from all countries where providers exist
+                        $cities = \App\Models\City::whereHas('country', function($q) {
+                            $q->whereHas('providers', function($p) {
+                                $p->whereHas('branches');
+                            });
+                        })->pluck('name', 'id');
                         return $cities->toArray();
                     })
                     ->searchable()
-                    ->default($this->file->city_id)
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('cities', fn ($q) => $q->where('cities.id', $value)))),
 
                 SelectFilter::make('statusFilter')
