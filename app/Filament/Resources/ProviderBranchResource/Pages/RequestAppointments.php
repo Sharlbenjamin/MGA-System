@@ -463,7 +463,12 @@ class RequestAppointments extends ListRecords
 
                 SelectFilter::make('countryFilter')
                     ->label('Country')
-                    ->options(Country::pluck('name', 'id'))
+                    ->options(function() {
+                        // Only show countries that have providers with branches
+                        return \App\Models\Country::whereHas('providers', function($q) {
+                            $q->whereHas('branches');
+                        })->pluck('name', 'id')->toArray();
+                    })
                     ->default($this->file->service_type_id === 2 ? null : $this->file->country_id)
                     ->searchable()
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('providerBranch.provider', fn ($q) => $q->where('country_id', $value)))),
