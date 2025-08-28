@@ -484,15 +484,15 @@ class RequestAppointments extends ListRecords
                         default => 'gray',
                     }),
 
-                TextColumn::make('branchServices')
+                TextColumn::make('cities')
                     ->label('City')
                     ->formatStateUsing(function ($state, $record) {
                         $serviceTypeId = $this->file->service_type_id;
-                        $cities = $record->branchServices()
-                            ->where('service_type_id', $serviceTypeId)
-                            ->with('city')
-                            ->get()
-                            ->pluck('city.name')
+                        $cities = $record->cities()
+                            ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
+                                $q->where('service_type_id', $serviceTypeId);
+                            })
+                            ->pluck('name')
                             ->unique()
                             ->filter()
                             ->implode(', ');
