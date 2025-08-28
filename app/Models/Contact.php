@@ -44,6 +44,26 @@ class Contact extends Model
         return $this->belongsTo(City::class);
     }
 
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    public function provider(): BelongsTo
+    {
+        return $this->belongsTo(Provider::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(ProviderBranch::class);
+    }
+
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class);
+    }
+
     public function clients(): HasMany
     {
         return $this->hasMany(Client::class, 'gop_contact_id', 'id');
