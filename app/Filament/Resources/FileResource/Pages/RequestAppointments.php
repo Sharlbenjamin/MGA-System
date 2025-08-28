@@ -395,21 +395,15 @@ class RequestAppointments extends ListRecords
                 TextColumn::make('cities')
                     ->label('City')
                     ->formatStateUsing(function ($state, $record) {
-                        $serviceTypeId = $this->file->service_type_id;
-                        $cities = $record->cities()
-                            ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                                $q->where('service_type_id', $serviceTypeId);
-                            })
-                            ->pluck('name')
-                            ->unique()
-                            ->filter()
-                            ->implode(', ');
+                        // Get cities from branch_cities relationship
+                        $cities = $record->cities()->pluck('name')->unique()->filter()->implode(', ');
                         return $cities ?: 'N/A';
                     }),
 
                 TextColumn::make('cost')
                     ->label('Cost')
                     ->formatStateUsing(function ($state, $record) {
+                        // Get cost from branch_services table
                         $serviceTypeId = $this->file->service_type_id;
                         $branchService = $record->branchServices()
                             ->where('service_type_id', $serviceTypeId)
@@ -425,10 +419,8 @@ class RequestAppointments extends ListRecords
                 TextColumn::make('distance')
                     ->label('Distance')
                     ->formatStateUsing(function ($state, $record) {
-                        // Get file address
+                        // Calculate distance between file address and provider branch address
                         $fileAddress = $this->file->patient->address ?? '';
-                        
-                        // Get branch address
                         $branchAddress = $record->address ?? '';
                         
                         if ($fileAddress && $branchAddress) {
@@ -448,7 +440,7 @@ class RequestAppointments extends ListRecords
                     ->formatStateUsing(function ($state, $record) {
                         $badges = [];
                         
-                        // Check for email
+                        // Check for email in provider branch table
                         if ($record->email || 
                             ($record->operationContact && $record->operationContact->email) ||
                             ($record->gopContact && $record->gopContact->email) ||
@@ -456,7 +448,7 @@ class RequestAppointments extends ListRecords
                             $badges[] = 'Email';
                         }
                         
-                        // Check for phone
+                        // Check for phone in provider branch table
                         if ($record->phone || 
                             ($record->operationContact && $record->operationContact->phone_number) ||
                             ($record->gopContact && $record->gopContact->phone_number) ||
@@ -474,7 +466,7 @@ class RequestAppointments extends ListRecords
                         default => 'gray',
                     }),
 
-                TextColumn::make('status')
+                TextColumn::make('provider.status')
                     ->label('Status')
                     ->sortable()
                     ->badge()
