@@ -452,7 +452,7 @@ class RequestAppointments extends ListRecords
             ->columns([
                 CheckboxColumn::make('selected')
                     ->getStateUsing(fn ($record) => in_array($record->getKey(), $this->selectedBranches))
-                    ->setStateUsing(function ($record, $state) {
+                    ->action(function ($record, $state) {
                         if ($state) {
                             $this->selectedBranches[] = $record->getKey();
                         } else {
