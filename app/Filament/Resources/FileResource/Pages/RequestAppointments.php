@@ -162,7 +162,25 @@ class RequestAppointments extends ListRecords
     public function getDistanceToBranch($branch)
     {
         $service = app(\App\Services\DistanceCalculationService::class);
-        return $service->calculateFileToBranchDistance($this->file, $branch);
+        
+        // Get file address
+        $fileAddress = $this->file->address;
+        if (!$fileAddress) {
+            return null;
+        }
+        
+        // Get branch address (try direct address first, then operation contact)
+        $branchAddress = $branch->address;
+        if (!$branchAddress && $branch->operationContact) {
+            $branchAddress = $branch->operationContact->address;
+        }
+        
+        if (!$branchAddress) {
+            return null;
+        }
+        
+        // Calculate distance between file address and branch address
+        return $service->calculateDistance($fileAddress, $branchAddress);
     }
 
     public function getCostForService($branch, $serviceTypeId)
