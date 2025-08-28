@@ -3,19 +3,19 @@
         <!-- Header with File Info -->
         <div class="bg-gray-50 p-4 rounded-lg border">
             <div class="grid grid-cols-4 gap-4 text-sm">
-                <div>
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">MGA Reference:</span>
                     <span class="ml-2">{{ $this->file->mga_reference }}</span>
                 </div>
-                <div>
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">Patient:</span>
                     <span class="ml-2">{{ $this->file->patient->name }}</span>
                 </div>
-                <div>
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">Service:</span>
                     <span class="ml-2">{{ $this->file->serviceType->name }}</span>
                 </div>
-                <div>
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">Location:</span>
                     <span class="ml-2">{{ $this->file->city?->name ?? 'N/A' }}</span>
                 </div>
@@ -27,14 +27,14 @@
             <h3 class="text-lg font-semibold mb-4 text-gray-800">Filters & Options</h3>
             <div class="grid grid-cols-4 gap-4">
                 <!-- Search -->
-                <div>
+                <div class="col-span-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Search Branches</label>
                     <input type="text" wire:model.live="search" placeholder="Search by name, provider..." 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
 
                 <!-- Service Type Filter -->
-                <div>
+                <div class="col-span-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Service Type</label>
                     <select wire:model.live="serviceTypeFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">All Services</option>
@@ -47,7 +47,7 @@
                 </div>
 
                 <!-- Country Filter -->
-                <div>
+                <div class="col-span-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
                     <select wire:model.live="countryFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">All Countries</option>
@@ -60,7 +60,7 @@
                 </div>
 
                 <!-- Status Filter -->
-                <div>
+                <div class="col-span-1">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Provider Status</label>
                     <select wire:model.live="statusFilter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">All Status</option>
@@ -72,21 +72,27 @@
             </div>
 
             <!-- Additional Options -->
-            <div class="mt-4 flex flex-wrap gap-4 items-center">
-                <label class="flex items-center">
-                    <input type="checkbox" wire:model.live="showProvinceBranches" class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    <span class="text-sm text-gray-700">Show Province Branches</span>
-                </label>
+            <div class="mt-4 grid grid-cols-4 gap-4">
+                <div class="col-span-1">
+                    <label class="flex items-center">
+                        <input type="checkbox" wire:model.live="showProvinceBranches" class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">Show Province Branches</span>
+                    </label>
+                </div>
                 
-                <label class="flex items-center">
-                    <input type="checkbox" wire:model.live="showOnlyWithEmail" class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    <span class="text-sm text-gray-700">Show Only Branches with Email</span>
-                </label>
+                <div class="col-span-1">
+                    <label class="flex items-center">
+                        <input type="checkbox" wire:model.live="showOnlyWithEmail" class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">Show Only Branches with Email</span>
+                    </label>
+                </div>
 
-                <label class="flex items-center">
-                    <input type="checkbox" wire:model.live="showOnlyWithPhone" class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    <span class="text-sm text-gray-700">Show Only Branches with Phone</span>
-                </label>
+                <div class="col-span-1">
+                    <label class="flex items-center">
+                        <input type="checkbox" wire:model.live="showOnlyWithPhone" class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">Show Only Branches with Phone</span>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -146,14 +152,32 @@
                                        wire:click="selectAll"
                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                             </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Branch Name
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
+                                wire:click="sortBy('branch_name')">
+                                Branch Name 
+                                @if($sortField === 'branch_name')
+                                    {{ $sortDirection === 'asc' ? '↑' : '↓' }}
+                                @else
+                                    ↕
+                                @endif
                             </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Provider
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
+                                wire:click="sortBy('provider')">
+                                Provider 
+                                @if($sortField === 'provider')
+                                    {{ $sortDirection === 'asc' ? '↑' : '↓' }}
+                                @else
+                                    ↕
+                                @endif
                             </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Priority
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
+                                wire:click="sortBy('priority')">
+                                Priority 
+                                @if($sortField === 'priority')
+                                    {{ $sortDirection === 'asc' ? '↑' : '↓' }}
+                                @else
+                                    ↕
+                                @endif
                             </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 City
@@ -167,8 +191,14 @@
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Contact Info
                             </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
+                                wire:click="sortBy('status')">
+                                Status 
+                                @if($sortField === 'status')
+                                    {{ $sortDirection === 'asc' ? '↑' : '↓' }}
+                                @else
+                                    ↕
+                                @endif
                             </th>
                         </tr>
                     </thead>
@@ -191,7 +221,7 @@
                                     <div class="font-medium text-gray-900">
                                         <a href="{{ route('filament.admin.resources.provider-branches.overview', $branch) }}" 
                                            target="_blank" 
-                                           class="text-blue-600 hover:text-blue-800 hover:underline">
+                                           class="text-blue-600 underline hover:text-blue-800">
                                             {{ $branch->branch_name }}
                                         </a>
                                     </div>
@@ -204,8 +234,12 @@
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->provider?->name ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->priority ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-900">
-                                    @if($branch->cities && $branch->cities->count() > 0)
-                                        {{ $branch->cities->pluck('name')->implode(', ') }}
+                                    @php
+                                        $branchService = $branch->branchServices->where('service_type_id', $this->file->service_type_id)->first();
+                                        $cities = $branchService ? $branchService->cities : collect();
+                                    @endphp
+                                    @if($cities && $cities->count() > 0)
+                                        {{ $cities->pluck('name')->implode(', ') }}
                                     @else
                                         N/A
                                     @endif

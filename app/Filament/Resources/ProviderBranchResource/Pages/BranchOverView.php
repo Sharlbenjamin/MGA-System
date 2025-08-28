@@ -12,6 +12,7 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Actions\Action;
 
 class BranchOverView extends ViewRecord
 {
@@ -46,6 +47,15 @@ class BranchOverView extends ViewRecord
             ]);
     }
 
-
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('edit')
+                ->label('Edit')
+                ->icon('heroicon-o-pencil')
+                ->url(fn () => ProviderBranchResource::getUrl('edit', ['record' => $this->record]))
+                ->color('primary'),
+        ];
+    }
 
 }

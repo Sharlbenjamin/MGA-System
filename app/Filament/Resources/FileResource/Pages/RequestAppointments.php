@@ -23,6 +23,8 @@ use Filament\Tables\Actions\Action as TableAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
 
 class RequestAppointments extends Page
 {
@@ -43,6 +45,8 @@ class RequestAppointments extends Page
     public $selectedBranches = [];
     public $customEmails = [];
     public $selectedBranchForPhone = null;
+    public $sortField = 'priority';
+    public $sortDirection = 'asc';
 
     public function mount($record): void
     {
@@ -108,6 +112,16 @@ class RequestAppointments extends Page
     {
         unset($this->customEmails[$index]);
         $this->customEmails = array_values($this->customEmails);
+    }
+
+    public function sortBy($field)
+    {
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = 'asc';
+        }
     }
 
     protected function getBranchesQuery(): Builder
@@ -191,6 +205,9 @@ class RequestAppointments extends Page
                   });
             });
         }
+
+        // Sort by priority (ascending - lower numbers first)
+        $query->orderBy('priority', 'asc');
 
         return $query;
     }
@@ -421,7 +438,7 @@ class RequestAppointments extends Page
             Action::make('sendRequests')
                 ->label('Send Appointment Requests')
                 ->icon('heroicon-o-paper-airplane')
-                ->color('success')
+                ->color('warning')
                 ->action('sendRequests')
                 ->requiresConfirmation()
                 ->modalHeading('Send Appointment Requests')
