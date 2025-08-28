@@ -52,4 +52,9 @@ class Country extends Model
     {
         return $this->hasMany(PriceList::class);
     }
+
+    public function providers(): HasMany
+    {
+        return $this->hasMany(Provider::class);
+    }
 }
