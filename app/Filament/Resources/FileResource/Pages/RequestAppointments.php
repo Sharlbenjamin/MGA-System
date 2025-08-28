@@ -394,7 +394,7 @@ class RequestAppointments extends ListRecords
 
                 TextColumn::make('cities')
                     ->label('City')
-                    ->formatStateUsing(function ($state, $record) {
+                    ->getStateUsing(function ($record) {
                         // Use the existing logic that was working
                         $serviceTypeId = $this->file->service_type_id;
                         $cities = $record->cities()
@@ -410,7 +410,7 @@ class RequestAppointments extends ListRecords
 
                 TextColumn::make('cost')
                     ->label('Cost')
-                    ->formatStateUsing(function ($state, $record) {
+                    ->getStateUsing(function ($record) {
                         // Use the existing helper method that was working
                         $cost = $this->getCostForService($record, $this->file->service_type_id);
                         return $cost ? '€' . number_format($cost, 2) : 'N/A';
@@ -418,7 +418,7 @@ class RequestAppointments extends ListRecords
 
                 TextColumn::make('distance')
                     ->label('Distance')
-                    ->formatStateUsing(function ($state, $record) {
+                    ->getStateUsing(function ($record) {
                         // Use the existing helper method that was working
                         $distance = $this->getDistanceToBranch($record);
                         return $distance ? number_format($distance, 1) . ' km' : 'N/A';
@@ -426,7 +426,7 @@ class RequestAppointments extends ListRecords
 
                 TextColumn::make('contact_info')
                     ->label('Contact Info')
-                    ->formatStateUsing(function ($state, $record) {
+                    ->getStateUsing(function ($record) {
                         $badges = [];
                         
                         // Use the existing helper methods that were working
