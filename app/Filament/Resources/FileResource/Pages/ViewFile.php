@@ -565,7 +565,7 @@ class ViewFile extends ViewRecord
                 ->icon('heroicon-o-calendar')
                 ->url(route('filament.admin.resources.files.request-appointments', $this->record))
                 ->openUrlInNewTab(false)
-                ->color('success'),
+                ->color('warning'),
 
             Action::make('confirmTelemedicine')
                 ->label('Confirm Telemedicine')

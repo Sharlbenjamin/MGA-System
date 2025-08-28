@@ -7,7 +7,7 @@ use App\Models\File;
 use App\Models\ServiceType;
 use App\Models\Country;
 use App\Models\ProviderBranch;
-use Filament\Resources\Pages\Page;
+use Filament\Resources\Pages\ListRecords;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\Section;
@@ -29,10 +29,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AppointmentRequestMail;
 use Livewire\Attributes\On;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
 
-class RequestAppointments extends Page
+class RequestAppointments extends ListRecords
 {
     protected static string $resource = FileResource::class;
 
@@ -440,10 +438,14 @@ class RequestAppointments extends Page
         return redirect()->route('filament.admin.resources.files.view', $this->file);
     }
 
+    protected function getTableQuery(): Builder
+    {
+        return $this->getBranchesQuery();
+    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query($this->getBranchesQuery())
             ->columns([
                 CheckboxColumn::make('selected')
                     ->getStateUsing(fn ($record) => in_array($record->getKey(), $this->selectedBranches))
