@@ -139,90 +139,10 @@ class RequestAppointments extends ListRecords
             'cities',
             'branchServices.serviceType'
         ])
-        ->whereHas('provider', function ($q) {
-            $q->where('status', 'Active');
-        })
         ->whereHas('branchServices', function ($q) {
             $q->where('service_type_id', $this->file->service_type_id)
               ->where('is_active', 1);
         });
-
-        // Apply search filter
-        if ($this->search) {
-            $query->where(function ($q) {
-                $q->where('branch_name', 'like', '%' . $this->search . '%')
-                  ->orWhereHas('provider', function ($providerQuery) {
-                      $providerQuery->where('name', 'like', '%' . $this->search . '%');
-                  });
-            });
-        }
-
-        // Apply service type filter
-        if ($this->serviceTypeFilter) {
-            $query->whereHas('branchServices', function ($q) {
-                $q->where('service_type_id', $this->serviceTypeFilter)
-                  ->where('is_active', 1);
-            });
-        }
-
-        // Apply country filter
-        if ($this->countryFilter) {
-            $query->whereHas('provider', function ($q) {
-                $q->where('country_id', $this->countryFilter);
-            });
-        }
-
-        // Apply status filter
-        if ($this->statusFilter) {
-            $query->whereHas('provider', function ($q) {
-                $q->where('status', $this->statusFilter);
-            });
-        }
-
-        // Apply email filter
-        if ($this->showOnlyWithEmail) {
-            $query->where(function ($q) {
-                $q->whereNotNull('email')
-                  ->orWhereHas('operationContact', function ($contactQuery) {
-                      $contactQuery->whereNotNull('email');
-                  })
-                  ->orWhereHas('gopContact', function ($contactQuery) {
-                      $contactQuery->whereNotNull('email');
-                  })
-                  ->orWhereHas('financialContact', function ($contactQuery) {
-                      $contactQuery->whereNotNull('email');
-                  });
-            });
-        }
-
-        // Apply phone filter
-        if ($this->showOnlyWithPhone) {
-            $query->where(function ($q) {
-                $q->whereNotNull('phone')
-                  ->orWhereHas('operationContact', function ($contactQuery) {
-                      $contactQuery->whereNotNull('phone_number');
-                  })
-                  ->orWhereHas('gopContact', function ($contactQuery) {
-                      $contactQuery->whereNotNull('phone_number');
-                  })
-                  ->orWhereHas('financialContact', function ($contactQuery) {
-                      $contactQuery->whereNotNull('phone_number');
-                  });
-            });
-        }
-
-        // Apply sorting
-        if ($this->sortField === 'provider') {
-            $query->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
-                  ->orderBy('providers.name', $this->sortDirection)
-                  ->select('provider_branches.*');
-        } elseif ($this->sortField === 'status') {
-            $query->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
-                  ->orderBy('providers.status', $this->sortDirection)
-                  ->select('provider_branches.*');
-        } else {
-            $query->orderBy($this->sortField, $this->sortDirection);
-        }
 
         return $query;
     }
@@ -441,24 +361,12 @@ class RequestAppointments extends ListRecords
         return redirect()->route('filament.admin.resources.files.view', $this->file);
     }
 
-    protected function getTableQuery(): Builder
-    {
-        return $this->getBranchesQuery();
-    }
-
     public function table(Table $table): Table
     {
         return $table
+            ->query($this->getBranchesQuery())
             ->columns([
-                CheckboxColumn::make('selected')
-                    ->getStateUsing(fn ($record) => in_array($record->getKey(), $this->selectedBranches))
-                    ->action(function ($record, $state) {
-                        if ($state) {
-                            $this->selectedBranches[] = $record->getKey();
-                        } else {
-                            $this->selectedBranches = array_diff($this->selectedBranches, [$record->getKey()]);
-                        }
-                    }),
+
 
                 TextColumn::make('branch_name')
                     ->label('Branch Name')
@@ -502,27 +410,60 @@ class RequestAppointments extends ListRecords
                 TextColumn::make('cost')
                     ->label('Cost')
                     ->formatStateUsing(function ($state, $record) {
-                        $cost = $this->getCostForService($record, $this->file->service_type_id);
-                        return $cost ? '€' . number_format($cost, 2) : 'N/A';
+                        $serviceTypeId = $this->file->service_type_id;
+                        $branchService = $record->branchServices()
+                            ->where('service_type_id', $serviceTypeId)
+                            ->where('is_active', true)
+                            ->first();
+                        
+                        if ($branchService && $branchService->day_cost) {
+                            return '€' . number_format($branchService->day_cost, 2);
+                        }
+                        return 'N/A';
                     }),
 
                 TextColumn::make('distance')
                     ->label('Distance')
                     ->formatStateUsing(function ($state, $record) {
-                        $distance = $this->getDistanceToBranch($record);
-                        return $distance ? number_format($distance, 1) . ' km' : 'N/A';
+                        // Get file address
+                        $fileAddress = $this->file->patient->address ?? '';
+                        
+                        // Get branch address
+                        $branchAddress = $record->address ?? '';
+                        
+                        if ($fileAddress && $branchAddress) {
+                            try {
+                                $distanceService = app(\App\Services\DistanceCalculationService::class);
+                                $distance = $distanceService->calculateDistance($fileAddress, $branchAddress);
+                                return number_format($distance, 1) . ' km';
+                            } catch (\Exception $e) {
+                                return 'N/A';
+                            }
+                        }
+                        return 'N/A';
                     }),
 
                 TextColumn::make('contact_info')
                     ->label('Contact Info')
                     ->formatStateUsing(function ($state, $record) {
                         $badges = [];
-                        if ($this->hasEmail($record)) {
+                        
+                        // Check for email
+                        if ($record->email || 
+                            ($record->operationContact && $record->operationContact->email) ||
+                            ($record->gopContact && $record->gopContact->email) ||
+                            ($record->financialContact && $record->financialContact->email)) {
                             $badges[] = 'Email';
                         }
-                        if ($this->hasPhone($record)) {
+                        
+                        // Check for phone
+                        if ($record->phone || 
+                            ($record->operationContact && $record->operationContact->phone_number) ||
+                            ($record->gopContact && $record->gopContact->phone_number) ||
+                            ($record->financialContact && $record->financialContact->phone_number)) {
                             $badges[] = 'Phone';
                         }
+                        
                         return implode(', ', $badges);
                     })
                     ->badge()
@@ -548,11 +489,14 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('serviceTypeFilter')
                     ->label('Service Type')
                     ->options(ServiceType::pluck('name', 'id'))
+                    ->default($this->file->service_type_id)
                     ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('branchServices', fn ($q) => $q->where('service_type_id', $value)))),
 
                 SelectFilter::make('countryFilter')
                     ->label('Country')
                     ->options(Country::pluck('name', 'id'))
+                    ->searchable()
+                    ->default($this->file->service_type_id === 2 ? null : $this->file->country_id)
                     ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('country_id', $value)))),
 
                 SelectFilter::make('statusFilter')
@@ -562,15 +506,28 @@ class RequestAppointments extends ListRecords
                         'Potential' => 'Potential',
                         'Hold' => 'Hold',
                     ])
+                    ->default('Active')
                     ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('status', $value)))),
 
                 Filter::make('showOnlyWithEmail')
                     ->label('Show Only Branches with Email')
-                    ->query(fn (Builder $query, array $data) => $data['value'] ? $query->whereNotNull('email')->where('email', '!=', '') : $query),
+                    ->default(true)
+                    ->query(fn (Builder $query, array $data) => $data['value'] ? $query->where(function($q) {
+                        $q->whereNotNull('email')->where('email', '!=', '')
+                          ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('email')->where('email', '!=', ''))
+                          ->orWhereHas('gopContact', fn($gc) => $gc->whereNotNull('email')->where('email', '!=', ''))
+                          ->orWhereHas('financialContact', fn($fc) => $fc->whereNotNull('email')->where('email', '!=', ''));
+                    }) : $query),
 
                 Filter::make('showOnlyWithPhone')
                     ->label('Show Only Branches with Phone')
-                    ->query(fn (Builder $query, array $data) => $data['value'] ? $query->whereNotNull('phone')->where('phone', '!=', '') : $query),
+                    ->default(true)
+                    ->query(fn (Builder $query, array $data) => $data['value'] ? $query->where(function($q) {
+                        $q->whereNotNull('phone')->where('phone', '!=', '')
+                          ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('phone_number')->where('phone_number', '!=', ''))
+                          ->orWhereHas('gopContact', fn($gc) => $gc->whereNotNull('phone_number')->where('phone_number', '!=', ''))
+                          ->orWhereHas('financialContact', fn($fc) => $fc->whereNotNull('phone_number')->where('phone_number', '!=', ''));
+                    }) : $query),
             ])
             ->bulkActions([
                 BulkAction::make('selectAll')
