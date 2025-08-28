@@ -380,8 +380,17 @@ class RequestAppointments extends ListRecords
                              $providerBranch->financialContact?->email;
 
                     if ($email) {
-                        \Mail::to($email)->send(new \App\Mail\AppointmentNotificationMail($this->file, $providerBranch));
-                        $successfulBranches[] = $providerBranch->branch_name;
+                        // Get the appointment that was just created or updated
+                        $appointment = $this->file->appointments()
+                            ->where('provider_branch_id', $branchId)
+                            ->first();
+                        
+                        if ($appointment) {
+                            \Mail::to($email)->send(new \App\Mail\NotifyBranchMailable('appointment_created', $appointment));
+                            $successfulBranches[] = $providerBranch->branch_name;
+                        } else {
+                            $skippedBranches[] = $providerBranch->branch_name . ' (No appointment created)';
+                        }
                     } else {
                         $skippedBranches[] = $providerBranch->branch_name . ' (No email)';
                     }
@@ -393,7 +402,19 @@ class RequestAppointments extends ListRecords
             // Handle custom emails
             foreach ($customEmails as $email) {
                 try {
-                    \Mail::to($email)->send(new \App\Mail\AppointmentNotificationMail($this->file, null));
+                    // For custom emails, we don't have an appointment, so we'll use a different approach
+                    // Create a temporary appointment object for the email
+                    $tempAppointment = new \App\Models\Appointment([
+                        'file_id' => $this->file->id,
+                        'provider_branch_id' => null,
+                        'service_date' => now()->toDateString(),
+                        'status' => 'Requested',
+                    ]);
+                    
+                    // Set the file relationship
+                    $tempAppointment->setRelation('file', $this->file);
+                    
+                    \Mail::to($email)->send(new \App\Mail\NotifyBranchMailable('appointment_created', $tempAppointment));
                     $successfulBranches[] = 'Custom: ' . $email;
                 } catch (\Exception $e) {
                     $skippedBranches[] = 'Custom: ' . $email . ' (Email failed)';
