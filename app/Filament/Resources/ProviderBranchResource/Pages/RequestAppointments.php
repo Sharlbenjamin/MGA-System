@@ -465,10 +465,17 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('countryFilter')
                     ->label('Country')
                     ->options(function() {
-                        // Only show countries that have providers with branches
-                        return \App\Models\Country::whereHas('providers', function($q) {
+                        // Only show the file's country and countries that have providers with branches
+                        $countries = \App\Models\Country::whereHas('providers', function($q) {
                             $q->whereHas('branches');
-                        })->pluck('name', 'id')->toArray();
+                        });
+                        
+                        // If file has a country, prioritize it
+                        if ($this->file->country_id) {
+                            $countries = $countries->orWhere('id', $this->file->country_id);
+                        }
+                        
+                        return $countries->pluck('name', 'id')->toArray();
                     })
                     ->default($this->file->service_type_id === 2 ? null : $this->file->country_id)
                     ->searchable()
@@ -477,17 +484,16 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('cityFilter')
                     ->label('City')
                     ->options(function() {
-                        // Get cities from the file's country
+                        // Only show cities from the file's country that have branches
                         if ($this->file->country_id) {
                             $cities = \App\Models\City::where('country_id', $this->file->country_id)
+                                ->whereHas('branchCities.providerBranch.provider', function($q) {
+                                    $q->whereHas('branches');
+                                })
                                 ->pluck('name', 'id');
                             return $cities->toArray();
                         }
-                        // Fallback: get all cities from countries that have providers with branches
-                        $cities = \App\Models\City::whereHas('country', function($q) {
-                            $q->whereIn('id', \App\Models\Provider::whereHas('branches')->pluck('country_id'));
-                        })->pluck('name', 'id');
-                        return $cities->toArray();
+                        return [];
                     })
                     ->default($this->file->city_id)
                     ->searchable()
