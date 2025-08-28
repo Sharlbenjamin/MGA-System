@@ -40,13 +40,11 @@ class RequestAppointments extends Page
     public $showProvinceBranches = false;
     public $showOnlyWithEmail = false;
     public $showOnlyWithPhone = false;
-    public $sortField = 'branch_name';
+    public $sortField = 'priority';
     public $sortDirection = 'asc';
     public $selectedBranches = [];
     public $customEmails = [];
     public $selectedBranchForPhone = null;
-    public $sortField = 'priority';
-    public $sortDirection = 'asc';
 
     public function mount($record): void
     {
@@ -206,8 +204,18 @@ class RequestAppointments extends Page
             });
         }
 
-        // Sort by priority (ascending - lower numbers first)
-        $query->orderBy('priority', 'asc');
+        // Apply sorting
+        if ($this->sortField === 'provider') {
+            $query->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
+                  ->orderBy('providers.name', $this->sortDirection)
+                  ->select('provider_branches.*');
+        } elseif ($this->sortField === 'status') {
+            $query->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
+                  ->orderBy('providers.status', $this->sortDirection)
+                  ->select('provider_branches.*');
+        } else {
+            $query->orderBy($this->sortField, $this->sortDirection);
+        }
 
         return $query;
     }
