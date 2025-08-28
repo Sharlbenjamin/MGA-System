@@ -144,25 +144,49 @@ class AutoCategorizeContacts extends Command
         // Operation contact keywords
         if (str_contains($name, 'operation') || str_contains($name, 'admin') || 
             str_contains($name, 'manager') || str_contains($name, 'coordinator') ||
-            str_contains($email, 'operation') || str_contains($email, 'admin')) {
+            str_contains($name, 'director') || str_contains($name, 'head') ||
+            str_contains($email, 'operation') || str_contains($email, 'admin') ||
+            str_contains($email, 'manager') || str_contains($email, 'director')) {
             return 'operation_contact_id';
         }
         
         // GOP contact keywords
         if (str_contains($name, 'gop') || str_contains($name, 'guarantee') || 
             str_contains($name, 'payment') || str_contains($name, 'billing') ||
-            str_contains($email, 'gop') || str_contains($email, 'payment')) {
+            str_contains($name, 'accounts') || str_contains($name, 'revenue') ||
+            str_contains($email, 'gop') || str_contains($email, 'payment') ||
+            str_contains($email, 'billing') || str_contains($email, 'accounts')) {
             return 'gop_contact_id';
         }
         
         // Financial contact keywords
         if (str_contains($name, 'financial') || str_contains($name, 'finance') || 
             str_contains($name, 'account') || str_contains($name, 'billing') ||
-            str_contains($email, 'financial') || str_contains($email, 'finance')) {
+            str_contains($name, 'treasurer') || str_contains($name, 'controller') ||
+            str_contains($email, 'financial') || str_contains($email, 'finance') ||
+            str_contains($email, 'accounting') || str_contains($email, 'treasurer')) {
             return 'financial_contact_id';
         }
 
-        // Default to operation contact if no clear indication
-        return 'operation_contact_id';
+        // If only one contact, assign as operation contact
+        $totalContacts = Contact::where('branch_id', $branch->id)->count();
+        if ($totalContacts == 1) {
+            return 'operation_contact_id';
+        }
+
+        // If multiple contacts, assign based on order (first = operation, second = GOP, third = financial)
+        $contactOrder = Contact::where('branch_id', $branch->id)->orderBy('created_at')->pluck('id')->toArray();
+        $contactIndex = array_search($contact->id, $contactOrder);
+        
+        switch ($contactIndex) {
+            case 0:
+                return 'operation_contact_id';
+            case 1:
+                return 'gop_contact_id';
+            case 2:
+                return 'financial_contact_id';
+            default:
+                return 'operation_contact_id';
+        }
     }
 }
