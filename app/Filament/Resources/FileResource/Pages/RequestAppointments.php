@@ -8,9 +8,7 @@ use Filament\Resources\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\Layout;
 
-#[Layout('filament::components.layout.index')]
 class RequestAppointments extends Page
 {
     protected static string $resource = FileResource::class;
