@@ -2,22 +2,22 @@
     <div class="space-y-6 max-w-7xl mx-auto">
         <!-- Header with File Info -->
         <div class="bg-gray-50 p-4 rounded-lg border">
-            <div class="grid grid-cols-4 gap-4 text-sm max-w-full">
-                <div class="col-span-1 min-w-0">
+            <div class="grid grid-cols-4 gap-4 text-sm">
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">MGA Reference:</span>
-                    <span class="ml-2 break-words">{{ $this->file->mga_reference }}</span>
+                    <span class="ml-2">{{ $this->file->mga_reference }}</span>
                 </div>
-                <div class="col-span-1 min-w-0">
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">Patient:</span>
-                    <span class="ml-2 break-words">{{ $this->file->patient->name }}</span>
+                    <span class="ml-2">{{ $this->file->patient->name }}</span>
                 </div>
-                <div class="col-span-1 min-w-0">
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">Service:</span>
-                    <span class="ml-2 break-words">{{ $this->file->serviceType->name }}</span>
+                    <span class="ml-2">{{ $this->file->serviceType->name }}</span>
                 </div>
-                <div class="col-span-1 min-w-0">
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">Location:</span>
-                    <span class="ml-2 break-words">{{ $this->file->city?->name ?? 'N/A' }}</span>
+                    <span class="ml-2">{{ $this->file->city?->name ?? 'N/A' }}</span>
                 </div>
             </div>
         </div>
@@ -121,185 +121,8 @@
             </div>
         </div>
 
-        <!-- Branches Table -->
-        <div class="bg-white rounded-lg border shadow-sm overflow-hidden">
-            <div class="p-4 border-b bg-gray-50">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-800">Available Provider Branches</h3>
-                    <div class="flex items-center gap-4">
-                        <span class="text-sm text-gray-600">
-                            <span>{{ count($this->selectedBranches) }}</span> of <span>{{ $this->getBranches()->total() }}</span> selected
-                        </span>
-                        <button type="button" wire:click="selectAll" 
-                                class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                            Select All
-                        </button>
-                        <button type="button" wire:click="clearSelection" 
-                                class="text-sm text-gray-600 hover:text-gray-800 font-medium">
-                            Clear All
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <input type="checkbox" 
-                                       @if(count($this->selectedBranches) == $this->getBranches()->count()) checked @endif
-                                       wire:click="selectAll"
-                                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
-                                wire:click="sortBy('branch_name')">
-                                Branch Name 
-                                @if($sortField === 'branch_name')
-                                    {{ $sortDirection === 'asc' ? '↑' : '↓' }}
-                                @else
-                                    ↕
-                                @endif
-                            </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
-                                wire:click="sortBy('provider')">
-                                Provider 
-                                @if($sortField === 'provider')
-                                    {{ $sortDirection === 'asc' ? '↑' : '↓' }}
-                                @else
-                                    ↕
-                                @endif
-                            </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
-                                wire:click="sortBy('priority')">
-                                Priority 
-                                @if($sortField === 'priority')
-                                    {{ $sortDirection === 'asc' ? '↑' : '↓' }}
-                                @else
-                                    ↕
-                                @endif
-                            </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                City
-                            </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Cost
-                            </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Distance
-                            </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Contact Info
-                            </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" 
-                                wire:click="sortBy('status')">
-                                Status 
-                                @if($sortField === 'status')
-                                    {{ $sortDirection === 'asc' ? '↑' : '↓' }}
-                                @else
-                                    ↕
-                                @endif
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @forelse($this->getBranches() as $branch)
-                            @php
-                                $hasEmail = $this->hasEmail($branch);
-                                $hasPhone = $this->hasPhone($branch);
-                                $distance = $this->getDistanceToBranch($branch);
-                                $cost = $this->getCostForService($branch, $this->file->service_type_id);
-                            @endphp
-                            <tr class="hover:bg-gray-50" wire:key="branch-{{ $branch->id }}">
-                                <td class="px-4 py-3">
-                                    <input type="checkbox" 
-                                           @if(in_array($branch->id, $this->selectedBranches)) checked @endif
-                                           wire:click="toggleBranch({{ $branch->id }})"
-                                           class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="font-medium text-gray-900">
-                                        <a href="{{ route('filament.admin.resources.provider-branches.overview', $branch) }}" 
-                                           target="_blank" 
-                                           class="text-blue-600 underline hover:text-blue-800">
-                                            {{ $branch->branch_name }}
-                                        </a>
-                                    </div>
-                                    @if($branch->all_country)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                            All Country
-                                        </span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->provider?->name ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-900">{{ $branch->priority ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-900">
-                                    @php
-                                        $branchService = $branch->branchServices->where('service_type_id', $this->file->service_type_id)->first();
-                                        $cities = $branchService ? $branchService->cities : collect();
-                                    @endphp
-                                    @if($cities && $cities->count() > 0)
-                                        {{ $cities->pluck('name')->implode(', ') }}
-                                    @else
-                                        N/A
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900">
-                                    @if($cost)
-                                        €{{ number_format($cost, 2) }}
-                                    @else
-                                        N/A
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900">{{ $distance }}</td>
-                                <td class="px-4 py-3">
-                                    <div class="flex items-center space-x-2">
-                                        @if($hasEmail)
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
-                                                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
-                                                </svg>
-                                                Email
-                                            </span>
-                                        @endif
-                                        @if($hasPhone)
-                                            <button type="button" wire:click="$set('selectedBranchForPhone', {{ $branch->id }})" 
-                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200">
-                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-                                                </svg>
-                                                Phone
-                                            </button>
-                                        @endif
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
-                                        {{ ($branch->provider?->status ?? '') === 'Active' ? 'bg-green-100 text-green-800' : 
-                                           (($branch->provider?->status ?? '') === 'Potential' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                        {{ $branch->provider?->status ?? 'N/A' }}
-                                    </span>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="9" class="px-4 py-8 text-center text-gray-500">
-                                    No provider branches found matching your criteria.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            @if($this->getBranches()->hasPages())
-                <div class="px-4 py-3 border-t bg-gray-50">
-                    {{ $this->getBranches()->links() }}
-                </div>
-            @endif
-        </div>
+        <!-- Modern Filament Table -->
+        {{ $this->table }}
     </div>
 
     <!-- Phone Info Modal -->

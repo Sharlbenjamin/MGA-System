@@ -4,6 +4,9 @@ namespace App\Filament\Resources\FileResource\Pages;
 
 use App\Filament\Resources\FileResource;
 use App\Models\File;
+use App\Models\ServiceType;
+use App\Models\Country;
+use App\Models\ProviderBranch;
 use Filament\Resources\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -19,9 +22,12 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\CheckboxColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Actions\Action as TableAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\AppointmentRequestMail;
 use Livewire\Attributes\On;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -432,6 +438,146 @@ class RequestAppointments extends Page
 
         // Redirect back to the file view
         return redirect()->route('filament.admin.resources.files.view', $this->file);
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query($this->getBranchesQuery())
+            ->columns([
+                CheckboxColumn::make('selected')
+                    ->getStateUsing(fn ($record) => in_array($record->getKey(), $this->selectedBranches))
+                    ->setStateUsing(function ($record, $state) {
+                        if ($state) {
+                            $this->selectedBranches[] = $record->getKey();
+                        } else {
+                            $this->selectedBranches = array_diff($this->selectedBranches, [$record->getKey()]);
+                        }
+                    }),
+
+                TextColumn::make('branch_name')
+                    ->label('Branch Name')
+                    ->sortable()
+                    ->searchable()
+                    ->url(fn ($record) => route('filament.admin.resources.provider-branches.overview', $record))
+                    ->openUrlInNewTab()
+                    ->color('primary'),
+
+                TextColumn::make('provider.name')
+                    ->label('Provider')
+                    ->sortable()
+                    ->searchable(),
+
+                TextColumn::make('priority')
+                    ->label('Priority')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'High' => 'danger',
+                        'Medium' => 'warning',
+                        'Low' => 'success',
+                        default => 'gray',
+                    }),
+
+                TextColumn::make('branchServices')
+                    ->label('City')
+                    ->formatStateUsing(function ($state, $record) {
+                        $serviceTypeId = $this->file->service_type_id;
+                        $cities = $record->branchServices()
+                            ->where('service_type_id', $serviceTypeId)
+                            ->with('city')
+                            ->get()
+                            ->pluck('city.name')
+                            ->unique()
+                            ->filter()
+                            ->implode(', ');
+                        return $cities ?: 'N/A';
+                    }),
+
+                TextColumn::make('cost')
+                    ->label('Cost')
+                    ->formatStateUsing(function ($state, $record) {
+                        $cost = $this->getCostForService($record, $this->file->service_type_id);
+                        return $cost ? '€' . number_format($cost, 2) : 'N/A';
+                    }),
+
+                TextColumn::make('distance')
+                    ->label('Distance')
+                    ->formatStateUsing(function ($state, $record) {
+                        $distance = $this->getDistanceToBranch($record);
+                        return $distance ? number_format($distance, 1) . ' km' : 'N/A';
+                    }),
+
+                TextColumn::make('contact_info')
+                    ->label('Contact Info')
+                    ->formatStateUsing(function ($state, $record) {
+                        $badges = [];
+                        if ($this->hasEmail($record)) {
+                            $badges[] = 'Email';
+                        }
+                        if ($this->hasPhone($record)) {
+                            $badges[] = 'Phone';
+                        }
+                        return implode(', ', $badges);
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Email' => 'success',
+                        'Phone' => 'info',
+                        'Email, Phone' => 'success',
+                        default => 'gray',
+                    }),
+
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Active' => 'success',
+                        'Potential' => 'warning',
+                        'Hold' => 'danger',
+                        default => 'gray',
+                    }),
+            ])
+            ->filters([
+                SelectFilter::make('serviceTypeFilter')
+                    ->label('Service Type')
+                    ->options(ServiceType::pluck('name', 'id'))
+                    ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('branchServices', fn ($q) => $q->where('service_type_id', $value)))),
+
+                SelectFilter::make('countryFilter')
+                    ->label('Country')
+                    ->options(Country::pluck('name', 'id'))
+                    ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('country_id', $value)))),
+
+                SelectFilter::make('statusFilter')
+                    ->label('Provider Status')
+                    ->options([
+                        'Active' => 'Active',
+                        'Potential' => 'Potential',
+                        'Hold' => 'Hold',
+                    ])
+                    ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('status', $value)))),
+
+                Filter::make('showOnlyWithEmail')
+                    ->label('Show Only Branches with Email')
+                    ->query(fn (Builder $query, array $data) => $data['value'] ? $query->whereNotNull('email')->where('email', '!=', '') : $query),
+
+                Filter::make('showOnlyWithPhone')
+                    ->label('Show Only Branches with Phone')
+                    ->query(fn (Builder $query, array $data) => $data['value'] ? $query->whereNotNull('phone')->where('phone', '!=', '') : $query),
+            ])
+            ->bulkActions([
+                BulkAction::make('selectAll')
+                    ->label('Select All')
+                    ->action(fn () => $this->selectAll()),
+
+                BulkAction::make('clearSelection')
+                    ->label('Clear Selection')
+                    ->action(fn () => $this->clearSelection()),
+            ])
+            ->defaultSort('priority', 'asc')
+            ->paginated([10, 25, 50, 100]);
     }
 
     protected function getHeaderActions(): array
