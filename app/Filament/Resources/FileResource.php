@@ -280,6 +280,7 @@ class FileResource extends Resource
             'create' => FileResource\Pages\CreateFile::route('/create'),
             'edit' => FileResource\Pages\EditFile::route('/{record}/edit'),
             'view' => FileResource\Pages\ViewFile::route('/{record}/show'),
+            'request-appointments' => FileResource\Pages\RequestAppointments::route('/{record}/request-appointments'),
         ];
     }
 
