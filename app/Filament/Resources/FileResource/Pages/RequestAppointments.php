@@ -27,7 +27,7 @@ use Filament\Tables\Actions\Action as TableAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\AppointmentRequestMail;
+use App\Mail\AppointmentNotificationMail;
 use Livewire\Attributes\On;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\TextEntry;
@@ -376,7 +376,7 @@ class RequestAppointments extends ListRecords
                              $providerBranch->financialContact?->email;
 
                     if ($email) {
-                        \Mail::to($email)->send(new \App\Mail\AppointmentRequestMail($this->file, $providerBranch));
+                        \Mail::to($email)->send(new \App\Mail\AppointmentNotificationMail($this->file, $providerBranch));
                         $successfulBranches[] = $providerBranch->branch_name;
                     } else {
                         $skippedBranches[] = $providerBranch->branch_name . ' (No email)';
@@ -389,7 +389,7 @@ class RequestAppointments extends ListRecords
             // Handle custom emails
             foreach ($customEmails as $email) {
                 try {
-                    \Mail::to($email)->send(new \App\Mail\AppointmentRequestMail($this->file, null));
+                    \Mail::to($email)->send(new \App\Mail\AppointmentNotificationMail($this->file, null));
                     $successfulBranches[] = 'Custom: ' . $email;
                 } catch (\Exception $e) {
                     $skippedBranches[] = 'Custom: ' . $email . ' (Email failed)';
@@ -423,7 +423,20 @@ class RequestAppointments extends ListRecords
     {
         return $table
             ->query($this->getBranchesQuery())
+            ->checkIfRecordIsSelectedUsing(fn ($record): bool => in_array($record->id, $this->selectedBranches))
             ->columns([
+                CheckboxColumn::make('selected')
+                    ->label('Select')
+                    ->getStateUsing(fn ($record): bool => in_array($record->id, $this->selectedBranches))
+                    ->setStateUsing(function ($record, $state) {
+                        if ($state) {
+                            if (!in_array($record->id, $this->selectedBranches)) {
+                                $this->selectedBranches[] = $record->id;
+                            }
+                        } else {
+                            $this->selectedBranches = array_diff($this->selectedBranches, [$record->id]);
+                        }
+                    }),
 
 
                 TextColumn::make('branch_name')
@@ -577,6 +590,16 @@ class RequestAppointments extends ListRecords
                     }) : $query),
             ])
             ->bulkActions([
+                BulkAction::make('sendRequests')
+                    ->label('Send Appointment Requests')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('primary')
+                    ->action('sendRequests')
+                    ->requiresConfirmation()
+                    ->modalHeading('Send Appointment Requests')
+                    ->modalDescription('Are you sure you want to send appointment requests to the selected providers?')
+                    ->modalSubmitActionLabel('Send Requests'),
+
                 BulkAction::make('selectAll')
                     ->label('Select All')
                     ->action(fn () => $this->selectAll()),
@@ -597,16 +620,6 @@ class RequestAppointments extends ListRecords
                 ->icon('heroicon-o-arrow-left')
                 ->url(route('filament.admin.resources.files.view', $this->file))
                 ->color('gray'),
-            
-            Action::make('sendRequests')
-                ->label('Send Appointment Requests')
-                ->icon('heroicon-o-paper-airplane')
-                ->color('warning')
-                ->action('sendRequests')
-                ->requiresConfirmation()
-                ->modalHeading('Send Appointment Requests')
-                ->modalDescription('Are you sure you want to send appointment requests to the selected providers?')
-                ->modalSubmitActionLabel('Send Requests'),
         ];
     }
 
