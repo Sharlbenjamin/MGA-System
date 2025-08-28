@@ -427,13 +427,11 @@ class RequestAppointments extends ListRecords
                 CheckboxColumn::make('selected')
                     ->label('Select')
                     ->getStateUsing(fn ($record): bool => in_array($record->id, $this->selectedBranches))
-                    ->setStateUsing(function ($record, $state) {
-                        if ($state) {
-                            if (!in_array($record->id, $this->selectedBranches)) {
-                                $this->selectedBranches[] = $record->id;
-                            }
-                        } else {
+                    ->action(function ($record) {
+                        if (in_array($record->id, $this->selectedBranches)) {
                             $this->selectedBranches = array_diff($this->selectedBranches, [$record->id]);
+                        } else {
+                            $this->selectedBranches[] = $record->id;
                         }
                     }),
 
