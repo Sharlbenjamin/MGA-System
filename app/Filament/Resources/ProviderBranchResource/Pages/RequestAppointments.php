@@ -487,7 +487,7 @@ class RequestAppointments extends ListRecords
                         // Only show cities from the file's country that have branches
                         if ($this->file->country_id) {
                             $cities = \App\Models\City::where('country_id', $this->file->country_id)
-                                ->whereHas('branchCities.providerBranch.provider', function($q) {
+                                ->whereHas('branchCities.branch.provider', function($q) {
                                     $q->whereHas('branches');
                                 })
                                 ->pluck('name', 'id');
