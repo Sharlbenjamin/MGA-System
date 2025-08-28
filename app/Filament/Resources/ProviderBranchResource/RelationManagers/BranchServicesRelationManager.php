@@ -124,7 +124,12 @@ class BranchServicesRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('Edit')
+                    ->url(fn ($record): string => 
+                        \App\Filament\Resources\BranchServiceResource::getUrl('edit', ['record' => $record])
+                    )
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary'),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([

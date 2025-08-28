@@ -57,8 +57,21 @@ class RequestAppointments extends ListRecords
     {
         parent::mount();
         
-        $record = request()->route('record');
-        $this->file = File::findOrFail($record);
+        // Get the record parameter from the route
+        $recordId = request()->route('record');
+        
+        // Ensure we have a valid record ID
+        if (!$recordId) {
+            abort(404, 'File not found');
+        }
+        
+        // Load the file with all necessary relationships
+        $this->file = File::with([
+            'patient',
+            'serviceType',
+            'city',
+            'country'
+        ])->findOrFail($recordId);
         
         // Set default filters
         $this->statusFilter = 'Active';
