@@ -153,11 +153,7 @@ class RequestAppointments extends ListRecords
             'financialContact',
             'cities',
             'branchServices.serviceType'
-        ])
-        ->whereHas('branchServices', function ($q) {
-            $q->where('service_type_id', $this->file->service_type_id)
-              ->where('is_active', 1);
-        });
+        ]);
 
         return $query;
     }
@@ -485,7 +481,7 @@ class RequestAppointments extends ListRecords
                     })
                     ->default($this->file->city_id)
                     ->searchable()
-                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('cities', fn ($q) => $q->where('cities.id', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('cities', fn ($q) => $q->where('id', $value)))),
 
                 SelectFilter::make('statusFilter')
                     ->label('Provider Status')
