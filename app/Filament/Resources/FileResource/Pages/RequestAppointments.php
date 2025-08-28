@@ -75,7 +75,6 @@ class RequestAppointments extends ListRecords
         
         // Set default filters
         $this->statusFilter = 'Active';
-        $this->countryFilter = $this->file->service_type_id === 2 ? '' : $this->file->country_id;
     }
 
     public function getBranches()
@@ -465,6 +464,7 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('countryFilter')
                     ->label('Country')
                     ->options(Country::pluck('name', 'id'))
+                    ->default($this->file->service_type_id === 2 ? null : $this->file->country_id)
                     ->searchable()
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('country_id', $value)))),
 
