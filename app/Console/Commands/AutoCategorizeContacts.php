@@ -44,12 +44,7 @@ class AutoCategorizeContacts extends Command
 
         foreach ($branches as $branch) {
             // Check if branch has any contacts at all
-            $contacts = Contact::where(function($query) use ($branch) {
-                $query->where('provider_branch_id', $branch->id)
-                      ->orWhere('operation_contact_id', $branch->id)
-                      ->orWhere('gop_contact_id', $branch->id)
-                      ->orWhere('financial_contact_id', $branch->id);
-            })->get();
+            $contacts = Contact::where('branch_id', $branch->id)->get();
 
             if ($contacts->count() > 0) {
                 // Check if any of these contacts are properly categorized

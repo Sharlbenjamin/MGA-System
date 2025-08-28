@@ -37,13 +37,8 @@ class CheckUncategorizedContacts extends Command
         $totalContacts = 0;
 
         foreach ($branches as $branch) {
-            // Check if branch has any contacts at all (through any relationship)
-            $contacts = Contact::where(function($query) use ($branch) {
-                $query->where('provider_branch_id', $branch->id)
-                      ->orWhere('operation_contact_id', $branch->id)
-                      ->orWhere('gop_contact_id', $branch->id)
-                      ->orWhere('financial_contact_id', $branch->id);
-            })->get();
+            // Check if branch has any contacts at all (through branch_id relationship)
+            $contacts = Contact::where('branch_id', $branch->id)->get();
 
             if ($contacts->count() > 0) {
                 $totalContacts += $contacts->count();
@@ -100,13 +95,7 @@ class CheckUncategorizedContacts extends Command
 
         // Also check for branches with no contacts at all
         $branchesWithNoContacts = $branches->filter(function($branch) {
-            $contacts = Contact::where(function($query) use ($branch) {
-                $query->where('provider_branch_id', $branch->id)
-                      ->orWhere('operation_contact_id', $branch->id)
-                      ->orWhere('gop_contact_id', $branch->id)
-                      ->orWhere('financial_contact_id', $branch->id);
-            })->count();
-            
+            $contacts = Contact::where('branch_id', $branch->id)->count();
             return $contacts == 0;
         });
 
