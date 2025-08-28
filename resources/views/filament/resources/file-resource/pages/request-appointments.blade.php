@@ -4,21 +4,39 @@
         <div class="bg-gray-50 p-4 rounded-lg border">
             <div class="grid grid-cols-4 gap-4 text-sm">
                 <div class="col-span-1">
+                    <span class="font-semibold text-gray-700">Patient Name:</span>
+                    <span class="ml-2">{{ $this->file->patient->name }}</span>
+                </div>
+                <div class="col-span-1">
                     <span class="font-semibold text-gray-700">MGA Reference:</span>
                     <span class="ml-2">{{ $this->file->mga_reference }}</span>
                 </div>
                 <div class="col-span-1">
-                    <span class="font-semibold text-gray-700">Patient:</span>
-                    <span class="ml-2">{{ $this->file->patient->name }}</span>
+                    <span class="font-semibold text-gray-700">Client Reference:</span>
+                    <span class="ml-2">{{ $this->file->client_reference ?? 'N/A' }}</span>
                 </div>
                 <div class="col-span-1">
-                    <span class="font-semibold text-gray-700">Service:</span>
+                    <span class="font-semibold text-gray-700">Service Type:</span>
                     <span class="ml-2">{{ $this->file->serviceType->name }}</span>
                 </div>
+            </div>
+            <div class="grid grid-cols-4 gap-4 text-sm mt-4">
                 <div class="col-span-1">
-                    <span class="font-semibold text-gray-700">Location:</span>
+                    <span class="font-semibold text-gray-700">City:</span>
                     <span class="ml-2">{{ $this->file->city?->name ?? 'N/A' }}</span>
                 </div>
+                <div class="col-span-1">
+                    <span class="font-semibold text-gray-700">Country:</span>
+                    <span class="ml-2">{{ $this->file->country?->name ?? 'N/A' }}</span>
+                </div>
+                <div class="col-span-2">
+                    <span class="font-semibold text-gray-700">Address:</span>
+                    <span class="ml-2">{{ $this->file->address ?? 'N/A' }}</span>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="font-semibold text-gray-700">Symptoms:</span>
+                <span class="ml-2">{{ $this->file->symptoms ?? 'N/A' }}</span>
             </div>
         </div>
 
