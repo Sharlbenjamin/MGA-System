@@ -50,8 +50,11 @@ class RequestAppointments extends ListRecords
     public $customEmails = [];
     public $selectedBranchForPhone = null;
 
-    public function mount($record): void
+    public function mount(): void
     {
+        parent::mount();
+        
+        $record = request()->route('record');
         $this->file = File::findOrFail($record);
         
         // Set default filters
