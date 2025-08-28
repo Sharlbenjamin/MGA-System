@@ -22,6 +22,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Actions\Action as TableAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
 class RequestAppointments extends Page
 {
@@ -41,6 +42,7 @@ class RequestAppointments extends Page
     public $sortDirection = 'asc';
     public $selectedBranches = [];
     public $customEmails = [];
+    public $selectedBranchForPhone = null;
 
     public function mount($record): void
     {
@@ -51,235 +53,61 @@ class RequestAppointments extends Page
         $this->countryFilter = $this->file->service_type_id === 2 ? '' : $this->file->country_id;
     }
 
-    public function form(Form $form): Form
+    public function getBranches()
     {
-        return $form->schema([
-            Section::make('File Information')
-                ->schema([
-                    Grid::make(4)
-                        ->schema([
-                            TextInput::make('mga_reference')
-                                ->label('MGA Reference')
-                                ->default($this->file->mga_reference)
-                                ->disabled(),
-                            TextInput::make('patient_name')
-                                ->label('Patient')
-                                ->default($this->file->patient->name)
-                                ->disabled(),
-                            TextInput::make('service_type')
-                                ->label('Service')
-                                ->default($this->file->serviceType->name)
-                                ->disabled(),
-                            TextInput::make('location')
-                                ->label('Location')
-                                ->default($this->file->city?->name ?? 'N/A')
-                                ->disabled(),
-                        ]),
-                ]),
-
-            Section::make('Filters & Options')
-                ->schema([
-                    Grid::make(4)
-                        ->schema([
-                            TextInput::make('search')
-                                ->label('Search Branches')
-                                ->placeholder('Search by name, provider...')
-                                ->live(onBlur: true),
-                            
-                            Select::make('serviceTypeFilter')
-                                ->label('Service Type')
-                                ->options(\App\Models\ServiceType::pluck('name', 'id'))
-                                ->placeholder('All Services')
-                                ->live(),
-                            
-                            Select::make('countryFilter')
-                                ->label('Country')
-                                ->options(\App\Models\Country::pluck('name', 'id'))
-                                ->placeholder('All Countries')
-                                ->live(),
-                            
-                            Select::make('statusFilter')
-                                ->label('Provider Status')
-                                ->options([
-                                    'Active' => 'Active',
-                                    'Potential' => 'Potential',
-                                    'Hold' => 'Hold',
-                                ])
-                                ->placeholder('All Status')
-                                ->live(),
-                        ]),
-
-                    Grid::make(3)
-                        ->schema([
-                            Checkbox::make('showProvinceBranches')
-                                ->label('Show Province Branches')
-                                ->live(),
-                            
-                            Checkbox::make('showOnlyWithEmail')
-                                ->label('Show Only Branches with Email')
-                                ->live(),
-                            
-                            Checkbox::make('showOnlyWithPhone')
-                                ->label('Show Only Branches with Phone')
-                                ->live(),
-                        ]),
-                ]),
-
-            Section::make('Custom Email Addresses')
-                ->schema([
-                    Repeater::make('customEmails')
-                        ->schema([
-                            TextInput::make('email')
-                                ->label('Email Address')
-                                ->email()
-                                ->required(),
-                        ])
-                        ->addActionLabel('Add Email')
-                        ->reorderable(false)
-                        ->collapsible()
-                        ->itemLabel(fn (array $state): ?string => $state['email'] ?? null),
-                ]),
-        ]);
+        return $this->getBranchesQuery()->paginate(20);
     }
 
-    public function table(Table $table): Table
+    public function updatedSearch()
     {
-        return $table
-            ->query($this->getBranchesQuery())
-            ->columns([
-                CheckboxColumn::make('selected')
-                    ->label('Select')
-                    ->getStateUsing(fn ($record) => in_array($record->id, $this->selectedBranches))
-                    ->setStateUsing(fn ($record, $state) => $this->toggleBranch($record->id)),
-                
-                TextColumn::make('branch_name')
-                    ->label('Branch Name')
-                    ->searchable()
-                    ->sortable()
-                    ->url(fn ($record) => route('filament.admin.resources.provider-branches.overview', $record), shouldOpenInNewTab: true),
-                
-                TextColumn::make('provider.name')
-                    ->label('Provider')
-                    ->searchable()
-                    ->sortable(),
-                
-                TextColumn::make('priority')
-                    ->label('Priority')
-                    ->sortable(),
-                
-                TextColumn::make('cities.name')
-                    ->label('City')
-                    ->listWithLineBreaks(),
-                
-                TextColumn::make('cost')
-                    ->label('Cost')
-                    ->getStateUsing(fn ($record) => $this->getCostForService($record, $this->file->service_type_id))
-                    ->formatStateUsing(fn ($state) => $state ? '€' . number_format($state, 2) : 'N/A'),
-                
-                TextColumn::make('distance')
-                    ->label('Distance')
-                    ->getStateUsing(fn ($record) => $this->getDistanceToBranch($record)),
-                
-                TextColumn::make('contact_info')
-                    ->label('Contact Info')
-                    ->getStateUsing(function ($record) {
-                        $hasEmail = $this->hasEmail($record);
-                        $hasPhone = $this->hasPhone($record);
-                        
-                        $badges = [];
-                        if ($hasEmail) {
-                            $badges[] = 'Email';
-                        }
-                        if ($hasPhone) {
-                            $badges[] = 'Phone';
-                        }
-                        
-                        return $badges;
-                    })
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Email' => 'success',
-                        'Phone' => 'info',
-                        default => 'gray',
-                    }),
-                
-                TextColumn::make('provider.status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Active' => 'success',
-                        'Potential' => 'warning',
-                        'Hold' => 'danger',
-                        default => 'gray',
-                    }),
-            ])
-            ->filters([
-                SelectFilter::make('service_type')
-                    ->label('Service Type')
-                    ->options(\App\Models\ServiceType::pluck('name', 'id'))
-                    ->query(fn (Builder $query, array $data) => $query->when(
-                        $data['value'],
-                        fn (Builder $query, $value) => $query->whereHas('branchServices', function ($q) use ($value) {
-                            $q->where('service_type_id', $value)->where('is_active', 1);
-                        })
-                    )),
-                
-                SelectFilter::make('country')
-                    ->label('Country')
-                    ->options(\App\Models\Country::pluck('name', 'id'))
-                    ->query(fn (Builder $query, array $data) => $query->when(
-                        $data['value'],
-                        fn (Builder $query, $value) => $query->whereHas('provider', function ($q) use ($value) {
-                            $q->where('country_id', $value);
-                        })
-                    )),
-                
-                SelectFilter::make('status')
-                    ->label('Provider Status')
-                    ->options([
-                        'Active' => 'Active',
-                        'Potential' => 'Potential',
-                        'Hold' => 'Hold',
-                    ])
-                    ->query(fn (Builder $query, array $data) => $query->when(
-                        $data['value'],
-                        fn (Builder $query, $value) => $query->whereHas('provider', function ($q) use ($value) {
-                            $q->where('status', $value);
-                        })
-                    )),
-            ])
-            ->actions([
-                TableAction::make('phone_info')
-                    ->label('Phone Info')
-                    ->icon('heroicon-o-phone')
-                    ->color('info')
-                    ->action(function ($record) {
-                        $phoneInfo = $this->getPhoneInfo($record->id);
-                        if ($phoneInfo) {
-                            Notification::make()
-                                ->title('Contact Information')
-                                ->body($this->formatPhoneInfo($phoneInfo))
-                                ->info()
-                                ->send();
-                        }
-                    })
-                    ->visible(fn ($record) => $this->hasPhone($record)),
-            ])
-            ->bulkActions([
-                \Filament\Tables\Actions\BulkAction::make('select_all')
-                    ->label('Select All')
-                    ->action(function () {
-                        $branches = $this->getBranchesQuery()->get();
-                        $this->selectedBranches = $branches->pluck('id')->toArray();
-                    }),
-                
-                \Filament\Tables\Actions\BulkAction::make('clear_selection')
-                    ->label('Clear Selection')
-                    ->action(function () {
-                        $this->selectedBranches = [];
-                    }),
-            ])
-            ->paginated([10, 25, 50, 100]);
+        $this->selectedBranches = [];
+    }
+
+    public function updatedServiceTypeFilter()
+    {
+        $this->selectedBranches = [];
+    }
+
+    public function updatedCountryFilter()
+    {
+        $this->selectedBranches = [];
+    }
+
+    public function updatedStatusFilter()
+    {
+        $this->selectedBranches = [];
+    }
+
+    public function updatedShowOnlyWithEmail()
+    {
+        $this->selectedBranches = [];
+    }
+
+    public function updatedShowOnlyWithPhone()
+    {
+        $this->selectedBranches = [];
+    }
+
+    public function selectAll()
+    {
+        $branches = $this->getBranchesQuery()->get();
+        $this->selectedBranches = $branches->pluck('id')->toArray();
+    }
+
+    public function clearSelection()
+    {
+        $this->selectedBranches = [];
+    }
+
+    public function addCustomEmail()
+    {
+        $this->customEmails[] = ['email' => ''];
+    }
+
+    public function removeCustomEmail($index)
+    {
+        unset($this->customEmails[$index]);
+        $this->customEmails = array_values($this->customEmails);
     }
 
     protected function getBranchesQuery(): Builder
