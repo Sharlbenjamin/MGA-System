@@ -490,14 +490,24 @@ class RequestAppointments extends ListRecords
                     ->label('Service Type')
                     ->options(ServiceType::pluck('name', 'id'))
                     ->default($this->file->service_type_id)
-                    ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('branchServices', fn ($q) => $q->where('service_type_id', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('branchServices', fn ($q) => $q->where('service_type_id', $value)))),
 
                 SelectFilter::make('countryFilter')
                     ->label('Country')
                     ->options(Country::pluck('name', 'id'))
                     ->searchable()
-                    ->default($this->file->service_type_id === 2 ? null : $this->file->country_id)
-                    ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('country_id', $value)))),
+                    ->default($this->file->country_id)
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('country_id', $value)))),
+
+                SelectFilter::make('cityFilter')
+                    ->label('City')
+                    ->options(function() {
+                        $cities = \App\Models\City::where('country_id', $this->file->country_id)->pluck('name', 'id');
+                        return $cities->toArray();
+                    })
+                    ->searchable()
+                    ->default($this->file->city_id)
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('cities', fn ($q) => $q->where('cities.id', $value)))),
 
                 SelectFilter::make('statusFilter')
                     ->label('Provider Status')
@@ -507,12 +517,12 @@ class RequestAppointments extends ListRecords
                         'Hold' => 'Hold',
                     ])
                     ->default('Active')
-                    ->query(fn (Builder $query, array $data) => $query->when($data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('status', $value)))),
+                    ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereHas('provider', fn ($q) => $q->where('status', $value)))),
 
                 Filter::make('showOnlyWithEmail')
                     ->label('Show Only Branches with Email')
                     ->default(true)
-                    ->query(fn (Builder $query, array $data) => $data['value'] ? $query->where(function($q) {
+                    ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->where(function($q) {
                         $q->whereNotNull('email')->where('email', '!=', '')
                           ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('email')->where('email', '!=', ''))
                           ->orWhereHas('gopContact', fn($gc) => $gc->whereNotNull('email')->where('email', '!=', ''))
@@ -522,7 +532,7 @@ class RequestAppointments extends ListRecords
                 Filter::make('showOnlyWithPhone')
                     ->label('Show Only Branches with Phone')
                     ->default(true)
-                    ->query(fn (Builder $query, array $data) => $data['value'] ? $query->where(function($q) {
+                    ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->where(function($q) {
                         $q->whereNotNull('phone')->where('phone', '!=', '')
                           ->orWhereHas('operationContact', fn($oc) => $oc->whereNotNull('phone_number')->where('phone_number', '!=', ''))
                           ->orWhereHas('gopContact', fn($gc) => $gc->whereNotNull('phone_number')->where('phone_number', '!=', ''))
