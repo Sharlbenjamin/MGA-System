@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\ProviderBranchResource\Pages;
 
-use App\Filament\Resources\FileResource;
 use App\Filament\Resources\ProviderBranchResource;
 use App\Models\File;
 use App\Models\ServiceType;
@@ -11,25 +10,16 @@ use App\Models\ProviderBranch;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\CheckboxColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\Action as TableAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\AppointmentNotificationMail;
-use Livewire\Attributes\On;
+use App\Mail\NotifyBranchMailable;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\Section as InfolistSection;
@@ -38,29 +28,15 @@ class RequestAppointments extends ListRecords
 {
     protected static string $resource = ProviderBranchResource::class;
 
-    protected static string $view = 'filament.resources.provider-branch-resource.pages.request-appointments';
-
     public File $file;
-    public $search = '';
-    public $serviceTypeFilter = '';
-    public $countryFilter = '';
-    public $statusFilter = '';
-    public $showProvinceBranches = false;
-    public $showOnlyWithEmail = false;
-    public $showOnlyWithPhone = false;
-    public $sortField = 'priority';
-    public $sortDirection = 'asc';
-    public $selectedBranches = [];
-    public $customEmails = [];
-    public $selectedBranchForPhone = null;
 
     public function mount(): void
     {
-        // Get the record parameter from the route
-        $recordId = request()->route('record');
+        // Get the file ID from the route parameter
+        $fileId = request()->route('record');
         
-        // Ensure we have a valid record ID
-        if (!$recordId) {
+        // Ensure we have a valid file ID
+        if (!$fileId) {
             abort(404, 'File not found');
         }
         
@@ -70,82 +46,12 @@ class RequestAppointments extends ListRecords
             'serviceType',
             'city',
             'country'
-        ])->findOrFail($recordId);
-        
-        // Set default filters
-        $this->statusFilter = 'Active';
-    }
-
-    public function getBranches()
-    {
-        return $this->getBranchesQuery()->paginate(20);
-    }
-
-    public function updatedSearch()
-    {
-        $this->selectedBranches = [];
-    }
-
-    public function updatedServiceTypeFilter()
-    {
-        $this->selectedBranches = [];
-    }
-
-    public function updatedCountryFilter()
-    {
-        $this->selectedBranches = [];
-    }
-
-    public function updatedStatusFilter()
-    {
-        $this->selectedBranches = [];
-    }
-
-    public function updatedShowOnlyWithEmail()
-    {
-        $this->selectedBranches = [];
-    }
-
-    public function updatedShowOnlyWithPhone()
-    {
-        $this->selectedBranches = [];
-    }
-
-    public function selectAll()
-    {
-        $branchServices = $this->getBranchesQuery()->get();
-        $this->selectedBranches = $branchServices->pluck('provider_branch_id')->unique()->toArray();
-    }
-
-    public function clearSelection()
-    {
-        $this->selectedBranches = [];
-    }
-
-    public function addCustomEmail()
-    {
-        $this->customEmails[] = ['email' => ''];
-    }
-
-    public function removeCustomEmail($index)
-    {
-        unset($this->customEmails[$index]);
-        $this->customEmails = array_values($this->customEmails);
-    }
-
-    public function sortBy($field)
-    {
-        if ($this->sortField === $field) {
-            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            $this->sortField = $field;
-            $this->sortDirection = 'asc';
-        }
+        ])->findOrFail($fileId);
     }
 
     protected function getBranchesQuery(): Builder
     {
-        $query = \App\Models\BranchService::with([
+        return \App\Models\BranchService::with([
             'providerBranch.provider.country',
             'providerBranch.operationContact',
             'providerBranch.gopContact', 
@@ -157,17 +63,6 @@ class RequestAppointments extends ListRecords
         ->join('provider_branches', 'branch_services.provider_branch_id', '=', 'provider_branches.id')
         ->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
         ->where('branch_services.is_active', 1);
-
-        return $query;
-    }
-
-    public function toggleBranch($branchId)
-    {
-        if (in_array($branchId, $this->selectedBranches)) {
-            $this->selectedBranches = array_diff($this->selectedBranches, [$branchId]);
-        } else {
-            $this->selectedBranches[] = $branchId;
-        }
     }
 
     public function getDistanceToBranch($branch)
@@ -206,11 +101,6 @@ class RequestAppointments extends ListRecords
         return $service->calculateDistance($fileAddress, $branchAddress);
     }
 
-    public function getCostForService($branch, $serviceTypeId)
-    {
-        return $branch->getCostForService($serviceTypeId);
-    }
-
     public function hasEmail($branch)
     {
         return $branch->email || 
@@ -219,157 +109,12 @@ class RequestAppointments extends ListRecords
                $branch->financialContact?->email;
     }
 
-
-
-    public function sendRequests()
-    {
-        $customEmails = collect($this->customEmails)
-            ->pluck('email')
-            ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
-            ->toArray();
-
-        // Debug: Log the selected branches and custom emails
-        \Log::info('Selected branches: ' . json_encode($this->selectedBranches));
-        \Log::info('Custom emails: ' . json_encode($customEmails));
-
-        // If no branches or custom emails selected, show warning
-        if (empty($this->selectedBranches) && empty($customEmails)) {
-            Notification::make()
-                ->title('No Recipients Selected')
-                ->body('Please select at least one provider branch or add a custom email address.')
-                ->warning()
-                ->send();
-            return;
-        }
-
-        // Send notifications and emails
-        $successfulBranches = [];
-        $skippedBranches = [];
-        $updatedAppointments = [];
-        $newAppointments = [];
-
-        // Create/update appointments in a transaction
-        DB::transaction(function () use (&$successfulBranches, &$skippedBranches, &$updatedAppointments, &$newAppointments, $customEmails) {
-            foreach ($this->selectedBranches as $branchId) {
-                $providerBranch = \App\Models\ProviderBranch::find($branchId);
-                
-                if (!$providerBranch) {
-                    continue;
-                }
-
-                // Check if an appointment already exists
-                $existingAppointment = $this->file->appointments()
-                    ->where('provider_branch_id', $branchId)
-                    ->first();
-
-                if ($existingAppointment) {
-                    $newDate = now()->toDateString();
-
-                    if ($existingAppointment->service_date !== $newDate) {
-                        $existingAppointment->update([
-                            'service_date' => $newDate,
-                        ]);
-                        $updatedAppointments[] = $providerBranch->branch_name;
-                    }
-                } else {
-                    // Create new appointment
-                    $appointment = $this->file->appointments()->create([
-                        'provider_branch_id' => $branchId,
-                        'service_date' => now()->toDateString(),
-                        'status' => 'Requested',
-                        'created_by' => auth()->id(),
-                    ]);
-                    $newAppointments[] = $providerBranch->branch_name;
-                }
-
-                // Send email notification
-                try {
-                    $email = $providerBranch->email ?: 
-                             $providerBranch->operationContact?->email ?: 
-                             $providerBranch->gopContact?->email ?: 
-                             $providerBranch->financialContact?->email;
-
-                    if ($email) {
-                        // Get the appointment that was just created or updated
-                        $appointment = $this->file->appointments()
-                            ->where('provider_branch_id', $branchId)
-                            ->first();
-                        
-                        if ($appointment) {
-                            \Mail::to($email)->send(new \App\Mail\NotifyBranchMailable('appointment_created', $appointment));
-                            $successfulBranches[] = $providerBranch->branch_name;
-                        } else {
-                            $skippedBranches[] = $providerBranch->branch_name . ' (No appointment created)';
-                        }
-                    } else {
-                        $skippedBranches[] = $providerBranch->branch_name . ' (No email)';
-                    }
-                } catch (\Exception $e) {
-                    $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
-                }
-            }
-
-            // Handle custom emails
-            foreach ($customEmails as $email) {
-                try {
-                    // For custom emails, we don't have an appointment, so we'll use a different approach
-                    // Create a temporary appointment object for the email
-                    $tempAppointment = new \App\Models\Appointment([
-                        'file_id' => $this->file->id,
-                        'provider_branch_id' => null,
-                        'service_date' => now()->toDateString(),
-                        'status' => 'Requested',
-                    ]);
-                    
-                    // Set the file relationship
-                    $tempAppointment->setRelation('file', $this->file);
-                    
-                    \Mail::to($email)->send(new \App\Mail\NotifyBranchMailable('appointment_created', $tempAppointment));
-                    $successfulBranches[] = 'Custom: ' . $email;
-                } catch (\Exception $e) {
-                    $skippedBranches[] = 'Custom: ' . $email . ' (Email failed)';
-                }
-            }
-        });
-
-        // Show success notification
-        $message = "Successfully sent " . count($successfulBranches) . " appointment requests.";
-        if (!empty($updatedAppointments)) {
-            $message .= " Updated " . count($updatedAppointments) . " existing appointments.";
-        }
-        if (!empty($newAppointments)) {
-            $message .= " Created " . count($newAppointments) . " new appointments.";
-        }
-        if (!empty($skippedBranches)) {
-            $message .= " Skipped " . count($skippedBranches) . " branches.";
-        }
-
-        Notification::make()
-            ->title('Appointment Requests Sent')
-            ->body($message)
-            ->success()
-            ->send();
-
-        // Redirect back to the file view
-        return redirect()->route('filament.admin.resources.files.view', $this->file);
-    }
-
     public function table(Table $table): Table
     {
         return $table
             ->query($this->getBranchesQuery())
             ->columns([
-                CheckboxColumn::make('selected')
-                    ->label('Select')
-                    ->getStateUsing(fn ($record): bool => in_array($record->provider_branch_id, $this->selectedBranches))
-                    ->action(function ($record, $state) {
-                        if ($state) {
-                            $this->selectedBranches[] = $record->provider_branch_id;
-                        } else {
-                            $this->selectedBranches = array_diff($this->selectedBranches, [$record->provider_branch_id]);
-                        }
-                    })
-                    ->disabled(fn ($record): bool => !$this->hasEmail(\App\Models\ProviderBranch::find($record->provider_branch_id))),
+                CheckboxColumn::make('selected'),
 
                 TextColumn::make('providerBranch.branch_name')
                     ->label('Branch Name')
@@ -400,7 +145,7 @@ class RequestAppointments extends ListRecords
                     ->label('City')
                     ->getStateUsing(function ($record) {
                         // Get cities from the branch's cities relationship
-                        $cities = \DB::table('branch_cities')
+                        $cities = DB::table('branch_cities')
                             ->join('cities', 'branch_cities.city_id', '=', 'cities.id')
                             ->where('branch_cities.provider_branch_id', $record->provider_branch_id)
                             ->pluck('cities.name')
@@ -471,7 +216,7 @@ class RequestAppointments extends ListRecords
                     ->label('Country')
                     ->options(function() {
                         // Only show countries that have providers with branches
-                        $countries = \App\Models\Country::whereHas('providers', function($q) {
+                        $countries = Country::whereHas('providers', function($q) {
                             $q->whereHas('branches');
                         });
                         
@@ -501,7 +246,7 @@ class RequestAppointments extends ListRecords
                     })
                     ->searchable()
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereExists(function($subQuery) use ($value) {
-                        $subQuery->select(\DB::raw(1))
+                        $subQuery->select(DB::raw(1))
                             ->from('branch_cities')
                             ->whereColumn('branch_cities.provider_branch_id', 'branch_services.provider_branch_id')
                             ->where('branch_cities.city_id', $value);
@@ -521,19 +266,19 @@ class RequestAppointments extends ListRecords
                     ->query(fn (Builder $query, array $data) => isset($data['value']) && $data['value'] ? $query->where(function($q) {
                         $q->whereNotNull('provider_branches.email')->where('provider_branches.email', '!=', '')
                           ->orWhereExists(function($subQuery) {
-                              $subQuery->select(\DB::raw(1))
+                              $subQuery->select(DB::raw(1))
                                   ->from('contacts')
                                   ->whereColumn('contacts.id', 'provider_branches.operation_contact_id')
                                   ->whereNotNull('contacts.email')->where('contacts.email', '!=', '');
                           })
                           ->orWhereExists(function($subQuery) {
-                              $subQuery->select(\DB::raw(1))
+                              $subQuery->select(DB::raw(1))
                                   ->from('contacts')
                                   ->whereColumn('contacts.id', 'provider_branches.gop_contact_id')
                                   ->whereNotNull('contacts.email')->where('contacts.email', '!=', '');
                           })
                           ->orWhereExists(function($subQuery) {
-                              $subQuery->select(\DB::raw(1))
+                              $subQuery->select(DB::raw(1))
                                   ->from('contacts')
                                   ->whereColumn('contacts.id', 'provider_branches.financial_contact_id')
                                   ->whereNotNull('contacts.email')->where('contacts.email', '!=', '');
@@ -546,26 +291,119 @@ class RequestAppointments extends ListRecords
                     ->icon('heroicon-o-paper-airplane')
                     ->color('primary')
                     ->action(function ($records) {
-                        // Get the branch IDs from the selected branch services
-                        $selectedBranchIds = $records->pluck('provider_branch_id')->unique()->toArray();
-                        $this->selectedBranches = $selectedBranchIds;
-                        $this->sendRequests();
+                        $this->sendRequests($records);
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Send Appointment Requests')
                     ->modalDescription('Are you sure you want to send appointment requests to the selected providers?')
                     ->modalSubmitActionLabel('Send Requests'),
-
-                BulkAction::make('selectAll')
-                    ->label('Select All')
-                    ->action(fn () => $this->selectAll()),
-
-                BulkAction::make('clearSelection')
-                    ->label('Clear Selection')
-                    ->action(fn () => $this->clearSelection()),
             ])
             ->defaultSort('provider_branches.priority', 'asc')
             ->paginated([10, 25, 50, 100]);
+    }
+
+    public function sendRequests($records)
+    {
+        $selectedBranchIds = $records->pluck('provider_branch_id')->unique()->toArray();
+        
+        // If no branches selected, show warning
+        if (empty($selectedBranchIds)) {
+            Notification::make()
+                ->title('No Recipients Selected')
+                ->body('Please select at least one provider branch.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        // Send notifications and emails
+        $successfulBranches = [];
+        $skippedBranches = [];
+        $updatedAppointments = [];
+        $newAppointments = [];
+
+        // Create/update appointments in a transaction
+        DB::transaction(function () use (&$successfulBranches, &$skippedBranches, &$updatedAppointments, &$newAppointments, $selectedBranchIds) {
+            foreach ($selectedBranchIds as $branchId) {
+                $providerBranch = ProviderBranch::find($branchId);
+                
+                if (!$providerBranch) {
+                    continue;
+                }
+
+                // Check if an appointment already exists
+                $existingAppointment = $this->file->appointments()
+                    ->where('provider_branch_id', $branchId)
+                    ->first();
+
+                if ($existingAppointment) {
+                    $newDate = now()->toDateString();
+
+                    if ($existingAppointment->service_date !== $newDate) {
+                        $existingAppointment->update([
+                            'service_date' => $newDate,
+                        ]);
+                        $updatedAppointments[] = $providerBranch->branch_name;
+                    }
+                } else {
+                    // Create new appointment
+                    $appointment = $this->file->appointments()->create([
+                        'provider_branch_id' => $branchId,
+                        'service_date' => now()->toDateString(),
+                        'status' => 'Requested',
+                        'created_by' => auth()->id(),
+                    ]);
+                    $newAppointments[] = $providerBranch->branch_name;
+                }
+
+                // Send email notification
+                try {
+                    $email = $providerBranch->email ?: 
+                             $providerBranch->operationContact?->email ?: 
+                             $providerBranch->gopContact?->email ?: 
+                             $providerBranch->financialContact?->email;
+
+                    if ($email) {
+                        // Get the appointment that was just created or updated
+                        $appointment = $this->file->appointments()
+                            ->where('provider_branch_id', $branchId)
+                            ->first();
+                        
+                        if ($appointment) {
+                            Mail::to($email)->send(new NotifyBranchMailable('appointment_created', $appointment));
+                            $successfulBranches[] = $providerBranch->branch_name;
+                        } else {
+                            $skippedBranches[] = $providerBranch->branch_name . ' (No appointment created)';
+                        }
+                    } else {
+                        $skippedBranches[] = $providerBranch->branch_name . ' (No email)';
+                    }
+                } catch (\Exception $e) {
+                    $skippedBranches[] = $providerBranch->branch_name . ' (Email failed)';
+                }
+            }
+        });
+
+        // Show success notification
+        $message = "Successfully sent " . count($successfulBranches) . " appointment requests.";
+        if (!empty($updatedAppointments)) {
+            $message .= " Updated " . count($updatedAppointments) . " existing appointments.";
+        }
+        if (!empty($newAppointments)) {
+            $message .= " Created " . count($newAppointments) . " new appointments.";
+        }
+        if (!empty($skippedBranches)) {
+            $message .= " Skipped " . count($skippedBranches) . " branches.";
+        }
+
+        Notification::make()
+            ->title('Appointment Requests Sent')
+            ->body($message)
+            ->success()
+            ->send();
+
+        // Redirect back to the file view
+        return redirect()->route('filament.admin.resources.files.view', $this->file);
     }
 
     protected function getHeaderActions(): array
@@ -577,11 +415,6 @@ class RequestAppointments extends ListRecords
                 ->url(route('filament.admin.resources.files.view', $this->file))
                 ->color('gray'),
         ];
-    }
-
-    protected function getHeaderWidgets(): array
-    {
-        return [];
     }
 
     public function infolist(Infolist $infolist): Infolist
