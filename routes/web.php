@@ -66,10 +66,7 @@ Route::get('/redirect-after-login', function () {
 Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, DispatchServingFilamentEvent::class])->group(function () {
     // Filament registers its own routes automatically.
     
-    // Custom File Request Appointment Page
-    Route::get('/admin/file-request-appointment/{record}', function ($record) {
-        return app(\App\Filament\Pages\FileRequestAppointment::class)->mount($record);
-    })->name('filament.admin.pages.file-request-appointment');
+
 });
 
 // Taxes Export Routes (only require Filament authentication, not site password)
