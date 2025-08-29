@@ -21,6 +21,7 @@ use App\Filament\Resources\UserResource;
 use App\Filament\Resources\InvoiceResource;
 use App\Filament\Resources\BillResource;
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Resources\BranchAvailabilityResource;
 use App\Filament\Widgets\FilesPerClient;
 use App\Filament\Widgets\FilesPerCountry;
 use App\Filament\Widgets\FilesPerMonth;
@@ -76,6 +77,7 @@ class AdminPanelProvider extends PanelProvider
                 GopResource::class,
                 PrescriptionResource::class,
                 DrugResource::class,
+                BranchAvailabilityResource::class,
                 // Stages Resources
                 \App\Filament\Resources\FilesWithoutGopResource::class,
                 \App\Filament\Resources\GopWithoutDocsResource::class,
