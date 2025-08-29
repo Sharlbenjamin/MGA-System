@@ -352,7 +352,6 @@ class ViewFile extends ViewRecord
             Action::make('requestAppointment')
                 ->label('Request Appointment')
                 ->icon('heroicon-o-calendar-days')
-                ->visible(fn ($record) => $record->service_type_id === 2)
                 ->url(fn ($record) => \App\Filament\Pages\FileRequestAppointment::getUrl(['record' => $record->id]))
                 ->color('success'),
             Action::make('exportMedicalReport')
