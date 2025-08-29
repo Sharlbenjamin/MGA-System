@@ -351,9 +351,82 @@ class ViewFile extends ViewRecord
         return [
             Action::make('requestAppointment')
                 ->label('Request Appointment')
+                ->slideOver()
                 ->icon('heroicon-o-calendar-days')
-                ->url(fn ($record) => \App\Filament\Pages\FileRequestAppointment::getUrl(['record' => $record->id]))
-                ->color('success'),
+                ->color('success')
+                ->modalHeading('Request Appointment')
+                ->modalWidth('7xl')
+                ->form([
+                    Section::make('File Information')
+                        ->schema([
+                            Grid::make(3)
+                                ->schema([
+                                    TextInput::make('file_reference')
+                                        ->label('File Reference')
+                                        ->default(fn ($record) => $record->mga_reference)
+                                        ->disabled(),
+                                    TextInput::make('patient_name')
+                                        ->label('Patient Name')
+                                        ->default(fn ($record) => $record->patient->name)
+                                        ->disabled(),
+                                    TextInput::make('service_type')
+                                        ->label('Service Type')
+                                        ->default(fn ($record) => $record->serviceType->name)
+                                        ->disabled(),
+                                    TextInput::make('country')
+                                        ->label('Country')
+                                        ->default(fn ($record) => $record->country->name ?? 'N/A')
+                                        ->disabled(),
+                                    TextInput::make('city')
+                                        ->label('City')
+                                        ->default(fn ($record) => $record->city->name ?? 'N/A')
+                                        ->disabled(),
+                                    TextInput::make('address')
+                                        ->label('Address')
+                                        ->default(fn ($record) => $record->address ?? 'N/A')
+                                        ->disabled(),
+                                ])
+                        ])
+                        ->collapsible()
+                        ->collapsed(false),
+                    
+                    Section::make('Additional Email Addresses')
+                        ->description('Add custom email addresses to include in appointment requests')
+                        ->schema([
+                            Repeater::make('custom_emails')
+                                ->schema([
+                                    TextInput::make('email')
+                                        ->label('Email Address')
+                                        ->email()
+                                        ->required()
+                                        ->placeholder('Enter email address')
+                                ])
+                                ->defaultItems(0)
+                                ->addActionLabel('Add Email')
+                                ->reorderable(false)
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['email'] ?? null)
+                        ]),
+                    
+                    Section::make('Provider Branches')
+                        ->description('Select provider branches to send appointment requests')
+                        ->schema([
+                            CheckboxList::make('selected_branches')
+                                ->label('Select Branches')
+                                ->options(function ($record) {
+                                    return $this->getProviderBranchOptions($record);
+                                })
+                                ->descriptions(function ($record) {
+                                    return $this->getProviderBranchDescriptions($record);
+                                })
+                                ->columns(1)
+                                ->required()
+                        ]),
+                ])
+                ->action(function (array $data, $record) {
+                    // This will handle the appointment request sending
+                    $this->sendAppointmentRequestsFromModal($data, $record);
+                }),
             Action::make('exportMedicalReport')
                 ->label('Export MR')
                 ->icon('heroicon-o-document-arrow-down')
@@ -1205,5 +1278,223 @@ class ViewFile extends ViewRecord
     {
         // This method will be called when filters change
         // The form will automatically update the branches list
+    }
+
+    /**
+     * Get provider branch options for the checkbox list
+     */
+    protected function getProviderBranchOptions($record): array
+    {
+        $branches = $this->getEligibleProviderBranches($record);
+        $options = [];
+        
+        foreach ($branches as $branch) {
+            $options[$branch->id] = $branch->branch_name;
+        }
+        
+        return $options;
+    }
+
+    /**
+     * Get provider branch descriptions for the checkbox list
+     */
+    protected function getProviderBranchDescriptions($record): array
+    {
+        $branches = $this->getEligibleProviderBranches($record);
+        $descriptions = [];
+        
+        foreach ($branches as $branch) {
+            $description = [];
+            
+            // Add city
+            if ($branch->city) {
+                $description[] = "City: " . $branch->city->name;
+            }
+            
+            // Add priority
+            $description[] = "Priority: " . ($branch->priority ?? 'N/A');
+            
+            // Add cost
+            $service = $branch->branchServices()
+                ->where('service_type_id', $record->service_type_id)
+                ->where('is_active', true)
+                ->first();
+            if ($service) {
+                $description[] = "Cost: $" . number_format($service->cost, 2);
+            }
+            
+            // Add distance if available
+            $distance = $this->calculateBranchDistance($record, $branch);
+            if ($distance !== 'N/A') {
+                $description[] = "Distance: " . $distance;
+            }
+            
+            // Add contact info
+            $contactInfo = $this->getBranchContactInfo($branch);
+            $description[] = "Contact: " . $contactInfo;
+            
+            $descriptions[$branch->id] = implode(' | ', $description);
+        }
+        
+        return $descriptions;
+    }
+
+    /**
+     * Get eligible provider branches for a file
+     */
+    protected function getEligibleProviderBranches($record)
+    {
+        return \App\Models\ProviderBranch::query()
+            ->with(['city', 'branchServices.serviceType', 'gopContact', 'operationContact'])
+            ->where('status', 'Active')
+            ->whereHas('branchServices', function ($query) use ($record) {
+                $query->where('service_type_id', $record->service_type_id)
+                      ->where('is_active', true);
+            })
+            ->where(function ($query) use ($record) {
+                $query->where('all_country', true)
+                      ->orWhereHas('cities', function ($subQuery) use ($record) {
+                          $subQuery->where('city_id', $record->city_id);
+                      });
+            })
+            ->orderBy('priority', 'asc')
+            ->get();
+    }
+
+    /**
+     * Calculate distance between file and branch
+     */
+    protected function calculateBranchDistance($file, $branch): string
+    {
+        if (!$file->address || !$branch->address) {
+            return 'N/A';
+        }
+
+        $distanceService = new \App\Services\DistanceCalculationService();
+        $result = $distanceService->calculateDistance(
+            $file->address,
+            $branch->address,
+            'driving'
+        );
+
+        if ($result) {
+            return "{$result['distance']} - {$result['duration']}";
+        }
+
+        return '35 min walking';
+    }
+
+    /**
+     * Get branch contact info display
+     */
+    protected function getBranchContactInfo($branch): string
+    {
+        $hasEmail = $branch->getGopEmail() || $branch->getOperationEmail();
+        $hasPhone = $branch->getGopPhone() || $branch->getOperationPhone();
+        
+        if ($hasEmail && $hasPhone) {
+            return 'Email, Phone';
+        } elseif ($hasEmail) {
+            return 'Email';
+        } elseif ($hasPhone) {
+            return 'Phone';
+        }
+        
+        return 'None';
+    }
+
+    /**
+     * Send appointment requests from modal
+     */
+    protected function sendAppointmentRequestsFromModal(array $data, $record): void
+    {
+        $selectedBranchIds = $data['selected_branches'] ?? [];
+        $customEmails = collect($data['custom_emails'] ?? [])->pluck('email')->filter();
+        
+        if (empty($selectedBranchIds)) {
+            Notification::make()
+                ->title('No Branches Selected')
+                ->body('Please select at least one provider branch.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $successCount = 0;
+        $failureCount = 0;
+        $branches = \App\Models\ProviderBranch::whereIn('id', $selectedBranchIds)->get();
+
+        foreach ($branches as $branch) {
+            try {
+                $emails = collect();
+                
+                // Add branch emails
+                if ($branch->getGopEmail()) {
+                    $emails->push($branch->getGopEmail());
+                }
+                if ($branch->getOperationEmail()) {
+                    $emails->push($branch->getOperationEmail());
+                }
+                
+                // Add custom emails
+                $emails = $emails->merge($customEmails)->unique();
+                
+                if ($emails->isEmpty()) {
+                    // No email available, create task for manual follow-up
+                    $this->createManualFollowUpTaskForBranch($branch, $record);
+                    $failureCount++;
+                    continue;
+                }
+
+                // Send email to each address
+                foreach ($emails as $email) {
+                    Mail::to($email)->send(new \App\Mail\AppointmentNotificationMail('file_created', $record));
+                }
+                
+                $successCount++;
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to send appointment request', [
+                    'branch_id' => $branch->id,
+                    'branch_name' => $branch->branch_name,
+                    'error' => $e->getMessage()
+                ]);
+                $failureCount++;
+            }
+        }
+
+        // Show notification
+        if ($successCount > 0) {
+            Notification::make()
+                ->title('Appointment Requests Sent')
+                ->body("✅ Successfully sent to {$successCount} providers")
+                ->success()
+                ->send();
+        }
+
+        if ($failureCount > 0) {
+            Notification::make()
+                ->title('Some Requests Failed')
+                ->body("⚠️ Failed to send to {$failureCount} providers (manual follow-up tasks created)")
+                ->warning()
+                ->send();
+        }
+    }
+
+    /**
+     * Create manual follow-up task for branch
+     */
+    protected function createManualFollowUpTaskForBranch($branch, $record): void
+    {
+        Task::create([
+            'title' => "Manual follow-up required for appointment request",
+            'description' => "File: {$record->mga_reference} - Patient: {$record->patient->name} - Branch: {$branch->branch_name}",
+            'taskable_type' => \App\Models\ProviderBranch::class,
+            'taskable_id' => $branch->id,
+            'assigned_to' => auth()->id(),
+            'due_date' => now()->addDays(1),
+            'priority' => 'high',
+            'status' => 'pending'
+        ]);
     }
 }
