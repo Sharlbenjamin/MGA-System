@@ -10,7 +10,7 @@
                     </h3>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-4 gap-4">
                     <div>
                         <label class="text-sm font-medium text-gray-500 dark:text-gray-400">File Reference</label>
                         <p class="text-sm font-semibold text-warning-600 dark:text-warning-400">
@@ -45,7 +45,7 @@
                         <p class="text-sm">{{ $this->file->address ?? 'N/A' }}</p>
                     </div>
                     
-                    <div class="col-span-2">
+                    <div class="col-span-4">
                         <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Symptoms</label>
                         <p class="text-sm">{{ $this->file->symptoms ?? 'N/A' }}</p>
                     </div>
