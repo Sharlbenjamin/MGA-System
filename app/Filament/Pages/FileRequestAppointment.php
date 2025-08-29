@@ -49,7 +49,7 @@ class FileRequestAppointment extends Page implements HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $title = 'Request Appointment';
-    protected static ?string $slug = 'file-request-appointment';
+    protected static string $routePath = '/file-request-appointment/{record}';
     protected static ?string $navigationGroup = 'Operation';
     protected static bool $shouldRegisterNavigation = false;
 
@@ -467,7 +467,7 @@ class FileRequestAppointment extends Page implements HasTable
             Action::make('backToFile')
                 ->label('Back to File')
                 ->icon('heroicon-o-arrow-left')
-                ->url(route('filament.admin.resources.files.view', $this->file))
+                ->url(fn () => \App\Filament\Resources\FileResource::getUrl('view', ['record' => $this->file]))
                 ->color('gray'),
         ];
     }
