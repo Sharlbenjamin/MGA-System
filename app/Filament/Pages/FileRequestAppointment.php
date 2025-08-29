@@ -44,7 +44,7 @@ class FileRequestAppointment extends Page implements HasTable
     use InteractsWithTable;
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $title = 'Request Appointment';
-    protected static ?string $slug = 'file-request-appointment';
+    protected static ?string $slug = 'file-request-appointment/{record}';
     protected static ?string $navigationGroup = 'Files';
     protected static ?int $navigationSort = 10;
     protected static string $view = 'filament.pages.file-request-appointment';
@@ -507,7 +507,16 @@ class FileRequestAppointment extends Page implements HasTable
 
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string
     {
-        return route('filament.admin.pages.file-request-appointment', $parameters);
+        $panel = $panel ?? 'admin';
+        $slug = static::$slug;
+        
+        if (!empty($parameters)) {
+            $slug .= '/' . implode('/', $parameters);
+        }
+        
+        $url = "/{$panel}/{$slug}";
+        
+        return $isAbsolute ? url($url) : $url;
     }
 
     protected function getHeaderActions(): array
