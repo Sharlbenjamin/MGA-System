@@ -504,7 +504,7 @@ class RequestAppointments extends ListRecords
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereExists(function($subQuery) use ($value) {
                         $subQuery->select(\DB::raw(1))
                             ->from('branch_cities')
-                            ->whereColumn('branch_cities.provider_branch_id', 'provider_branches.id')
+                            ->whereColumn('branch_cities.provider_branch_id', 'branch_services.provider_branch_id')
                             ->where('branch_cities.city_id', $value);
                     }))),
 
