@@ -16,12 +16,9 @@ use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Infolists\Components\RepeatableEntry;
 
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\CheckboxColumn;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Repeater;
 use Illuminate\Support\Facades\View;
-use Filament\Tables\Table;
 use Illuminate\Support\Facades\Mail;
 
 use Filament\Forms\Components\TextInput;
