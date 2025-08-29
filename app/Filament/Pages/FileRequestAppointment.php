@@ -145,4 +145,19 @@ class FileRequestAppointment extends Page implements HasTable
             ->success()
             ->send();
     }
+
+    public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string
+    {
+        $panel = $panel ?? 'admin';
+        $slug = static::$slug;
+        
+        // Replace {record} placeholder with actual record ID
+        if (isset($parameters['record'])) {
+            $slug = str_replace('{record}', $parameters['record'], $slug);
+        }
+        
+        $url = "/{$panel}/{$slug}";
+        
+        return $isAbsolute ? url($url) : $url;
+    }
 }
