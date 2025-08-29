@@ -1389,8 +1389,8 @@ class ViewFile extends ViewRecord
      */
     protected function getBranchContactInfo($branch): string
     {
-        $hasEmail = $branch->getGopEmail() || $branch->getOperationEmail();
-        $hasPhone = $branch->getGopPhone() || $branch->getOperationPhone();
+        $hasEmail = !empty($branch->email);
+        $hasPhone = !empty($branch->phone);
         
         if ($hasEmail && $hasPhone) {
             return 'Email, Phone';
@@ -1428,12 +1428,9 @@ class ViewFile extends ViewRecord
             try {
                 $emails = collect();
                 
-                // Add branch emails
-                if ($branch->getGopEmail()) {
-                    $emails->push($branch->getGopEmail());
-                }
-                if ($branch->getOperationEmail()) {
-                    $emails->push($branch->getOperationEmail());
+                // Add branch email if available
+                if (!empty($branch->email)) {
+                    $emails->push($branch->email);
                 }
                 
                 // Add custom emails
