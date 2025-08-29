@@ -435,7 +435,7 @@ class ProviderBranchResource extends Resource
             'create' => Pages\CreateProviderBranch::route('/create'),
             'edit' => Pages\EditProviderBranch::route('/{record}/edit'),
             'overview' => Pages\BranchOverView::route('/{record}'),
-
+            'request-appointments' => Pages\RequestAppointments::route('/request-appointments/{record?}'),
         ];
     }
 

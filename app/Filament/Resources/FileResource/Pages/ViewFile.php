@@ -349,6 +349,12 @@ class ViewFile extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('requestAppointment')
+                ->label('Request Appointment')
+                ->icon('heroicon-o-calendar-days')
+                ->visible(fn ($record) => $record->service_type_id === 2)
+                ->url(fn ($record) => route('filament.admin.pages.file-request-appointment', ['record' => $record->id]))
+                ->color('success'),
             Action::make('exportMedicalReport')
                 ->label('Export MR')
                 ->icon('heroicon-o-document-arrow-down')
@@ -560,10 +566,10 @@ class ViewFile extends ViewRecord
                     'file_id' => $record->id
                 ]))
                 ->openUrlInNewTab(false)->color('success'),
-            Action::make('requestAppointment')
-                ->label('Request Appointment')
-                ->icon('heroicon-o-calendar-days')
-                ->url(fn ($record) => \App\Filament\Pages\FileRequestAppointment::getUrl(['record' => $record->id]))
+            Action::make('requestAppointments')
+                ->label('Request Appointments')
+                ->icon('heroicon-o-calendar')
+                ->url(\App\Filament\Resources\ProviderBranchResource::getUrl('request-appointments', ['record' => $this->record]))
                 ->openUrlInNewTab(false)
                 ->color('warning'),
 
