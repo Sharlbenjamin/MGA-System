@@ -1,72 +1,86 @@
 <x-filament-panels::page>
     {{-- File Information Cards --}}
     <div class="mb-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-6">
             {{-- File Info Card --}}
-            <x-filament::card>
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                        File Information
+            <x-filament::card class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-l-4 border-blue-500">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-blue-900 dark:text-blue-100">
+                        📋 File Information
                     </h3>
                 </div>
                 
-                <div class="grid grid-cols-4 gap-4">
-                    <div>
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">File Reference</label>
-                        <p class="text-sm font-semibold text-warning-600 dark:text-warning-400">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">File Reference</label>
+                        <p class="text-lg font-bold text-amber-600 dark:text-amber-400 mt-1">
                             {{ $this->file->mga_reference }}
                         </p>
                     </div>
                     
-                    <div>
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Patient Name</label>
-                        <p class="text-sm font-semibold text-danger-600 dark:text-danger-400">
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Patient Name</label>
+                        <p class="text-lg font-bold text-red-600 dark:text-red-400 mt-1">
                             {{ $this->file->patient->name ?? 'N/A' }}
                         </p>
                     </div>
                     
-                    <div>
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Service Type</label>
-                        <p class="text-sm">{{ $this->file->serviceType->name ?? 'N/A' }}</p>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Service Type</label>
+                        <p class="text-lg font-bold text-blue-600 dark:text-blue-400 mt-1">
+                            {{ $this->file->serviceType->name ?? 'N/A' }}
+                        </p>
                     </div>
                     
-                    <div>
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Country</label>
-                        <p class="text-sm">{{ $this->file->country->name ?? 'N/A' }}</p>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Country</label>
+                        <p class="text-lg font-bold text-green-600 dark:text-green-400 mt-1">
+                            {{ $this->file->country->name ?? 'N/A' }}
+                        </p>
                     </div>
                     
-                    <div>
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">City</label>
-                        <p class="text-sm">{{ $this->file->city->name ?? 'N/A' }}</p>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">City</label>
+                        <p class="text-lg font-bold text-purple-600 dark:text-purple-400 mt-1">
+                            {{ $this->file->city->name ?? 'N/A' }}
+                        </p>
                     </div>
                     
-                    <div>
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Address</label>
-                        <p class="text-sm">{{ $this->file->address ?? 'N/A' }}</p>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Address</label>
+                        <p class="text-lg font-bold text-gray-700 dark:text-gray-300 mt-1">
+                            {{ $this->file->address ?? 'N/A' }}
+                        </p>
                     </div>
                     
-                    <div class="col-span-4">
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Symptoms</label>
-                        <p class="text-sm">{{ $this->file->symptoms ?? 'N/A' }}</p>
+                    <div class="col-span-1 md:col-span-2 lg:col-span-4 bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Symptoms</label>
+                        <p class="text-base font-medium text-gray-700 dark:text-gray-300 mt-1">
+                            {{ $this->file->symptoms ?? 'N/A' }}
+                        </p>
                     </div>
                     
-                    <div>
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Service Date</label>
-                        <p class="text-sm">{{ $this->file->service_date?->format('d/m/Y') ?? 'N/A' }}</p>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Service Date</label>
+                        <p class="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                            {{ $this->file->service_date?->format('d/m/Y') ?? 'N/A' }}
+                        </p>
                     </div>
                     
-                    <div>
-                        <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Service Time</label>
-                        <p class="text-sm">{{ $this->file->service_time ?? 'N/A' }}</p>
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Service Time</label>
+                        <p class="text-lg font-bold text-teal-600 dark:text-teal-400 mt-1">
+                            {{ $this->file->service_time ?? 'N/A' }}
+                        </p>
                     </div>
                 </div>
             </x-filament::card>
             
             {{-- Custom Email Card --}}
-            <x-filament::card>
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                        Custom Email Addresses
+            <x-filament::card class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-l-4 border-green-500">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-green-900 dark:text-green-100">
+                        📧 Custom Email Addresses
                     </h3>
                 </div>
                 
