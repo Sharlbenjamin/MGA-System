@@ -373,9 +373,9 @@ class ProviderBranchResource extends Resource
                     ->searchable()
                     ->preload()
                     ->query(function (Builder $query, array $data): Builder {
-                        if (!empty($data['values'])) {
+                        if (!empty($data['value'])) {
                             return $query->whereHas('branchServices', function (Builder $query) use ($data) {
-                                $query->whereIn('service_type_id', $data['values'])
+                                $query->where('service_type_id', $data['value'])
                                     ->where('is_active', 1);
                             });
                         }
