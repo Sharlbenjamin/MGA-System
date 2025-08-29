@@ -110,7 +110,7 @@
                     {{-- Add Email Form --}}
                     <div class="mt-4">
                         <form wire:submit.prevent="addCustomEmail" class="flex gap-3">
-                            <x-filament::input.wrapper class="flex-1">
+                            <x-filament::input.wrapper class="w-1/2">
                                 <x-filament::input 
                                     type="email" 
                                     wire:model="newEmail" 
@@ -122,6 +122,18 @@
                                 Add Email
                             </x-filament::button>
                         </form>
+                        
+                        {{-- Send Custom Email Request Button --}}
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <x-filament::button 
+                                wire:click="sendCustomEmailRequest"
+                                size="lg"
+                                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                            >
+                                <x-heroicon-o-paper-airplane class="w-5 h-5 mr-2" />
+                                Send Custom Email Request
+                            </x-filament::button>
+                        </div>
                     </div>
                 </div>
             </x-filament::card>
