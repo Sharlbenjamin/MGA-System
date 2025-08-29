@@ -93,25 +93,6 @@ class RequestAppointments extends ListRecords
             ->join('provider_branches', 'branch_services.provider_branch_id', '=', 'provider_branches.id')
             ->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
             ->where('branch_services.is_active', 1))
-            ->headerActions([
-                Action::make('addCustomEmail')
-                    ->label('Add Custom Email')
-                    ->icon('heroicon-o-plus')
-                    ->form([
-                        \Filament\Forms\Components\TextInput::make('email')
-                            ->label('Email Address')
-                            ->email()
-                            ->required(),
-                    ])
-                    ->action(function (array $data) {
-                        // Add custom email to the session or temporary storage
-                        session()->push('custom_emails', $data['email']);
-                        Notification::make()
-                            ->title('Custom email added')
-                            ->success()
-                            ->send();
-                    }),
-            ])
             ->columns([
                 CheckboxColumn::make('selected'),
 
@@ -410,6 +391,24 @@ class RequestAppointments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('addCustomEmail')
+                ->label('Add Custom Email')
+                ->icon('heroicon-o-plus')
+                ->form([
+                    \Filament\Forms\Components\TextInput::make('email')
+                        ->label('Email Address')
+                        ->email()
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    // Add custom email to the session or temporary storage
+                    session()->push('custom_emails', $data['email']);
+                    Notification::make()
+                        ->title('Custom email added')
+                        ->success()
+                        ->send();
+                }),
+            
             Action::make('backToFile')
                 ->label('Back to File')
                 ->icon('heroicon-o-arrow-left')
