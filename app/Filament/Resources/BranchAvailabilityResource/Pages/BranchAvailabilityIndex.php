@@ -39,7 +39,31 @@ class BranchAvailabilityIndex extends ListRecords
     public function mount(): void
     {
         parent::mount();
-        $this->form->fill();
+        
+        // Check if a file ID was passed in the URL
+        $fileId = request()->query('file');
+        if ($fileId) {
+            $file = File::with(['patient.client', 'serviceType', 'country', 'city'])->find($fileId);
+            if ($file) {
+                $this->selectedFile = $file;
+                $this->selectedFileId = (int) $fileId;
+                
+                // Pre-fill the form with the selected file
+                $this->form->fill([
+                    'selectedFileId' => $fileId,
+                    'customEmails' => []
+                ]);
+                
+                // Show success notification
+                Notification::make()
+                    ->title('File Pre-selected')
+                    ->body("File {$file->mga_reference} has been automatically selected.")
+                    ->success()
+                    ->send();
+            }
+        } else {
+            $this->form->fill();
+        }
     }
 
     protected function getHeaderWidgets(): array

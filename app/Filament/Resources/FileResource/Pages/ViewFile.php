@@ -39,6 +39,7 @@ use Filament\Forms\Components\RichEditor;
 use App\Models\Task;
 use App\Models\ServiceType;
 use App\Models\Country;
+use App\Filament\Resources\BranchAvailabilityResource;
 
 use Filament\Support\Colors\Color;
 
@@ -348,49 +349,12 @@ class ViewFile extends ViewRecord
         return [
             Action::make('requestAppointment')
                 ->label('Request Appointment')
-                ->slideOver()
                 ->icon('heroicon-o-calendar-days')
                 ->color('success')
-                ->modalHeading('Request Appointment')
-                ->modalWidth('7xl')
-                ->form([
-                    Section::make('Additional Email Addresses')
-                        ->description('Add custom email addresses to include in appointment requests')
-                        ->schema([
-                            Repeater::make('custom_emails')
-                                ->schema([
-                                    TextInput::make('email')
-                                        ->label('Email Address')
-                                        ->email()
-                                        ->required()
-                                        ->placeholder('Enter email address')
-                                ])
-                                ->defaultItems(0)
-                                ->addActionLabel('Add Email')
-                                ->reorderable(false)
-                                ->collapsible()
-                                ->itemLabel(fn (array $state): ?string => $state['email'] ?? null)
-                        ]),
-                    
-                    Section::make('Provider Branches')
-                        ->description('Select provider branches to send appointment requests')
-                        ->schema([
-                            CheckboxList::make('selected_branches')
-                                ->label('Select Branches')
-                                ->options(function ($record) {
-                                    return $this->getProviderBranchOptions($record);
-                                })
-                                ->descriptions(function ($record) {
-                                    return $this->getProviderBranchDescriptions($record);
-                                })
-                                ->columns(1)
-                                ->required()
-                        ]),
-                ])
-                ->action(function (array $data, $record) {
-                    // This will handle the appointment request sending
-                    $this->sendAppointmentRequestsFromModal($data, $record);
-                }),
+                ->url(function ($record) {
+                    return BranchAvailabilityResource::getUrl('index') . '?file=' . $record->id;
+                })
+                ->openUrlInNewTab(false),
             Action::make('exportMedicalReport')
                 ->label('Export MR')
                 ->icon('heroicon-o-document-arrow-down')
