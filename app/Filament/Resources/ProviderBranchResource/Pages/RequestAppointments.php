@@ -465,7 +465,6 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('serviceTypeFilter')
                     ->label('Service Type')
                     ->options(ServiceType::pluck('name', 'id'))
-                    ->default($this->file->service_type_id)
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('branch_services.service_type_id', $value))),
 
                 SelectFilter::make('countryFilter')
@@ -483,7 +482,6 @@ class RequestAppointments extends ListRecords
                         
                         return $countries->pluck('name', 'id')->toArray();
                     })
-                    ->default($this->file->country_id)
                     ->searchable()
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('providers.country_id', $value))),
 
@@ -517,7 +515,6 @@ class RequestAppointments extends ListRecords
                         'Potential' => 'Potential',
                         'Hold' => 'Hold',
                     ])
-                    ->default('Active')
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('providers.status', $value))),
 
                 Filter::make('showOnlyWithEmail')
