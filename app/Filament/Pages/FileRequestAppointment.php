@@ -510,8 +510,9 @@ class FileRequestAppointment extends Page implements HasTable
         $panel = $panel ?? 'admin';
         $slug = static::$slug;
         
-        if (!empty($parameters)) {
-            $slug .= '/' . implode('/', $parameters);
+        // Replace {record} placeholder with actual record ID
+        if (isset($parameters['record'])) {
+            $slug = str_replace('{record}', $parameters['record'], $slug);
         }
         
         $url = "/{$panel}/{$slug}";
