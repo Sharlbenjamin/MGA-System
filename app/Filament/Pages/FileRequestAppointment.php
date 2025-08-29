@@ -505,7 +505,7 @@ class FileRequestAppointment extends Page implements HasTable
         return "Request Appointment - {$this->file->mga_reference}";
     }
 
-    public static function getUrl(array $parameters = []): string
+    public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string
     {
         return route('filament.admin.pages.file-request-appointment', $parameters);
     }
