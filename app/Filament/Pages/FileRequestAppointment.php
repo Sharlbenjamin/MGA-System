@@ -10,7 +10,7 @@ use App\Models\City;
 use App\Services\GoogleDistanceService;
 use App\Mail\NotifyBranchMailable;
 use App\Models\Appointment;
-use Filament\Pages\Page;
+use Filament\Resources\Pages\Page;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -22,13 +22,9 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\Grid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Contracts\View\View;
 
 class FileRequestAppointment extends Page implements HasTable
 {
@@ -36,7 +32,6 @@ class FileRequestAppointment extends Page implements HasTable
 
     protected static ?string $title = 'Request Appointment';
     protected static ?string $slug = 'file-request-appointment/{record}';
-
 
     public File $file;
     public array $customEmails = [];
@@ -151,14 +146,13 @@ class FileRequestAppointment extends Page implements HasTable
     {
         $panel = $panel ?? 'admin';
         $slug = static::$slug;
-        
-        // Replace {record} placeholder with actual record ID
+
         if (isset($parameters['record'])) {
             $slug = str_replace('{record}', $parameters['record'], $slug);
         }
-        
+
         $url = "/{$panel}/{$slug}";
-        
+
         return $isAbsolute ? url($url) : $url;
     }
 }
