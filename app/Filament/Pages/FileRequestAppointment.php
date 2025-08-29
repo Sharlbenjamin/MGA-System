@@ -94,8 +94,7 @@ class FileRequestAppointment extends Page implements HasTable
             ->query($this->getTableQuery())
             ->columns([
                 CheckboxColumn::make('selected')
-                    ->label('Select')
-                    ->selectAll(),
+                    ->label('Select'),
                 
                 TextColumn::make('branch_name')
                     ->label('Branch Name')
