@@ -465,6 +465,7 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('serviceTypeFilter')
                     ->label('Service Type')
                     ->options(ServiceType::pluck('name', 'id'))
+                    ->default($this->file->service_type_id)
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('branch_services.service_type_id', $value))),
 
                 SelectFilter::make('countryFilter')
@@ -499,7 +500,6 @@ class RequestAppointments extends ListRecords
                         }
                         return [];
                     })
-                    ->default($this->file->city_id)
                     ->searchable()
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->whereExists(function($subQuery) use ($value) {
                         $subQuery->select(\DB::raw(1))
