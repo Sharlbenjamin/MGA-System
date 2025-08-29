@@ -75,15 +75,15 @@
                     @if(empty($this->customEmails))
                         <p class="text-sm text-gray-500 dark:text-gray-400">No additional emails added</p>
                     @else
-                        <div class="mt-2 space-y-1">
+                        <div class="mt-2 space-y-2">
                             @foreach($this->customEmails as $email)
                                 @if(!empty($email['email']))
-                                    <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                                        <span class="text-sm text-info-600 dark:text-info-400">{{ $email['email'] }}</span>
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <span class="text-sm text-info-600 dark:text-info-400 font-medium flex-1 mr-3">{{ $email['email'] }}</span>
                                         <button 
                                             type="button"
                                             wire:click="removeCustomEmail({{ $loop->index }})"
-                                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                         >
                                             <x-heroicon-o-x-mark class="w-4 h-4" />
                                         </button>
@@ -95,8 +95,8 @@
                     
                     {{-- Add Email Form --}}
                     <div class="mt-4">
-                        <form wire:submit.prevent="addCustomEmail" class="flex gap-2">
-                            <x-filament::input.wrapper>
+                        <form wire:submit.prevent="addCustomEmail" class="flex gap-3">
+                            <x-filament::input.wrapper class="flex-1">
                                 <x-filament::input 
                                     type="email" 
                                     wire:model="newEmail" 
@@ -104,7 +104,7 @@
                                     class="w-full"
                                 />
                             </x-filament::input.wrapper>
-                            <x-filament::button type="submit" size="sm">
+                            <x-filament::button type="submit" size="sm" class="flex-shrink-0">
                                 Add Email
                             </x-filament::button>
                         </form>
