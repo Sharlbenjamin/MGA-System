@@ -123,7 +123,6 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                     ->placeholder('example@email.com'),
                             ])
                             ->addActionLabel('Add Email')
-                            ->deleteActionLabel('Remove Email')
                             ->reorderable(false)
                             ->collapsible()
                             ->itemLabel(fn (array $state): ?string => $state['email'] ?? null)
