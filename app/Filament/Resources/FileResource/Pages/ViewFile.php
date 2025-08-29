@@ -357,39 +357,6 @@ class ViewFile extends ViewRecord
                 ->modalHeading('Request Appointment')
                 ->modalWidth('7xl')
                 ->form([
-                    Section::make('File Information')
-                        ->schema([
-                            Grid::make(3)
-                                ->schema([
-                                    TextInput::make('file_reference')
-                                        ->label('File Reference')
-                                        ->default(fn ($record) => $record->mga_reference)
-                                        ->disabled(),
-                                    TextInput::make('patient_name')
-                                        ->label('Patient Name')
-                                        ->default(fn ($record) => $record->patient->name)
-                                        ->disabled(),
-                                    TextInput::make('service_type')
-                                        ->label('Service Type')
-                                        ->default(fn ($record) => $record->serviceType->name)
-                                        ->disabled(),
-                                    TextInput::make('country')
-                                        ->label('Country')
-                                        ->default(fn ($record) => $record->country->name ?? 'N/A')
-                                        ->disabled(),
-                                    TextInput::make('city')
-                                        ->label('City')
-                                        ->default(fn ($record) => $record->city->name ?? 'N/A')
-                                        ->disabled(),
-                                    TextInput::make('address')
-                                        ->label('Address')
-                                        ->default(fn ($record) => $record->address ?? 'N/A')
-                                        ->disabled(),
-                                ])
-                        ])
-                        ->collapsible()
-                        ->collapsed(false),
-                    
                     Section::make('Additional Email Addresses')
                         ->description('Add custom email addresses to include in appointment requests')
                         ->schema([
@@ -411,15 +378,30 @@ class ViewFile extends ViewRecord
                     Section::make('Provider Branches')
                         ->description('Select provider branches to send appointment requests')
                         ->schema([
-                            CheckboxList::make('selected_branches')
+                            Table::make('selected_branches')
                                 ->label('Select Branches')
-                                ->options(function ($record) {
-                                    return $this->getProviderBranchOptions($record);
+                                ->columns([
+                                    Tables\Columns\CheckboxColumn::make('selected'),
+                                    Tables\Columns\TextColumn::make('name')
+                                        ->label('Branch Name'),
+                                    Tables\Columns\TextColumn::make('description')
+                                        ->label('Description')
+                                ])
+                                ->recordUrl(null)
+                                ->paginated(false)
+                                ->records(function ($record) {
+                                    $options = $this->getProviderBranchOptions($record);
+                                    $descriptions = $this->getProviderBranchDescriptions($record);
+                                    
+                                    return collect($options)->map(function ($name, $id) use ($descriptions) {
+                                        return [
+                                            'id' => $id,
+                                            'name' => $name,
+                                            'description' => $descriptions[$id] ?? null
+                                        ];
+                                    });
                                 })
-                                ->descriptions(function ($record) {
-                                    return $this->getProviderBranchDescriptions($record);
-                                })
-                                ->columns(1)
+                                ->bulkActions([])
                                 ->required()
                         ]),
                 ])
