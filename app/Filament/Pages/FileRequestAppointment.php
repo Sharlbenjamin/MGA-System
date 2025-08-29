@@ -32,6 +32,7 @@ class FileRequestAppointment extends Page implements HasTable
 
     protected static ?string $title = 'Request Appointment';
     protected static ?string $slug = 'file-request-appointment/{record}';
+    protected static string $view = 'filament.pages.file-request-appointment';
 
     public File $file;
     public array $customEmails = [];
@@ -141,6 +142,8 @@ class FileRequestAppointment extends Page implements HasTable
             ->success()
             ->send();
     }
+
+
 
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string
     {
