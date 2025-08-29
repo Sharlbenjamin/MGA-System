@@ -566,12 +566,7 @@ class ViewFile extends ViewRecord
                     'file_id' => $record->id
                 ]))
                 ->openUrlInNewTab(false)->color('success'),
-            Action::make('requestAppointments')
-                ->label('Request Appointments')
-                ->icon('heroicon-o-calendar')
-                ->url(\App\Filament\Resources\ProviderBranchResource::getUrl('request-appointments', ['record' => $this->record]))
-                ->openUrlInNewTab(false)
-                ->color('warning'),
+
 
             Action::make('confirmTelemedicine')
                 ->label('Confirm Telemedicine')
