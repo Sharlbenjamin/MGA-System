@@ -378,30 +378,15 @@ class ViewFile extends ViewRecord
                     Section::make('Provider Branches')
                         ->description('Select provider branches to send appointment requests')
                         ->schema([
-                            Table::make('selected_branches')
+                            CheckboxList::make('selected_branches')
                                 ->label('Select Branches')
-                                ->columns([
-                                    Tables\Columns\CheckboxColumn::make('selected'),
-                                    Tables\Columns\TextColumn::make('name')
-                                        ->label('Branch Name'),
-                                    Tables\Columns\TextColumn::make('description')
-                                        ->label('Description')
-                                ])
-                                ->recordUrl(null)
-                                ->paginated(false)
-                                ->records(function ($record) {
-                                    $options = $this->getProviderBranchOptions($record);
-                                    $descriptions = $this->getProviderBranchDescriptions($record);
-                                    
-                                    return collect($options)->map(function ($name, $id) use ($descriptions) {
-                                        return [
-                                            'id' => $id,
-                                            'name' => $name,
-                                            'description' => $descriptions[$id] ?? null
-                                        ];
-                                    });
+                                ->options(function ($record) {
+                                    return $this->getProviderBranchOptions($record);
                                 })
-                                ->bulkActions([])
+                                ->descriptions(function ($record) {
+                                    return $this->getProviderBranchDescriptions($record);
+                                })
+                                ->columns(1)
                                 ->required()
                         ]),
                 ])
