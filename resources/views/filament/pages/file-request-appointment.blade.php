@@ -109,16 +109,18 @@
                     
                     {{-- Add Email Form --}}
                     <div class="mt-4">
-                        <form wire:submit.prevent="addCustomEmail" class="flex gap-3">
-                            <x-filament::input.wrapper class="w-1/2">
-                                <x-filament::input 
-                                    type="email" 
-                                    wire:model="newEmail" 
-                                    placeholder="Enter email address"
-                                    class="w-full"
-                                />
-                            </x-filament::input.wrapper>
-                            <x-filament::button type="submit" size="sm" class="flex-shrink-0">
+                        <form wire:submit.prevent="addCustomEmail" class="flex gap-3 items-end">
+                            <div class="w-1/2">
+                                <x-filament::input.wrapper>
+                                    <x-filament::input 
+                                        type="email" 
+                                        wire:model="newEmail" 
+                                        placeholder="Enter email address"
+                                        class="w-full"
+                                    />
+                                </x-filament::input.wrapper>
+                            </div>
+                            <x-filament::button type="submit" size="sm" class="flex-shrink-0 h-10">
                                 Add Email
                             </x-filament::button>
                         </form>
@@ -128,7 +130,7 @@
                             <x-filament::button 
                                 wire:click="sendCustomEmailRequest"
                                 size="lg"
-                                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                                class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
                             >
                                 <x-heroicon-o-paper-airplane class="w-5 h-5 mr-2" />
                                 Send Custom Email Request

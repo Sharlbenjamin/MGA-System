@@ -285,66 +285,7 @@ class FileRequestAppointment extends Page implements HasTable
             ->defaultSort('priority', 'asc');
     }
 
-    public function infolist(Infolist $infolist): Infolist
-    {
-        return $infolist
-            ->schema([
-                InfolistGrid::make(2)
-                    ->schema([
-                        // File Info Card
-                        Card::make()
-                            ->schema([
-                                InfolistSection::make('File Information')
-                                    ->schema([
-                                        TextEntry::make('mga_reference')
-                                            ->label('File Reference')
-                                            ->color('warning')
-                                            ->weight('bold'),
-                                        TextEntry::make('patient.name')
-                                            ->label('Patient Name')
-                                            ->color('danger')
-                                            ->weight('bold'),
-                                        TextEntry::make('serviceType.name')
-                                            ->label('Service Type'),
-                                        TextEntry::make('country.name')
-                                            ->label('Country'),
-                                        TextEntry::make('city.name')
-                                            ->label('City'),
-                                        TextEntry::make('address')
-                                            ->label('Address'),
-                                        TextEntry::make('symptoms')
-                                            ->label('Symptoms'),
-                                        TextEntry::make('service_date')
-                                            ->label('Service Date')
-                                            ->date(),
-                                        TextEntry::make('service_time')
-                                            ->label('Service Time'),
-                                    ])
-                                    ->columns(2)
-                            ]),
-                        
-                        // Custom Email Card
-                        Card::make()
-                            ->schema([
-                                InfolistSection::make('Custom Email Addresses')
-                                    ->schema([
-                                        TextEntry::make('custom_emails')
-                                            ->label('Additional Emails')
-                                            ->formatStateUsing(function () {
-                                                if (empty($this->customEmails)) {
-                                                    return 'No additional emails added';
-                                                }
-                                                
-                                                return collect($this->customEmails)
-                                                    ->pluck('email')
-                                                    ->implode(', ');
-                                            })
-                                            ->color('info'),
-                                    ])
-                            ]),
-                    ]),
-            ]);
-    }
+
 
     public function getTableQuery(): Builder
     {
