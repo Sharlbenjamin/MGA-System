@@ -30,7 +30,17 @@ class RequestAppointments extends ListRecords
 
     public function getFile(): File
     {
-        $fileId = request()->route('record');
+        // Get the file ID from the query parameter or session
+        $fileId = request()->query('file_id') ?? session('request_appointments_file_id');
+        
+        if (!$fileId) {
+            // If no file ID, redirect back to files list
+            return redirect()->route('filament.admin.resources.files.index');
+        }
+        
+        // Store the file ID in session for future use
+        session(['request_appointments_file_id' => $fileId]);
+        
         return File::with(['patient', 'serviceType', 'city', 'country'])->findOrFail($fileId);
     }
 
@@ -421,6 +431,15 @@ class RequestAppointments extends ListRecords
     {
         return [
             \App\Filament\Widgets\RequestAppointmentsFileInfo::class,
+        ];
+    }
+
+    protected function getHeaderWidgetsData(): array
+    {
+        return [
+            \App\Filament\Widgets\RequestAppointmentsFileInfo::class => [
+                'file' => $this->getFile(),
+            ],
         ];
     }
 
