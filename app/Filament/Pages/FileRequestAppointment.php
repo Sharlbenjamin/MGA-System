@@ -36,6 +36,7 @@ class FileRequestAppointment extends Page implements HasTable
 
     protected static ?string $title = 'Request Appointment';
     protected static ?string $slug = 'file-request-appointment/{record}';
+    protected static string $view = 'filament.panels::page';
 
     public File $file;
     public array $customEmails = [];
