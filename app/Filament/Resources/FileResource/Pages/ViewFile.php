@@ -563,7 +563,7 @@ class ViewFile extends ViewRecord
             Action::make('requestAppointments')
                 ->label('Request Appointments')
                 ->icon('heroicon-o-calendar')
-                ->url(route('filament.admin.resources.provider-branches.request-appointments', ['file_id' => $this->record]))
+                ->url(\App\Filament\Resources\ProviderBranchResource::getUrl('request-appointments', ['record' => $this->record]))
                 ->openUrlInNewTab(false)
                 ->color('warning'),
 

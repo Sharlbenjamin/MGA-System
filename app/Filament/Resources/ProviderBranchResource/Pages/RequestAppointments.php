@@ -30,8 +30,8 @@ class RequestAppointments extends ListRecords
 
     public function getFile(): File
     {
-        // Get the file ID from the query parameter or session
-        $fileId = request()->query('file_id') ?? session('request_appointments_file_id');
+        // Get the file ID from the route parameter or session
+        $fileId = request()->route('record') ?? session('request_appointments_file_id');
         
         if (!$fileId) {
             // If no file ID, redirect back to files list
