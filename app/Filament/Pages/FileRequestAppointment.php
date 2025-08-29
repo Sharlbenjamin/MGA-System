@@ -414,7 +414,7 @@ class FileRequestAppointment extends Page implements HasTable
 
     public function render(): \Illuminate\Contracts\View\View
     {
-        return view('filament.pages.page', [
+        return view('filament::page', [
             'page' => $this,
             'table' => $this->table($this->makeTable()),
         ]);
