@@ -566,6 +566,13 @@ class ViewFile extends ViewRecord
                 ->url(\App\Filament\Resources\ProviderBranchResource::getUrl('request-appointments', ['record' => $this->record]))
                 ->openUrlInNewTab(false)
                 ->color('warning'),
+            Action::make('requestAppointment')
+                ->label('Request Appointment')
+                ->icon('heroicon-o-calendar-days')
+                ->visible(fn ($record) => $record->service_type_id === 2)
+                ->url(fn ($record) => \App\Filament\Pages\FileRequestAppointment::getUrl(['record' => $record->id]))
+                ->openUrlInNewTab(false)
+                ->color('info'),
 
             Action::make('confirmTelemedicine')
                 ->label('Confirm Telemedicine')
