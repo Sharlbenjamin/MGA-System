@@ -358,6 +358,22 @@ class RequestAppointments extends ListRecords
 
     public function table(Table $table): Table
     {
+        // Debug: Let's see what the query returns
+        $debugQuery = $this->getBranchesQuery();
+        $debugResults = $debugQuery->get();
+        \Log::info('RequestAppointments Debug - Total results: ' . $debugResults->count());
+        
+        // Debug each record
+        foreach ($debugResults as $index => $record) {
+            \Log::info("Record {$index}: " . json_encode([
+                'id' => $record->id,
+                'provider_branch_id' => $record->provider_branch_id,
+                'service_type_id' => $record->service_type_id,
+                'providerBranch_loaded' => isset($record->providerBranch),
+                'providerBranch_name' => $record->providerBranch->branch_name ?? 'NULL',
+            ]));
+        }
+        
         return $table
             ->query($this->getBranchesQuery())
             ->columns([
