@@ -315,6 +315,19 @@ class ProviderBranchResource extends Resource
                 TextColumn::make('branch_name')->label('Branch Name')->sortable()->searchable(),
                 TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
                 TextColumn::make('cities.name')->label('Cities')->sortable()->searchable(),
+                TextColumn::make('branchServices.serviceType.name')
+                    ->label('Services')
+                    ->listWithLineBreaks()
+                    ->searchable()
+                    ->toggleable()
+                    ->getStateUsing(function (ProviderBranch $record): string {
+                        return $record->branchServices()
+                            ->where('is_active', 1)
+                            ->with('serviceType')
+                            ->get()
+                            ->pluck('serviceType.name')
+                            ->implode(', ');
+                    }),
                 TextColumn::make('email')->label('Branch Email')->searchable()->toggleable(),
                 TextColumn::make('phone')->label('Branch Phone')->searchable()->toggleable(),
                 TextColumn::make('address')->label('Branch Address')->searchable()->toggleable()->limit(50),
@@ -354,6 +367,21 @@ class ProviderBranchResource extends Resource
                         'Hold' => 'Hold',
                     ]),
 
+                SelectFilter::make('serviceType')
+                    ->label('Service Type')
+                    ->options(ServiceType::pluck('name', 'id'))
+                    ->searchable()
+                    ->preload()
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['values'])) {
+                            return $query->whereHas('branchServices', function (Builder $query) use ($data) {
+                                $query->whereIn('service_type_id', $data['values'])
+                                    ->where('is_active', 1);
+                            });
+                        }
+                        return $query;
+                    }),
+
                 Filter::make('has_direct_email')
                     ->label('Has Direct Email')
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('email')),
@@ -373,6 +401,10 @@ class ProviderBranchResource extends Resource
 
                 Group::make('provider.country.name')
                     ->label('Country')
+                    ->collapsible(),
+
+                Group::make('branchServices.serviceType.name')
+                    ->label('Service Type')
                     ->collapsible(),
             ])
             ->actions([
