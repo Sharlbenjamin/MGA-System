@@ -47,6 +47,7 @@ class FileRequestAppointment extends Page implements HasTable
     protected static ?string $slug = 'file-request-appointment/{record}';
     protected static ?string $navigationGroup = 'Files';
     protected static ?int $navigationSort = 10;
+    protected static string $view = 'filament.pages.page';
 
     public ?array $customEmails = [];
     public ?string $newEmail = '';
@@ -535,6 +536,16 @@ class FileRequestAppointment extends Page implements HasTable
     public function getTitle(): string
     {
         return "Request Appointment - {$this->file->mga_reference}";
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [];
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        return [];
     }
 
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string
