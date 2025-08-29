@@ -16,7 +16,11 @@ use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Pages\Page;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -27,8 +31,11 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
-class BranchAvailabilityIndex extends ListRecords
+class BranchAvailabilityIndex extends Page implements HasForms, HasTable
 {
+    use InteractsWithForms;
+    use InteractsWithTable;
+
     protected static string $resource = BranchAvailabilityResource::class;
     protected static string $view = 'filament.resources.branch-availability-resource.pages.branch-availability-index';
 
@@ -38,8 +45,6 @@ class BranchAvailabilityIndex extends ListRecords
 
     public function mount(): void
     {
-        parent::mount();
-        
         // Check if a file ID was passed in the URL
         $fileId = request()->query('file');
         if ($fileId) {
@@ -66,9 +71,11 @@ class BranchAvailabilityIndex extends ListRecords
         }
     }
 
-    protected function getHeaderWidgets(): array
+    protected function getForms(): array
     {
-        return [];
+        return [
+            'form',
+        ];
     }
 
     public function form(Form $form): Form
