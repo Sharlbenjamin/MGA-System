@@ -47,7 +47,6 @@ class FileRequestAppointment extends Page implements HasTable
     protected static ?string $slug = 'file-request-appointment/{record}';
     protected static ?string $navigationGroup = 'Files';
     protected static ?int $navigationSort = 10;
-    protected static string $view = 'filament.pages.page';
 
     public ?array $customEmails = [];
     public ?string $newEmail = '';
@@ -546,6 +545,14 @@ class FileRequestAppointment extends Page implements HasTable
     protected function getFooterWidgets(): array
     {
         return [];
+    }
+
+    public function render()
+    {
+        return view('filament.panels::page', [
+            'page' => $this,
+            'infolist' => $this->infolist($this->makeInfolist()),
+        ]);
     }
 
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string
