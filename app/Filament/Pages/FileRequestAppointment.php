@@ -36,6 +36,7 @@ class FileRequestAppointment extends Page implements HasTable
     protected static ?string $slug = 'file-request-appointment/{record}';
     protected static ?string $navigationGroup = 'Files';
     protected static ?int $navigationSort = 10;
+    protected static string $view = 'filament.pages.page';
 
     public File $file;
     public $record;
