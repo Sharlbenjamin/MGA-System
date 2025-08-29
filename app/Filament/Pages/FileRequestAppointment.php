@@ -14,11 +14,6 @@ use Filament\Pages\Page;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table as FilamentTable;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\CheckboxColumn;
@@ -28,16 +23,10 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
-use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\Section as InfolistSection;
-use Filament\Infolists\Components\Card;
-use Filament\Infolists\Components\Grid as InfolistGrid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Filament\Support\Colors\Color;
 
 class FileRequestAppointment extends Page implements HasTable
 {
@@ -48,8 +37,6 @@ class FileRequestAppointment extends Page implements HasTable
     protected static ?string $navigationGroup = 'Files';
     protected static ?int $navigationSort = 10;
 
-    public ?array $customEmails = [];
-    public ?string $newEmail = '';
     public File $file;
     public $record;
 
@@ -57,35 +44,9 @@ class FileRequestAppointment extends Page implements HasTable
     {
         $this->record = $record;
         $this->file = File::with(['patient', 'city', 'country', 'serviceType'])->findOrFail($record);
-        
-        // Initialize custom emails array
-        $this->customEmails = [];
     }
 
-    public function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Section::make('Custom Email Addresses')
-                    ->description('Add additional email addresses to include in appointment requests')
-                    ->schema([
-                        Repeater::make('customEmails')
-                            ->schema([
-                                TextInput::make('email')
-                                    ->label('Email Address')
-                                    ->email()
-                                    ->required()
-                                    ->placeholder('Enter email address')
-                            ])
-                            ->defaultItems(0)
-                            ->addActionLabel('Add Email')
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => $state['email'] ?? null)
-                    ])
-                    ->collapsible()
-            ]);
-    }
+
 
     public function table(FilamentTable $table): FilamentTable
     {
@@ -286,98 +247,7 @@ class FileRequestAppointment extends Page implements HasTable
 
 
 
-    public function infolist(Infolist $infolist): Infolist
-    {
-        return $infolist
-            ->schema([
-                InfolistGrid::make(2)
-                    ->schema([
-                        // File Info Card
-                        Card::make()
-                            ->schema([
-                                InfolistSection::make('File Information')
-                                    ->schema([
-                                        TextEntry::make('mga_reference')
-                                            ->label('File Reference')
-                                            ->color('warning')
-                                            ->weight('bold'),
-                                        TextEntry::make('patient.name')
-                                            ->label('Patient Name')
-                                            ->color('danger')
-                                            ->weight('bold'),
-                                        TextEntry::make('serviceType.name')
-                                            ->label('Service Type')
-                                            ->color('success'),
-                                        TextEntry::make('country.name')
-                                            ->label('Country')
-                                            ->color('info'),
-                                        TextEntry::make('city.name')
-                                            ->label('City')
-                                            ->color('info'),
-                                        TextEntry::make('address')
-                                            ->label('Address')
-                                            ->color('gray'),
-                                        TextEntry::make('symptoms')
-                                            ->label('Symptoms')
-                                            ->color('warning')
-                                            ->columnSpan(2),
-                                        TextEntry::make('service_date')
-                                            ->label('Service Date')
-                                            ->date()
-                                            ->color('primary'),
-                                        TextEntry::make('service_time')
-                                            ->label('Service Time')
-                                            ->color('primary'),
-                                    ])
-                                    ->columns(4)
-                            ]),
-                        
-                        // Custom Email Card
-                        Card::make()
-                            ->schema([
-                                InfolistSection::make('Custom Email Addresses')
-                                    ->schema([
-                                        TextEntry::make('custom_emails')
-                                            ->label('Additional Emails')
-                                            ->formatStateUsing(function () {
-                                                if (empty($this->customEmails)) {
-                                                    return 'No additional emails added';
-                                                }
-                                                
-                                                return collect($this->customEmails)
-                                                    ->pluck('email')
-                                                    ->implode(', ');
-                                            })
-                                            ->color('info'),
-                                    ])
-                                    ->extraAttributes(['class' => 'space-y-4'])
-                                    ->extraHeaderActions([
-                                        \Filament\Infolists\Components\Actions\Action::make('addCustomEmail')
-                                            ->label('Add Email')
-                                            ->icon('heroicon-o-plus')
-                                            ->form([
-                                                \Filament\Forms\Components\TextInput::make('email')
-                                                    ->label('Email Address')
-                                                    ->email()
-                                                    ->required()
-                                                    ->placeholder('Enter email address')
-                                            ])
-                                            ->action(function (array $data) {
-                                                $this->addCustomEmail($data['email']);
-                                            })
-                                            ->color('success'),
-                                        \Filament\Infolists\Components\Actions\Action::make('sendCustomEmailRequest')
-                                            ->label('Send Custom Email Request')
-                                            ->icon('heroicon-o-paper-airplane')
-                                            ->color('success')
-                                            ->action(function () {
-                                                $this->sendCustomEmailRequest();
-                                            })
-                                    ])
-                            ]),
-                    ]),
-            ]);
-    }
+
 
     public function getTableQuery(): Builder
     {
@@ -468,12 +338,7 @@ class FileRequestAppointment extends Page implements HasTable
                     $emails->push($providerBranch->getPrimaryEmailAttribute());
                 }
                 
-                // Add custom emails
-                if (!empty($this->customEmails)) {
-                    $emails = $emails->merge(
-                        collect($this->customEmails)->pluck('email')->filter()
-                    );
-                }
+
 
                 // Send email notification
                 if ($emails->isNotEmpty()) {
@@ -547,13 +412,7 @@ class FileRequestAppointment extends Page implements HasTable
         return [];
     }
 
-    public function render()
-    {
-        return view('filament.panels::page', [
-            'page' => $this,
-            'infolist' => $this->infolist($this->makeInfolist()),
-        ]);
-    }
+
 
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string
     {
@@ -581,39 +440,5 @@ class FileRequestAppointment extends Page implements HasTable
         ];
     }
 
-    public function addCustomEmail($email = null): void
-    {
-        $emailToAdd = $email ?? $this->newEmail;
-        
-        if (!empty($emailToAdd) && filter_var($emailToAdd, FILTER_VALIDATE_EMAIL)) {
-            $this->customEmails[] = ['email' => $emailToAdd];
-            $this->newEmail = '';
-            
-            Notification::make()
-                ->title('Email Added')
-                ->body('Custom email address has been added successfully.')
-                ->success()
-                ->send();
-        } else {
-            Notification::make()
-                ->title('Invalid Email')
-                ->body('Please enter a valid email address.')
-                ->danger()
-                ->send();
-        }
-    }
 
-    public function removeCustomEmail(int $index): void
-    {
-        if (isset($this->customEmails[$index])) {
-            unset($this->customEmails[$index]);
-            $this->customEmails = array_values($this->customEmails); // Re-index array
-            
-            Notification::make()
-                ->title('Email Removed')
-                ->body('Custom email address has been removed.')
-                ->success()
-                ->send();
-        }
-    }
 }
