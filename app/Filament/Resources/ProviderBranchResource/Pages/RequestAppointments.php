@@ -56,8 +56,6 @@ class RequestAppointments extends ListRecords
 
     public function mount(): void
     {
-        parent::mount();
-        
         // Get the record parameter from the route
         $recordId = request()->route('record');
         
@@ -116,7 +114,7 @@ class RequestAppointments extends ListRecords
     public function selectAll()
     {
         $branchServices = $this->getBranchesQuery()->get();
-        $this->selectedBranches = $branchServices->pluck('providerBranch.id')->unique()->toArray();
+        $this->selectedBranches = $branchServices->pluck('provider_branch_id')->unique()->toArray();
     }
 
     public function clearSelection()
@@ -358,44 +356,26 @@ class RequestAppointments extends ListRecords
 
     public function table(Table $table): Table
     {
-        // Debug: Let's see what the query returns
-        $debugQuery = $this->getBranchesQuery();
-        $debugResults = $debugQuery->get();
-        \Log::info('RequestAppointments Debug - Total results: ' . $debugResults->count());
-        
-        // Debug each record
-        foreach ($debugResults as $index => $record) {
-            \Log::info("Record {$index}: " . json_encode([
-                'id' => $record->id,
-                'provider_branch_id' => $record->provider_branch_id,
-                'service_type_id' => $record->service_type_id,
-                'providerBranch_loaded' => isset($record->providerBranch),
-                'providerBranch_name' => $record->providerBranch->branch_name ?? 'NULL',
-            ]));
-        }
-        
         return $table
             ->query($this->getBranchesQuery())
             ->columns([
-                TextColumn::make('selected')
+                CheckboxColumn::make('selected')
                     ->label('Select')
-                    ->getStateUsing(fn ($record): string => in_array($record->providerBranch->id, $this->selectedBranches) ? '✓' : '')
-                    ->action(function ($record) {
-                        if (in_array($record->providerBranch->id, $this->selectedBranches)) {
-                            $this->selectedBranches = array_diff($this->selectedBranches, [$record->providerBranch->id]);
+                    ->getStateUsing(fn ($record): bool => in_array($record->provider_branch_id, $this->selectedBranches))
+                    ->action(function ($record, $state) {
+                        if ($state) {
+                            $this->selectedBranches[] = $record->provider_branch_id;
                         } else {
-                            $this->selectedBranches[] = $record->providerBranch->id;
+                            $this->selectedBranches = array_diff($this->selectedBranches, [$record->provider_branch_id]);
                         }
                     })
-                    ->alignCenter()
-                    ->color('success'),
-
+                    ->disabled(fn ($record): bool => !$this->hasEmail(\App\Models\ProviderBranch::find($record->provider_branch_id))),
 
                 TextColumn::make('providerBranch.branch_name')
                     ->label('Branch Name')
                     ->sortable()
                     ->searchable()
-                    ->url(fn ($record) => \App\Filament\Resources\ProviderBranchResource::getUrl('overview', ['record' => $record->providerBranch]))
+                    ->url(fn ($record) => \App\Filament\Resources\ProviderBranchResource::getUrl('overview', ['record' => $record->provider_branch_id]))
                     ->openUrlInNewTab()
                     ->color('primary')
                     ->weight('bold'),
@@ -420,7 +400,13 @@ class RequestAppointments extends ListRecords
                     ->label('City')
                     ->getStateUsing(function ($record) {
                         // Get cities from the branch's cities relationship
-                        $cities = $record->providerBranch->cities()->pluck('name')->unique()->filter()->implode(', ');
+                        $cities = \DB::table('branch_cities')
+                            ->join('cities', 'branch_cities.city_id', '=', 'cities.id')
+                            ->where('branch_cities.provider_branch_id', $record->provider_branch_id)
+                            ->pluck('cities.name')
+                            ->unique()
+                            ->filter()
+                            ->implode(', ');
                         return $cities ?: 'N/A';
                     }),
 
@@ -435,10 +421,13 @@ class RequestAppointments extends ListRecords
                 TextColumn::make('distance')
                     ->label('Distance')
                     ->getStateUsing(function ($record) {
-                        // Use the existing helper method that was working
-                        $distanceData = $this->getDistanceToBranch($record->providerBranch);
-                        if ($distanceData && isset($distanceData['duration_minutes'])) {
-                            return number_format($distanceData['duration_minutes'], 1) . ' min';
+                        // Get the provider branch and calculate distance
+                        $providerBranch = ProviderBranch::find($record->provider_branch_id);
+                        if ($providerBranch) {
+                            $distanceData = $this->getDistanceToBranch($providerBranch);
+                            if ($distanceData && isset($distanceData['duration_minutes'])) {
+                                return number_format($distanceData['duration_minutes'], 1) . ' min';
+                            }
                         }
                         return 'N/A';
                     }),
@@ -446,8 +435,9 @@ class RequestAppointments extends ListRecords
                 TextColumn::make('contact_info')
                     ->label('Contact Info')
                     ->getStateUsing(function ($record) {
-                        // Only show email badge, remove phone functionality
-                        if ($this->hasEmail($record->providerBranch)) {
+                        // Get the provider branch and check for email
+                        $providerBranch = ProviderBranch::find($record->provider_branch_id);
+                        if ($providerBranch && $this->hasEmail($providerBranch)) {
                             return 'Email';
                         }
                         return 'No Email';
@@ -481,7 +471,7 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('countryFilter')
                     ->label('Country')
                     ->options(function() {
-                        // Only show the file's country and countries that have providers with branches
+                        // Only show countries that have providers with branches
                         $countries = \App\Models\Country::whereHas('providers', function($q) {
                             $q->whereHas('branches');
                         });
@@ -493,7 +483,7 @@ class RequestAppointments extends ListRecords
                         
                         return $countries->pluck('name', 'id')->toArray();
                     })
-                    ->default($this->file->service_type_id === 2 ? null : $this->file->country_id)
+                    ->default($this->file->country_id)
                     ->searchable()
                     ->query(fn (Builder $query, array $data) => $query->when(isset($data['value']) && $data['value'], fn ($query, $value) => $query->where('providers.country_id', $value))),
 
@@ -553,8 +543,6 @@ class RequestAppointments extends ListRecords
                                   ->whereNotNull('contacts.email')->where('contacts.email', '!=', '');
                           });
                     }) : $query),
-
-
             ])
             ->bulkActions([
                 BulkAction::make('sendRequests')
@@ -563,7 +551,7 @@ class RequestAppointments extends ListRecords
                     ->color('primary')
                     ->action(function ($records) {
                         // Get the branch IDs from the selected branch services
-                        $selectedBranchIds = $records->pluck('providerBranch.id')->unique()->toArray();
+                        $selectedBranchIds = $records->pluck('provider_branch_id')->unique()->toArray();
                         $this->selectedBranches = $selectedBranchIds;
                         $this->sendRequests();
                     })
