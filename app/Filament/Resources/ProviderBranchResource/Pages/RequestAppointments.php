@@ -28,41 +28,10 @@ class RequestAppointments extends ListRecords
 {
     protected static string $resource = ProviderBranchResource::class;
 
-    public File $file;
-
-    public function mount(): void
+    public function getFile(): File
     {
-        // Get the file ID from the route parameter
         $fileId = request()->route('record');
-        
-        // Ensure we have a valid file ID
-        if (!$fileId) {
-            abort(404, 'File not found');
-        }
-        
-        // Load the file with all necessary relationships
-        $this->file = File::with([
-            'patient',
-            'serviceType',
-            'city',
-            'country'
-        ])->findOrFail($fileId);
-    }
-
-    protected function getBranchesQuery(): Builder
-    {
-        return \App\Models\BranchService::with([
-            'providerBranch.provider.country',
-            'providerBranch.operationContact',
-            'providerBranch.gopContact', 
-            'providerBranch.financialContact',
-            'providerBranch.cities',
-            'providerBranch.branchCities',
-            'serviceType'
-        ])
-        ->join('provider_branches', 'branch_services.provider_branch_id', '=', 'provider_branches.id')
-        ->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
-        ->where('branch_services.is_active', 1);
+        return File::with(['patient', 'serviceType', 'city', 'country'])->findOrFail($fileId);
     }
 
     public function getDistanceToBranch($branch)
@@ -70,7 +39,7 @@ class RequestAppointments extends ListRecords
         $service = app(\App\Services\DistanceCalculationService::class);
         
         // Get file address
-        $fileAddress = $this->file->address;
+        $fileAddress = $this->getFile()->address;
         if (!$fileAddress) {
             return null;
         }
@@ -112,7 +81,37 @@ class RequestAppointments extends ListRecords
     public function table(Table $table): Table
     {
         return $table
-            ->query($this->getBranchesQuery())
+            ->query(\App\Models\BranchService::with([
+                'providerBranch.provider.country',
+                'providerBranch.operationContact',
+                'providerBranch.gopContact', 
+                'providerBranch.financialContact',
+                'providerBranch.cities',
+                'providerBranch.branchCities',
+                'serviceType'
+            ])
+            ->join('provider_branches', 'branch_services.provider_branch_id', '=', 'provider_branches.id')
+            ->join('providers', 'provider_branches.provider_id', '=', 'providers.id')
+            ->where('branch_services.is_active', 1))
+            ->headerActions([
+                Action::make('addCustomEmail')
+                    ->label('Add Custom Email')
+                    ->icon('heroicon-o-plus')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('email')
+                            ->label('Email Address')
+                            ->email()
+                            ->required(),
+                    ])
+                    ->action(function (array $data) {
+                        // Add custom email to the session or temporary storage
+                        session()->push('custom_emails', $data['email']);
+                        Notification::make()
+                            ->title('Custom email added')
+                            ->success()
+                            ->send();
+                    }),
+            ])
             ->columns([
                 CheckboxColumn::make('selected'),
 
@@ -215,14 +214,15 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('countryFilter')
                     ->label('Country')
                     ->options(function() {
+                        $file = $this->getFile();
                         // Only show countries that have providers with branches
                         $countries = Country::whereHas('providers', function($q) {
                             $q->whereHas('branches');
                         });
                         
                         // If file has a country, prioritize it
-                        if ($this->file->country_id) {
-                            $countries = $countries->orWhere('id', $this->file->country_id);
+                        if ($file->country_id) {
+                            $countries = $countries->orWhere('id', $file->country_id);
                         }
                         
                         return $countries->pluck('name', 'id')->toArray();
@@ -233,9 +233,10 @@ class RequestAppointments extends ListRecords
                 SelectFilter::make('cityFilter')
                     ->label('City')
                     ->options(function() {
+                        $file = $this->getFile();
                         // Only show cities from the file's country that have branches
-                        if ($this->file->country_id) {
-                            $cities = \App\Models\City::where('country_id', $this->file->country_id)
+                        if ($file->country_id) {
+                            $cities = \App\Models\City::where('country_id', $file->country_id)
                                 ->whereHas('branchCities.branch.provider', function($q) {
                                     $q->whereHas('branches');
                                 })
@@ -332,7 +333,7 @@ class RequestAppointments extends ListRecords
                 }
 
                 // Check if an appointment already exists
-                $existingAppointment = $this->file->appointments()
+                $existingAppointment = $this->getFile()->appointments()
                     ->where('provider_branch_id', $branchId)
                     ->first();
 
@@ -347,7 +348,7 @@ class RequestAppointments extends ListRecords
                     }
                 } else {
                     // Create new appointment
-                    $appointment = $this->file->appointments()->create([
+                    $appointment = $this->getFile()->appointments()->create([
                         'provider_branch_id' => $branchId,
                         'service_date' => now()->toDateString(),
                         'status' => 'Requested',
@@ -365,7 +366,7 @@ class RequestAppointments extends ListRecords
 
                     if ($email) {
                         // Get the appointment that was just created or updated
-                        $appointment = $this->file->appointments()
+                        $appointment = $this->getFile()->appointments()
                             ->where('provider_branch_id', $branchId)
                             ->first();
                         
@@ -403,7 +404,7 @@ class RequestAppointments extends ListRecords
             ->send();
 
         // Redirect back to the file view
-        return redirect()->route('filament.admin.resources.files.view', $this->file);
+        return redirect()->route('filament.admin.resources.files.view', $this->getFile());
     }
 
     protected function getHeaderActions(): array
@@ -412,8 +413,15 @@ class RequestAppointments extends ListRecords
             Action::make('backToFile')
                 ->label('Back to File')
                 ->icon('heroicon-o-arrow-left')
-                ->url(route('filament.admin.resources.files.view', $this->file))
+                ->url(route('filament.admin.resources.files.view', $this->getFile()))
                 ->color('gray'),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\RequestAppointmentsFileInfo::class,
         ];
     }
 
@@ -425,45 +433,45 @@ class RequestAppointments extends ListRecords
                     ->schema([
                         TextEntry::make('patient_name')
                             ->label('Patient Name')
-                            ->getStateUsing(fn () => $this->file->patient->name)
+                            ->getStateUsing(fn () => $this->getFile()->patient->name)
                             ->color('danger')
                             ->weight('bold'),
                         
                         TextEntry::make('mga_reference')
                             ->label('MGA Reference')
-                            ->getStateUsing(fn () => $this->file->mga_reference)
+                            ->getStateUsing(fn () => $this->getFile()->mga_reference)
                             ->color('warning')
                             ->weight('bold'),
                         
                         TextEntry::make('client_reference')
                             ->label('Client Reference')
-                            ->getStateUsing(fn () => $this->file->client_reference ?? 'N/A')
+                            ->getStateUsing(fn () => $this->getFile()->client_reference ?? 'N/A')
                             ->color('info'),
                         
                         TextEntry::make('service_type')
                             ->label('Service Type')
-                            ->getStateUsing(fn () => $this->file->serviceType->name)
+                            ->getStateUsing(fn () => $this->getFile()->serviceType->name)
                             ->color('success')
                             ->weight('bold'),
                         
                         TextEntry::make('city')
                             ->label('City')
-                            ->getStateUsing(fn () => $this->file->city?->name ?? 'N/A')
+                            ->getStateUsing(fn () => $this->getFile()->city?->name ?? 'N/A')
                             ->color('primary'),
                         
                         TextEntry::make('country')
                             ->label('Country')
-                            ->getStateUsing(fn () => $this->file->country?->name ?? 'N/A')
+                            ->getStateUsing(fn () => $this->getFile()->country?->name ?? 'N/A')
                             ->color('primary'),
                         
                         TextEntry::make('address')
                             ->label('Address')
-                            ->getStateUsing(fn () => $this->file->address ?? 'N/A')
+                            ->getStateUsing(fn () => $this->getFile()->address ?? 'N/A')
                             ->color('gray'),
                         
                         TextEntry::make('symptoms')
                             ->label('Symptoms')
-                            ->getStateUsing(fn () => $this->file->symptoms ?? 'N/A')
+                            ->getStateUsing(fn () => $this->getFile()->symptoms ?? 'N/A')
                             ->color('gray'),
                     ])
                     ->columns(4),
