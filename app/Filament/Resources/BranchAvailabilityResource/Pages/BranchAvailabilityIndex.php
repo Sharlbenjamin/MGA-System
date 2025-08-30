@@ -128,7 +128,17 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                     ->schema([
                                         Placeholder::make('mga_reference')
                                             ->label('🔖 MGA Reference')
-                                            ->content(fn (): string => $this->selectedFile?->mga_reference ?? 'No file selected'),
+                                            ->content(function (): string {
+                                                if (!$this->selectedFile) {
+                                                    return 'No file selected';
+                                                }
+                                                
+                                                $url = route('filament.admin.resources.files.view', ['record' => $this->selectedFile->id]);
+                                                return '<a href="' . $url . '" class="text-blue-600 hover:text-blue-800 underline font-medium" target="_blank">' . 
+                                                       $this->selectedFile->mga_reference . 
+                                                       '</a>';
+                                            })
+                                            ->html(),
 
                                         Placeholder::make('patient_name')
                                             ->label('👤 Patient Name')
@@ -300,8 +310,8 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                 ->where('branch_services.is_active', true);
                         });
                     }),
-                TextColumn::make('cost_info')
-                    ->label('Cost Information')
+                TextColumn::make('costs')
+                    ->label('Cost')
                     ->getStateUsing(function (ProviderBranch $record): string {
                         if (!$this->selectedFile || !$this->selectedFile->service_type_id) {
                             return 'Select file to view costs';
@@ -312,35 +322,40 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                             return 'No pricing available';
                         }
 
-                        $costStrings = [];
-                        if ($costs['day_cost']) $costStrings[] = "Day: {$costs['day_cost']}";
-                        if ($costs['night_cost']) $costStrings[] = "Night: {$costs['night_cost']}";
-                        if ($costs['weekend_cost']) $costStrings[] = "Weekend: {$costs['weekend_cost']}";
-                        if ($costs['weekend_night_cost']) $costStrings[] = "Weekend Night: {$costs['weekend_night_cost']}";
+                        // Get all available costs and find the cheapest
+                        $availableCosts = array_filter([
+                            $costs['day_cost'],
+                            $costs['night_cost'],
+                            $costs['weekend_cost'],
+                            $costs['weekend_night_cost']
+                        ], function($cost) {
+                            return $cost !== null && $cost > 0;
+                        });
 
-                        return empty($costStrings) ? 'No costs specified' : implode(' | ', $costStrings);
+                        if (empty($availableCosts)) {
+                            return 'No costs specified';
+                        }
+
+                        $cheapestCost = min($availableCosts);
+                        return $cheapestCost . '€';
                     })
-                    ->wrap(),
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('id', $direction); // Simple fallback sort since costs are dynamic
+                    }),
 
                 TextColumn::make('contact_info')
                     ->label('Contact Information')
                     ->getStateUsing(function (ProviderBranch $record): string {
                         $contactMethods = [];
                         
-                        // Check if any phone number is available
-                        $hasPhone = $record->phone || 
-                                   ($record->operationContact && $record->operationContact->phone_number) ||
-                                   ($record->gopContact && $record->gopContact->phone_number) ||
-                                   ($record->financialContact && $record->financialContact->phone_number);
+                        // Check only direct branch phone
+                        $hasPhone = !empty($record->phone);
                         
-                        // Check if any email is available
-                        $hasEmail = $record->email || 
-                                   ($record->operationContact && $record->operationContact->email) ||
-                                   ($record->gopContact && $record->gopContact->email) ||
-                                   ($record->financialContact && $record->financialContact->email);
+                        // Check only direct branch email
+                        $hasEmail = !empty($record->email);
                         
                         if ($hasPhone) {
-                            $contactMethods[] = '<span class="cursor-pointer text-blue-600 hover:text-blue-800 underline" wire:click="showPhoneNotification(' . $record->id . ')">📞 Phone</span>';
+                            $contactMethods[] = '<button class="cursor-pointer text-blue-600 hover:text-blue-800 underline bg-transparent border-0 p-0" onclick="showPhoneNumber(' . $record->id . ', \'' . addslashes($record->branch_name) . '\', \'' . addslashes($record->phone) . '\')">📞 Phone</button>';
                         }
                         
                         if ($hasEmail) {
@@ -673,27 +688,41 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
 
     public function showPhoneNotification($branchId): void
     {
-        $branch = ProviderBranch::with(['operationContact', 'gopContact', 'financialContact'])->find($branchId);
-        
-        if (!$branch) {
-            return;
-        }
+        try {
+            $branch = ProviderBranch::find($branchId);
+            
+            if (!$branch) {
+                Notification::make()
+                    ->title('Error')
+                    ->body('Branch not found.')
+                    ->danger()
+                    ->send();
+                return;
+            }
 
-        // Get the primary phone number
-        $phoneNumber = $branch->primary_phone;
-        
-        if ($phoneNumber) {
+            // Get the direct branch phone number
+            $phoneNumber = $branch->phone;
+            
+            if ($phoneNumber) {
+                Notification::make()
+                    ->title($branch->branch_name . "'s Phone Number")
+                    ->body($phoneNumber)
+                    ->success()
+                    ->persistent()
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title('No Phone Number')
+                    ->body($branch->branch_name . ' does not have a direct phone number.')
+                    ->warning()
+                    ->persistent()
+                    ->send();
+            }
+        } catch (\Exception $e) {
             Notification::make()
-                ->title($branch->branch_name . "'s Phone Number")
-                ->body($phoneNumber)
-                ->success()
-                ->persistent()
-                ->send();
-        } else {
-            Notification::make()
-                ->title('No Phone Number')
-                ->body($branch->branch_name . ' does not have a phone number available.')
-                ->warning()
+                ->title('Error')
+                ->body('Failed to retrieve phone number: ' . $e->getMessage())
+                ->danger()
                 ->send();
         }
     }

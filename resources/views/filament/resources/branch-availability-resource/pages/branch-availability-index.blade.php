@@ -50,4 +50,13 @@
         </div>
         @endif
     </div>
+
+    @script
+    <script>
+        function showPhoneNumber(branchId, branchName, phoneNumber) {
+            // Use Livewire to trigger the notification
+            $wire.call('showPhoneNotification', branchId);
+        }
+    </script>
+    @endscript
 </x-filament-panels::page>
