@@ -66,10 +66,13 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                     'customEmails' => []
                 ]);
                 
+                // Apply default filters based on file data
+                $this->applyFileBasedFilters();
+                
                 // Show success notification
                 Notification::make()
                     ->title('File Pre-selected')
-                    ->body("File {$file->mga_reference} has been automatically selected.")
+                    ->body("File {$file->mga_reference} has been automatically selected with relevant filters applied.")
                     ->success()
                     ->send();
             }
@@ -108,9 +111,11 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                 if ($state) {
                                     $this->selectedFile = File::with(['patient.client', 'serviceType', 'country', 'city'])->find($state);
                                     $this->selectedFileId = (int) $state;
+                                    $this->applyFileBasedFilters();
                                 } else {
                                     $this->selectedFile = null;
                                     $this->selectedFileId = null;
+                                    $this->clearFileBasedFilters();
                                 }
                             })
                             ->helperText('Select a file to see branch availability with distance calculations'),
@@ -634,5 +639,40 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
     public function getSubheading(): ?string
     {
         return 'Select an MGA file and send appointment requests to provider branches with distance calculations and contact information.';
+    }
+
+    protected function applyFileBasedFilters(): void
+    {
+        if (!$this->selectedFile) {
+            return;
+        }
+
+        $filters = [];
+
+        // Apply city filter if file has a city
+        if ($this->selectedFile->city_id) {
+            $filters['city'] = [
+                'values' => [$this->selectedFile->city_id]
+            ];
+        }
+
+        // Apply service type filter if file has a service type
+        if ($this->selectedFile->service_type_id) {
+            $filters['service_type'] = [
+                'value' => $this->selectedFile->service_type_id
+            ];
+        }
+
+        // Apply the filters to the table
+        $this->tableFilters = array_merge($this->tableFilters ?? [], $filters);
+    }
+
+    protected function clearFileBasedFilters(): void
+    {
+        if (isset($this->tableFilters)) {
+            // Remove the file-based filters
+            unset($this->tableFilters['city']);
+            unset($this->tableFilters['service_type']);
+        }
     }
 }
