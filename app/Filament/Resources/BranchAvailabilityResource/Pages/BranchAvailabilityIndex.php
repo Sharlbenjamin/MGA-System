@@ -48,6 +48,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
     public ?array $data = [];
     public ?int $selectedFileId = null;
     public ?File $selectedFile = null;
+    public ?int $selectedCountryId = null;
 
     public function mount(): void
     {
@@ -430,17 +431,10 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                      ->label('Branch Cities')
                      ->searchable()
                      ->multiple()
-                     ->options(function (array $data) {
-                         $query = City::whereHas('branchCities');
-                         
-                         // Filter cities by selected country if provider_country filter is active
-                         if (!empty($data['provider_country'])) {
-                             $query->whereHas('branchCities.branch.provider', function (Builder $subQuery) use ($data) {
-                                 $subQuery->where('country_id', $data['provider_country']);
-                             });
-                         }
-                         
-                         return $query->orderBy('name')->pluck('name', 'id');
+                     ->options(function () {
+                         return City::whereHas('branchCities')
+                             ->orderBy('name')
+                             ->pluck('name', 'id');
                      })
                      ->query(function (Builder $query, array $data): Builder {
                          if (!empty($data['values'])) {
