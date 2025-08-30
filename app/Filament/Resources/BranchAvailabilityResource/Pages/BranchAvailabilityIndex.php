@@ -14,6 +14,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Pages\Page;
@@ -107,6 +109,72 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                 }
                             })
                             ->helperText('Select a file to view its details below'),
+
+                        // File Details Section (visible when file is selected)
+                        Section::make('📋 Selected File Details')
+                            ->schema([
+                                Grid::make(3)
+                                    ->schema([
+                                        Placeholder::make('mga_reference')
+                                            ->label('🔖 MGA Reference')
+                                            ->content(fn (): string => $this->selectedFile?->mga_reference ?? 'No file selected'),
+
+                                        Placeholder::make('patient_name')
+                                            ->label('👤 Patient Name')
+                                            ->content(fn (): string => $this->selectedFile?->patient?->name ?? 'No file selected'),
+
+                                        Placeholder::make('client_name')
+                                            ->label('🏢 Client Name')
+                                            ->content(fn (): string => $this->selectedFile?->patient?->client?->company_name ?? 'No file selected'),
+
+                                        Placeholder::make('service_type')
+                                            ->label('🏥 Service Type')
+                                            ->content(fn (): string => $this->selectedFile?->serviceType?->name ?? 'No file selected'),
+
+                                        Placeholder::make('country')
+                                            ->label('🌍 Country')
+                                            ->content(fn (): string => $this->selectedFile?->country?->name ?? 'No file selected'),
+
+                                        Placeholder::make('city')
+                                            ->label('🏙️ City')
+                                            ->content(fn (): string => $this->selectedFile?->city?->name ?? 'No file selected'),
+
+                                        Placeholder::make('service_date')
+                                            ->label('📅 Date')
+                                            ->content(function (): string {
+                                                if (!$this->selectedFile || !$this->selectedFile->service_date) {
+                                                    return 'Not scheduled';
+                                                }
+                                                return \Carbon\Carbon::parse($this->selectedFile->service_date)->format('F j, Y');
+                                            }),
+
+                                        Placeholder::make('service_time')
+                                            ->label('⏰ Time')
+                                            ->content(function (): string {
+                                                if (!$this->selectedFile || !$this->selectedFile->service_time) {
+                                                    return 'Not scheduled';
+                                                }
+                                                return \Carbon\Carbon::parse($this->selectedFile->service_time)->format('g:i A');
+                                            }),
+
+                                        Placeholder::make('status')
+                                            ->label('📊 Status')
+                                            ->content(fn (): string => $this->selectedFile?->status ?? 'No file selected'),
+                                    ]),
+
+                                // Address and Symptoms in full width
+                                Placeholder::make('address')
+                                    ->label('📍 Address')
+                                    ->content(fn (): string => $this->selectedFile?->address ?? 'No address specified')
+                                    ->visible(fn (): bool => $this->selectedFile && $this->selectedFile->address),
+
+                                Placeholder::make('symptoms')
+                                    ->label('🩺 Symptoms')
+                                    ->content(fn (): string => $this->selectedFile?->symptoms ?? 'No symptoms specified')
+                                    ->visible(fn (): bool => $this->selectedFile && $this->selectedFile->symptoms),
+                            ])
+                            ->visible(fn (): bool => $this->selectedFile !== null)
+                            ->compact(),
                     ])
                     ->collapsible(),
 
