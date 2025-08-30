@@ -16,7 +16,7 @@ use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\ViewField;
+use Filament\Forms\Components\View;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Pages\Page;
@@ -127,10 +127,9 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                             ->schema([
                                 Grid::make(5)
                                     ->schema([
-                                        ViewField::make('mga_reference')
-                                            ->label('🔖 MGA Reference')
+                                        View::make('mga_reference')
                                             ->view('filament.forms.components.mga-reference-link')
-                                            ->viewData(fn () => [
+                                            ->viewData([
                                                 'file' => $this->selectedFile,
                                                 'url' => $this->selectedFile ? route('filament.admin.resources.files.view', ['record' => $this->selectedFile->id]) : null
                                             ]),
