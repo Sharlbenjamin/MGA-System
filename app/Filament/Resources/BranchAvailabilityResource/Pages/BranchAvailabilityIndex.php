@@ -31,6 +31,7 @@ use Filament\Tables\Table;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\BranchCity;
+use App\Models\BranchService;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -251,7 +252,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(ProviderBranch::query()->with(['provider', 'operationContact', 'branchServices.serviceType'])->where('status', 'Active'))
+            ->query(ProviderBranch::query()->with(['provider', 'operationContact', 'branchServices.serviceType', 'cities'])->where('status', 'Active'))
             ->columns([
                 TextColumn::make('branch_name')
                     ->label('Branch Name')
@@ -278,45 +279,27 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         default => 'danger',
                     }),
 
-                TextColumn::make('available_services')
+                TextColumn::make('services')
                     ->label('Available Services')
                     ->getStateUsing(function (ProviderBranch $record): string {
-                        $services = [];
-                        $serviceFields = [
-                            'emergency' => 'Emergency',
-                            'pediatrician_emergency' => 'Pediatric Emergency',
-                            'dental' => 'Dental',
-                            'pediatrician' => 'Pediatrician',
-                            'gynecology' => 'Gynecology',
-                            'urology' => 'Urology',
-                            'cardiology' => 'Cardiology',
-                            'ophthalmology' => 'Ophthalmology',
-                            'trauma_orthopedics' => 'Trauma/Orthopedics',
-                            'surgery' => 'Surgery',
-                            'intensive_care' => 'Intensive Care',
-                            'obstetrics_delivery' => 'Obstetrics/Delivery',
-                            'hyperbaric_chamber' => 'Hyperbaric Chamber',
-                        ];
+                        $activeServices = $record->branchServices()
+                            ->where('is_active', true)
+                            ->with('serviceType')
+                            ->get()
+                            ->pluck('serviceType.name')
+                            ->filter()
+                            ->toArray();
 
-                        foreach ($serviceFields as $field => $label) {
-                            if ($record->$field) {
-                                $services[] = $label;
-                            }
-                        }
-
-                        return empty($services) ? 'No services specified' : implode(', ', $services);
+                        return empty($activeServices) ? 'No active services' : implode(', ', $activeServices);
                     })
                     ->wrap()
-                    ->limit(50),
-
-                TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Active' => 'success',
-                        'Hold' => 'warning',
-                        default => 'gray',
+                    ->limit(50)
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('branchServices.serviceType', function (Builder $query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%")
+                                ->where('branch_services.is_active', true);
+                        });
                     }),
-
                 TextColumn::make('cost_info')
                     ->label('Cost Information')
                     ->getStateUsing(function (ProviderBranch $record): string {
@@ -342,27 +325,31 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                 TextColumn::make('contact_info')
                     ->label('Contact Information')
                     ->getStateUsing(function (ProviderBranch $record): string {
-                        $contactInfo = [];
+                        $contactMethods = [];
                         
-                        if ($record->phone) {
-                            $contactInfo[] = "📞 {$record->phone}";
+                        // Check if any phone number is available
+                        $hasPhone = $record->phone || 
+                                   ($record->operationContact && $record->operationContact->phone_number) ||
+                                   ($record->gopContact && $record->gopContact->phone_number) ||
+                                   ($record->financialContact && $record->financialContact->phone_number);
+                        
+                        // Check if any email is available
+                        $hasEmail = $record->email || 
+                                   ($record->operationContact && $record->operationContact->email) ||
+                                   ($record->gopContact && $record->gopContact->email) ||
+                                   ($record->financialContact && $record->financialContact->email);
+                        
+                        if ($hasPhone) {
+                            $contactMethods[] = '<span class="cursor-pointer text-blue-600 hover:text-blue-800 underline" wire:click="showPhoneNotification(' . $record->id . ')">📞 Phone</span>';
                         }
                         
-                        if ($record->email) {
-                            $contactInfo[] = "✉️ {$record->email}";
+                        if ($hasEmail) {
+                            $contactMethods[] = "✉️ Email";
                         }
 
-                        if ($record->operationContact) {
-                            if ($record->operationContact->phone) {
-                                $contactInfo[] = "📞 Op: {$record->operationContact->phone}";
-                            }
-                            if ($record->operationContact->email) {
-                                $contactInfo[] = "✉️ Op: {$record->operationContact->email}";
-                            }
-                        }
-
-                        return empty($contactInfo) ? 'No contact info' : implode(' | ', $contactInfo);
+                        return empty($contactMethods) ? 'No contact info' : implode(' | ', $contactMethods);
                     })
+                    ->html()
                     ->wrap(),
 
                 TextColumn::make('distance_info')
@@ -398,6 +385,14 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         }
                     })
                     ->wrap(),
+                    TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Active' => 'success',
+                        'Hold' => 'warning',
+                        default => 'gray',
+                    }),
+
             ])
             ->filters([
                 SelectFilter::make('service_type')
@@ -673,6 +668,33 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
             // Remove the file-based filters
             unset($this->tableFilters['city']);
             unset($this->tableFilters['service_type']);
+        }
+    }
+
+    public function showPhoneNotification($branchId): void
+    {
+        $branch = ProviderBranch::with(['operationContact', 'gopContact', 'financialContact'])->find($branchId);
+        
+        if (!$branch) {
+            return;
+        }
+
+        // Get the primary phone number
+        $phoneNumber = $branch->primary_phone;
+        
+        if ($phoneNumber) {
+            Notification::make()
+                ->title($branch->branch_name . "'s Phone Number")
+                ->body($phoneNumber)
+                ->success()
+                ->persistent()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('No Phone Number')
+                ->body($branch->branch_name . ' does not have a phone number available.')
+                ->warning()
+                ->send();
         }
     }
 }
