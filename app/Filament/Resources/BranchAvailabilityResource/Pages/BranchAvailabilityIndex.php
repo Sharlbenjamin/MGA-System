@@ -16,6 +16,7 @@ use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\ViewField;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Pages\Page;
@@ -126,19 +127,13 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                             ->schema([
                                 Grid::make(5)
                                     ->schema([
-                                        Placeholder::make('mga_reference')
+                                        ViewField::make('mga_reference')
                                             ->label('🔖 MGA Reference')
-                                            ->content(function (): string {
-                                                if (!$this->selectedFile) {
-                                                    return 'No file selected';
-                                                }
-                                                
-                                                $url = route('filament.admin.resources.files.view', ['record' => $this->selectedFile->id]);
-                                                return '<a href="' . $url . '" class="text-blue-600 hover:text-blue-800 underline font-medium" target="_blank">' . 
-                                                       $this->selectedFile->mga_reference . 
-                                                       '</a>';
-                                            })
-                                            ->html(),
+                                            ->view('filament.forms.components.mga-reference-link')
+                                            ->viewData(fn () => [
+                                                'file' => $this->selectedFile,
+                                                'url' => $this->selectedFile ? route('filament.admin.resources.files.view', ['record' => $this->selectedFile->id]) : null
+                                            ]),
 
                                         Placeholder::make('patient_name')
                                             ->label('👤 Patient Name')
