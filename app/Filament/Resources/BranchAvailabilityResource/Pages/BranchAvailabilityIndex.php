@@ -85,7 +85,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
         return $form
             ->schema([
                 Section::make('File Selection')
-                    ->description('Choose an MGA file to view details and send appointment requests')
+                    ->description('Choose an MGA file to view details in the table below')
                     ->schema([
                         Select::make('selectedFileId')
                             ->label('Select MGA File')
@@ -108,7 +108,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                     $this->selectedFileId = null;
                                 }
                             })
-                            ->helperText('Select a file to view its details below'),
+                            ->helperText('Select a file to see branch availability with distance calculations'),
 
                         // File Details Section (visible when file is selected)
                         Section::make('📋 Selected File Details')
@@ -131,32 +131,6 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                             ->label('🏥 Service Type')
                                             ->content(fn (): string => $this->selectedFile?->serviceType?->name ?? 'No file selected'),
 
-                                        Placeholder::make('country')
-                                            ->label('🌍 Country')
-                                            ->content(fn (): string => $this->selectedFile?->country?->name ?? 'No file selected'),
-
-                                        Placeholder::make('city')
-                                            ->label('🏙️ City')
-                                            ->content(fn (): string => $this->selectedFile?->city?->name ?? 'No file selected'),
-
-                                        Placeholder::make('service_date')
-                                            ->label('📅 Date')
-                                            ->content(function (): string {
-                                                if (!$this->selectedFile || !$this->selectedFile->service_date) {
-                                                    return 'Not scheduled';
-                                                }
-                                                return \Carbon\Carbon::parse($this->selectedFile->service_date)->format('F j, Y');
-                                            }),
-
-                                        Placeholder::make('service_time')
-                                            ->label('⏰ Time')
-                                            ->content(function (): string {
-                                                if (!$this->selectedFile || !$this->selectedFile->service_time) {
-                                                    return 'Not scheduled';
-                                                }
-                                                return \Carbon\Carbon::parse($this->selectedFile->service_time)->format('g:i A');
-                                            }),
-
                                         Placeholder::make('status')
                                             ->label('📊 Status')
                                             ->content(fn (): string => $this->selectedFile?->status ?? 'No file selected'),
@@ -177,40 +151,65 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                             ->compact(),
                     ])
                     ->collapsible(),
-
-                Section::make('Custom Email Recipients')
-                    ->description('Add additional email addresses to receive the appointment request')
-                    ->schema([
-                        Repeater::make('customEmails')
-                            ->label('Additional Email Recipients')
-                            ->schema([
-                                TextInput::make('email')
-                                    ->label('Email Address')
-                                    ->email()
-                                    ->required()
-                                    ->placeholder('example@email.com'),
-                            ])
-                            ->addActionLabel('Add Email')
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => $state['email'] ?? null)
-                            ->defaultItems(0),
-
-                        Actions::make([
-                            Action::make('sendRequest')
-                                ->label('Send Appointment Request')
-                                ->color('primary')
-                                ->icon('heroicon-o-paper-airplane')
-                                ->action('sendAppointmentRequest')
-                                ->requiresConfirmation()
-                                ->modalHeading('Send Appointment Request')
-                                ->modalDescription('Are you sure you want to send appointment request emails to all provider branches based on the selected file?')
-                                ->visible(fn (): bool => $this->selectedFileId !== null),
-                        ])
-                    ])
-                    ->collapsible(),
             ])
             ->statePath('data');
+    }
+
+    public function getFooterWidgets(): array
+    {
+        return [
+            // This will display the email form at the bottom
+        ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            \Filament\Actions\Action::make('configureEmails')
+                ->label('Configure Email Recipients')
+                ->icon('heroicon-o-envelope')
+                ->color('gray')
+                ->form([
+                    Section::make('Email Configuration')
+                        ->description('Add additional email addresses to receive the appointment request')
+                        ->schema([
+                            Repeater::make('customEmails')
+                                ->label('Additional Email Recipients')
+                                ->schema([
+                                    TextInput::make('email')
+                                        ->label('Email Address')
+                                        ->email()
+                                        ->required()
+                                        ->placeholder('example@email.com'),
+                                ])
+                                ->addActionLabel('Add Email')
+                                ->reorderable(false)
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['email'] ?? null)
+                                ->defaultItems(0),
+                        ]),
+                ])
+                ->action(function (array $data) {
+                    $this->data['customEmails'] = $data['customEmails'] ?? [];
+                })
+                ->fillForm(fn () => ['customEmails' => $this->data['customEmails'] ?? []])
+                ->slideOver(),
+
+            \Filament\Actions\Action::make('sendToAll')
+                ->label('Send to All Branches')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('primary')
+                ->requiresConfirmation()
+                ->modalHeading('Send Appointment Requests')
+                ->modalDescription('Send appointment request emails to all active provider branches?')
+                ->action('sendAppointmentRequest')
+                ->visible(fn (): bool => $this->selectedFileId !== null),
+        ];
     }
 
     public function table(Table $table): Table
@@ -442,7 +441,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
             return;
         }
 
-        $emailData = $this->form->getState()['customEmails'] ?? [];
+        $emailData = $this->data['customEmails'] ?? [];
         $emails = array_column($emailData, 'email');
 
         $sentCount = 0;
@@ -493,7 +492,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
             return;
         }
 
-        $emailData = $this->form->getState()['customEmails'] ?? [];
+        $emailData = $this->data['customEmails'] ?? [];
         $emails = array_column($emailData, 'email');
 
         $sentCount = 0;
