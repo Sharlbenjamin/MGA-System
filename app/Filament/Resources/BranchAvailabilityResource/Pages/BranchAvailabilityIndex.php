@@ -427,13 +427,12 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         return $query;
                     }),
                     
-                                         SelectFilter::make('city')
+                    SelectFilter::make('city')
                      ->label('Branch Cities')
                      ->searchable()
                      ->multiple()
                      ->options(function () {
-                         return City::whereHas('branchCities')
-                             ->orderBy('name')
+                         return City::all()
                              ->pluck('name', 'id');
                      })
                      ->query(function (Builder $query, array $data): Builder {
