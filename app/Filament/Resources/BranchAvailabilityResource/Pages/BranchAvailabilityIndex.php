@@ -26,7 +26,10 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use App\Models\City;
+use App\Models\Country;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -130,6 +133,32 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                         Placeholder::make('service_type')
                                             ->label('🏥 Service Type')
                                             ->content(fn (): string => $this->selectedFile?->serviceType?->name ?? 'No file selected'),
+
+                                        Placeholder::make('country')
+                                            ->label('🌍 Country')
+                                            ->content(fn (): string => $this->selectedFile?->country?->name ?? 'No file selected'),
+
+                                        Placeholder::make('city')
+                                            ->label('🏙️ City')
+                                            ->content(fn (): string => $this->selectedFile?->city?->name ?? 'No file selected'),
+
+                                        Placeholder::make('service_date')
+                                            ->label('📅 Date')
+                                            ->content(function (): string {
+                                                if (!$this->selectedFile || !$this->selectedFile->service_date) {
+                                                    return 'Not scheduled';
+                                                }
+                                                return \Carbon\Carbon::parse($this->selectedFile->service_date)->format('F j, Y');
+                                            }),
+
+                                        Placeholder::make('service_time')
+                                            ->label('⏰ Time')
+                                            ->content(function (): string {
+                                                if (!$this->selectedFile || !$this->selectedFile->service_time) {
+                                                    return 'Not scheduled';
+                                                }
+                                                return \Carbon\Carbon::parse($this->selectedFile->service_time)->format('g:i A');
+                                            }),
 
                                         Placeholder::make('status')
                                             ->label('📊 Status')
@@ -369,23 +398,8 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         'Active' => 'Active',
                         'Hold' => 'Hold',
                     ]),
-
-                SelectFilter::make('priority')
-                    ->options([
-                        '1' => '1 (Highest)',
-                        '2' => '2',
-                        '3' => '3',
-                        '4' => '4',
-                        '5' => '5',
-                        '6' => '6',
-                        '7' => '7',
-                        '8' => '8',
-                        '9' => '9',
-                        '10' => '10 (Lowest)',
-                    ]),
-
                 SelectFilter::make('service_type')
-                    ->label('Compatible Service Type')
+                    ->label('Service Type')
                     ->options(function () {
                         return ServiceType::pluck('name', 'id');
                     })
@@ -398,6 +412,84 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         }
                         return $query;
                     }),
+
+                SelectFilter::make('city')
+                    ->label('Branch Cities')
+                    ->searchable()
+                    ->multiple()
+                    ->options(function () {
+                        return City::whereHas('branchCities')
+                            ->orderBy('name')
+                            ->pluck('name', 'id');
+                    })
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['values'])) {
+                            return $query->whereHas('cities', function (Builder $query) use ($data) {
+                                $query->whereIn('cities.id', $data['values']);
+                            });
+                        }
+                        return $query;
+                    }),
+
+                SelectFilter::make('provider_country')
+                    ->label('Provider Country')
+                    ->searchable()
+                    ->options(function () {
+                        return Country::whereHas('providers.branches')
+                            ->orderBy('name')
+                            ->pluck('name', 'id');
+                    })
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['value'])) {
+                            return $query->whereHas('provider', function (Builder $query) use ($data) {
+                                $query->where('country_id', $data['value']);
+                            });
+                        }
+                        return $query;
+                    }),
+
+                Filter::make('has_email')
+                    ->label('Has Email Contact')
+                    ->toggle()
+                    ->query(function (Builder $query, array $data): Builder {
+                        if ($data['isActive']) {
+                            return $query->where(function (Builder $query) {
+                                $query->whereNotNull('email')
+                                    ->orWhereHas('operationContact', function (Builder $query) {
+                                        $query->whereNotNull('email');
+                                    })
+                                    ->orWhereHas('gopContact', function (Builder $query) {
+                                        $query->whereNotNull('email');
+                                    })
+                                    ->orWhereHas('financialContact', function (Builder $query) {
+                                        $query->whereNotNull('email');
+                                    });
+                            });
+                        }
+                        return $query;
+                    }),
+
+                Filter::make('has_phone')
+                    ->label('Has Phone Contact')
+                    ->toggle()
+                    ->query(function (Builder $query, array $data): Builder {
+                        if ($data['isActive']) {
+                            return $query->where(function (Builder $query) {
+                                $query->whereNotNull('phone')
+                                    ->orWhereHas('operationContact', function (Builder $query) {
+                                        $query->whereNotNull('phone_number');
+                                    })
+                                    ->orWhereHas('gopContact', function (Builder $query) {
+                                        $query->whereNotNull('phone_number');
+                                    })
+                                    ->orWhereHas('financialContact', function (Builder $query) {
+                                        $query->whereNotNull('phone_number');
+                                    });
+                            });
+                        }
+                        return $query;
+                    }),
+                    
             ])
             ->bulkActions([
                 BulkAction::make('sendAppointmentRequests')
