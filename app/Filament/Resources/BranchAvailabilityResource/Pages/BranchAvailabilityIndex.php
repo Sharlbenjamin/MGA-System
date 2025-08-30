@@ -30,6 +30,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use App\Models\City;
 use App\Models\Country;
+use App\Models\BranchCity;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -393,13 +394,8 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                     ->wrap(),
             ])
             ->filters([
-                SelectFilter::make('status')
-                    ->options([
-                        'Active' => 'Active',
-                        'Hold' => 'Hold',
-                    ]),
                 SelectFilter::make('service_type')
-                    ->label('Service Type')
+                    ->label('Service Type')->searchable()
                     ->options(function () {
                         return ServiceType::pluck('name', 'id');
                     })
@@ -413,25 +409,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         return $query;
                     }),
 
-                SelectFilter::make('city')
-                    ->label('Branch Cities')
-                    ->searchable()
-                    ->multiple()
-                    ->options(function () {
-                        return City::whereHas('branchCities')
-                            ->orderBy('name')
-                            ->pluck('name', 'id');
-                    })
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (!empty($data['values'])) {
-                            return $query->whereHas('cities', function (Builder $query) use ($data) {
-                                $query->whereIn('cities.id', $data['values']);
-                            });
-                        }
-                        return $query;
-                    }),
-
-                SelectFilter::make('provider_country')
+                    SelectFilter::make('provider_country')
                     ->label('Provider Country')
                     ->searchable()
                     ->options(function () {
@@ -447,7 +425,36 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         }
                         return $query;
                     }),
-
+                    
+                                         SelectFilter::make('city')
+                     ->label('Branch Cities')
+                     ->searchable()
+                     ->multiple()
+                     ->options(function (array $data) {
+                         $query = City::whereHas('branchCities');
+                         
+                         // Filter cities by selected country if provider_country filter is active
+                         if (!empty($data['provider_country'])) {
+                             $query->whereHas('branchCities.branch.provider', function (Builder $subQuery) use ($data) {
+                                 $subQuery->where('country_id', $data['provider_country']);
+                             });
+                         }
+                         
+                         return $query->orderBy('name')->pluck('name', 'id');
+                     })
+                     ->query(function (Builder $query, array $data): Builder {
+                         if (!empty($data['values'])) {
+                             return $query->whereHas('cities', function (Builder $query) use ($data) {
+                                 $query->whereIn('cities.id', $data['values']);
+                             });
+                         }
+                         return $query;
+                     }),
+                    SelectFilter::make('status')
+                    ->options([
+                        'Active' => 'Active',
+                        'Hold' => 'Hold',
+                    ]),
                 Filter::make('has_email')
                     ->label('Has Email Contact')
                     ->toggle()
