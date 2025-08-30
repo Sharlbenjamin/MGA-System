@@ -113,7 +113,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         // File Details Section (visible when file is selected)
                         Section::make('📋 Selected File Details')
                             ->schema([
-                                Grid::make(3)
+                                Grid::make(5)
                                     ->schema([
                                         Placeholder::make('mga_reference')
                                             ->label('🔖 MGA Reference')
