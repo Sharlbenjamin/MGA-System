@@ -36,7 +36,8 @@ class AppointmentRequestMailable extends Mailable
             ->subject($subject)
             ->with([
                 'file' => $this->file,
-                'branch' => $this->branch
+                'branch' => $this->branch,
+                'customEmails' => $this->customEmails
             ]);
 
         // Add branch email as primary recipient

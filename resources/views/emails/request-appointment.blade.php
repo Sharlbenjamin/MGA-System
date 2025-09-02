@@ -11,160 +11,63 @@
             margin: 0 auto;
             padding: 20px;
         }
-        .header {
-            background-color: #f4f4f4;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
         .content {
             background-color: #fff;
             padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
         }
-        .highlight {
-            background-color: #e7f3ff;
-            padding: 10px;
+        .appointment-details {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f9f9f9;
             border-left: 4px solid #007cba;
-            margin: 10px 0;
         }
-        .details-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
+        .detail-line {
+            margin: 8px 0;
         }
-        .details-table th,
-        .details-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        .details-table th {
-            background-color: #f2f2f2;
-        }
-        .footer {
+        .important-note {
             margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            font-size: 12px;
-            color: #666;
+            padding: 15px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2>Appointment Request - MedGuard Assistance</h2>
-        <p><strong>Reference:</strong> {{ $file->mga_reference }}</p>
-    </div>
-
     <div class="content">
-        <p>Dear {{ $branch->branch_name }} Team,</p>
+        <p>Dear {{ $branch->branch_name }},</p>
         
-        <p>We hope this message finds you well. We are writing to request an appointment for one of our patients who requires medical attention.</p>
+        <p>We have a patient that needs a {{ $file->serviceType->name }} appointment. Find the details below:</p>
         
-        <div class="highlight">
-            <h3>Patient & Service Details</h3>
-            <table class="details-table">
-                <tr>
-                    <th>MGA Reference</th>
-                    <td>{{ $file->mga_reference }}</td>
-                </tr>
-                <tr>
-                    <th>Patient Name</th>
-                    <td>{{ $file->patient->name }}</td>
-                </tr>
-                <tr>
-                    <th>Client</th>
-                    <td>{{ $file->patient->client->company_name }}</td>
-                </tr>
-                <tr>
-                    <th>Service Type</th>
-                    <td>{{ $file->serviceType->name }}</td>
-                </tr>
-                <tr>
-                    <th>Date</th>
-                    <td>{{ $file->service_date ? \Carbon\Carbon::parse($file->service_date)->format('F j, Y') : 'To be determined' }}</td>
-                </tr>
-                <tr>
-                    <th>Time</th>
-                    <td>{{ $file->service_time ? \Carbon\Carbon::parse($file->service_time)->format('g:i A') : 'To be determined' }}</td>
-                </tr>
-                <tr>
-                    <th>Location</th>
-                    <td>{{ $file->address }}</td>
-                </tr>
-                <tr>
-                    <th>City</th>
-                    <td>{{ $file->city->name ?? 'N/A' }}</td>
-                </tr>
-                <tr>
-                    <th>Country</th>
-                    <td>{{ $file->country->name ?? 'N/A' }}</td>
-                </tr>
-            </table>
+        <div class="appointment-details">
+            <div class="detail-line"><strong>MGA Reference:</strong> {{ $file->mga_reference }}</div>
+            <div class="detail-line"><strong>Patient Name:</strong> {{ $file->patient->name }}</div>
+            
+            <p style="margin-top: 15px; margin-bottom: 10px;"><strong>Appointment Details:</strong></p>
+            
+            <div class="detail-line"><strong>Date:</strong> {{ $file->service_date ? \Carbon\Carbon::parse($file->service_date)->format('d-m-Y') : 'N/A' }}</div>
+            <div class="detail-line"><strong>Time:</strong> {{ $file->service_time ? \Carbon\Carbon::parse($file->service_time)->format('H:i') : 'N/A' }}</div>
+            <div class="detail-line"><strong>Service:</strong> {{ $file->serviceType->name }}</div>
         </div>
 
         @if($file->symptoms)
-        <div class="highlight">
-            <h3>Symptoms</h3>
+        <div class="appointment-details">
+            <p><strong>Additional Information:</strong></p>
             <p>{{ $file->symptoms }}</p>
         </div>
         @endif
 
-        <div class="highlight">
-            <h3>Provider Branch Information</h3>
-            <table class="details-table">
-                <tr>
-                    <th>Branch Name</th>
-                    <td>{{ $branch->branch_name }}</td>
-                </tr>
-                <tr>
-                    <th>Provider</th>
-                    <td>{{ $branch->provider->name }}</td>
-                </tr>
-                <tr>
-                    <th>Priority</th>
-                    <td>{{ $branch->priority }}</td>
-                </tr>
-                <tr>
-                    <th>Status</th>
-                    <td>{{ $branch->status }}</td>
-                </tr>
-                @if($branch->phone)
-                <tr>
-                    <th>Phone</th>
-                    <td>{{ $branch->phone }}</td>
-                </tr>
-                @endif
-                @if($branch->email)
-                <tr>
-                    <th>Email</th>
-                    <td>{{ $branch->email }}</td>
-                </tr>
-                @endif
-                @if($branch->address)
-                <tr>
-                    <th>Address</th>
-                    <td>{{ $branch->address }}</td>
-                </tr>
-                @endif
-            </table>
+        @if($file->gops->where('type', 'Out')->first())
+        <div class="appointment-details">
+            <p><strong>Coverage Amount:</strong></p>
+            <p>{{ $file->gops->where('type', 'Out')->first()->amount }}€</p>
         </div>
+        @endif
 
-        <p><strong>Request:</strong> We would appreciate your assistance in scheduling an appointment for this patient. Please confirm availability and let us know any specific requirements or procedures we need to follow.</p>
+        <p>If the requested appointment is not availble, please let us know.</p>
 
-        <p>If you have any questions or need additional information, please don't hesitate to contact us.</p>
-
-        <p>Thank you for your time and cooperation.</p>
-
-        <p>Best regards,<br>
-        MedGuard Assistance Team</p>
-    </div>
-
-    <div class="footer">
-        <p>This is an automated message from the MGA System. Please do not reply directly to this email.</p>
-        <p>For urgent matters, please contact our operations team directly.</p>
+        @include('draftsignature', ['signature' => auth()->user()->signature])
     </div>
 </body>
 </html>

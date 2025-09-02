@@ -349,7 +349,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         $hasEmail = !empty($record->email);
                         
                         if ($hasPhone) {
-                            $contactMethods[] = '<button class="cursor-pointer text-blue-600 hover:text-blue-800 underline bg-transparent border-0 p-0" onclick="showPhoneNumber(' . $record->id . ', \'' . addslashes($record->branch_name) . '\', \'' . addslashes($record->phone) . '\')">📞 Phone</button>';
+                            $contactMethods[] = '<button class="cursor-pointer text-blue-600 hover:text-blue-800 underline bg-transparent border-0 p-0" onclick="Livewire.dispatch(\'showPhoneNotification\', { branchName: \'' . addslashes($record->branch_name) . '\', phone: \'' . addslashes($record->phone) . '\' })">📞 Phone</button>';
                         }
                         
                         if ($hasEmail) {
