@@ -125,6 +125,20 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                         // File Details Section (visible when file is selected)
                         Section::make('📋 Selected File Details')
                             ->schema([
+                                // Custom Emails Status
+                                Placeholder::make('custom_emails_status')
+                                    ->label('📧 Custom Email Recipients')
+                                    ->content(function (): string {
+                                        $emailCount = count($this->data['customEmails'] ?? []);
+                                        if ($emailCount === 0) {
+                                            return 'No additional emails configured';
+                                        }
+                                        
+                                        $emails = array_column($this->data['customEmails'], 'email');
+                                        return "{$emailCount} email(s) will be CC'd: " . implode(', ', $emails);
+                                    })
+                                    ->visible(fn (): bool => $this->selectedFile !== null)
+                                    ->extraAttributes(['class' => 'text-sm']),
                                 Grid::make(5)
                                     ->schema([
                                         View::make('mga_reference')
@@ -212,12 +226,20 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
     {
         return [
             \Filament\Actions\Action::make('configureEmails')
-                ->label('Configure Email Recipients')
+                ->label(function () {
+                    $emailCount = count($this->data['customEmails'] ?? []);
+                    return $emailCount > 0 
+                        ? "Configure Custom Emails ({$emailCount})" 
+                        : 'Configure Custom Emails';
+                })
                 ->icon('heroicon-o-envelope')
-                ->color('gray')
+                ->color(function () {
+                    $emailCount = count($this->data['customEmails'] ?? []);
+                    return $emailCount > 0 ? 'success' : 'gray';
+                })
                 ->form([
                     Section::make('Email Configuration')
-                        ->description('Add additional email addresses to receive the appointment request')
+                        ->description('Add additional email addresses to receive the appointment request as CC recipients')
                         ->schema([
                             Repeater::make('customEmails')
                                 ->label('Additional Email Recipients')
@@ -237,6 +259,21 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                 ])
                 ->action(function (array $data) {
                     $this->data['customEmails'] = $data['customEmails'] ?? [];
+                    
+                    $emailCount = count($this->data['customEmails']);
+                    if ($emailCount > 0) {
+                        Notification::make()
+                            ->title('Custom Emails Configured')
+                            ->body("{$emailCount} additional email(s) will be CC'd when sending appointment requests.")
+                            ->success()
+                            ->send();
+                    } else {
+                        Notification::make()
+                            ->title('Custom Emails Cleared')
+                            ->body('No additional emails will be CC\'d when sending appointment requests.')
+                            ->info()
+                            ->send();
+                    }
                 })
                 ->fillForm(fn () => ['customEmails' => $this->data['customEmails'] ?? []])
                 ->slideOver(),
@@ -247,7 +284,16 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                 ->color('primary')
                 ->requiresConfirmation()
                 ->modalHeading('Send Appointment Requests')
-                ->modalDescription('Send appointment request emails to all active provider branches?')
+                ->modalDescription(function () {
+                    $emailCount = count($this->data['customEmails'] ?? []);
+                    $baseMessage = 'Send appointment request emails to all active provider branches?';
+                    
+                    if ($emailCount > 0) {
+                        $baseMessage .= "\n\n{$emailCount} additional email(s) will be CC'd on all emails.";
+                    }
+                    
+                    return $baseMessage;
+                })
                 ->action('sendAppointmentRequest')
                 ->visible(fn (): bool => $this->selectedFileId !== null),
         ];
@@ -527,7 +573,16 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                     ->color('primary')
                     ->requiresConfirmation()
                     ->modalHeading('Send Appointment Requests')
-                    ->modalDescription('Send appointment request emails to all selected provider branches.')
+                    ->modalDescription(function () {
+                        $emailCount = count($this->data['customEmails'] ?? []);
+                        $baseMessage = 'Send appointment request emails to all selected provider branches.';
+                        
+                        if ($emailCount > 0) {
+                            $baseMessage .= "\n\n{$emailCount} additional email(s) will be CC'd on all emails.";
+                        }
+                        
+                        return $baseMessage;
+                    })
                     ->action(function (Collection $records) {
                         $this->sendBulkAppointmentRequests($records);
                     })
@@ -565,25 +620,70 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
         $emailData = $this->data['customEmails'] ?? [];
         $emails = array_column($emailData, 'email');
 
+        // Log the email sending attempt
+        Log::info('Starting to send appointment request emails', [
+            'file_id' => $this->selectedFile->id,
+            'file_reference' => $this->selectedFile->mga_reference,
+            'custom_emails_count' => count($emails),
+            'custom_emails' => $emails
+        ]);
+
         $sentCount = 0;
         $errorCount = 0;
+        $errors = [];
 
         // Get all active provider branches
         $branches = ProviderBranch::where('status', 'Active')->get();
+        
+        Log::info('Found active branches for email sending', [
+            'total_branches' => $branches->count()
+        ]);
 
         foreach ($branches as $branch) {
             try {
+                // Check if branch has email contact
+                if (!$branch->email && !$branch->operationContact?->email) {
+                    Log::warning('Branch has no email contact', [
+                        'branch_id' => $branch->id,
+                        'branch_name' => $branch->branch_name
+                    ]);
+                    continue;
+                }
+
                 Mail::send(new AppointmentRequestMailable($this->selectedFile, $branch, $emails));
                 $sentCount++;
+                
+                Log::info('Successfully sent email to branch', [
+                    'branch_id' => $branch->id,
+                    'branch_name' => $branch->branch_name,
+                    'branch_email' => $branch->email,
+                    'operation_contact_email' => $branch->operationContact?->email
+                ]);
             } catch (\Exception $e) {
                 $errorCount++;
+                $errors[] = [
+                    'branch_id' => $branch->id,
+                    'branch_name' => $branch->branch_name,
+                    'error' => $e->getMessage()
+                ];
+                
                 Log::error('Failed to send appointment request email', [
                     'branch_id' => $branch->id,
+                    'branch_name' => $branch->branch_name,
                     'file_id' => $this->selectedFile->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
             }
         }
+
+        // Log final results
+        Log::info('Finished sending appointment request emails', [
+            'total_branches' => $branches->count(),
+            'sent_count' => $sentCount,
+            'error_count' => $errorCount,
+            'errors' => $errors
+        ]);
 
         if ($sentCount > 0) {
             Notification::make()
@@ -597,6 +697,14 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
             Notification::make()
                 ->title('Some Emails Failed')
                 ->body("{$errorCount} emails failed to send. Check logs for details.")
+                ->warning()
+                ->send();
+        }
+
+        if ($sentCount === 0 && $errorCount === 0) {
+            Notification::make()
+                ->title('No Emails Sent')
+                ->body('No emails were sent. This might be because no branches have email contacts configured.')
                 ->warning()
                 ->send();
         }
@@ -616,22 +724,64 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
         $emailData = $this->data['customEmails'] ?? [];
         $emails = array_column($emailData, 'email');
 
+        // Log the bulk email sending attempt
+        Log::info('Starting to send bulk appointment request emails', [
+            'file_id' => $this->selectedFile->id,
+            'file_reference' => $this->selectedFile->mga_reference,
+            'custom_emails_count' => count($emails),
+            'custom_emails' => $emails,
+            'selected_branches_count' => $branches->count()
+        ]);
+
         $sentCount = 0;
         $errorCount = 0;
+        $errors = [];
 
         foreach ($branches as $branch) {
             try {
+                // Check if branch has email contact
+                if (!$branch->email && !$branch->operationContact?->email) {
+                    Log::warning('Branch has no email contact for bulk sending', [
+                        'branch_id' => $branch->id,
+                        'branch_name' => $branch->branch_name
+                    ]);
+                    continue;
+                }
+
                 Mail::send(new AppointmentRequestMailable($this->selectedFile, $branch, $emails));
                 $sentCount++;
+                
+                Log::info('Successfully sent bulk email to branch', [
+                    'branch_id' => $branch->id,
+                    'branch_name' => $branch->branch_name,
+                    'branch_email' => $branch->email,
+                    'operation_contact_email' => $branch->operationContact?->email
+                ]);
             } catch (\Exception $e) {
                 $errorCount++;
+                $errors[] = [
+                    'branch_id' => $branch->id,
+                    'branch_name' => $branch->branch_name,
+                    'error' => $e->getMessage()
+                ];
+                
                 Log::error('Failed to send bulk appointment request email', [
                     'branch_id' => $branch->id,
+                    'branch_name' => $branch->branch_name,
                     'file_id' => $this->selectedFile->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
             }
         }
+
+        // Log final results
+        Log::info('Finished sending bulk appointment request emails', [
+            'selected_branches_count' => $branches->count(),
+            'sent_count' => $sentCount,
+            'error_count' => $errorCount,
+            'errors' => $errors
+        ]);
 
         if ($sentCount > 0) {
             Notification::make()
@@ -645,6 +795,14 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
             Notification::make()
                 ->title('Some Emails Failed')
                 ->body("{$errorCount} emails failed to send. Check logs for details.")
+                ->warning()
+                ->send();
+        }
+
+        if ($sentCount === 0 && $errorCount === 0) {
+            Notification::make()
+                ->title('No Emails Sent')
+                ->body('No emails were sent. This might be because no selected branches have email contacts configured.')
                 ->warning()
                 ->send();
         }
