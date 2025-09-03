@@ -339,27 +339,42 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
 
                 TextColumn::make('contact_info')
                     ->label('Contact Information')
+                    ->html()
+                    ->wrap()
                     ->getStateUsing(function (ProviderBranch $record): string {
                         $contactMethods = [];
                         
-                        // Check only direct branch phone
-                        $hasPhone = !empty($record->phone);
-                        
-                        // Check only direct branch email
-                        $hasEmail = !empty($record->email);
-                        
-                        if ($hasPhone) {
-                            $contactMethods[] = '<button class="cursor-pointer text-blue-600 hover:text-blue-800 underline bg-transparent border-0 p-0" onclick="Livewire.dispatch(\'showPhoneNotification\', { branchName: \'' . addslashes($record->branch_name) . '\', phone: \'' . addslashes($record->phone) . '\' })">📞 Phone</button>';
+                        // Get direct branch email
+                        if ($record->email) {
+                            $contactMethods[] = "<div class='flex items-center gap-1'>
+                                <svg class='w-4 h-4 text-blue-500' fill='currentColor' viewBox='0 0 20 20'>
+                                    <path d='M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z'></path>
+                                    <path d='M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z'></path>
+                                </svg>
+                                <a href='mailto:{$record->email}' class='text-blue-600 hover:text-blue-800 underline'>{$record->email}</a>
+                            </div>";
                         }
                         
-                        if ($hasEmail) {
-                            $contactMethods[] = "✉️ Email";
+                        // Get direct branch phone with click action
+                        if ($record->phone) {
+                            $contactMethods[] = "<div class='flex items-center gap-1'>
+                                <svg class='w-4 h-4 text-green-500' fill='currentColor' viewBox='0 0 20 20'>
+                                    <path d='M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z'></path>
+                                </svg>
+                                <button 
+                                    onclick=\"window.livewire.find('{$this->getId()}').call('showPhoneNotification', {$record->id})\"
+                                    class='text-green-600 hover:text-green-800 underline cursor-pointer'
+                                    title='Click to show phone number in notification'
+                                >{$record->phone}</button>
+                            </div>";
                         }
-
-                        return empty($contactMethods) ? 'No contact info' : implode(' | ', $contactMethods);
-                    })
-                    ->html()
-                    ->wrap(),
+                        
+                        if (empty($contactMethods)) {
+                            return '<span class="text-gray-400">No contact information available</span>';
+                        }
+                        
+                        return implode('<div class="mt-1"></div>', $contactMethods);
+                    }),
 
                 TextColumn::make('distance_info')
                     ->label('Distance & Travel Time')
@@ -699,15 +714,15 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
             
             if ($phoneNumber) {
                 Notification::make()
-                    ->title($branch->branch_name . "'s Phone Number")
-                    ->body($phoneNumber)
+                    ->title("📞 {$branch->branch_name}'s Phone")
+                    ->body("Phone: {$phoneNumber}")
                     ->success()
                     ->persistent()
                     ->send();
             } else {
                 Notification::make()
-                    ->title('No Phone Number')
-                    ->body($branch->branch_name . ' does not have a direct phone number.')
+                    ->title('No Phone Number Available')
+                    ->body("{$branch->branch_name} does not have a direct phone number.")
                     ->warning()
                     ->persistent()
                     ->send();
@@ -720,4 +735,6 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                 ->send();
         }
     }
+
+
 }
