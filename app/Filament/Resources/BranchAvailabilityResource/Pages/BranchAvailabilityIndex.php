@@ -361,7 +361,11 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                                 <svg class='w-4 h-4 text-green-500' fill='currentColor' viewBox='0 0 20 20'>
                                     <path d='M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z'></path>
                                 </svg>
-                                <span class='text-green-600'>Phone</span>
+                                <button 
+                                    onclick=\"window.livewire.find('{$this->getId()}').call('showPhoneNotification', {$record->id})\"
+                                    class='text-green-600 hover:text-green-800 underline cursor-pointer'
+                                    title='Click to show phone number in notification'
+                                >Phone</button>
                             </div>";
                         }
                         
@@ -511,15 +515,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                     }),
                     
             ])
-            ->actions([
-                \Filament\Tables\Actions\Action::make('showPhone')
-                    ->label('Show Phone')
-                    ->icon('heroicon-o-phone')
-                    ->color('success')
-                    ->visible(fn (ProviderBranch $record): bool => !empty($record->phone))
-                    ->action(fn (ProviderBranch $record) => $this->showPhoneNotification($record->id))
-                    ->tooltip('Click to show phone number in notification'),
-            ])
+
             ->bulkActions([
                 BulkAction::make('sendAppointmentRequests')
                     ->label('Send Appointment Requests to Selected')
