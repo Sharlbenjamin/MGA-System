@@ -222,33 +222,33 @@ class File extends Model
                 $q->where('service_type_id', $serviceTypeId)
                   ->where('is_active', true);
             })
-            ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
             ->where(function ($q) {
+                // Branches that serve all cities in the country
                 $q->where('all_country', true)
+                  // OR branches directly assigned to this city
                   ->orWhere('city_id', $this->city_id)
-                  ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id));
+                  // OR branches assigned to this city via pivot table
+                  ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id))
+                  // OR branches in the same province
+                  ->orWhere('province_id', $this->city?->province_id);
             })
             ->orderBy('priority', 'asc')
             ->get();
 
-        // Filter branches by province or all_country
-        $provinceBranches = \App\Models\ProviderBranch::query()
+        // For allBranches, include branches from the same country with matching service type
+        $allBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
             ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
                 $q->where('service_type_id', $serviceTypeId)
                   ->where('is_active', true);
             })
             ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
-            ->where(function ($q) {
-                $q->where('all_country', true)
-                  ->orWhere('province_id', $this->city?->province_id);
-            })
             ->orderBy('priority', 'asc')
             ->get();
 
         return [
             'cityBranches' => $cityBranches,
-            'allBranches' => $provinceBranches->merge($cityBranches)->unique('id'),
+            'allBranches' => $allBranches->merge($cityBranches)->unique('id'),
         ];
     }
 
