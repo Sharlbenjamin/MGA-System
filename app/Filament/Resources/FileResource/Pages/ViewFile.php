@@ -1520,7 +1520,8 @@ class ViewFile extends ViewRecord
                             }
                             $set('selected_branches', array_values($selectedBranches));
                             
-                            // Update "Select All" checkbox state
+                            // Update "
+                            " checkbox state
                             $branches = $this->getEligibleProviderBranches($this->record);
                             $totalBranches = $branches->count();
                             $selectedCount = count($selectedBranches);
@@ -1557,6 +1558,7 @@ class ViewFile extends ViewRecord
                     \Filament\Forms\Components\Placeholder::make("priority_{$branch->id}")
                         ->label('')
                         ->content($branch->priority ?? 'N/A')
+                        ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(1),
                     
                     // Cost column
@@ -1585,6 +1587,7 @@ class ViewFile extends ViewRecord
                             }
                             return 'N/A';
                         })
+                        ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(1),
                     
                     // Contact column
