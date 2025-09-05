@@ -223,6 +223,10 @@ class File extends Model
                   ->where('is_active', true);
             })
             ->where(function ($q) {
+                // Filter by country - branch's city must be in the file's country
+                $q->whereHas('city', fn ($q) => $q->where('country_id', $this->country_id));
+            })
+            ->where(function ($q) {
                 // Filter by city - branch serves this city in any way
                 $q->where('all_country', true)
                   // OR branches directly assigned to this city
@@ -235,12 +239,16 @@ class File extends Model
             ->orderBy('priority', 'asc')
             ->get();
 
-        // For allBranches, include all branches with matching service type
+        // For allBranches, include branches from the same country with matching service type
         $allBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
             ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
                 $q->where('service_type_id', $serviceTypeId)
                   ->where('is_active', true);
+            })
+            ->where(function ($q) {
+                // Filter by country - branch's city must be in the file's country
+                $q->whereHas('city', fn ($q) => $q->where('country_id', $this->country_id));
             })
             ->orderBy('priority', 'asc')
             ->get();
