@@ -360,7 +360,7 @@ class ViewFile extends ViewRecord
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
                             // Table-like header
-                            Grid::make(6)
+                            Grid::make(7)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
                                         ->label('Select All')
@@ -402,6 +402,10 @@ class ViewFile extends ViewRecord
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_contact')
                                         ->label('Contact')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_distance')
+                                        ->label('Distance')
                                         ->content('')
                                         ->columnSpan(1),
                                 ])
@@ -1414,7 +1418,7 @@ class ViewFile extends ViewRecord
     }
 
     /**
-     * Get branch contact info display
+     * Get branch contact info display from branch table directly
      */
     protected function getBranchContactInfo($branch): string
     {
@@ -1433,6 +1437,58 @@ class ViewFile extends ViewRecord
     }
 
     /**
+     * Get branch distance information
+     */
+    protected function getBranchDistanceInfo($branch): string
+    {
+        if (!$this->record || !$this->record->address) {
+            return 'No file address';
+        }
+
+        if (!$branch->address) {
+            return 'No branch address';
+        }
+
+        try {
+            $distanceService = new \App\Services\DistanceCalculationService();
+            
+            // Calculate driving distance
+            $drivingDistance = $distanceService->calculateDistance(
+                $this->record->address,
+                $branch->address,
+                'driving'
+            );
+            
+            // Calculate walking distance
+            $walkingDistance = $distanceService->calculateDistance(
+                $this->record->address,
+                $branch->address,
+                'walking'
+            );
+
+            $result = [];
+            
+            if ($drivingDistance) {
+                $result[] = "🚗 " . $drivingDistance['duration'] . " (" . $drivingDistance['distance'] . ")";
+            }
+            
+            if ($walkingDistance) {
+                $result[] = "🚶 " . $walkingDistance['duration'] . " (" . $walkingDistance['distance'] . ")";
+            }
+
+            return empty($result) ? 'Distance unavailable' : implode(' | ', $result);
+            
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Distance calculation error', [
+                'error' => $e->getMessage(),
+                'branch_id' => $branch->id,
+                'file_id' => $this->record->id
+            ]);
+            return 'Distance calculation failed';
+        }
+    }
+
+    /**
      * Get branch rows for table-like display
      */
     protected function getBranchRows(): array
@@ -1441,7 +1497,7 @@ class ViewFile extends ViewRecord
         $rows = [];
         
         foreach ($branches as $branch) {
-            $rows[] = Grid::make(6)
+            $rows[] = Grid::make(7)
                 ->schema([
                     // Checkbox column
                     Checkbox::make("branch_{$branch->id}")
@@ -1488,14 +1544,7 @@ class ViewFile extends ViewRecord
                     // Priority column
                     \Filament\Forms\Components\Placeholder::make("priority_{$branch->id}")
                         ->label('')
-                        ->content(function () use ($branch) {
-                            $priority = $branch->priority ?? 'N/A';
-                            if ($priority !== 'N/A') {
-                                $level = $priority <= 3 ? 'High' : ($priority <= 6 ? 'Medium' : 'Low');
-                                return "{$priority} ({$level})";
-                            }
-                            return 'N/A';
-                        })
+                        ->content($branch->priority ?? 'N/A')
                         ->columnSpan(1),
                     
                     // Cost column
@@ -1530,6 +1579,14 @@ class ViewFile extends ViewRecord
                     \Filament\Forms\Components\Placeholder::make("contact_{$branch->id}")
                         ->label('')
                         ->content($this->getBranchContactInfo($branch))
+                        ->columnSpan(1),
+                    
+                    // Distance column
+                    \Filament\Forms\Components\Placeholder::make("distance_{$branch->id}")
+                        ->label('')
+                        ->content(function () use ($branch) {
+                            return $this->getBranchDistanceInfo($branch);
+                        })
                         ->columnSpan(1),
                 ])
                 ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
@@ -1688,7 +1745,7 @@ class ViewFile extends ViewRecord
             'description' => "File: {$record->mga_reference} - Patient: {$record->patient->name} - Branch: {$branch->branch_name}",
             'taskable_type' => \App\Models\ProviderBranch::class,
             'taskable_id' => $branch->id,
-            'assigned_to' => auth()->id(),
+            'assigned_to' => auth()->user()->id,
             'due_date' => now()->addDays(1),
             'priority' => 'high',
             'status' => 'pending'
