@@ -351,7 +351,7 @@ class ViewFile extends ViewRecord
                 ->label('Request Appointment')
                 ->icon('heroicon-o-calendar-days')
                 ->color('success')
-                ->modal()
+                ->slideOver()
                 ->modalHeading('Request Appointment - Select Provider Branches')
                 ->modalDescription('Choose which provider branches to send appointment requests to. Branches are filtered by city, service type, and active status, sorted by priority.')
                 ->modalWidth('7xl')
@@ -1700,17 +1700,11 @@ class ViewFile extends ViewRecord
 
         foreach ($branches as $branch) {
             try {
-                $emails = collect();
+                // Check if branch has email or if we have custom emails
+                $hasBranchEmail = !empty($branch->email);
+                $hasCustomEmails = $customEmails->isNotEmpty();
                 
-                // Add branch email if available
-                if (!empty($branch->email)) {
-                    $emails->push($branch->email);
-                }
-                
-                // Add custom emails
-                $emails = $emails->merge($customEmails)->unique();
-                
-                if ($emails->isEmpty()) {
+                if (!$hasBranchEmail && !$hasCustomEmails) {
                     // No email available, create task for manual follow-up
                     $this->createManualFollowUpTaskForBranch($branch, $record);
                     $failureCount++;

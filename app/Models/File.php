@@ -225,6 +225,7 @@ class File extends Model
             ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
             ->where(function ($q) {
                 $q->where('all_country', true)
+                  ->orWhere('city_id', $this->city_id)
                   ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id));
             })
             ->orderBy('priority', 'asc')

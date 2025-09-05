@@ -50,10 +50,15 @@ class AppointmentRequestMailable extends Mailable
             $mailBuilder->cc($this->branch->operationContact->email);
         }
 
-        // Add custom emails as CC
+        // Add custom emails - if no branch email, make them TO recipients, otherwise CC
+        $hasBranchEmail = !empty($this->branch->email);
         foreach ($this->customEmails as $email) {
             if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $mailBuilder->cc($email);
+                if ($hasBranchEmail) {
+                    $mailBuilder->cc($email);
+                } else {
+                    $mailBuilder->to($email);
+                }
             }
         }
 
