@@ -360,10 +360,10 @@ class ViewFile extends ViewRecord
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
                             // Table-like header
-                            Grid::make(9)
+                            Grid::make(10)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
-
+                                        ->label('')
                                         ->live()
                                         ->afterStateUpdated(function ($state, $set, $get) {
                                             $branches = $this->getEligibleProviderBranches($this->record);
