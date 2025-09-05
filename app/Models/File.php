@@ -233,7 +233,7 @@ class File extends Model
                   ->orWhere('city_id', $this->city_id)
                   // OR branches assigned to this city via pivot table
                   ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id))
-                  // OR branches in the same province
+                  // OR branches in the same province as the file's city
                   ->orWhere('province_id', $this->city?->province_id);
             })
             ->orderBy('priority', 'asc')

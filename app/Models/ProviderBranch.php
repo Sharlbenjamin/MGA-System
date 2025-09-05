@@ -55,6 +55,11 @@ class ProviderBranch extends Model
         return $this->belongsTo(City::class, 'city_id');
     }
 
+    public function province()
+    {
+        return $this->belongsTo(Province::class, 'province_id');
+    }
+
     public function gopContact()
     {
         return $this->belongsTo(Contact::class, 'gop_contact_id');
