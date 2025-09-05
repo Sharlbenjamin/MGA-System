@@ -222,10 +222,6 @@ class File extends Model
                 $q->where('service_type_id', $serviceTypeId)
                   ->where('is_active', true);
             })
-            ->whereHas('provider', function ($q) {
-                // Filter by country - provider must be in the file's country
-                $q->where('country_id', $this->country_id);
-            })
             ->whereHas('cities', fn ($q) => $q->where('cities.id', $this->city_id))
             ->orderBy('priority', 'asc')
             ->get();
