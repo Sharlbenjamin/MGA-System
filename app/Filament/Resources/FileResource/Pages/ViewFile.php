@@ -359,24 +359,23 @@ class ViewFile extends ViewRecord
                     Section::make('Available Branches')
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
-                            View::make('filament.forms.components.branch-selection-table')
-                                ->viewData([
-                                    'branches' => function ($record) {
-                                        return $this->getEligibleProviderBranches($record);
-                                    },
-                                    'record' => function ($record) {
-                                        return $record;
-                                    }
-                                ]),
-                            
-                            // Hidden field to capture selected branches
-                            \Filament\Forms\Components\Hidden::make('selected_branches')
-                                ->default([])
-                                ->rules(['required', 'array', 'min:1'])
-                                ->validationMessages([
-                                    'required' => 'Please select at least one provider branch.',
-                                    'min' => 'Please select at least one provider branch.',
-                                ]),
+                            CheckboxList::make('selected_branches')
+                                ->label('Provider Branches')
+                                ->options(function ($record) {
+                                    return $this->getEligibleProviderBranches($record)
+                                        ->mapWithKeys(function ($branch) {
+                                            $label = $branch->branch_name;
+                                            $description = $this->getBranchDescription($branch);
+                                            return [$branch->id => $label . ' - ' . $description];
+                                        })
+                                        ->toArray();
+                                })
+                                ->columns(1)
+                                ->gridDirection('row')
+                                ->bulkToggleable()
+                                ->searchable()
+                                ->required()
+                                ->helperText('Branches are filtered by your file\'s city, service type, and active status, sorted by priority'),
                         ])
                         ->collapsible(),
                     
@@ -1408,8 +1407,19 @@ class ViewFile extends ViewRecord
             $description[] = "City: " . $branch->city->name;
         }
         
-        // Add priority
-        $description[] = "Priority: " . ($branch->priority ?? 'N/A');
+        // Add priority with color coding
+        $priority = $branch->priority ?? 'N/A';
+        if ($priority !== 'N/A') {
+            if ($priority <= 3) {
+                $description[] = "Priority: " . $priority . " (High)";
+            } elseif ($priority <= 6) {
+                $description[] = "Priority: " . $priority . " (Medium)";
+            } else {
+                $description[] = "Priority: " . $priority . " (Low)";
+            }
+        } else {
+            $description[] = "Priority: N/A";
+        }
         
         // Add cost for current service type
         if ($this->record && $this->record->service_type_id) {
@@ -1430,7 +1440,11 @@ class ViewFile extends ViewRecord
                 if (!empty($costs)) {
                     $cheapestCost = min($costs);
                     $description[] = "From: €" . number_format($cheapestCost, 2);
+                } else {
+                    $description[] = "No pricing available";
                 }
+            } else {
+                $description[] = "No pricing available";
             }
         }
         
@@ -1438,7 +1452,7 @@ class ViewFile extends ViewRecord
         $contactInfo = $this->getBranchContactInfo($branch);
         $description[] = "Contact: " . $contactInfo;
         
-        return implode(' | ', $description);
+        return implode(' • ', $description);
     }
 
     /**
@@ -1446,19 +1460,7 @@ class ViewFile extends ViewRecord
      */
     protected function sendAppointmentRequestsFromModal(array $data, $record): void
     {
-        // Handle both array format and JSON string format from the table
         $selectedBranchIds = $data['selected_branches'] ?? [];
-        
-        // If it's a JSON string, decode it
-        if (is_string($selectedBranchIds)) {
-            $selectedBranchIds = json_decode($selectedBranchIds, true) ?? [];
-        }
-        
-        // Ensure it's an array
-        if (!is_array($selectedBranchIds)) {
-            $selectedBranchIds = [];
-        }
-        
         $customEmails = collect($data['custom_emails'] ?? [])->pluck('email')->filter();
         
         if (empty($selectedBranchIds)) {
