@@ -1325,20 +1325,27 @@ class ViewFile extends ViewRecord
         $availableBranches = $record->availableBranches();
         
         // Get the most relevant branches (city branches first, then all branches)
-        $branches = collect();
+        $branchIds = collect();
         
         if (isset($availableBranches['cityBranches'])) {
-            $branches = $branches->merge($availableBranches['cityBranches']);
+            $branchIds = $branchIds->merge($availableBranches['cityBranches']->pluck('id'));
         }
         
         if (isset($availableBranches['allBranches'])) {
-            $branches = $branches->merge($availableBranches['allBranches']);
+            $branchIds = $branchIds->merge($availableBranches['allBranches']->pluck('id'));
         }
         
-        // Remove duplicates and ensure proper relationships are loaded
-        return $branches->unique('id')
-            ->load(['provider', 'city', 'branchServices.serviceType', 'gopContact', 'operationContact'])
-            ->sortBy('priority');
+        // Remove duplicates and fetch with proper relationships
+        $uniqueIds = $branchIds->unique()->values()->toArray();
+        
+        if (empty($uniqueIds)) {
+            return collect();
+        }
+        
+        return \App\Models\ProviderBranch::whereIn('id', $uniqueIds)
+            ->with(['provider', 'city', 'branchServices.serviceType', 'gopContact', 'operationContact'])
+            ->orderBy('priority', 'asc')
+            ->get();
     }
 
     /**
