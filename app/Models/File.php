@@ -222,7 +222,18 @@ class File extends Model
                 $q->where('service_type_id', $serviceTypeId)
                   ->where('is_active', true);
             })
-            ->whereHas('cities', fn ($q) => $q->where('cities.id', $this->city_id))
+            ->whereHas('provider', function ($q) {
+                // Filter by country - provider must be in the file's country
+                $q->where('country_id', $this->country_id);
+            })
+            ->where(function ($q) {
+                // Filter by city - branch serves this city in any way
+                $q->where('all_country', true)
+                  // OR branches directly assigned to this city
+                  ->orWhere('city_id', $this->city_id)
+                  // OR branches assigned to this city via many-to-many relationship (branch_cities table)
+                  ->orWhereHas('cities', fn ($q) => $q->where('cities.id', $this->city_id));
+            })
             ->orderBy('priority', 'asc')
             ->get();
 
