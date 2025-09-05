@@ -227,10 +227,8 @@ class File extends Model
                 $q->where('country_id', $this->country_id);
             })
             ->where(function ($q) {
-                // Filter by city - branch serves this city in any way
-                $q->where('all_country', true)
                   // OR branches directly assigned to this city
-                  ->orWhere('city_id', $this->city_id)
+                  $q->orWhere('city_id', $this->city_id)
                   // OR branches assigned to this city via many-to-many relationship (branch_cities table)
                   ->orWhereHas('cities', fn ($q) => $q->where('cities.id', $this->city_id));
             })
