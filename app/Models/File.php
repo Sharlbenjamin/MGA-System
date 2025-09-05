@@ -223,8 +223,8 @@ class File extends Model
                   ->where('is_active', true);
             })
             ->where(function ($q) {
-                // Filter by country first
-                $q->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id));
+                // Filter by country - check branch's city's country
+                $q->whereHas('city', fn ($q) => $q->where('country_id', $this->country_id));
             })
             ->where(function ($q) {
                 // Then filter by city
@@ -246,7 +246,7 @@ class File extends Model
                 $q->where('service_type_id', $serviceTypeId)
                   ->where('is_active', true);
             })
-            ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
+            ->whereHas('city', fn ($q) => $q->where('country_id', $this->country_id))
             ->orderBy('priority', 'asc')
             ->get();
 
