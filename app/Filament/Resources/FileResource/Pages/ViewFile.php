@@ -1582,19 +1582,20 @@ class ViewFile extends ViewRecord
                         ->columnSpan(1),
                     
                     // Contact column
-                    \Filament\Forms\Components\Placeholder::make("contact_{$branch->id}")
-                        ->label('')
-                        ->content($this->getBranchContactInfo($branch))
-                        ->html()
+                    \Filament\Forms\Components\View::make("contact_{$branch->id}")
+                        ->view('filament.forms.components.contact-info')
+                        ->viewData([
+                            'contactInfo' => $this->getBranchContactInfo($branch),
+                            'branchId' => $branch->id
+                        ])
                         ->columnSpan(1),
                     
                     // Distance column
-                    \Filament\Forms\Components\Placeholder::make("distance_{$branch->id}")
-                        ->label('')
-                        ->content(function () use ($branch) {
-                            return $this->getBranchDistanceInfo($branch);
-                        })
-                        ->html()
+                    \Filament\Forms\Components\View::make("distance_{$branch->id}")
+                        ->view('filament.forms.components.distance-info')
+                        ->viewData([
+                            'distanceInfo' => $this->getBranchDistanceInfo($branch)
+                        ])
                         ->columnSpan(1),
                 ])
                 ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);

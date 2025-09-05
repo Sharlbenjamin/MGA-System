@@ -1,0 +1,3 @@
+<div>
+    {!! $contactInfo !!}
+</div>
