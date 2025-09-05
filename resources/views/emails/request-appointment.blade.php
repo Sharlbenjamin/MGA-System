@@ -53,7 +53,7 @@
 
         @if($file->symptoms)
         <div class="appointment-details">
-            <p><strong>Additional Information:</strong></p>
+            <p><strong>Symptoms:</strong></p>
             <p>{{ $file->symptoms }}</p>
         </div>
         @endif
