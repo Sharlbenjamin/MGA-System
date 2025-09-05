@@ -360,7 +360,7 @@ class ViewFile extends ViewRecord
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
                             // Table-like header
-                            Grid::make(7)
+                            Grid::make(8)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
 
@@ -387,11 +387,11 @@ class ViewFile extends ViewRecord
                                     \Filament\Forms\Components\Placeholder::make('header_branch')
                                         ->label('Branch Name')
                                         ->content('')
-                                        ->columnSpan(1),
+                                        ->columnSpan(2),
                                     \Filament\Forms\Components\Placeholder::make('header_provider')
                                         ->label('Provider')
                                         ->content('')
-                                        ->columnSpan(1),
+                                        ->columnSpan(2),
                                     \Filament\Forms\Components\Placeholder::make('header_priority')
                                         ->label('Priority')
                                         ->content('')
@@ -1503,7 +1503,7 @@ class ViewFile extends ViewRecord
         $rows = [];
         
         foreach ($branches as $branch) {
-            $rows[] = Grid::make(7)
+            $rows[] = Grid::make(8)
                 ->schema([
                     // Checkbox column
                     Checkbox::make("branch_{$branch->id}")
@@ -1542,7 +1542,7 @@ class ViewFile extends ViewRecord
                             'branchName' => $branch->branch_name,
                             'branchId' => $branch->id
                         ])
-                        ->columnSpan(1),
+                        ->columnSpan(2),
                     
                     // Provider column
                     \Filament\Forms\Components\View::make('provider_' . $branch->id)
@@ -1551,7 +1551,7 @@ class ViewFile extends ViewRecord
                             'providerName' => $branch->provider->name ?? 'N/A',
                             'providerId' => $branch->provider->id ?? null
                         ])
-                        ->columnSpan(1),
+                        ->columnSpan(2),
                     
                     // Priority column
                     \Filament\Forms\Components\Placeholder::make("priority_{$branch->id}")
