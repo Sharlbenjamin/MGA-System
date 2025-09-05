@@ -363,7 +363,7 @@ class ViewFile extends ViewRecord
                             Grid::make(7)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
-                                        ->label('Select All')
+
                                         ->live()
                                         ->afterStateUpdated(function ($state, $set, $get) {
                                             $branches = $this->getEligibleProviderBranches($this->record);
@@ -1426,11 +1426,11 @@ class ViewFile extends ViewRecord
         $hasPhone = !empty($branch->phone);
         
         if ($hasEmail && $hasPhone) {
-            return 'Email, Phone';
+            return 'Email, <button type="button" class="text-blue-600 cursor-pointer hover:underline" wire:click="showPhoneNotification(\'' . $branch->phone . '\', \'' . $branch->branch_name . '\')">Phone</button>';
         } elseif ($hasEmail) {
             return 'Email';
         } elseif ($hasPhone) {
-            return 'Phone';
+            return '<button type="button" class="text-blue-600 cursor-pointer hover:underline" wire:click="showPhoneNotification(\'' . $branch->phone . '\', \'' . $branch->branch_name . '\')">Phone</button>';
         }
         
         return 'None';
@@ -1476,7 +1476,13 @@ class ViewFile extends ViewRecord
                 $result[] = "🚶 " . $walkingDistance['duration'] . " (" . $walkingDistance['distance'] . ")";
             }
 
-            return empty($result) ? 'Distance unavailable' : implode(' | ', $result);
+            if (empty($result)) {
+                return 'Distance unavailable';
+            }
+
+            return '<ul class="list-disc list-inside space-y-1">' . 
+                   implode('', array_map(fn($item) => '<li>' . $item . '</li>', $result)) . 
+                   '</ul>';
             
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Distance calculation error', [
@@ -1579,6 +1585,7 @@ class ViewFile extends ViewRecord
                     \Filament\Forms\Components\Placeholder::make("contact_{$branch->id}")
                         ->label('')
                         ->content($this->getBranchContactInfo($branch))
+                        ->html()
                         ->columnSpan(1),
                     
                     // Distance column
@@ -1587,6 +1594,7 @@ class ViewFile extends ViewRecord
                         ->content(function () use ($branch) {
                             return $this->getBranchDistanceInfo($branch);
                         })
+                        ->html()
                         ->columnSpan(1),
                 ])
                 ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
@@ -1745,10 +1753,23 @@ class ViewFile extends ViewRecord
             'description' => "File: {$record->mga_reference} - Patient: {$record->patient->name} - Branch: {$branch->branch_name}",
             'taskable_type' => \App\Models\ProviderBranch::class,
             'taskable_id' => $branch->id,
-            'assigned_to' => auth()->user()->id,
+            'assigned_to' => Auth::id(),
             'due_date' => now()->addDays(1),
             'priority' => 'high',
             'status' => 'pending'
         ]);
+    }
+
+    /**
+     * Show phone notification
+     */
+    public function showPhoneNotification($phoneNumber, $branchName): void
+    {
+        Notification::make()
+            ->title("📞 {$branchName}'s Phone Number")
+            ->body("Phone: {$phoneNumber}")
+            ->success()
+            ->persistent()
+            ->send();
     }
 }
