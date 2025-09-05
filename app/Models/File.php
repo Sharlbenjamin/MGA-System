@@ -222,7 +222,6 @@ class File extends Model
                 $q->where('service_type_id', $serviceTypeId)
                   ->where('is_active', true);
             })
-            ->whereHas('cities', fn ($q) => $q->where('cities.id', $this->city_id))
             ->orderBy('priority', 'asc')
             ->get();
 
