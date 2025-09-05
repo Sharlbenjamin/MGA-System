@@ -359,23 +359,65 @@ class ViewFile extends ViewRecord
                     Section::make('Available Branches')
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
-                            CheckboxList::make('selected_branches')
-                                ->label('Provider Branches')
-                                ->options(function ($record) {
-                                    return $this->getEligibleProviderBranches($record)
-                                        ->mapWithKeys(function ($branch) {
-                                            $label = $branch->branch_name;
-                                            $description = $this->getBranchDescription($branch);
-                                            return [$branch->id => $label . ' - ' . $description];
+                            // Table-like header
+                            Grid::make(6)
+                                ->schema([
+                                    Checkbox::make('select_all_branches')
+                                        ->label('Select All')
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, $set, $get) {
+                                            $branches = $this->getEligibleProviderBranches($this->record);
+                                            $branchIds = $branches->pluck('id')->toArray();
+                                            
+                                            if ($state) {
+                                                $set('selected_branches', $branchIds);
+                                                // Check all individual checkboxes
+                                                foreach ($branchIds as $branchId) {
+                                                    $set("branch_{$branchId}", true);
+                                                }
+                                            } else {
+                                                $set('selected_branches', []);
+                                                // Uncheck all individual checkboxes
+                                                foreach ($branchIds as $branchId) {
+                                                    $set("branch_{$branchId}", false);
+                                                }
+                                            }
                                         })
-                                        ->toArray();
-                                })
-                                ->columns(1)
-                                ->gridDirection('row')
-                                ->bulkToggleable()
-                                ->searchable()
-                                ->required()
-                                ->helperText('Branches are filtered by your file\'s city, service type, and active status, sorted by priority'),
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_branch')
+                                        ->label('Branch Name')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_provider')
+                                        ->label('Provider')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_priority')
+                                        ->label('Priority')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_cost')
+                                        ->label('Cost')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_contact')
+                                        ->label('Contact')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                ])
+                                ->extraAttributes(['class' => 'bg-gray-50 border-b-2 border-gray-200 font-semibold text-sm']),
+                            
+                            // Branch rows
+                            ...$this->getBranchRows(),
+                            
+                            // Hidden field to capture selected branches
+                            \Filament\Forms\Components\Hidden::make('selected_branches')
+                                ->default([])
+                                ->rules(['required', 'array', 'min:1'])
+                                ->validationMessages([
+                                    'required' => 'Please select at least one provider branch.',
+                                    'min' => 'Please select at least one provider branch.',
+                                ]),
                         ])
                         ->collapsible(),
                     
@@ -1388,6 +1430,112 @@ class ViewFile extends ViewRecord
         }
         
         return 'None';
+    }
+
+    /**
+     * Get branch rows for table-like display
+     */
+    protected function getBranchRows(): array
+    {
+        $branches = $this->getEligibleProviderBranches($this->record);
+        $rows = [];
+        
+        foreach ($branches as $branch) {
+            $rows[] = Grid::make(6)
+                ->schema([
+                    // Checkbox column
+                    Checkbox::make("branch_{$branch->id}")
+                        ->label('')
+                        ->live()
+                        ->afterStateUpdated(function ($state, $set, $get) use ($branch) {
+                            $selectedBranches = $get('selected_branches') ?? [];
+                            if ($state) {
+                                if (!in_array($branch->id, $selectedBranches)) {
+                                    $selectedBranches[] = $branch->id;
+                                }
+                            } else {
+                                $selectedBranches = array_filter($selectedBranches, fn($id) => $id != $branch->id);
+                            }
+                            $set('selected_branches', array_values($selectedBranches));
+                            
+                            // Update "Select All" checkbox state
+                            $branches = $this->getEligibleProviderBranches($this->record);
+                            $totalBranches = $branches->count();
+                            $selectedCount = count($selectedBranches);
+                            
+                            if ($selectedCount === 0) {
+                                $set('select_all_branches', false);
+                            } elseif ($selectedCount === $totalBranches) {
+                                $set('select_all_branches', true);
+                            } else {
+                                $set('select_all_branches', false); // Partial selection
+                            }
+                        })
+                        ->columnSpan(1),
+                    
+                    // Branch name column
+                    \Filament\Forms\Components\Placeholder::make("branch_name_{$branch->id}")
+                        ->label('')
+                        ->content($branch->branch_name)
+                        ->columnSpan(1),
+                    
+                    // Provider column
+                    \Filament\Forms\Components\Placeholder::make("provider_{$branch->id}")
+                        ->label('')
+                        ->content($branch->provider->name ?? 'N/A')
+                        ->columnSpan(1),
+                    
+                    // Priority column
+                    \Filament\Forms\Components\Placeholder::make("priority_{$branch->id}")
+                        ->label('')
+                        ->content(function () use ($branch) {
+                            $priority = $branch->priority ?? 'N/A';
+                            if ($priority !== 'N/A') {
+                                $level = $priority <= 3 ? 'High' : ($priority <= 6 ? 'Medium' : 'Low');
+                                return "{$priority} ({$level})";
+                            }
+                            return 'N/A';
+                        })
+                        ->columnSpan(1),
+                    
+                    // Cost column
+                    \Filament\Forms\Components\Placeholder::make("cost_{$branch->id}")
+                        ->label('')
+                        ->content(function () use ($branch) {
+                            if ($this->record && $this->record->service_type_id) {
+                                $service = $branch->branchServices()
+                                    ->where('service_type_id', $this->record->service_type_id)
+                                    ->where('is_active', true)
+                                    ->first();
+                                if ($service) {
+                                    $costs = array_filter([
+                                        $service->day_cost,
+                                        $service->night_cost,
+                                        $service->weekend_cost,
+                                        $service->weekend_night_cost
+                                    ], function($cost) {
+                                        return $cost !== null && $cost > 0;
+                                    });
+                                    
+                                    if (!empty($costs)) {
+                                        return '€' . number_format(min($costs), 2);
+                                    }
+                                }
+                            }
+                            return 'N/A';
+                        })
+                        ->columnSpan(1),
+                    
+                    // Contact column
+                    \Filament\Forms\Components\Placeholder::make("contact_{$branch->id}")
+                        ->label('')
+                        ->content($this->getBranchContactInfo($branch))
+                        ->columnSpan(1),
+                ])
+                ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
+        }
+        
+        return $rows;
     }
 
     /**
