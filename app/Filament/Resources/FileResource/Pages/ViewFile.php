@@ -1536,15 +1536,21 @@ class ViewFile extends ViewRecord
                         ->columnSpan(1),
                     
                     // Branch name column
-                    \Filament\Forms\Components\Placeholder::make("branch_name_{$branch->id}")
-                        ->label('')
-                        ->content($branch->branch_name)
+                    \Filament\Forms\Components\View::make("branch_name_{$branch->id}")
+                        ->view('filament.forms.components.branch-name-link')
+                        ->viewData([
+                            'branchName' => $branch->branch_name,
+                            'branchId' => $branch->id
+                        ])
                         ->columnSpan(1),
                     
                     // Provider column
-                    \Filament\Forms\Components\Placeholder::make("provider_{$branch->id}")
-                        ->label('')
-                        ->content($branch->provider->name ?? 'N/A')
+                    \Filament\Forms\Components\View::make("provider_{$branch->id}")
+                        ->view('filament.forms.components.provider-name-link')
+                        ->viewData([
+                            'providerName' => $branch->provider->name ?? 'N/A',
+                            'providerId' => $branch->provider->id ?? null
+                        ])
                         ->columnSpan(1),
                     
                     // Priority column
