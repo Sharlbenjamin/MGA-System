@@ -1717,10 +1717,8 @@ class ViewFile extends ViewRecord
                     continue;
                 }
 
-                // Send email to each address
-                foreach ($emails as $email) {
-                    Mail::to($email)->send(new \App\Mail\AppointmentNotificationMail('file_created', $record));
-                }
+                // Send email using AppointmentRequestMailable
+                Mail::send(new \App\Mail\AppointmentRequestMailable($record, $branch, $customEmails->toArray()));
                 
                 $successCount++;
                 
