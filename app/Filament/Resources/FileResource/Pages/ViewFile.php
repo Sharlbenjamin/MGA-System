@@ -360,7 +360,7 @@ class ViewFile extends ViewRecord
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
                             // Table-like header
-                            Grid::make(8)
+                            Grid::make(9)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
 
@@ -1503,7 +1503,7 @@ class ViewFile extends ViewRecord
         $rows = [];
         
         foreach ($branches as $branch) {
-            $rows[] = Grid::make(8)
+            $rows[] = Grid::make(10)
                 ->schema([
                     // Checkbox column
                     Checkbox::make("branch_{$branch->id}")
@@ -1604,7 +1604,7 @@ class ViewFile extends ViewRecord
                         ->viewData([
                             'distanceInfo' => $this->getBranchDistanceInfo($branch)
                         ])
-                        ->columnSpan(1),
+                        ->columnSpan(2),
                 ])
                 ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
         }
