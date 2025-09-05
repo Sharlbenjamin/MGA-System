@@ -223,11 +223,6 @@ class File extends Model
                   ->where('is_active', true);
             })
             ->where(function ($q) {
-                // Filter by country - check provider's country OR branch's city's country
-                $q->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
-                  ->orWhereHas('city', fn ($q) => $q->where('country_id', $this->country_id));
-            })
-            ->where(function ($q) {
                 // Branches that serve all cities in the country
                 $q->where('all_country', true)
                   // OR branches directly assigned to this city
@@ -247,11 +242,7 @@ class File extends Model
                 $q->where('service_type_id', $serviceTypeId)
                   ->where('is_active', true);
             })
-            ->where(function ($q) {
-                // Filter by country - check provider's country OR branch's city's country
-                $q->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
-                  ->orWhereHas('city', fn ($q) => $q->where('country_id', $this->country_id));
-            })
+            ->whereHas('provider', fn ($q) => $q->where('country_id', $this->country_id))
             ->orderBy('priority', 'asc')
             ->get();
 
