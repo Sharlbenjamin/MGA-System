@@ -1520,8 +1520,7 @@ class ViewFile extends ViewRecord
                             }
                             $set('selected_branches', array_values($selectedBranches));
                             
-                            // Update "
-                            " checkbox state
+                            // Update "Select All" checkbox state
                             $branches = $this->getEligibleProviderBranches($this->record);
                             $totalBranches = $branches->count();
                             $selectedCount = count($selectedBranches);
@@ -1537,7 +1536,7 @@ class ViewFile extends ViewRecord
                         ->columnSpan(1),
                     
                     // Branch name column
-                    \Filament\Forms\Components\View::make("branch_name_{$branch->id}")
+                    \Filament\Forms\Components\View::make('branch_name_' . $branch->id)
                         ->view('filament.forms.components.branch-name-link')
                         ->viewData([
                             'branchName' => $branch->branch_name,
@@ -1546,7 +1545,7 @@ class ViewFile extends ViewRecord
                         ->columnSpan(1),
                     
                     // Provider column
-                    \Filament\Forms\Components\View::make("provider_{$branch->id}")
+                    \Filament\Forms\Components\View::make('provider_' . $branch->id)
                         ->view('filament.forms.components.provider-name-link')
                         ->viewData([
                             'providerName' => $branch->provider->name ?? 'N/A',
@@ -1591,7 +1590,7 @@ class ViewFile extends ViewRecord
                         ->columnSpan(1),
                     
                     // Contact column
-                    \Filament\Forms\Components\View::make("contact_{$branch->id}")
+                    \Filament\Forms\Components\View::make('contact_' . $branch->id)
                         ->view('filament.forms.components.contact-info')
                         ->viewData([
                             'contactInfo' => $this->getBranchContactInfo($branch),
@@ -1600,7 +1599,7 @@ class ViewFile extends ViewRecord
                         ->columnSpan(1),
                     
                     // Distance column
-                    \Filament\Forms\Components\View::make("distance_{$branch->id}")
+                    \Filament\Forms\Components\View::make('distance_' . $branch->id)
                         ->view('filament.forms.components.distance-info')
                         ->viewData([
                             'distanceInfo' => $this->getBranchDistanceInfo($branch)
