@@ -228,7 +228,7 @@ class File extends Model
                   // OR branches directly assigned to this city
                   ->orWhere('city_id', $this->city_id)
                   // OR branches assigned to this city via many-to-many relationship
-                  ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id))
+                  ->orWhereHas('cities', fn ($q) => $q->where('cities.id', $this->city_id))
                   // OR branches in the same province as the file's city
                   ->orWhere('province_id', $this->city?->province_id);
             })
