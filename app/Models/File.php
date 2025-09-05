@@ -223,11 +223,11 @@ class File extends Model
                   ->where('is_active', true);
             })
             ->where(function ($q) {
-                // Filter by city
+                // Filter by city - branch serves this city in any way
                 $q->where('all_country', true)
                   // OR branches directly assigned to this city
                   ->orWhere('city_id', $this->city_id)
-                  // OR branches assigned to this city via pivot table
+                  // OR branches assigned to this city via many-to-many relationship
                   ->orWhereHas('branchCities', fn ($q) => $q->where('city_id', $this->city_id))
                   // OR branches in the same province as the file's city
                   ->orWhere('province_id', $this->city?->province_id);
