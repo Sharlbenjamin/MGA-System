@@ -351,10 +351,59 @@ class ViewFile extends ViewRecord
                 ->label('Request Appointment')
                 ->icon('heroicon-o-calendar-days')
                 ->color('success')
-                ->url(function ($record) {
-                    return BranchAvailabilityResource::getUrl('index') . '?file=' . $record->id;
+                ->modal()
+                ->modalHeading('Request Appointment - Select Provider Branches')
+                ->modalDescription('Choose which provider branches to send appointment requests to. Branches are filtered by city, service type, and active status, sorted by priority.')
+                ->modalWidth('7xl')
+                ->form([
+                    Section::make('Available Branches')
+                        ->description('Select the provider branches you want to send appointment requests to')
+                        ->schema([
+                            CheckboxList::make('selected_branches')
+                                ->label('Provider Branches')
+                                ->options(function ($record) {
+                                    return $this->getEligibleProviderBranches($record)
+                                        ->mapWithKeys(function ($branch) {
+                                            $label = $branch->branch_name;
+                                            $description = $this->getBranchDescription($branch);
+                                            return [$branch->id => $label . ' - ' . $description];
+                                        })
+                                        ->toArray();
+                                })
+                                ->columns(1)
+                                ->gridDirection('row')
+                                ->bulkToggleable()
+                                ->searchable()
+                                ->required()
+                                ->helperText('Branches are filtered by your file\'s city, service type, and active status, sorted by priority'),
+                        ])
+                        ->collapsible(),
+                    
+                    Section::make('Additional Email Recipients')
+                        ->description('Add any additional email addresses to receive the appointment request')
+                        ->schema([
+                            Repeater::make('custom_emails')
+                                ->label('Additional Email Recipients')
+                                ->schema([
+                                    TextInput::make('email')
+                                        ->label('Email Address')
+                                        ->email()
+                                        ->required()
+                                        ->placeholder('example@email.com'),
+                                ])
+                                ->addActionLabel('Add Email')
+                                ->reorderable(false)
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['email'] ?? null)
+                                ->defaultItems(0),
+                        ])
+                        ->collapsible(),
+                ])
+                ->action(function (array $data, $record) {
+                    $this->sendAppointmentRequestsFromModal($data, $record);
                 })
-                ->openUrlInNewTab(false),
+                ->modalSubmitActionLabel('Send Appointment Requests')
+                ->modalCancelActionLabel('Cancel'),
             Action::make('exportMedicalReport')
                 ->label('Export MR')
                 ->icon('heroicon-o-document-arrow-down')
@@ -1272,21 +1321,24 @@ class ViewFile extends ViewRecord
      */
     protected function getEligibleProviderBranches($record)
     {
-        return \App\Models\ProviderBranch::query()
-            ->with(['city', 'branchServices.serviceType', 'gopContact', 'operationContact'])
-            ->where('status', 'Active')
-            ->whereHas('branchServices', function ($query) use ($record) {
-                $query->where('service_type_id', $record->service_type_id)
-                      ->where('is_active', true);
-            })
-            ->where(function ($query) use ($record) {
-                $query->where('all_country', true)
-                      ->orWhereHas('cities', function ($subQuery) use ($record) {
-                          $subQuery->where('city_id', $record->city_id);
-                      });
-            })
-            ->orderBy('priority', 'asc')
-            ->get();
+        // Use the File model's availableBranches method for consistent filtering
+        $availableBranches = $record->availableBranches();
+        
+        // Get the most relevant branches (city branches first, then all branches)
+        $branches = collect();
+        
+        if (isset($availableBranches['cityBranches'])) {
+            $branches = $branches->merge($availableBranches['cityBranches']);
+        }
+        
+        if (isset($availableBranches['allBranches'])) {
+            $branches = $branches->merge($availableBranches['allBranches']);
+        }
+        
+        // Remove duplicates and ensure proper relationships are loaded
+        return $branches->unique('id')
+            ->load(['provider', 'city', 'branchServices.serviceType', 'gopContact', 'operationContact'])
+            ->sortBy('priority');
     }
 
     /**
@@ -1329,6 +1381,56 @@ class ViewFile extends ViewRecord
         }
         
         return 'None';
+    }
+
+    /**
+     * Get branch description for modal display
+     */
+    protected function getBranchDescription($branch): string
+    {
+        $description = [];
+        
+        // Add provider name
+        if ($branch->provider) {
+            $description[] = "Provider: " . $branch->provider->name;
+        }
+        
+        // Add city
+        if ($branch->city) {
+            $description[] = "City: " . $branch->city->name;
+        }
+        
+        // Add priority
+        $description[] = "Priority: " . ($branch->priority ?? 'N/A');
+        
+        // Add cost for current service type
+        if ($this->record && $this->record->service_type_id) {
+            $service = $branch->branchServices()
+                ->where('service_type_id', $this->record->service_type_id)
+                ->where('is_active', true)
+                ->first();
+            if ($service) {
+                $costs = array_filter([
+                    $service->day_cost,
+                    $service->night_cost,
+                    $service->weekend_cost,
+                    $service->weekend_night_cost
+                ], function($cost) {
+                    return $cost !== null && $cost > 0;
+                });
+                
+                if (!empty($costs)) {
+                    $cheapestCost = min($costs);
+                    $description[] = "From: €" . number_format($cheapestCost, 2);
+                }
+            }
+        }
+        
+        // Add contact info
+        $contactInfo = $this->getBranchContactInfo($branch);
+        $description[] = "Contact: " . $contactInfo;
+        
+        return implode(' | ', $description);
     }
 
     /**
