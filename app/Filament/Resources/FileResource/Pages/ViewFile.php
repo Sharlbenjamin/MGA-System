@@ -349,7 +349,7 @@ class ViewFile extends ViewRecord
         return [
             Action::make('requestAppointment')
                 ->label('Request Appointment')
-                ->icon('heroicon-o-paper-airplane')
+                ->icon('heroicon-o-globe-alt')
                 ->color('primary')
                 ->slideOver()
                 ->modalHeading('Request Appointment - Select Provider Branches')
