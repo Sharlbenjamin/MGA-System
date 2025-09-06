@@ -229,15 +229,13 @@ class File extends Model
             ->where(function ($q) {
                 // Filter by city - branch serves this city in any way
                 $q->where('all_country', true)
-                  // OR branches directly assigned to this city
-                  ->orWhere('city_id', $this->city_id)
                   // OR branches assigned to this city via many-to-many relationship (branch_cities table)
                   ->orWhereHas('cities', fn ($q) => $q->where('cities.id', $this->city_id));
             })
             ->orderBy('priority', 'asc')
             ->get();
 
-        // For allBranches, include branches from the same country with matching service type
+        // For allBranches, include branches that serve all cities in the country OR serve this specific city
         $allBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
             ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
@@ -247,6 +245,11 @@ class File extends Model
             ->whereHas('provider', function ($q) {
                 // Filter by country - provider must be in the file's country
                 $q->where('country_id', $this->country_id);
+            })
+            ->where(function ($q) {
+                // Only include branches that serve all cities in country OR serve this specific city
+                $q->where('all_country', true)
+                  ->orWhereHas('cities', fn ($q) => $q->where('cities.id', $this->city_id));
             })
             ->orderBy('priority', 'asc')
             ->get();
