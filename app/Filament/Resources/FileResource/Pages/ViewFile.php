@@ -349,8 +349,8 @@ class ViewFile extends ViewRecord
         return [
             Action::make('requestAppointment')
                 ->label('Request Appointment')
-                ->icon('heroicon-o-calendar-days')
-                ->color('success')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('primary')
                 ->slideOver()
                 ->modalHeading('Request Appointment - Select Provider Branches')
                 ->modalDescription('Choose which provider branches to send appointment requests to. Branches are filtered by city, service type, and active status, sorted by priority.')
