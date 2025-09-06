@@ -114,6 +114,7 @@ class AdminPanelProvider extends PanelProvider
             ->favicon(asset('logo.png'))
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->globalSearch(true)
+            ->sidebarCollapsibleOnDesktop()
             ->navigationGroups([
                 NavigationGroup::make()
                     ->label('CRM')
