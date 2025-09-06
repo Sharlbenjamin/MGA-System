@@ -107,7 +107,7 @@ class FileResource extends Resource
             TextInput::make('email')->label('Email')->email()->nullable(),
             TextInput::make('phone')->label('Phone')->tel()->nullable(),
             TextInput::make('address')->label('Address')->nullable(),
-            Select::make('contact_patient')->label('Who will Contact the Patient?')->options(['Client' => 'Client','MGA' => 'MGA', 'Ask' => 'Ask'])->default('Client')->required(),
+            Select::make('contact_patient')->label('Who will Contact the Patient?')->options(['Client' => 'Client','MGA' => 'MGA', 'Ask' => 'Ask'])->default('Client'),
             Textarea::make('symptoms')->label('Symptoms')->nullable(),
             Textarea::make('diagnosis')->label('Diagnosis')->nullable(),
         ]);

@@ -7,16 +7,10 @@ use App\Models\Client;
 use App\Models\ServiceType;
 use App\Services\OcrService;
 use Filament\Actions;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Tabs;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Filament\Resources\Pages\ListRecords;
 
@@ -28,17 +22,17 @@ class ListFiles extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
-            Actions\Action::make('upload_screenshot')
+            Actions\Action::make('extract_patient_data')
                 ->label('Extract Patient Data')
                 ->icon('heroicon-o-document-text')
                 ->color('success')
                 ->modalHeading('Extract Patient Information')
-                ->modalDescription('Upload a screenshot or paste text to extract patient information')
+                ->modalDescription('Paste text to extract patient information')
                 ->modalSubmitActionLabel('Process & Continue')
                 ->modalCancelActionLabel('Cancel')
                                    ->form([
                        Section::make('Extract Patient Information')
-                           ->description('Select a client and either upload a screenshot or paste text to extract patient information')
+                           ->description('Select a client and paste text to extract patient information')
                            ->schema([
                                Select::make('client_id')
                                    ->label('Client')
@@ -48,29 +42,12 @@ class ListFiles extends ListRecords
                                    ->preload()
                                    ->helperText('Select the client for this patient'),
                                
-                               Tabs::make('Input Method')
-                                   ->tabs([
-                                       Tabs\Tab::make('Upload Screenshot')
-                                           ->schema([
-                                               FileUpload::make('screenshot')
-                                                   ->label('Screenshot')
-                                                   ->image()
-                                                   ->imageEditor()
-                                                   ->maxSize(10240) // 10MB
-                                                   ->disk('public')
-                                                   ->directory('screenshots')
-                                                   ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg'])
-                                                   ->helperText('Upload a clear screenshot of the patient information. Supported formats: JPG, PNG. Max size: 10MB.')
-                                           ]),
-                                       Tabs\Tab::make('Paste Text')
-                                           ->schema([
-                                               Textarea::make('text_input')
-                                                   ->label('Patient Information Text')
-                                                   ->rows(10)
-                                                   ->placeholder('Paste the patient information text here...')
-                                                   ->helperText('Paste the text containing patient information. The system will automatically extract relevant fields.')
-                                           ])
-                                   ])
+                               Textarea::make('text_input')
+                                   ->label('Patient Information Text')
+                                   ->rows(10)
+                                   ->placeholder('Paste the patient information text here...')
+                                   ->helperText('Paste the text containing patient information. The system will automatically extract relevant fields.')
+                                   ->required()
                                    ->columnSpanFull()
                            ])
                            ->columns(1)
@@ -86,12 +63,12 @@ class ListFiles extends ListRecords
                         return;
                     }
                     
-                    // Check if either screenshot or text input is provided
-                    if (empty($data['screenshot']) && empty($data['text_input'])) {
+                    // Check if text input is provided
+                    if (empty($data['text_input'])) {
                         Notification::make()
                             ->danger()
                             ->title('Missing Input')
-                            ->body('Please either upload a screenshot or paste text containing patient information.')
+                            ->body('Please paste text containing patient information.')
                             ->send();
                         return;
                     }
@@ -100,15 +77,8 @@ class ListFiles extends ListRecords
                         // Get the OCR service
                         $ocrService = app(OcrService::class);
                         
-                        // Process screenshot if provided
-                        if (!empty($data['screenshot'])) {
-                            $screenshotPath = is_array($data['screenshot']) ? $data['screenshot'][0] : $data['screenshot'];
-                            $imagePath = Storage::disk('public')->path($screenshotPath);
-                            $extractedData = $ocrService->extractTextFromImage($imagePath);
-                        } else {
-                            // Process text input if provided
-                            $extractedData = $ocrService->extractTextFromString($data['text_input'] ?? '');
-                        }
+                        // Process text input
+                        $extractedData = $ocrService->extractTextFromString($data['text_input']);
                         
                         // Clean the extracted data
                         $cleanedData = $ocrService->cleanExtractedData($extractedData);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Models\Invoice;
 use App\Models\Bill;
@@ -214,16 +215,32 @@ class TaxesExportController extends Controller
 
         // Add invoices to zip
         foreach ($invoices as $invoice) {
+            $fileName = 'Invoices/' . $invoice->name . '.pdf';
+
+            // Prefer generating the invoice PDF locally (does not require Drive)
+            try {
+                $pdfContent = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', ['invoice' => $invoice])->output();
+                if (!empty($pdfContent)) {
+                    $zip->addFromString($fileName, $pdfContent);
+                    continue; // Done with this invoice
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Failed to generate local invoice PDF, will try Drive', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // If local generation failed, try Google Drive if link exists
             if ($invoice->invoice_google_link) {
-                $fileName = 'Invoices/' . $invoice->name . '.pdf';
                 $result = $this->downloadGoogleDriveFile($invoice->invoice_google_link);
                 if (is_string($result) && $result !== 'Document not accessible' && $result !== 'Document download failed' && $result !== 'Service unavailable') {
                     $zip->addFromString($fileName, $result);
                 } else {
                     // Fallback to text file with link if download fails
-                    $fileName = 'Invoices/' . $invoice->name . '_LINK.txt';
+                    $fileNameTxt = 'Invoices/' . $invoice->name . '_LINK.txt';
                     $content = $this->createDocumentLinkFile($invoice->name, $invoice->invoice_google_link, 'Invoice', $result);
-                    $zip->addFromString($fileName, $content);
+                    $zip->addFromString($fileNameTxt, $content);
                 }
             }
         }
@@ -247,15 +264,35 @@ class TaxesExportController extends Controller
         // Add expenses to zip
         foreach ($expenses as $expense) {
             if ($expense->attachment_path) {
-                $fileName = 'Expenses/' . $expense->name . '.pdf';
-                $result = $this->downloadGoogleDriveFile($expense->attachment_path);
+                $path = $expense->attachment_path;
+
+                // If the attachment is a locally uploaded file in the public disk
+                if (str_starts_with($path, 'transactions/')) {
+                    try {
+                        $content = Storage::disk('public')->get($path);
+                        // Determine extension from path (default to pdf)
+                        $ext = pathinfo($path, PATHINFO_EXTENSION) ?: 'pdf';
+                        $fileName = 'Expenses/' . $expense->name . '.' . $ext;
+                        $zip->addFromString($fileName, $content);
+                        continue; // Done with this expense
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to read local expense attachment, will try Drive', [
+                            'path' => $path,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                // If it's a Drive link (or any URL), try Drive downloader
+                $result = $this->downloadGoogleDriveFile($path);
                 if (is_string($result) && $result !== 'Document not accessible' && $result !== 'Document download failed' && $result !== 'Service unavailable') {
+                    $fileName = 'Expenses/' . $expense->name . '.pdf';
                     $zip->addFromString($fileName, $result);
                 } else {
                     // Fallback to text file with link if download fails
-                    $fileName = 'Expenses/' . $expense->name . '_LINK.txt';
-                    $content = $this->createDocumentLinkFile($expense->name, $expense->attachment_path, 'Expense', $result);
-                    $zip->addFromString($fileName, $content);
+                    $fileNameTxt = 'Expenses/' . $expense->name . '_LINK.txt';
+                    $content = $this->createDocumentLinkFile($expense->name, $path, 'Expense', $result);
+                    $zip->addFromString($fileNameTxt, $content);
                 }
             }
         }
