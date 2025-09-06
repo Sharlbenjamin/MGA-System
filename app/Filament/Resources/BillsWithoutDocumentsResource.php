@@ -22,8 +22,8 @@ class BillsWithoutDocumentsResource extends Resource
     protected static ?string $model = Bill::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
-    protected static ?string $navigationGroup = 'Stages';
-    protected static ?int $navigationSort = 6;
+    protected static ?string $navigationGroup = 'Workflow';
+    protected static ?int $navigationSort = 5;
     protected static ?string $navigationLabel = 'Bills without documents';
     protected static ?string $modelLabel = 'Bill without documents';
     protected static ?string $pluralModelLabel = 'Bills without documents';

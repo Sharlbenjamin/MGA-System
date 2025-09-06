@@ -35,8 +35,8 @@ class PriceListResource extends Resource
     protected static ?string $model = PriceList::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-euro';
-    protected static ?string $navigationGroup = 'Admin';
-    protected static ?int $navigationSort = 5;
+    protected static ?string $navigationGroup = 'Finance';
+    protected static ?int $navigationSort = 6;
 
     /**
      * Clear cache when price lists are modified

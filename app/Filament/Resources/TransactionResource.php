@@ -36,7 +36,7 @@ class TransactionResource extends Resource
     protected static ?string $model = Transaction::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationGroup = 'Finance';
+    protected static ?string $navigationGroup = 'Ops';
     protected static ?int $navigationSort = 5;
     protected static ?string $recordTitleAttribute = 'name';
 

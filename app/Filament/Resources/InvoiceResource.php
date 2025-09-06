@@ -25,8 +25,8 @@ class InvoiceResource extends Resource
 {
     protected static ?string $model = Invoice::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-currency-euro';
-    protected static ?int $navigationSort = 3;
-    protected static ?string $navigationGroup = 'Finance';
+    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationGroup = 'Ops';
     protected static ?string $recordTitleAttribute = 'name';
 
 

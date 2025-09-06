@@ -20,7 +20,7 @@ class GopWithoutDocsResource extends Resource
     protected static ?string $model = Gop::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
-    protected static ?string $navigationGroup = 'Stages';
+    protected static ?string $navigationGroup = 'Workflow';
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationLabel = 'GOP without docs';
     protected static ?string $modelLabel = 'GOP without docs';

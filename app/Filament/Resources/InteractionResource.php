@@ -21,7 +21,7 @@ class InteractionResource extends Resource
 {
     protected static ?string $model = Interaction::class;
     protected static ?string $navigationGroup = 'CRM';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 3;
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
     public static function form(Forms\Form $form): Forms\Form

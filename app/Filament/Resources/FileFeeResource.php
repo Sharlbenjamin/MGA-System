@@ -17,7 +17,7 @@ class FileFeeResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static ?string $navigationGroup = 'Admin';
+    protected static ?string $navigationGroup = 'Finance';
 
     protected static ?int $navigationSort = 5;
 

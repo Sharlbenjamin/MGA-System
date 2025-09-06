@@ -17,8 +17,8 @@ class RoleResource extends Resource
 {
     protected static ?string $model = Role::class;
 
-    protected static ?string $navigationGroup = 'Admin'; // ✅ Group under Admin Settings
-protected static ?int $navigationSort = 2; // ✅ Ensures it's first in the menu
+    protected static ?string $navigationGroup = 'System'; // ✅ Group under System Settings
+protected static ?int $navigationSort = 2; // ✅ Ensures it's second in the menu
 protected static ?string $navigationIcon = 'heroicon-o-shield-check'; // ✅ Shield icon for roles
 
 

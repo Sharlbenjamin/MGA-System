@@ -23,8 +23,8 @@ class BillWithoutTransactionResource extends Resource
 {
     protected static ?string $model = Bill::class;
     protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
-    protected static ?int $navigationSort = 8;
-    protected static ?string $navigationGroup = 'Stages';
+    protected static ?int $navigationSort = 7;
+    protected static ?string $navigationGroup = 'Workflow';
     protected static ?string $navigationLabel = 'Bills without transaction';
     protected static ?string $modelLabel = 'Bill Without Transaction';
     protected static ?string $pluralModelLabel = 'Bills Without Transactions';

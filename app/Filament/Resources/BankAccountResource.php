@@ -23,7 +23,7 @@ class BankAccountResource extends Resource
     protected static ?string $model = BankAccount::class;
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
     protected static ?string $navigationGroup = 'Finance';
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {

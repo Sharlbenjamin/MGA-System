@@ -26,7 +26,7 @@ class BillResource extends Resource
     protected static ?string $model = Bill::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?int $navigationSort = 3;
-    protected static ?string $navigationGroup = 'Operation';
+    protected static ?string $navigationGroup = 'Ops';
     protected static ?string $recordTitleAttribute = 'name';
 
 

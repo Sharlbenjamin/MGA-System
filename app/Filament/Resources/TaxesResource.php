@@ -10,7 +10,7 @@ class TaxesResource extends Resource
     protected static ?string $model = null;
 
     protected static ?string $navigationGroup = 'Finance';
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 3;
     protected static ?string $navigationIcon = 'heroicon-o-document';
     protected static ?string $navigationLabel = 'Taxes';
 

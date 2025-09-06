@@ -22,7 +22,7 @@ class DraftMailResource extends Resource
     protected static ?string $model = DraftMail::class;
 
     protected static ?string $navigationGroup = 'CRM';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
     protected static ?string $navigationIcon = 'heroicon-o-envelope'; // ✉️ Draft Mails Icon
 
     /**

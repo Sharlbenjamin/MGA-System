@@ -14,8 +14,8 @@ class ServiceTypeResource extends Resource
 {
     protected static ?string $model = ServiceType::class;
 
-    protected static ?string $navigationGroup = 'Maps';
-    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationGroup = 'System';
+    protected static ?int $navigationSort = 8;
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list'; // Hides from sidebar
 
 

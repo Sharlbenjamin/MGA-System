@@ -38,7 +38,7 @@ class ProviderBranchResource extends Resource
     protected static ?string $model = ProviderBranch::class;
 
     protected static ?string $navigationGroup = 'PRM';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
     protected static ?string $navigationIcon = 'heroicon-o-home-modern';
     protected static ?string $recordTitleAttribute = 'branch_name';
 

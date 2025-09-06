@@ -48,6 +48,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
+use Filament\Navigation\NavigationGroup;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -113,6 +114,39 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('logo.png'))
             ->favicon(asset('logo.png'))
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
-            ->globalSearch(true);
+            ->globalSearch(true)
+            ->navigationGroups([
+                NavigationGroup::make()
+                    ->label('CRM')
+                    ->icon('heroicon-o-user-group')
+                    ->collapsed(false)
+                    ->sort(1),
+                NavigationGroup::make()
+                    ->label('PRM')
+                    ->icon('heroicon-o-building-office')
+                    ->collapsed(false)
+                    ->sort(2),
+                NavigationGroup::make()
+                    ->label('Ops')
+                    ->icon('heroicon-o-briefcase')
+                    ->collapsed(false)
+                    ->sort(3)
+                    ->color('blue'),
+                NavigationGroup::make()
+                    ->label('Workflow')
+                    ->icon('heroicon-o-squares-2x2')
+                    ->collapsed(false)
+                    ->sort(4),
+                NavigationGroup::make()
+                    ->label('Finance')
+                    ->icon('heroicon-o-banknotes')
+                    ->collapsed(false)
+                    ->sort(5),
+                NavigationGroup::make()
+                    ->label('System')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->collapsed(false)
+                    ->sort(6),
+            ]);
     }
 }

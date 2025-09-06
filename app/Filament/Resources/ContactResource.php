@@ -36,7 +36,7 @@ class ContactResource extends Resource
     protected static ?string $model = Contact::class;
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationGroup = 'Admin'; // ✅ Group under User Management
+    protected static ?string $navigationGroup = 'System'; // ✅ Group under System Management
 protected static ?int $navigationSort = 4; // ✅ Controls menu order
 protected static ?string $navigationIcon = 'heroicon-o-phone'; // ✅ Adds a phone icon
 

@@ -10,8 +10,8 @@ class BranchAvailabilityResource extends Resource
 {
     protected static ?string $model = ProviderBranch::class;
 
-    protected static ?string $navigationGroup = 'Operations';
-    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationGroup = 'Ops';
+    protected static ?int $navigationSort = 6;
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
     protected static ?string $navigationLabel = 'Branch Availability';
     protected static ?string $slug = 'branch-availability';

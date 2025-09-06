@@ -22,7 +22,7 @@ class FilesWithoutBillsResource extends Resource
     protected static ?string $model = File::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Stages';
+    protected static ?string $navigationGroup = 'Workflow';
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationLabel = 'Files without Bills';
     protected static ?string $modelLabel = 'File without Bills';

@@ -21,7 +21,7 @@ class FilesWithoutGopResource extends Resource
     protected static ?string $model = File::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Stages';
+    protected static ?string $navigationGroup = 'Workflow';
     protected static ?int $navigationSort = 1;
     protected static ?string $navigationLabel = 'Files without GOP';
     protected static ?string $modelLabel = 'File without GOP';
