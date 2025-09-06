@@ -417,10 +417,9 @@ class ViewFile extends ViewRecord
                             // Hidden field to capture selected branches
                             \Filament\Forms\Components\Hidden::make('selected_branches')
                                 ->default([])
-                                ->rules(['required', 'array', 'min:1'])
+                                ->rules(['array'])
                                 ->validationMessages([
-                                    'required' => 'Please select at least one provider branch.',
-                                    'min' => 'Please select at least one provider branch.',
+                                    'array' => 'Selected branches must be an array.',
                                 ]),
                         ])
                         ->collapsible(),
@@ -1685,10 +1684,38 @@ class ViewFile extends ViewRecord
         $selectedBranchIds = $data['selected_branches'] ?? [];
         $customEmails = collect($data['custom_emails'] ?? [])->pluck('email')->filter();
         
+        // If no branches selected but custom emails provided, send to custom emails only
+        if (empty($selectedBranchIds) && $customEmails->isNotEmpty()) {
+            try {
+                // Send email to custom recipients only
+                Mail::send(new \App\Mail\AppointmentRequestMailable($record, null, $customEmails->toArray()));
+                
+                Notification::make()
+                    ->title('Appointment Request Sent')
+                    ->body("✅ Successfully sent to {$customEmails->count()} custom email recipients")
+                    ->success()
+                    ->send();
+                return;
+            } catch (\Exception $e) {
+                Log::error('Failed to send appointment request to custom emails', [
+                    'error' => $e->getMessage(),
+                    'custom_emails' => $customEmails->toArray()
+                ]);
+                
+                Notification::make()
+                    ->title('Failed to Send')
+                    ->body('Failed to send appointment request to custom emails.')
+                    ->danger()
+                    ->send();
+                return;
+            }
+        }
+        
+        // If no branches selected and no custom emails, show warning
         if (empty($selectedBranchIds)) {
             Notification::make()
-                ->title('No Branches Selected')
-                ->body('Please select at least one provider branch.')
+                ->title('No Recipients Selected')
+                ->body('Please select at least one provider branch or add custom email recipients.')
                 ->warning()
                 ->send();
             return;
