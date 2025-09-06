@@ -17,7 +17,7 @@ class TransactionsWithoutDocumentsResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
     protected static ?string $navigationGroup = 'Workflow';
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 10;
     protected static ?string $navigationLabel = 'Transaction without documents';
     protected static ?string $modelLabel = 'Transaction without documents';
     protected static ?string $pluralModelLabel = 'Transactions without documents';

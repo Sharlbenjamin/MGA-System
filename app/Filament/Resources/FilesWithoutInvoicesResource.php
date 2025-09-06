@@ -17,7 +17,7 @@ class FilesWithoutInvoicesResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Workflow';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 5;
     protected static ?string $navigationLabel = 'Files without invoices';
     protected static ?string $modelLabel = 'File without invoices';
     protected static ?string $pluralModelLabel = 'Files without invoices';

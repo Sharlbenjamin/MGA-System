@@ -17,7 +17,7 @@ class InvoicesWithoutTransactionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Workflow';
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 9;
     protected static ?string $navigationLabel = 'Invoices without transaction';
     protected static ?string $modelLabel = 'Invoice without transaction';
     protected static ?string $pluralModelLabel = 'Invoices without transaction';

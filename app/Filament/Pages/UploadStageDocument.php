@@ -24,7 +24,7 @@ class UploadStageDocument extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
-    protected static ?string $navigationGroup = 'Stages';
+    protected static ?string $navigationGroup = 'Workflow';
     protected static ?string $navigationLabel = 'Upload Stage Document';
     protected static ?int $navigationSort = 11;
 

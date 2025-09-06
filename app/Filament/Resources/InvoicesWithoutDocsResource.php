@@ -19,7 +19,7 @@ class InvoicesWithoutDocsResource extends Resource
 
     protected static ?string $navigationGroup = 'Workflow';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 7;
 
     protected static ?string $navigationLabel = 'Invoices without docs';
 
