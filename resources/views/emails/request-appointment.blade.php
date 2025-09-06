@@ -36,7 +36,13 @@
 </head>
 <body>
     <div class="content">
-        <p>Dear {{ $branch->branch_name }},</p>
+        <p>
+            @if(isset($branch) && $branch)
+                Dear {{ $branch->branch_name }},
+            @else
+                Dear Team,
+            @endif
+        </p>
         
         <p>We have a patient that needs a {{ $file->serviceType->name }} appointment. Find the details below:</p>
         

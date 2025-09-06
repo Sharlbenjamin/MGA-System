@@ -14,10 +14,10 @@ class AppointmentRequestMailable extends Mailable
     use Queueable, SerializesModels;
 
     public $file;
-    public $branch;
+    public ?ProviderBranch $branch;
     public $customEmails;
 
-    public function __construct(File $file, ProviderBranch $branch, array $customEmails = [])
+    public function __construct(File $file, ?ProviderBranch $branch = null, array $customEmails = [])
     {
         $this->file = $file;
         $this->branch = $branch;
@@ -40,18 +40,20 @@ class AppointmentRequestMailable extends Mailable
                 'customEmails' => $this->customEmails
             ]);
 
-        // Add branch email as primary recipient
-        if ($this->branch->email) {
+        // Add recipients
+        $hasBranchEmail = $this->branch && !empty($this->branch->email);
+
+        // If branch email exists, set as primary recipient
+        if ($hasBranchEmail) {
             $mailBuilder->to($this->branch->email);
         }
 
-        // Add operation contact email if available
-        if ($this->branch->operationContact && $this->branch->operationContact->email) {
+        // Add operation contact email if available and branch provided
+        if ($this->branch && $this->branch->operationContact && $this->branch->operationContact->email) {
             $mailBuilder->cc($this->branch->operationContact->email);
         }
 
         // Add custom emails - if no branch email, make them TO recipients, otherwise CC
-        $hasBranchEmail = !empty($this->branch->email);
         foreach ($this->customEmails as $email) {
             if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 if ($hasBranchEmail) {
