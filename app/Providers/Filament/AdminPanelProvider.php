@@ -119,34 +119,28 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('CRM')
                     ->icon('heroicon-o-user-group')
-                    ->collapsed(false)
-                    ->sort(1),
+                    ->collapsed(false),
                 NavigationGroup::make()
                     ->label('PRM')
                     ->icon('heroicon-o-building-office')
-                    ->collapsed(false)
-                    ->sort(2),
+                    ->collapsed(false),
                 NavigationGroup::make()
                     ->label('Ops')
                     ->icon('heroicon-o-briefcase')
                     ->collapsed(false)
-                    ->sort(3)
                     ->color('blue'),
                 NavigationGroup::make()
                     ->label('Workflow')
                     ->icon('heroicon-o-squares-2x2')
-                    ->collapsed(false)
-                    ->sort(4),
+                    ->collapsed(false),
                 NavigationGroup::make()
                     ->label('Finance')
                     ->icon('heroicon-o-banknotes')
-                    ->collapsed(false)
-                    ->sort(5),
+                    ->collapsed(false),
                 NavigationGroup::make()
                     ->label('System')
                     ->icon('heroicon-o-cog-6-tooth')
-                    ->collapsed(false)
-                    ->sort(6),
+                    ->collapsed(false),
             ]);
     }
 }
