@@ -127,8 +127,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make()
                     ->label('Ops')
                     ->icon('heroicon-o-briefcase')
-                    ->collapsed(false)
-                    ->color('blue'),
+                    ->collapsed(false),
                 NavigationGroup::make()
                     ->label('Workflow')
                     ->icon('heroicon-o-squares-2x2')
