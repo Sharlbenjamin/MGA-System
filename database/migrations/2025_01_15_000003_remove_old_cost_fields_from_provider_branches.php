@@ -13,12 +13,19 @@ return new class extends Migration
     {
         Schema::table('provider_branches', function (Blueprint $table) {
             // Remove old cost fields AFTER data has been copied to branch_services
-            $table->dropColumn([
-                'day_cost',
-                'night_cost', 
-                'weekend_cost',
-                'weekend_night_cost'
-            ]);
+            // Check if columns exist before dropping them
+            if (Schema::hasColumn('provider_branches', 'day_cost')) {
+                $table->dropColumn('day_cost');
+            }
+            if (Schema::hasColumn('provider_branches', 'night_cost')) {
+                $table->dropColumn('night_cost');
+            }
+            if (Schema::hasColumn('provider_branches', 'weekend_cost')) {
+                $table->dropColumn('weekend_cost');
+            }
+            if (Schema::hasColumn('provider_branches', 'weekend_night_cost')) {
+                $table->dropColumn('weekend_night_cost');
+            }
         });
     }
 
