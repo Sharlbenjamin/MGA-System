@@ -25,7 +25,7 @@ class ListFiles extends ListRecords
             Actions\Action::make('extract_patient_data')
                 ->label('Extract Patient Data')
                 ->icon('heroicon-o-document-text')
-                ->color('success')
+                ->color('warning')
                 ->modalHeading('Extract Patient Information')
                 ->modalDescription('Paste text to extract patient information')
                 ->modalSubmitActionLabel('Process & Continue')
