@@ -117,22 +117,22 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make()
                     ->label('CRM')
-                    ->collapsed(false),
+                    ->collapsible(),
                 NavigationGroup::make()
                     ->label('PRM')
-                    ->collapsed(false),
+                    ->collapsible(),
                 NavigationGroup::make()
                     ->label('Ops')
-                    ->collapsed(false),
+                    ->collapsible(),
                 NavigationGroup::make()
                     ->label('Workflow')
-                    ->collapsed(false),
+                    ->collapsible(),
                 NavigationGroup::make()
                     ->label('Finance')
-                    ->collapsed(false),
+                    ->collapsible(),
                 NavigationGroup::make()
                     ->label('System')
-                    ->collapsed(false),
+                    ->collapsible(),
             ]);
     }
 }
