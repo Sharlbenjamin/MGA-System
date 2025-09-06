@@ -165,7 +165,15 @@ class Client extends Model
 
     public function getInvoicesTotalPaidAttribute()
     {
-        return $this->invoices()->sum('paid_amount');
+        // Calculate paid amount from actual transaction relationships
+        return $this->invoices()
+            ->with('transactions')
+            ->get()
+            ->sum(function ($invoice) {
+                return $invoice->transactions->sum(function ($transaction) {
+                    return $transaction->pivot->amount_paid ?? 0;
+                });
+            });
     }
 
     public function getInvoicesTotalNumberOutstandingAttribute()
@@ -180,7 +188,10 @@ class Client extends Model
 
     public function getInvoicesTotalOutstandingAttribute()
     {
-        return $this->invoices_total - $this->invoices_total_paid;
+        // Calculate outstanding amount as total minus actual paid amount
+        $totalAmount = $this->invoices_total;
+        $paidAmount = $this->invoices_total_paid;
+        return $totalAmount - $paidAmount;
     }
 
     public function getTransactionsLastDateAttribute()

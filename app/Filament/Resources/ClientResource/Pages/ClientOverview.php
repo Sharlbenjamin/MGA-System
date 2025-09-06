@@ -13,8 +13,9 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 
-class ClientOverview extends ViewRecord
+class ClientOverview extends ViewRecord implements HasTable
 {
+    use InteractsWithTable;
 
     protected static string $resource = ClientResource::class;
 
@@ -46,6 +47,31 @@ class ClientOverview extends ViewRecord
             ]);
     }
 
-
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(
+                ClientResource::getEloquentQuery()
+                    ->where('id', $this->record->id)
+            )
+            ->columns([
+                TextColumn::make('company_name')
+                    ->label('Company Name')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+                TextColumn::make('invoicesTotalPaid')
+                    ->label('Paid Amount')
+                    ->money('eur')
+                    ->sortable()
+                    ->color('success'),
+                TextColumn::make('invoicesTotalOutstanding')
+                    ->label('Unpaid Amount')
+                    ->money('eur')
+                    ->sortable()
+                    ->color('danger'),
+            ])
+            ->paginated(false);
+    }
 
 }
