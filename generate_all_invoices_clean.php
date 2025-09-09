@@ -23,6 +23,15 @@ foreach ($files as $file) {
             $content = $pdf->output();
             $fileName = $invoice->name . '.pdf';
 
+            // Save to local storage using DocumentPathResolver
+            $resolver = app(\App\Services\DocumentPathResolver::class);
+            $localPath = $resolver->ensurePathFor($invoice->file, 'invoices', $fileName);
+            \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
+            
+            // Update invoice with local document path
+            $invoice->invoice_document_path = $localPath;
+
+            // Upload to Google Drive (keep as secondary)
             $uploader = app(UploadInvoiceToGoogleDrive::class);
             $result = $uploader->uploadInvoiceToGoogleDrive(
                 $content,
@@ -30,13 +39,11 @@ foreach ($files as $file) {
                 $invoice
             );
 
-            if ($result === false) {
-                echo "Failed to upload invoice: " . $invoice->name . "\n";
-                $failedInvoices++;
-                continue;
+            if ($result !== false) {
+                // Update invoice with Google Drive link if upload successful
+                $invoice->invoice_google_link = $result['webViewLink'];
             }
 
-            $invoice->invoice_google_link = $result['webViewLink'];
             $invoice->status = 'Posted';
             $invoice->invoice_date = $invoice->created_at->format('Y-m-d');
             $invoice->save();

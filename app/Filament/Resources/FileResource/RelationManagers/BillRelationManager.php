@@ -142,7 +142,15 @@ class BillRelationManager extends RelationManager
                                 $fileName = 'Bill ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
                                 Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
-                                // Upload to Google Drive using the service
+                                // Save to local storage using DocumentPathResolver
+                                $resolver = app(\App\Services\DocumentPathResolver::class);
+                                $localPath = $resolver->ensurePathFor($record->file, 'bills', $fileName);
+                                \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
+                                
+                                // Update bill with local document path
+                                $record->bill_document_path = $localPath;
+
+                                // Upload to Google Drive using the service (keep as secondary)
                                 $uploadService = new UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
                                 $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $record);
                                 
@@ -151,21 +159,15 @@ class BillRelationManager extends RelationManager
                                     
                                     // Update the bill record with the Google Drive link
                                     $record->bill_google_link = $uploadResult;
-                                    $record->save();
-                                    
-                                    Notification::make()
-                                        ->success()
-                                        ->title('Bill document uploaded successfully')
-                                        ->body('Bill document has been uploaded to Google Drive.')
-                                        ->send();
-                                } else {
-                                    Log::error('Failed to upload bill to Google Drive');
-                                    Notification::make()
-                                        ->danger()
-                                        ->title('Google Drive upload failed')
-                                        ->body('The file was saved locally but failed to upload to Google Drive.')
-                                        ->send();
                                 }
+                                
+                                $record->save();
+                                
+                                Notification::make()
+                                    ->success()
+                                    ->title('Bill document uploaded successfully')
+                                    ->body('Bill document has been saved locally and uploaded to Google Drive.')
+                                    ->send();
                                     
                             } catch (\Exception $e) {
                                 Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);

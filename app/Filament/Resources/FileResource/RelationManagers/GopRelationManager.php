@@ -170,7 +170,15 @@ class GopRelationManager extends RelationManager
                                 }
                             }
 
-                        // Upload to Google Drive
+                        // Save to local storage using DocumentPathResolver
+                        $resolver = app(\App\Services\DocumentPathResolver::class);
+                        $localPath = $resolver->ensurePathFor($record->file, 'gops', $fileName);
+                        \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
+                        
+                        // Update GOP with local document path
+                        $record->document_path = $localPath;
+
+                        // Upload to Google Drive (keep as secondary)
                         $uploader = app(UploadGopToGoogleDrive::class);
                         $result = $uploader->uploadGopToGoogleDrive(
                             $content,
@@ -178,17 +186,11 @@ class GopRelationManager extends RelationManager
                             $record
                         );
 
-                        if ($result === false) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Upload failed')
-                                ->body('Check logs for more details')
-                                ->send();
-                            return;
+                        if ($result !== false) {
+                            // Update GOP with Google Drive link if upload successful
+                            $record->gop_google_drive_link = $result;
                         }
 
-                        // Update GOP with Google Drive link and status
-                        $record->gop_google_drive_link = $result;
                         $record->status = 'Sent';
                         $record->save();
 

@@ -35,15 +35,26 @@ class GopMailable extends Mailable
 
             // Generate the GOP draft PDF
             $pdf = PDF::loadView('pdf.gop', ['gop' => $this->gop]);
+            $pdfContent = $pdf->output();
+            $fileName = 'GOP Out ' . $this->gop->file->mga_reference . ' - ' . $this->gop->file->patient->name . '.pdf';
             Log::info('PDF generated');
 
-            // Upload the generated pdf to google drive
+            // Save to local storage using DocumentPathResolver
+            $resolver = app(\App\Services\DocumentPathResolver::class);
+            $localPath = $resolver->ensurePathFor($this->gop->file, 'gops', $fileName);
+            \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $pdfContent);
+            
+            // Update GOP with local document path
+            $this->gop->document_path = $localPath;
+            $this->gop->save();
+
+            // Upload the generated pdf to google drive (keep as secondary)
             $uploadService = new UploadGopToGoogleDrive(new GoogleDriveFolderService());
             Log::info('Upload service instantiated');
 
             $uploadResult = $uploadService->uploadGopToGoogleDrive(
-                $pdf->output(),
-                'GOP Out ' . $this->gop->file->mga_reference . ' - ' . $this->gop->file->patient->name . '.pdf',
+                $pdfContent,
+                $fileName,
                 $this->gop
             );
             Log::info('Upload attempt completed', ['result' => $uploadResult]);
@@ -51,7 +62,11 @@ class GopMailable extends Mailable
             // Debug log to file
             file_put_contents(storage_path('logs/gop_debug.txt'), 'Attempting upload for GOP: ' . $this->gop->file->mga_reference . "\n", FILE_APPEND);
 
-            if ($uploadResult === false) {
+            if ($uploadResult !== false) {
+                // Update GOP with Google Drive link if upload successful
+                $this->gop->gop_google_drive_link = $uploadResult;
+                $this->gop->save();
+            } else {
                 Log::error('Failed to upload GOP to Google Drive', [
                     'gop_id' => $this->gop->id,
                     'reference' => $this->gop->file->mga_reference

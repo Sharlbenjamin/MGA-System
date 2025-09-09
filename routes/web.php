@@ -12,6 +12,8 @@ use App\Http\Controllers\GopController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\TaxesExportController;
+use App\Http\Controllers\FileDocumentExportController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProviderLeadController;
 use App\Http\Controllers\LeadController;
 use App\Models\City;
@@ -69,10 +71,11 @@ Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, Dispatch
 
 });
 
-// Taxes Export Routes (only require Filament authentication, not site password)
+// Export Routes (only require Filament authentication, not site password)
 Route::middleware([FilamentAuthenticate::class])->group(function () {
     Route::get('/taxes/export', [TaxesExportController::class, 'export'])->name('taxes.export');
     Route::get('/taxes/export/zip', [TaxesExportController::class, 'exportZip'])->name('taxes.export.zip');
+    Route::get('/files/export/zip', [FileDocumentExportController::class, 'exportZip'])->name('files.export.zip');
 });
 
 // API Routes for AJAX functionality
@@ -136,3 +139,9 @@ Route::get('/google/callback', function (Request $request) {
 Route::get('/gop/{gop}', [GopController::class, 'view'])->name('gop.view');
 Route::get('/invoice/{invoice}', [InvoiceController::class, 'view'])->name('invoice.view');
 Route::get('/prescription/{prescription}', [PrescriptionController::class, 'view'])->name('prescription.view');
+
+// Signed document routes for secure file access
+Route::middleware('signed')->group(function () {
+    Route::get('/docs/{type}/{id}', [DocumentController::class, 'serve'])->name('docs.serve');
+    Route::get('/docs/{type}/{id}/metadata', [DocumentController::class, 'metadata'])->name('docs.metadata');
+});

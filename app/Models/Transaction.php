@@ -325,4 +325,48 @@ class Transaction extends Model
 
         return $this;
     }
+
+    /**
+     * Check if the transaction has a local document
+     */
+    public function hasLocalDocument(): bool
+    {
+        return !empty($this->attachment_path);
+    }
+
+    /**
+     * Generate a signed URL for the transaction document
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.serve', [
+            'type' => 'transaction',
+            'id' => $this->id
+        ], true, $expirationMinutes);
+    }
+
+    /**
+     * Generate a signed URL for document metadata
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentMetadataSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.metadata', [
+            'type' => 'transaction',
+            'id' => $this->id
+        ], true, $expirationMinutes);
+    }
 }

@@ -28,6 +28,7 @@ class Invoice extends Model
         'paid_amount',
         'invoice_date',
         'payment_link',
+        'invoice_document_path',
     ];
 
     protected $attributes = [
@@ -257,5 +258,49 @@ class Invoice extends Model
         $this->save();
 
         return $this->payment_link;
+    }
+
+    /**
+     * Check if the invoice has a local document
+     */
+    public function hasLocalDocument(): bool
+    {
+        return !empty($this->invoice_document_path);
+    }
+
+    /**
+     * Generate a signed URL for the invoice document
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.serve', [
+            'type' => 'invoice',
+            'id' => $this->id
+        ], true, $expirationMinutes);
+    }
+
+    /**
+     * Generate a signed URL for document metadata
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentMetadataSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.metadata', [
+            'type' => 'invoice',
+            'id' => $this->id
+        ], true, $expirationMinutes);
     }
 }

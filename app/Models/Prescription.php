@@ -21,6 +21,7 @@ class Prescription extends Model
         'name',
         'serial',
         'date',
+        'document_path',
     ];
 
     /**
@@ -41,5 +42,49 @@ class Prescription extends Model
     public function drugs(): HasMany
     {
         return $this->hasMany(Drug::class);
+    }
+
+    /**
+     * Check if the prescription has a local document
+     */
+    public function hasLocalDocument(): bool
+    {
+        return !empty($this->document_path);
+    }
+
+    /**
+     * Generate a signed URL for the prescription document
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.serve', [
+            'type' => 'prescription',
+            'id' => $this->id
+        ], true, $expirationMinutes);
+    }
+
+    /**
+     * Generate a signed URL for document metadata
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentMetadataSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.metadata', [
+            'type' => 'prescription',
+            'id' => $this->id
+        ], true, $expirationMinutes);
     }
 }

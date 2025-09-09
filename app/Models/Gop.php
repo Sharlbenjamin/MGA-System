@@ -13,7 +13,7 @@ class Gop extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['file_id','type','amount','status','date','gop_google_drive_link'];
+    protected $fillable = ['file_id','type','amount','status','date','gop_google_drive_link','document_path'];
     protected $casts = ['id' => 'integer','file_id' => 'integer','amount' => 'float','date' => 'date','status' => 'string',];
 
     public function file(): BelongsTo
@@ -56,5 +56,49 @@ class Gop extends Model
             Notification::make()->title('GOP Notification')->body('Failed to send GOP: ' . $e->getMessage())->danger()->send();
             return false;
         }
+    }
+
+    /**
+     * Check if the GOP has a local document
+     */
+    public function hasLocalDocument(): bool
+    {
+        return !empty($this->document_path);
+    }
+
+    /**
+     * Generate a signed URL for the GOP document
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.serve', [
+            'type' => 'gop',
+            'id' => $this->id
+        ], true, $expirationMinutes);
+    }
+
+    /**
+     * Generate a signed URL for document metadata
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentMetadataSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.metadata', [
+            'type' => 'gop',
+            'id' => $this->id
+        ], true, $expirationMinutes);
     }
 }

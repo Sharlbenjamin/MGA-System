@@ -340,7 +340,15 @@ class BillsWithoutDocumentsResource extends Resource
                                 $fileName = 'Bill ' . $selectedBill->file->mga_reference . ' - ' . $selectedBill->file->patient->name . '.' . $originalExtension;
                                 Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
-                                // Upload to Google Drive using the service
+                                // Save to local storage using DocumentPathResolver
+                                $resolver = app(\App\Services\DocumentPathResolver::class);
+                                $localPath = $resolver->ensurePathFor($selectedBill->file, 'bills', $fileName);
+                                \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
+                                
+                                // Update bill with local document path
+                                $selectedBill->bill_document_path = $localPath;
+
+                                // Upload to Google Drive using the service (keep as secondary)
                                 $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
                                 $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $selectedBill);
                                 
@@ -349,7 +357,9 @@ class BillsWithoutDocumentsResource extends Resource
                                     
                                     // Update the selected bill record with the Google Drive link
                                     $selectedBill->bill_google_link = $uploadResult;
-                                    $selectedBill->save();
+                                }
+                                
+                                $selectedBill->save();
                                     
                                     Notification::make()
                                         ->success()

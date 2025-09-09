@@ -230,7 +230,15 @@ class InvoiceResource extends Resource
                         $content = $pdf->output();
                         $fileName = $record->name . '.pdf';
 
-                        // Upload to Google Drive
+                        // Save to local storage using DocumentPathResolver
+                        $resolver = app(\App\Services\DocumentPathResolver::class);
+                        $localPath = $resolver->ensurePathFor($record->file, 'invoices', $fileName);
+                        \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
+                        
+                        // Update invoice with local document path
+                        $record->invoice_document_path = $localPath;
+
+                        // Upload to Google Drive (keep as secondary)
                         $uploader = app(UploadInvoiceToGoogleDrive::class);
                         $result = $uploader->uploadInvoiceToGoogleDrive(
                             $content,
@@ -238,17 +246,11 @@ class InvoiceResource extends Resource
                             $record
                         );
 
-                        if ($result === false) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Upload failed')
-                                ->body('Check logs for more details')
-                                ->send();
-                            return;
+                        if ($result !== false) {
+                            // Update invoice with Google Drive link if upload successful
+                            $record->invoice_google_link = $result['webViewLink'];
                         }
 
-                        // Update invoice with new Google Drive link
-                        $record->invoice_google_link = $result['webViewLink'];
                         $record->status = 'Posted';
                         $record->save();
 

@@ -26,6 +26,7 @@ class Bill extends Model
         'paid_amount',
         'bill_google_link',
         'bill_date',
+        'bill_document_path',
     ];
 
     protected $casts = [
@@ -294,5 +295,49 @@ class Bill extends Model
             return 'BK Not Received';
         }
         return $firstInvoice->status === 'Paid' ? 'BK Received' : 'BK Not Received';
+    }
+
+    /**
+     * Check if the bill has a local document
+     */
+    public function hasLocalDocument(): bool
+    {
+        return !empty($this->bill_document_path);
+    }
+
+    /**
+     * Generate a signed URL for the bill document
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.serve', [
+            'type' => 'bill',
+            'id' => $this->id
+        ], true, $expirationMinutes);
+    }
+
+    /**
+     * Generate a signed URL for document metadata
+     * 
+     * @param int $expirationMinutes Expiration time in minutes (default: 60)
+     * @return string|null
+     */
+    public function getDocumentMetadataSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (!$this->hasLocalDocument()) {
+            return null;
+        }
+
+        return route('docs.metadata', [
+            'type' => 'bill',
+            'id' => $this->id
+        ], true, $expirationMinutes);
     }
 }

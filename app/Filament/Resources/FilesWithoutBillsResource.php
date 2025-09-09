@@ -266,7 +266,15 @@ class FilesWithoutBillsResource extends Resource
                                     $fileName = 'Bill ' . $record->mga_reference . ' - ' . $record->patient->name . '.' . $originalExtension;
                                     Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                     
-                                    // Upload to Google Drive using the service
+                                    // Save to local storage using DocumentPathResolver
+                                    $resolver = app(\App\Services\DocumentPathResolver::class);
+                                    $localPath = $resolver->ensurePathFor($record, 'bills', $fileName);
+                                    \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
+                                    
+                                    // Update bill with local document path
+                                    $bill->bill_document_path = $localPath;
+
+                                    // Upload to Google Drive using the service (keep as secondary)
                                     $uploadService = new \App\Services\UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
                                     $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $bill);
                                     
@@ -275,21 +283,15 @@ class FilesWithoutBillsResource extends Resource
                                         
                                         // Update the bill record with the Google Drive link
                                         $bill->bill_google_link = $uploadResult;
-                                        $bill->save();
-                                        
-                                        Notification::make()
-                                            ->success()
-                                            ->title('Bill uploaded successfully')
-                                            ->body('Bill document has been uploaded to Google Drive and created.')
-                                            ->send();
-                                    } else {
-                                        Log::error('Failed to upload bill to Google Drive');
-                                        Notification::make()
-                                            ->danger()
-                                            ->title('Google Drive upload failed')
-                                            ->body('The bill was created but failed to upload to Google Drive.')
-                                            ->send();
                                     }
+                                    
+                                    $bill->save();
+                                    
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Bill uploaded successfully')
+                                        ->body('Bill document has been saved locally and uploaded to Google Drive.')
+                                        ->send();
                                         
                                 } catch (\Exception $e) {
                                     Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
@@ -300,14 +302,6 @@ class FilesWithoutBillsResource extends Resource
                                         ->send();
                                     return;
                                 }
-                            } else {
-                                // No document uploaded, just create the bill
-                                Notification::make()
-                                    ->success()
-                                    ->title('Bill created successfully')
-                                    ->body('Bill has been created without a document.')
-                                    ->send();
-                            }
                         } catch (\Exception $e) {
                             Log::error('Bill upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
                             Notification::make()
