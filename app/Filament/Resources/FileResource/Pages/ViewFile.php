@@ -372,108 +372,31 @@ class ViewFile extends ViewRecord
                 ->schema([
                     InfolistSection::make('GOP Documents')
                         ->schema([
-                            FileUpload::make('gop_upload')
-                                ->label('Upload GOP Document')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'gops'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateGopDocumentPath($record, $state);
-                                    }
-                                }),
                             $this->getDocumentTable('gops', 'GOP Documents'),
                         ]),
                     
                     InfolistSection::make('Medical Reports')
                         ->schema([
-                            FileUpload::make('medical_report_upload')
-                                ->label('Upload Medical Report')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'medical_reports'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateMedicalReportDocumentPath($record, $state);
-                                    }
-                                }),
                             $this->getDocumentTable('medical_reports', 'Medical Reports'),
                         ]),
                     
                     InfolistSection::make('Prescriptions')
                         ->schema([
-                            FileUpload::make('prescription_upload')
-                                ->label('Upload Prescription')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'prescriptions'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updatePrescriptionDocumentPath($record, $state);
-                                    }
-                                }),
                             $this->getDocumentTable('prescriptions', 'Prescriptions'),
                         ]),
                     
                     InfolistSection::make('Bills')
                         ->schema([
-                            FileUpload::make('bill_upload')
-                                ->label('Upload Bill')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'bills'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateBillDocumentPath($record, $state);
-                                    }
-                                }),
                             $this->getDocumentTable('bills', 'Bills'),
                         ]),
                     
                     InfolistSection::make('Invoices')
                         ->schema([
-                            FileUpload::make('invoice_upload')
-                                ->label('Upload Invoice')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'invoices'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateInvoiceDocumentPath($record, $state);
-                                    }
-                                }),
                             $this->getDocumentTable('invoices', 'Invoices'),
                         ]),
                     
                     InfolistSection::make('Transactions')
                         ->schema([
-                            FileUpload::make('transaction_in_upload')
-                                ->label('Upload Transaction (In)')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'transactions/in'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateTransactionDocumentPath($record, $state, 'in');
-                                    }
-                                }),
-                            FileUpload::make('transaction_out_upload')
-                                ->label('Upload Transaction (Out)')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'transactions/out'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateTransactionDocumentPath($record, $state, 'out');
-                                    }
-                                }),
                             $this->getDocumentTable('transactions/in', 'Transactions (In)'),
                             $this->getDocumentTable('transactions/out', 'Transactions (Out)'),
                         ]),
