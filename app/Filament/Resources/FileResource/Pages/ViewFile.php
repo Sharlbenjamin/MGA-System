@@ -801,7 +801,7 @@ class ViewFile extends ViewRecord
                                         ->content('')
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_communication')
-                                        ->label('Communication')
+                                        ->label('Contact By')
                                         ->content('')
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_contact')
