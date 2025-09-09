@@ -2,7 +2,7 @@
 
 namespace App\Filament\Admin\Pages;
 
-use App\Models\{Provider, ProviderBranch, ServiceType};
+use App\Models\{Provider, ProviderBranch, ServiceType, City};
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Pages\Page;
@@ -13,7 +13,7 @@ class BulkAddBranches extends Page
     protected static ?string $navigationGroup = 'PRM';
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
     protected static ?string $title = 'Bulk Add Provider Branches';
-    protected static string $view = 'filament.pages.blank'; // no blade, form-only
+    protected static string $view = 'filament.pages.blank';
 
     use Forms\Concerns\InteractsWithForms;
 
@@ -28,8 +28,12 @@ class BulkAddBranches extends Page
             Forms\Components\Repeater::make('branches')
                 ->minItems(1)->columns(2)
                 ->schema([
+                    Forms\Components\TextInput::make('branch_name')
+                        ->label('Branch Name')
+                        ->required(),
                     Forms\Components\Select::make('city_id')
-                        ->relationship('city','name') // or ->options(City::pluck('name','id'))
+                        ->label('City')
+                        ->options(City::pluck('name','id'))
                         ->searchable()->required(),
                     Forms\Components\TextInput::make('address')->required()->columnSpanFull(),
                     Forms\Components\TextInput::make('email')->email(),
@@ -67,6 +71,7 @@ class BulkAddBranches extends Page
             foreach ($state['branches'] as $b) {
                 $branch = ProviderBranch::create([
                     'provider_id' => $state['provider_id'],
+                    'branch_name' => $b['branch_name'],
                     'city_id'     => $b['city_id'],
                     'address'     => $b['address'],
                     'email'       => $b['email'] ?? null,
