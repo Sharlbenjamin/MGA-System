@@ -256,7 +256,7 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(ProviderBranch::query()->with(['provider', 'operationContact', 'branchServices.serviceType', 'cities'])->where('status', 'Active'))
+            ->query(ProviderBranch::query()->with(['provider', 'operationContact', 'services', 'cities'])->where('status', 'Active'))
             ->columns([
                 TextColumn::make('branch_name')
                     ->label('Branch Name')
@@ -286,11 +286,9 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                 TextColumn::make('services')
                     ->label('Available Services')
                     ->getStateUsing(function (ProviderBranch $record): string {
-                        $activeServices = $record->branchServices()
-                            ->where('is_active', true)
-                            ->with('serviceType')
+                        $activeServices = $record->services()
                             ->get()
-                            ->pluck('serviceType.name')
+                            ->pluck('name')
                             ->filter()
                             ->toArray();
 
@@ -299,9 +297,8 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                     ->wrap()
                     ->limit(50)
                     ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->whereHas('branchServices.serviceType', function (Builder $query) use ($search) {
-                            $query->where('name', 'like', "%{$search}%")
-                                ->where('branch_services.is_active', true);
+                        return $query->whereHas('services', function (Builder $query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%");
                         });
                     }),
                 TextColumn::make('costs')
@@ -422,9 +419,8 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
                     })
                     ->query(function (Builder $query, array $data): Builder {
                         if (!empty($data['value'])) {
-                            return $query->whereHas('branchServices', function (Builder $query) use ($data) {
-                                $query->where('service_type_id', $data['value'])
-                                    ->where('is_active', true);
+                            return $query->whereHas('services', function (Builder $query) use ($data) {
+                                $query->where('service_type_id', $data['value']);
                             });
                         }
                         return $query;

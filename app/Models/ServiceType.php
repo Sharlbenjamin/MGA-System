@@ -38,8 +38,10 @@ class ServiceType extends Model
         return $this->hasMany(PriceList::class);
     }
 
-    public function branchServices(): HasMany
+    public function providerBranches()
     {
-        return $this->hasMany(BranchService::class);
+        return $this->belongsToMany(ProviderBranch::class, 'branch_service')
+            ->withPivot(['min_cost', 'max_cost'])
+            ->withTimestamps();
     }
 }

@@ -71,9 +71,8 @@ class File extends Model
             return collect();
         }
 
-        return $this->providerBranch->branchServices()
+        return $this->providerBranch->services()
             ->where('service_type_id', $this->service_type_id)
-            ->where('is_active', true)
             ->get();
     }
 

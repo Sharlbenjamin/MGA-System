@@ -97,9 +97,11 @@ class ProviderBranch extends Model
         return $this->hasMany(PriceList::class);
     }
 
-    public function branchServices(): HasMany
+    public function services()
     {
-        return $this->hasMany(BranchService::class);
+        return $this->belongsToMany(ServiceType::class, 'branch_service')
+            ->withPivot(['min_cost', 'max_cost'])
+            ->withTimestamps();
     }
 
     public function notifyBranch($type, $data)
@@ -109,16 +111,15 @@ class ProviderBranch extends Model
     }
 
     /**
-     * Get the cost for a specific service type and time period
+     * Get the cost for a specific service type
      */
-    public function getCostForService($serviceTypeId, $timePeriod = 'day_cost')
+    public function getCostForService($serviceTypeId, $costType = 'min_cost')
     {
-        $branchService = $this->branchServices()
+        $service = $this->services()
             ->where('service_type_id', $serviceTypeId)
-            ->where('is_active', true)
             ->first();
         
-        return $branchService ? $branchService->$timePeriod : null;
+        return $service ? $service->pivot->$costType : null;
     }
 
     /**
@@ -126,20 +127,17 @@ class ProviderBranch extends Model
      */
     public function getCostsForService($serviceTypeId)
     {
-        $branchService = $this->branchServices()
+        $service = $this->services()
             ->where('service_type_id', $serviceTypeId)
-            ->where('is_active', true)
             ->first();
         
-        if (!$branchService) {
+        if (!$service) {
             return null;
         }
         
         return [
-            'day_cost' => $branchService->day_cost,
-            'night_cost' => $branchService->night_cost,
-            'weekend_cost' => $branchService->weekend_cost,
-            'weekend_night_cost' => $branchService->weekend_night_cost,
+            'min_cost' => $service->pivot->min_cost,
+            'max_cost' => $service->pivot->max_cost,
         ];
     }
 

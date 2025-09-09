@@ -315,17 +315,15 @@ class ProviderBranchResource extends Resource
                 TextColumn::make('branch_name')->label('Branch Name')->sortable()->searchable(),
                 TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
                 TextColumn::make('cities.name')->label('Cities')->sortable()->searchable(),
-                TextColumn::make('branchServices.serviceType.name')
+                TextColumn::make('services.name')
                     ->label('Services')
                     ->listWithLineBreaks()
                     ->searchable()
                     ->toggleable()
                     ->getStateUsing(function (ProviderBranch $record): string {
-                        return $record->branchServices()
-                            ->where('is_active', 1)
-                            ->with('serviceType')
+                        return $record->services()
                             ->get()
-                            ->pluck('serviceType.name')
+                            ->pluck('name')
                             ->implode(', ');
                     }),
                 TextColumn::make('email')->label('Branch Email')->searchable()->toggleable(),
@@ -374,9 +372,8 @@ class ProviderBranchResource extends Resource
                     ->preload()
                     ->query(function (Builder $query, array $data): Builder {
                         if (!empty($data['value'])) {
-                            return $query->whereHas('branchServices', function (Builder $query) use ($data) {
-                                $query->where('service_type_id', $data['value'])
-                                    ->where('is_active', 1);
+                            return $query->whereHas('services', function (Builder $query) use ($data) {
+                                $query->where('service_type_id', $data['value']);
                             });
                         }
                         return $query;
@@ -403,7 +400,7 @@ class ProviderBranchResource extends Resource
                     ->label('Country')
                     ->collapsible(),
 
-                Group::make('branchServices.serviceType.name')
+                Group::make('services.name')
                     ->label('Service Type')
                     ->collapsible(),
             ])

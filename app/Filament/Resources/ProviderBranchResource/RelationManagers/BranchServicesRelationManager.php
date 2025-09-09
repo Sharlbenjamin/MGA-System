@@ -21,7 +21,7 @@ use Filament\Tables\Columns\BadgeColumn;
 
 class BranchServicesRelationManager extends RelationManager
 {
-    protected static string $relationship = 'branchServices';
+    protected static string $relationship = 'services';
 
     public function form(Form $form): Form
     {
@@ -29,7 +29,7 @@ class BranchServicesRelationManager extends RelationManager
             ->schema([
                 Section::make('Service Information')
                     ->schema([
-                        Select::make('service_type_id')
+                        Select::make('id')
                             ->label('Service Type')
                             ->options(ServiceType::pluck('name', 'id'))
                             ->searchable()
@@ -42,39 +42,21 @@ class BranchServicesRelationManager extends RelationManager
                             ->schema([
                                 Grid::make(2)
                                     ->schema([
-                                        TextInput::make('day_cost')
-                                            ->label('Day Cost')
+                                        TextInput::make('min_cost')
+                                            ->label('Minimum Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
                                             ->nullable(),
 
-                                        TextInput::make('night_cost')
-                                            ->label('Night Cost')
-                                            ->numeric()
-                                            ->minValue(0)
-                                            ->step(0.01)
-                                            ->nullable(),
-
-                                        TextInput::make('weekend_cost')
-                                            ->label('Weekend Cost')
-                                            ->numeric()
-                                            ->minValue(0)
-                                            ->step(0.01)
-                                            ->nullable(),
-
-                                        TextInput::make('weekend_night_cost')
-                                            ->label('Weekend Night Cost')
+                                        TextInput::make('max_cost')
+                                            ->label('Maximum Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
                                             ->nullable(),
                                     ]),
                             ]),
-
-                        Toggle::make('is_active')
-                            ->label('Active')
-                            ->default(true),
                     ]),
             ]);
     }
@@ -82,40 +64,21 @@ class BranchServicesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('serviceType.name')
+            ->recordTitleAttribute('name')
             ->columns([
-                TextColumn::make('serviceType.name')
+                TextColumn::make('name')
                     ->label('Service Type')
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('day_cost')
-                    ->label('Day Cost')
+                TextColumn::make('pivot.min_cost')
+                    ->label('Minimum Cost')
                     ->money('USD')
                     ->sortable(),
 
-                TextColumn::make('night_cost')
-                    ->label('Night Cost')
+                TextColumn::make('pivot.max_cost')
+                    ->label('Maximum Cost')
                     ->money('USD')
-                    ->sortable(),
-
-                TextColumn::make('weekend_cost')
-                    ->label('Weekend Cost')
-                    ->money('USD')
-                    ->sortable(),
-
-                TextColumn::make('weekend_night_cost')
-                    ->label('Weekend Night Cost')
-                    ->money('USD')
-                    ->sortable(),
-
-                BadgeColumn::make('is_active')
-                    ->label('Status')
-                    ->colors([
-                        'success' => true,
-                        'danger' => false,
-                    ])
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'Active' : 'Inactive')
                     ->sortable(),
             ])
             ->filters([
@@ -125,12 +88,7 @@ class BranchServicesRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make(),
             ])
             ->actions([
-                Tables\Actions\Action::make('Edit')
-                    ->url(fn ($record): string => 
-                        \App\Filament\Resources\BranchServiceResource::getUrl('edit', ['record' => $record])
-                    )
-                    ->icon('heroicon-o-pencil')
-                    ->color('primary'),
+                Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
