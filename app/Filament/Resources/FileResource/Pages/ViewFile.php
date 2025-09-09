@@ -45,7 +45,6 @@ use Filament\Support\Colors\Color;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Tabs\Tab;
 use Filament\Infolists\Components\Actions;
-use Filament\Infolists\Components\Actions\Action as InfolistAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
