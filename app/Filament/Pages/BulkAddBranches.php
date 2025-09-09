@@ -7,6 +7,7 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class BulkAddBranches extends Page
 {
@@ -14,6 +15,12 @@ class BulkAddBranches extends Page
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
     protected static ?string $title = 'Bulk Add Provider Branches';
     protected static string $view = 'filament.pages.blank';
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Temporarily always show for testing
+        return true;
+    }
 
     use Forms\Concerns\InteractsWithForms;
 

@@ -15,6 +15,7 @@ use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Facades\Schema;
 
 class ProviderBranch extends Model
 {
