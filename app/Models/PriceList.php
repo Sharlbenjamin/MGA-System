@@ -140,26 +140,17 @@ class PriceList extends Model
         $suggested = [];
         
         if ($this->providerBranch && $this->service_type_id) {
-            $branchService = $this->providerBranch->branchServices()
+            $branchService = $this->providerBranch->services()
                 ->where('service_type_id', $this->service_type_id)
-                ->where('is_active', true)
                 ->first();
             
             if ($branchService) {
-                if ($branchService->day_cost) {
-                    $suggested['day_price'] = round($branchService->day_cost * $markup, 2);
+                if ($branchService->pivot->min_cost) {
+                    $suggested['min_price'] = round($branchService->pivot->min_cost * $markup, 2);
                 }
                 
-                if ($branchService->weekend_cost) {
-                    $suggested['weekend_price'] = round($branchService->weekend_cost * $markup, 2);
-                }
-                
-                if ($branchService->night_cost) {
-                    $suggested['night_weekday_price'] = round($branchService->night_cost * $markup, 2);
-                }
-                
-                if ($branchService->weekend_night_cost) {
-                    $suggested['night_weekend_price'] = round($branchService->weekend_night_cost * $markup, 2);
+                if ($branchService->pivot->max_cost) {
+                    $suggested['max_price'] = round($branchService->pivot->max_cost * $markup, 2);
                 }
             }
         }
@@ -207,9 +198,8 @@ class PriceList extends Model
         // Get the branch services for the specified service type
         $branchServices = collect();
         foreach ($branches as $branch) {
-            $branchService = $branch->branchServices()
+            $branchService = $branch->services()
                 ->where('service_type_id', $this->service_type_id)
-                ->where('is_active', true)
                 ->first();
             if ($branchService) {
                 $branchServices->push($branchService);

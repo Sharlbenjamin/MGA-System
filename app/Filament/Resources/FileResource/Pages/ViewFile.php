@@ -1741,12 +1741,24 @@ class ViewFile extends ViewRecord
             $description[] = "Priority: " . ($branch->priority ?? 'N/A');
             
             // Add cost
-            $service = $branch->branchServices()
+            $service = $branch->services()
                 ->where('service_type_id', $record->service_type_id)
-                ->where('is_active', true)
                 ->first();
             if ($service) {
-                $description[] = "Cost: $" . number_format($service->cost, 2);
+                $minCost = $service->pivot->min_cost;
+                $maxCost = $service->pivot->max_cost;
+                
+                if ($minCost && $maxCost) {
+                    if ($minCost == $maxCost) {
+                        $description[] = "Cost: €" . number_format($minCost, 2);
+                    } else {
+                        $description[] = "Cost: €" . number_format($minCost, 2) . " - €" . number_format($maxCost, 2);
+                    }
+                } elseif ($minCost) {
+                    $description[] = "Cost: €" . number_format($minCost, 2);
+                } elseif ($maxCost) {
+                    $description[] = "Cost: €" . number_format($maxCost, 2);
+                }
             }
             
             // Add distance if available
@@ -1968,22 +1980,23 @@ class ViewFile extends ViewRecord
                         ->label('')
                         ->content(function () use ($branch) {
                             if ($this->record && $this->record->service_type_id) {
-                                $service = $branch->branchServices()
+                                $service = $branch->services()
                                     ->where('service_type_id', $this->record->service_type_id)
-                                    ->where('is_active', true)
                                     ->first();
                                 if ($service) {
-                                    $costs = array_filter([
-                                        $service->day_cost,
-                                        $service->night_cost,
-                                        $service->weekend_cost,
-                                        $service->weekend_night_cost
-                                    ], function($cost) {
-                                        return $cost !== null && $cost > 0;
-                                    });
+                                    $minCost = $service->pivot->min_cost;
+                                    $maxCost = $service->pivot->max_cost;
                                     
-                                    if (!empty($costs)) {
-                                        return '€' . number_format(min($costs), 2);
+                                    if ($minCost && $maxCost) {
+                                        if ($minCost == $maxCost) {
+                                            return '€' . number_format($minCost, 2);
+                                        } else {
+                                            return '€' . number_format($minCost, 2) . ' - €' . number_format($maxCost, 2);
+                                        }
+                                    } elseif ($minCost) {
+                                        return '€' . number_format($minCost, 2);
+                                    } elseif ($maxCost) {
+                                        return '€' . number_format($maxCost, 2);
                                     }
                                 }
                             }
@@ -2055,22 +2068,15 @@ class ViewFile extends ViewRecord
         
         // Add cost for current service type
         if ($this->record && $this->record->service_type_id) {
-            $service = $branch->branchServices()
+            $service = $branch->services()
                 ->where('service_type_id', $this->record->service_type_id)
-                ->where('is_active', true)
                 ->first();
             if ($service) {
-                $costs = array_filter([
-                    $service->day_cost,
-                    $service->night_cost,
-                    $service->weekend_cost,
-                    $service->weekend_night_cost
-                ], function($cost) {
-                    return $cost !== null && $cost > 0;
-                });
+                $minCost = $service->pivot->min_cost;
+                $maxCost = $service->pivot->max_cost;
                 
-                if (!empty($costs)) {
-                    $cheapestCost = min($costs);
+                if ($minCost || $maxCost) {
+                    $cheapestCost = $minCost ?: $maxCost;
                     $description[] = "From: €" . number_format($cheapestCost, 2);
                 } else {
                     $description[] = "No pricing available";
