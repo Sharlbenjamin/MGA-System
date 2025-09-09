@@ -357,9 +357,7 @@ class ViewFile extends ViewRecord
                     ]),
                             ]),
                         Tab::make('Documents')
-                            ->schema([
-                                $this->getDocumentsTabContent(),
-                            ]),
+                            ->schema($this->getDocumentsTabContent()),
                     ]),
             ]);
     }
