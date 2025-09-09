@@ -523,33 +523,21 @@ class ViewFile extends ViewRecord
                         TextEntry::make('created_at')
                             ->label('Created')
                             ->state(date('Y-m-d H:i:s', $file['created_at'])),
-                        Actions::make([
-                            InfolistAction::make('preview')
-                                ->label('Preview')
-                                ->icon('heroicon-o-eye')
-                                ->url(Storage::disk('public')->url($file['path']))
-                                ->openUrlInNewTab(),
-                            InfolistAction::make('download')
-                                ->label('Download')
-                                ->icon('heroicon-o-arrow-down-tray')
-                                ->action(function () use ($file) {
-                                    return Storage::disk('public')->download($file['path']);
-                                }),
-                            InfolistAction::make('delete')
-                                ->label('Delete')
-                                ->icon('heroicon-o-trash')
-                                ->color('danger')
-                                ->requiresConfirmation()
-                                ->action(function () use ($file) {
-                                    Storage::disk('public')->delete($file['path']);
-                                    Notification::make()
-                                        ->title('File deleted')
-                                        ->success()
-                                        ->send();
-                                }),
-                        ]),
+                        TextEntry::make('actions')
+                            ->label('Actions')
+                            ->state(function () use ($file) {
+                                $previewUrl = asset('storage/' . $file['path']);
+                                $downloadUrl = route('docs.serve', ['type' => 'file', 'id' => $this->record->id]);
+                                
+                                return "
+                                    <a href='{$previewUrl}' target='_blank' class='text-blue-600 hover:text-blue-800'>Preview</a> | 
+                                    <a href='{$downloadUrl}' class='text-green-600 hover:text-green-800'>Download</a> | 
+                                    <button onclick='deleteFile(\"{$file['path']}\")' class='text-red-600 hover:text-red-800'>Delete</button>
+                                ";
+                            })
+                            ->html(),
                     ])
-                    ->columns(3);
+                    ->columns(2);
             }
         }
         
