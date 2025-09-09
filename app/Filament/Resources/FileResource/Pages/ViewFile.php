@@ -760,7 +760,7 @@ class ViewFile extends ViewRecord
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
                             // Table-like header
-                            Grid::make(10)
+                            Grid::make(11)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
                                         ->label('')
@@ -800,6 +800,10 @@ class ViewFile extends ViewRecord
                                         ->label('Cost')
                                         ->content('')
                                         ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_communication')
+                                        ->label('Communication')
+                                        ->content('')
+                                        ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_contact')
                                         ->label('Contact')
                                         ->content('')
@@ -807,7 +811,7 @@ class ViewFile extends ViewRecord
                                     \Filament\Forms\Components\Placeholder::make('header_distance')
                                         ->label('Distance')
                                         ->content('')
-                                        ->columnSpan(1),
+                                        ->columnSpan(2),
                                 ])
                                 ->extraAttributes(['class' => 'bg-gray-50 border-b-2 border-gray-200 font-semibold text-sm']),
                             
@@ -1902,7 +1906,7 @@ class ViewFile extends ViewRecord
         $rows = [];
         
         foreach ($branches as $branch) {
-            $rows[] = Grid::make(10)
+            $rows[] = Grid::make(11)
                 ->schema([
                     // Checkbox column
                     Checkbox::make("branch_{$branch->id}")
@@ -1985,6 +1989,13 @@ class ViewFile extends ViewRecord
                             }
                             return 'N/A';
                         })
+                        ->extraAttributes(['class' => 'text-sm leading-tight'])
+                        ->columnSpan(1),
+                    
+                    // Communication method column
+                    \Filament\Forms\Components\Placeholder::make("communication_{$branch->id}")
+                        ->label('')
+                        ->content($branch->communication_method ?? 'N/A')
                         ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(1),
                     

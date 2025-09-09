@@ -96,6 +96,9 @@ class ListFiles extends ListRecords
                                 'patient_address' => $cleanedData['patient_address'],
                                 'symptoms' => $cleanedData['symptoms'],
                                 'extra_field' => $cleanedData['extra_field'],
+                                'phone' => $cleanedData['phone'],
+                                'country' => $cleanedData['country'],
+                                'city' => $cleanedData['city'],
                                 'gender' => $gender,
                             ]
                         ]);
