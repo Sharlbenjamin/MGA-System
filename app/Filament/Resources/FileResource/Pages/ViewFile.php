@@ -483,7 +483,7 @@ class ViewFile extends ViewRecord
         ];
     }
 
-    protected function getDocumentTable(string $category, string $title): \Filament\Infolists\Components\Table
+    protected function getDocumentTable(string $category, string $title): \Filament\Infolists\Components\Section
     {
         $record = $this->record;
         $resolver = app(DocumentPathResolver::class);
@@ -503,44 +503,58 @@ class ViewFile extends ViewRecord
             }
         }
         
-        return \Filament\Infolists\Components\Table::make()
-            ->label($title)
-            ->rows($files)
-            ->columns([
-                \Filament\Tables\Columns\TextColumn::make('name')
-                    ->label('Filename')
-                    ->searchable(),
-                \Filament\Tables\Columns\TextColumn::make('size')
-                    ->label('Size')
-                    ->formatStateUsing(fn ($state) => $this->formatFileSize($state)),
-                \Filament\Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created')
-                    ->formatStateUsing(fn ($state) => date('Y-m-d H:i:s', $state)),
-            ])
-            ->actions([
-                TableAction::make('preview')
-                    ->label('Preview')
-                    ->icon('heroicon-o-eye')
-                    ->url(fn ($record) => Storage::disk('public')->url($record['path']))
-                    ->openUrlInNewTab(),
-                TableAction::make('download')
-                    ->label('Download')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->action(function ($record) {
-                        return Storage::disk('public')->download($record['path']);
-                    }),
-                DeleteAction::make('delete')
-                    ->label('Delete')
-                    ->icon('heroicon-o-trash')
-                    ->requiresConfirmation()
-                    ->action(function ($record) {
-                        Storage::disk('public')->delete($record['path']);
-                        Notification::make()
-                            ->title('File deleted')
-                            ->success()
-                            ->send();
-                    }),
-            ]);
+        $components = [];
+        
+        if (empty($files)) {
+            $components[] = TextEntry::make('no_files')
+                ->label('')
+                ->state('No files found')
+                ->color('gray');
+        } else {
+            foreach ($files as $index => $file) {
+                $components[] = InfolistSection::make("file_{$index}")
+                    ->schema([
+                        TextEntry::make('name')
+                            ->label('Filename')
+                            ->state($file['name']),
+                        TextEntry::make('size')
+                            ->label('Size')
+                            ->state($this->formatFileSize($file['size'])),
+                        TextEntry::make('created_at')
+                            ->label('Created')
+                            ->state(date('Y-m-d H:i:s', $file['created_at'])),
+                        Actions::make([
+                            InfolistAction::make('preview')
+                                ->label('Preview')
+                                ->icon('heroicon-o-eye')
+                                ->url(Storage::disk('public')->url($file['path']))
+                                ->openUrlInNewTab(),
+                            InfolistAction::make('download')
+                                ->label('Download')
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->action(function () use ($file) {
+                                    return Storage::disk('public')->download($file['path']);
+                                }),
+                            InfolistAction::make('delete')
+                                ->label('Delete')
+                                ->icon('heroicon-o-trash')
+                                ->color('danger')
+                                ->requiresConfirmation()
+                                ->action(function () use ($file) {
+                                    Storage::disk('public')->delete($file['path']);
+                                    Notification::make()
+                                        ->title('File deleted')
+                                        ->success()
+                                        ->send();
+                                }),
+                        ]),
+                    ])
+                    ->columns(3);
+            }
+        }
+        
+        return InfolistSection::make($title)
+            ->schema($components);
     }
 
     protected function formatFileSize(int $bytes): string
