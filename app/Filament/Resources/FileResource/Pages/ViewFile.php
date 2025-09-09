@@ -76,7 +76,7 @@ class ViewFile extends ViewRecord
                                 InfolistSection::make()
                                     ->schema([
                         // Column 1: Patient & Client Info (Condensed)
-                        InfolistSection::make()->schema([
+                        InfolistSection::make()->columns(3)->schema([
                             Card::make()
                                 ->schema([
                                     TextEntry::make('mga_reference')
