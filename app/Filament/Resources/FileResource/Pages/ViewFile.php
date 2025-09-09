@@ -70,9 +70,8 @@ class ViewFile extends ViewRecord
                     ->tabs([
                         Tab::make('Overview')
                             ->schema([
-                                // Main content with condensed layout
+                                // Main content
                                 InfolistSection::make()
-                                    ->columns(3) // Three columns for more condensed layout
                                     ->schema([
                         // Column 1: Patient & Client Info (Condensed)
                         InfolistSection::make()->schema([
@@ -179,10 +178,8 @@ class ViewFile extends ViewRecord
                                                     $this->copyToClipboard($text, 'Phone');
                                                 })
                                         ),
-                                ])
-                                ->columnSpan(1),
-                        ])
-                        ->columnSpan(1),
+                                ]),
+                        ]),
 
                         // Column 2: Service & Provider Info (Condensed)
                         Card::make()
@@ -272,8 +269,7 @@ class ViewFile extends ViewRecord
                                                 $this->copyToClipboard($text, 'Service Time');
                                             })
                                     ),
-                            ])
-                            ->columnSpan(1),
+                            ]),
 
                         // Column 3: Location & Medical Info (Condensed)
                         Card::make()
@@ -352,8 +348,7 @@ class ViewFile extends ViewRecord
                                                 $this->copyToClipboard($text, 'Google Drive Link');
                                             })
                                     ),
-                            ])
-                            ->columnSpan(1),
+                            ]),
                     ]),
                             ]),
                         Tab::make('Documents')
