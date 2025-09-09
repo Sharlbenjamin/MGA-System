@@ -71,10 +71,10 @@ class ViewFile extends ViewRecord
                     ->columnSpanFull()
                     ->tabs([
                         Tab::make('Overview')
+                        ->columns(3)
                             ->schema([
                                 // Main content
                                 InfolistSection::make()
-                                    ->columns(3)
                                     ->schema([
                         // Column 1: Patient & Client Info (Condensed)
                         InfolistSection::make()->schema([
