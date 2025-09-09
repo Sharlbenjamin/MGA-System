@@ -32,7 +32,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Filament\Infolists\Components\Actions\Action as InfolistAction;
 use Illuminate\Support\Str;
 use App\Models\DraftMail;
 use Filament\Forms\Components\RichEditor;
