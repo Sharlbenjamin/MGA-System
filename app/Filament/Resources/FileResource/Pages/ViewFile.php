@@ -372,31 +372,197 @@ class ViewFile extends ViewRecord
                 ->schema([
                     InfolistSection::make('GOP Documents')
                         ->schema([
+                            Actions::make([
+                                InfolistAction::make('upload_gop')
+                                    ->label('Upload GOP Document')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select GOP Document')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'gops'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateGopDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('GOP Document uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('gops', 'GOP Documents'),
                         ]),
                     
                     InfolistSection::make('Medical Reports')
                         ->schema([
+                            Actions::make([
+                                InfolistAction::make('upload_medical_report')
+                                    ->label('Upload Medical Report')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Medical Report')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'medical_reports'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateMedicalReportDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Medical Report uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('medical_reports', 'Medical Reports'),
                         ]),
                     
                     InfolistSection::make('Prescriptions')
                         ->schema([
+                            Actions::make([
+                                InfolistAction::make('upload_prescription')
+                                    ->label('Upload Prescription')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Prescription')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'prescriptions'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updatePrescriptionDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Prescription uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('prescriptions', 'Prescriptions'),
                         ]),
                     
                     InfolistSection::make('Bills')
                         ->schema([
+                            Actions::make([
+                                InfolistAction::make('upload_bill')
+                                    ->label('Upload Bill')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Bill')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'bills'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateBillDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Bill uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('bills', 'Bills'),
                         ]),
                     
                     InfolistSection::make('Invoices')
                         ->schema([
+                            Actions::make([
+                                InfolistAction::make('upload_invoice')
+                                    ->label('Upload Invoice')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Invoice')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'invoices'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateInvoiceDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Invoice uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('invoices', 'Invoices'),
                         ]),
                     
                     InfolistSection::make('Transactions')
                         ->schema([
+                            Actions::make([
+                                InfolistAction::make('upload_transaction_in')
+                                    ->label('Upload Transaction In Document')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Transaction In Document')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'transactions/in'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateTransactionDocumentPath($this->record, $data['file'], 'in');
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Transaction In document uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                                InfolistAction::make('upload_transaction_out')
+                                    ->label('Upload Transaction Out Document')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Transaction Out Document')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'transactions/out'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateTransactionDocumentPath($this->record, $data['file'], 'out');
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Transaction Out document uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('transactions/in', 'Transactions (In)'),
                             $this->getDocumentTable('transactions/out', 'Transactions (Out)'),
                         ]),
