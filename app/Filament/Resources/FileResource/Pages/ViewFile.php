@@ -65,8 +65,10 @@ class ViewFile extends ViewRecord
     public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
+            ->columns(1)
             ->schema([
                 Tabs::make('FileTabs')
+                    ->columnSpanFull()
                     ->tabs([
                         Tab::make('Overview')
                             ->schema([
