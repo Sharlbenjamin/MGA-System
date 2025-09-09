@@ -71,11 +71,13 @@ class ViewFile extends ViewRecord
                     ->columnSpanFull()
                     ->tabs([
                         Tab::make('Overview')
-                        ->columns(3)
                             ->schema([
+                                InfolistSection::make()
+                                    ->columns(3)
+                                    ->schema([
                         // Column 1: Patient & Client Info (Condensed)
-                            Card::make()
-                                ->schema([
+                        Card::make()
+                            ->schema([
                                     TextEntry::make('mga_reference')
                                         ->label('MGA Reference')
                                         ->color('warning')
@@ -177,8 +179,8 @@ class ViewFile extends ViewRecord
                                                     $this->copyToClipboard($text, 'Phone');
                                                 })
                                         ),
-                                ]),
-                        ]),
+                                ])
+                                ->columnSpan(1),
 
                         // Column 2: Service & Provider Info (Condensed)
                         Card::make()
@@ -268,7 +270,8 @@ class ViewFile extends ViewRecord
                                                 $this->copyToClipboard($text, 'Service Time');
                                             })
                                     ),
-                            ]),
+                            ])
+                            ->columnSpan(1),
 
                         // Column 3: Location & Medical Info (Condensed)
                         Card::make()
@@ -347,6 +350,9 @@ class ViewFile extends ViewRecord
                                                 $this->copyToClipboard($text, 'Google Drive Link');
                                             })
                                     ),
+                            ])
+                            ->columnSpan(1),
+                                    ]),
                             ]),
                         Tab::make('Documents')
                             ->schema($this->getDocumentsTabContent()),
