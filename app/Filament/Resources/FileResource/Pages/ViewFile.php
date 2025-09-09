@@ -74,7 +74,6 @@ class ViewFile extends ViewRecord
                         ->columns(3)
                             ->schema([
                         // Column 1: Patient & Client Info (Condensed)
-                        InfolistSection::make()->schema([
                             Card::make()
                                 ->schema([
                                     TextEntry::make('mga_reference')
@@ -349,7 +348,6 @@ class ViewFile extends ViewRecord
                                             })
                                     ),
                             ]),
-                    ]),
                         Tab::make('Documents')
                             ->schema($this->getDocumentsTabContent()),
                     ]),
