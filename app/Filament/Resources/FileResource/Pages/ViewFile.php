@@ -73,9 +73,6 @@ class ViewFile extends ViewRecord
                         Tab::make('Overview')
                         ->columns(3)
                             ->schema([
-                                // Main content
-                                InfolistSection::make()
-                                    ->schema([
                         // Column 1: Patient & Client Info (Condensed)
                         InfolistSection::make()->schema([
                             Card::make()
@@ -353,7 +350,6 @@ class ViewFile extends ViewRecord
                                     ),
                             ]),
                     ]),
-                            ]),
                         Tab::make('Documents')
                             ->schema($this->getDocumentsTabContent()),
                     ]),
