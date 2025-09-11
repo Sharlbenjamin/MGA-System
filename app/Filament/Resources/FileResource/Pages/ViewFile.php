@@ -15,6 +15,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Repeater;
