@@ -33,20 +33,33 @@ class BulkAddBranches extends Page
                 ->label('Provider')->options(Provider::query()->pluck('name','id'))
                 ->searchable()->required(),
             Forms\Components\Repeater::make('branches')
-                ->minItems(1)->columns(2)
+                ->minItems(1)
+                ->columns(2)
+                ->addActionLabel('Add Branch')
+                ->reorderable()
                 ->schema([
                     Forms\Components\TextInput::make('branch_name')
                         ->label('Branch Name')
                         ->required(),
                     Forms\Components\Select::make('city_id')
-                        ->label('City')
+                        ->label('Primary City')
                         ->options(City::pluck('name','id'))
                         ->searchable()->required(),
-                    Forms\Components\TextInput::make('address')->required()->columnSpanFull(),
+                    Forms\Components\Select::make('additional_cities')
+                        ->label('Additional Cities')
+                        ->options(City::pluck('name','id'))
+                        ->searchable()
+                        ->multiple()
+                        ->preload(),
+                    Forms\Components\TextInput::make('address')->columnSpanFull(),
                     Forms\Components\TextInput::make('email')->email(),
-                    Forms\Components\TextInput::make('phone')->tel()->required(),
+                    Forms\Components\TextInput::make('phone')->tel(),
                     Forms\Components\Repeater::make('services')
-                        ->label('Branch Services')->minItems(1)->columns(3)
+                        ->label('Branch Services')
+                        ->minItems(1)
+                        ->columns(3)
+                        ->addActionLabel('Add Service')
+                        ->reorderable()
                         ->schema([
                             Forms\Components\Select::make('service_type_id')
                                 ->label('Service')->options(ServiceType::pluck('name','id'))
@@ -66,7 +79,13 @@ class BulkAddBranches extends Page
                 ]),
             Forms\Components\Actions::make([
                 Forms\Components\Actions\Action::make('save')
-                    ->label('Insert All')->submit('saveAll')->color('primary'),
+                    ->label('Insert All')
+                    ->action('saveAll')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Branch Creation')
+                    ->modalDescription('Are you sure you want to create all these branches? This action cannot be undone.')
+                    ->modalSubmitActionLabel('Yes, Create All Branches'),
             ])->alignEnd(),
         ]);
     }
@@ -74,31 +93,43 @@ class BulkAddBranches extends Page
     public function saveAll(): void
     {
         $state = $this->form->getState();
-        DB::transaction(function () use ($state) {
-            foreach ($state['branches'] as $b) {
-                $branch = ProviderBranch::create([
-                    'provider_id' => $state['provider_id'],
-                    'branch_name' => $b['branch_name'],
-                    'city_id'     => $b['city_id'],
-                    'address'     => $b['address'],
-                    'email'       => $b['email'] ?? null,
-                    'phone'       => $b['phone'],
-                ]);
+        
+        try {
+            DB::transaction(function () use ($state) {
+                foreach ($state['branches'] as $b) {
+                    $branch = ProviderBranch::create([
+                        'provider_id' => $state['provider_id'],
+                        'branch_name' => $b['branch_name'],
+                        'city_id'     => $b['city_id'],
+                        'address'     => $b['address'],
+                        'email'       => $b['email'] ?? null,
+                        'phone'       => $b['phone'],
+                    ]);
 
-                if (!empty($b['services'])) {
-                    $attach = [];
-                    foreach ($b['services'] as $s) {
-                        $attach[$s['service_type_id']] = [
-                            'min_cost' => $s['min_cost'] ?? null,
-                            'max_cost' => $s['max_cost'] ?? null,
-                        ];
+                    // Attach additional cities if provided
+                    if (!empty($b['additional_cities'])) {
+                        $branch->cities()->attach($b['additional_cities']);
                     }
-                    $branch->services()->attach($attach);
-                }
-            }
-        });
 
-        $this->notify('success','Branches inserted successfully.');
-        $this->form->fill(['provider_id'=> $state['provider_id'],'branches'=>[]]);
+                    // Attach services if provided
+                    if (!empty($b['services'])) {
+                        $attach = [];
+                        foreach ($b['services'] as $s) {
+                            $attach[$s['service_type_id']] = [
+                                'min_cost' => $s['min_cost'] ?? null,
+                                'max_cost' => $s['max_cost'] ?? null,
+                            ];
+                        }
+                        $branch->services()->attach($attach);
+                    }
+                }
+            });
+
+            $this->notify('success', 'Branches created successfully!');
+            $this->form->fill(['provider_id' => $state['provider_id'], 'branches' => []]);
+            
+        } catch (\Exception $e) {
+            $this->notify('danger', 'Error creating branches: ' . $e->getMessage());
+        }
     }
 }
