@@ -54,33 +54,12 @@ class BulkAddBranches extends Page
         ]);
     }
 
-    public function debugFormState(): void
-    {
-        $state = $this->form->getState();
-        Notification::make()
-            ->title('Form State Debug')
-            ->body('Form state: ' . json_encode($state))
-            ->info()
-            ->send();
-    }
-
-    public function testSave(): void
-    {
-        Log::info('Test save method called');
-        Notification::make()
-            ->title('Test')
-            ->body('Test save method was called successfully!')
-            ->success()
-            ->send();
-    }
-
-
     public function form(Form $form): Form
     {
         return $form->statePath('data')->schema([
             Forms\Components\Select::make('provider_id')
                 ->label('Provider')->options(Provider::query()->pluck('name','id'))
-                ->searchable()->required(),
+                ->searchable()->required()->reactive(),
             Forms\Components\Repeater::make('branches')
                 ->minItems(1)
                 ->columns(2)
@@ -92,14 +71,31 @@ class BulkAddBranches extends Page
                         ->required(),
                     Forms\Components\Select::make('city_id')
                         ->label('Primary City')
-                        ->options(City::pluck('name','id'))
-                        ->searchable()->required(),
+                        ->options(function (callable $get) {
+                            $providerId = $get('../../provider_id');
+                            if (!$providerId) {
+                                return [];
+                            }
+                            $provider = Provider::with('country.cities')->find($providerId);
+                            return $provider ? $provider->country->cities->pluck('name', 'id') : [];
+                        })
+                        ->searchable()
+                        ->required()
+                        ->reactive(),
                     Forms\Components\Select::make('additional_cities')
                         ->label('Additional Cities')
-                        ->options(City::pluck('name','id'))
+                        ->options(function (callable $get) {
+                            $providerId = $get('../../provider_id');
+                            if (!$providerId) {
+                                return [];
+                            }
+                            $provider = Provider::with('country.cities')->find($providerId);
+                            return $provider ? $provider->country->cities->pluck('name', 'id') : [];
+                        })
                         ->searchable()
                         ->multiple()
-                        ->preload(),
+                        ->preload()
+                        ->reactive(),
                     Forms\Components\TextInput::make('address')->columnSpanFull(),
                     Forms\Components\TextInput::make('email')->email(),
                     Forms\Components\TextInput::make('phone')->tel(),
@@ -128,14 +124,6 @@ class BulkAddBranches extends Page
                         ])->columnSpanFull(),
                 ]),
             Forms\Components\Actions::make([
-                Forms\Components\Actions\Action::make('debug')
-                    ->label('Debug Form State')
-                    ->action('debugFormState')
-                    ->color('gray'),
-                Forms\Components\Actions\Action::make('test')
-                    ->label('Test Action')
-                    ->action('testSave')
-                    ->color('warning'),
                 Forms\Components\Actions\Action::make('save')
                     ->label('Insert All')
                     ->action('saveAll')
@@ -150,13 +138,9 @@ class BulkAddBranches extends Page
 
     public function saveAll(): void
     {
-        // Debug: Log that saveAll method is being called
-        Log::info('BulkAddBranches saveAll method called');
-        
         try {
             $state = $this->form->getState();
         } catch (\Exception $e) {
-            Log::error('Form validation failed: ' . $e->getMessage());
             Notification::make()
                 ->title('Form Validation Error')
                 ->body('Please check all required fields: ' . $e->getMessage())
@@ -165,14 +149,11 @@ class BulkAddBranches extends Page
             return;
         }
         
-        // Debug: Log the form state to see what's being submitted
-        Log::info('BulkAddBranches form state:', $state);
-        
-        // Debug: Check if provider_id is present
+        // Check if provider_id is present
         if (empty($state['provider_id'])) {
             Notification::make()
                 ->title('Provider Required')
-                ->body('Provider is required. Please select a provider. Current state: ' . json_encode($state))
+                ->body('Provider is required. Please select a provider.')
                 ->danger()
                 ->send();
             return;
