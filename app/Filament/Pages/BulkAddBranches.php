@@ -44,8 +44,8 @@ class BulkAddBranches extends Page
                         'services' => [
                             [
                                 'service_type_id' => null,
-                                'day_cost' => null,
-                                'weekend_night_cost' => null,
+                                'min_cost' => null,
+                                'max_cost' => null,
                             ]
                         ]
                     ]
@@ -61,6 +61,16 @@ class BulkAddBranches extends Page
             ->title('Form State Debug')
             ->body('Form state: ' . json_encode($state))
             ->info()
+            ->send();
+    }
+
+    public function testSave(): void
+    {
+        Log::info('Test save method called');
+        Notification::make()
+            ->title('Test')
+            ->body('Test save method was called successfully!')
+            ->success()
             ->send();
     }
 
@@ -103,18 +113,19 @@ class BulkAddBranches extends Page
                             Forms\Components\Select::make('service_type_id')
                                 ->label('Service')->options(ServiceType::pluck('name','id'))
                                 ->searchable()->required()->columnSpan(2),
-                    Forms\Components\TextInput::make('day_cost')
-                        ->label('Day Cost')
+                    Forms\Components\TextInput::make('min_cost')
+                        ->label('Minimum Cost')
                         ->numeric()
                         ->suffix('€')
                         ->minValue(0)
                         ->step(0.01),
-                    Forms\Components\TextInput::make('weekend_night_cost')
-                        ->label('Weekend Night Cost')
+                    Forms\Components\TextInput::make('max_cost')
+                        ->label('Maximum Cost')
                         ->numeric()
                         ->suffix('€')
                         ->minValue(0)
-                        ->step(0.01),
+                        ->step(0.01)
+                        ->rules(['gte:min_cost']),
                         ])->columnSpanFull(),
                 ]),
             Forms\Components\Actions::make([
@@ -122,9 +133,13 @@ class BulkAddBranches extends Page
                     ->label('Debug Form State')
                     ->action('debugFormState')
                     ->color('gray'),
+                Forms\Components\Actions\Action::make('test')
+                    ->label('Test Action')
+                    ->action('testSave')
+                    ->color('warning'),
                 Forms\Components\Actions\Action::make('save')
                     ->label('Insert All')
-                    ->submit('saveAll')
+                    ->action('saveAll')
                     ->color('primary')
                     ->requiresConfirmation()
                     ->modalHeading('Confirm Branch Creation')
@@ -139,7 +154,17 @@ class BulkAddBranches extends Page
         // Debug: Log that saveAll method is being called
         Log::info('BulkAddBranches saveAll method called');
         
-        $state = $this->form->getState();
+        try {
+            $state = $this->form->getState();
+        } catch (\Exception $e) {
+            Log::error('Form validation failed: ' . $e->getMessage());
+            Notification::make()
+                ->title('Form Validation Error')
+                ->body('Please check all required fields: ' . $e->getMessage())
+                ->danger()
+                ->send();
+            return;
+        }
         
         // Debug: Log the form state to see what's being submitted
         Log::info('BulkAddBranches form state:', $state);
@@ -176,8 +201,8 @@ class BulkAddBranches extends Page
                         $attach = [];
                         foreach ($b['services'] as $s) {
                             $attach[$s['service_type_id']] = [
-                                'day_cost' => $s['day_cost'] ?? null,
-                                'weekend_night_cost' => $s['weekend_night_cost'] ?? null,
+                                'min_cost' => $s['min_cost'] ?? null,
+                                'max_cost' => $s['max_cost'] ?? null,
                             ];
                         }
                         $branch->services()->attach($attach);
