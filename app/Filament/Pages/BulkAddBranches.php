@@ -124,8 +124,7 @@ class BulkAddBranches extends Page
                         ->numeric()
                         ->suffix('€')
                         ->minValue(0)
-                        ->step(0.01)
-                        ->rules(['gte:min_cost']),
+                        ->step(0.01),
                         ])->columnSpanFull(),
                 ]),
             Forms\Components\Actions::make([
@@ -200,9 +199,20 @@ class BulkAddBranches extends Page
                     if (!empty($b['services'])) {
                         $attach = [];
                         foreach ($b['services'] as $s) {
+                            $minCost = $s['min_cost'] ?? null;
+                            $maxCost = $s['max_cost'] ?? null;
+                            
+                            // Validate min/max cost logic
+                            if ($minCost && $maxCost && $maxCost < $minCost) {
+                                // Swap them if max is less than min
+                                $temp = $minCost;
+                                $minCost = $maxCost;
+                                $maxCost = $temp;
+                            }
+                            
                             $attach[$s['service_type_id']] = [
-                                'min_cost' => $s['min_cost'] ?? null,
-                                'max_cost' => $s['max_cost'] ?? null,
+                                'min_cost' => $minCost,
+                                'max_cost' => $maxCost,
                             ];
                         }
                         $branch->services()->attach($attach);
