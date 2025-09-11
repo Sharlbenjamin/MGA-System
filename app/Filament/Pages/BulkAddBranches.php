@@ -20,8 +20,8 @@ class BulkAddBranches extends Page
     
     public static function shouldRegisterNavigation(): bool
     {
-        // Temporarily always show for testing
-        return true;
+        // Only show if the branch_service table exists
+        return Schema::hasTable('branch_service');
     }
 
     use Forms\Concerns\InteractsWithForms;
