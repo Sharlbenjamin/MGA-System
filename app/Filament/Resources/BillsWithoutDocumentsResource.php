@@ -357,24 +357,22 @@ class BillsWithoutDocumentsResource extends Resource
                                     
                                     // Update the selected bill record with the Google Drive link
                                     $selectedBill->bill_google_link = $uploadResult;
+                                    
+                                    $selectedBill->save();
+                                    
+                                    Notification::make()
+                                        ->success()
+                                        ->title('Bill document uploaded successfully')
+                                        ->body("Bill document has been uploaded to Google Drive for: {$selectedBill->file->mga_reference}")
+                                        ->send();
+                                } else {
+                                    Log::error('Failed to upload bill to Google Drive');
+                                    Notification::make()
+                                        ->danger()
+                                        ->title('Google Drive upload failed')
+                                        ->body('The file was saved locally but failed to upload to Google Drive.')
+                                        ->send();
                                 }
-                                
-                                $selectedBill->save();
-                                    
-                                Notification::make()
-                                    ->success()
-                                    ->title('Bill document uploaded successfully')
-                                    ->body("Bill document has been uploaded to Google Drive for: {$selectedBill->file->mga_reference}")
-                                    ->send();
-                            } else {
-                                Log::error('Failed to upload bill to Google Drive');
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Google Drive upload failed')
-                                    ->body('The file was saved locally but failed to upload to Google Drive.')
-                                    ->send();
-                            }
-                                    
                             } catch (\Exception $e) {
                                 Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
                                 Notification::make()
