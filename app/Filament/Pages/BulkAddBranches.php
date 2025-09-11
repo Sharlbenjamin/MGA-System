@@ -188,6 +188,7 @@ class BulkAddBranches extends Page
                         'address'     => $b['address'],
                         'email'       => $b['email'] ?? null,
                         'phone'       => $b['phone'],
+                        'priority'    => 1, // Default priority value
                     ]);
 
                     // Attach additional cities if provided
