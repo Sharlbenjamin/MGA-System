@@ -1804,7 +1804,7 @@ class ViewFile extends ViewRecord
         }
         
         return \App\Models\ProviderBranch::whereIn('id', $uniqueIds)
-            ->with(['provider', 'city', 'branchServices.serviceType', 'gopContact', 'operationContact'])
+            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
             ->orderBy('priority', 'asc')
             ->get();
     }

@@ -315,10 +315,8 @@ class BranchAvailabilityIndex extends Page implements HasForms, HasTable
 
                         // Get all available costs and find the cheapest
                         $availableCosts = array_filter([
-                            $costs['day_cost'],
-                            $costs['night_cost'],
-                            $costs['weekend_cost'],
-                            $costs['weekend_night_cost']
+                            $costs['min_cost'],
+                            $costs['max_cost']
                         ], function($cost) {
                             return $cost !== null && $cost > 0;
                         });
