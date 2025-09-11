@@ -65,11 +65,13 @@ class BulkAddBranches extends Page
                                 ->label('Service')->options(ServiceType::pluck('name','id'))
                                 ->searchable()->required()->columnSpan(2),
                     Forms\Components\TextInput::make('min_cost')
+                        ->label('Minimum Cost')
                         ->numeric()
                         ->suffix('€')
                         ->minValue(0)
                         ->step(0.01),
                     Forms\Components\TextInput::make('max_cost')
+                        ->label('Maximum Cost')
                         ->numeric()
                         ->suffix('€')
                         ->minValue(0)

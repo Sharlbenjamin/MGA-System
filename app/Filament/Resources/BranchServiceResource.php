@@ -51,7 +51,9 @@ class BranchServiceResource extends Resource
                             ->schema([
                                 Select::make('provider_branch_id')
                                     ->label('Provider Branch')
-                                    ->options(ProviderBranch::with('provider')->get()->pluck('provider.name', 'id'))
+                                    ->options(ProviderBranch::with('provider')->get()->mapWithKeys(function ($branch) {
+                                        return [$branch->id => $branch->provider->name . ' - ' . $branch->branch_name];
+                                    }))
                                     ->searchable()
                                     ->required()
                                     ->reactive(),
@@ -67,23 +69,39 @@ class BranchServiceResource extends Resource
                             ->schema([
                                 Grid::make(2)
                                     ->schema([
-                                        TextInput::make('min_cost')
-                                            ->label('Minimum Cost')
+                                        TextInput::make('day_cost')
+                                            ->label('Day Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
                                             ->nullable(),
 
-                                        TextInput::make('max_cost')
-                                            ->label('Maximum Cost')
+                                        TextInput::make('night_cost')
+                                            ->label('Night Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
-                                            ->nullable()
-                                            ->rules(['gte:min_cost']),
+                                            ->nullable(),
+
+                                        TextInput::make('weekend_cost')
+                                            ->label('Weekend Cost')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step(0.01)
+                                            ->nullable(),
+
+                                        TextInput::make('weekend_night_cost')
+                                            ->label('Weekend Night Cost')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step(0.01)
+                                            ->nullable(),
                                     ]),
                             ]),
 
+                        Toggle::make('is_active')
+                            ->label('Active')
+                            ->default(true),
                     ]),
             ]);
     }
@@ -107,16 +125,34 @@ class BranchServiceResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('min_cost')
-                    ->label('Minimum Cost')
+                TextColumn::make('day_cost')
+                    ->label('Day Cost')
                     ->money('USD')
                     ->sortable(),
 
-                TextColumn::make('max_cost')
-                    ->label('Maximum Cost')
+                TextColumn::make('night_cost')
+                    ->label('Night Cost')
                     ->money('USD')
                     ->sortable(),
 
+                TextColumn::make('weekend_cost')
+                    ->label('Weekend Cost')
+                    ->money('USD')
+                    ->sortable(),
+
+                TextColumn::make('weekend_night_cost')
+                    ->label('Weekend Night Cost')
+                    ->money('USD')
+                    ->sortable(),
+
+                BadgeColumn::make('is_active')
+                    ->label('Status')
+                    ->colors([
+                        'success' => true,
+                        'danger' => false,
+                    ])
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Active' : 'Inactive')
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('provider')
@@ -131,6 +167,11 @@ class BranchServiceResource extends Resource
                     ->searchable()
                     ->preload(),
 
+                TernaryFilter::make('is_active')
+                    ->label('Status')
+                    ->placeholder('All')
+                    ->trueLabel('Active')
+                    ->falseLabel('Inactive'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
