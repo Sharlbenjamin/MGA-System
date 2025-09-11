@@ -44,7 +44,6 @@ use Filament\Support\Colors\Color;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Tabs\Tab;
 use Filament\Infolists\Components\Actions;
-use Filament\Infolists\Components\Actions\Action as InfolistAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -65,19 +64,19 @@ class ViewFile extends ViewRecord
     public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
+            ->columns(1)
             ->schema([
                 Tabs::make('FileTabs')
+                    ->columnSpanFull()
                     ->tabs([
                         Tab::make('Overview')
                             ->schema([
-                                // Main content with condensed layout
                                 InfolistSection::make()
-                                    ->columns(3) // Three columns for more condensed layout
+                                    ->columns(3)
                                     ->schema([
                         // Column 1: Patient & Client Info (Condensed)
-                        InfolistSection::make()->schema([
-                            Card::make()
-                                ->schema([
+                        Card::make()
+                            ->schema([
                                     TextEntry::make('mga_reference')
                                         ->label('MGA Reference')
                                         ->color('warning')
@@ -181,8 +180,6 @@ class ViewFile extends ViewRecord
                                         ),
                                 ])
                                 ->columnSpan(1),
-                        ])
-                        ->columnSpan(1),
 
                         // Column 2: Service & Provider Info (Condensed)
                         Card::make()
@@ -354,12 +351,10 @@ class ViewFile extends ViewRecord
                                     ),
                             ])
                             ->columnSpan(1),
-                    ]),
+                                    ]),
                             ]),
                         Tab::make('Documents')
-                            ->schema([
-                                $this->getDocumentsTabContent(),
-                            ]),
+                            ->schema($this->getDocumentsTabContent()),
                     ]),
             ]);
     }
@@ -374,108 +369,197 @@ class ViewFile extends ViewRecord
                 ->schema([
                     InfolistSection::make('GOP Documents')
                         ->schema([
-                            FileUpload::make('gop_upload')
-                                ->label('Upload GOP Document')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'gops'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateGopDocumentPath($record, $state);
-                                    }
-                                }),
+                            Actions::make([
+                                InfolistAction::make('upload_gop')
+                                    ->label('Upload GOP Document')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select GOP Document')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'gops'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateGopDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('GOP Document uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('gops', 'GOP Documents'),
                         ]),
                     
                     InfolistSection::make('Medical Reports')
                         ->schema([
-                            FileUpload::make('medical_report_upload')
-                                ->label('Upload Medical Report')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'medical_reports'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateMedicalReportDocumentPath($record, $state);
-                                    }
-                                }),
+                            Actions::make([
+                                InfolistAction::make('upload_medical_report')
+                                    ->label('Upload Medical Report')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Medical Report')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'medical_reports'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateMedicalReportDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Medical Report uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('medical_reports', 'Medical Reports'),
                         ]),
                     
                     InfolistSection::make('Prescriptions')
                         ->schema([
-                            FileUpload::make('prescription_upload')
-                                ->label('Upload Prescription')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'prescriptions'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updatePrescriptionDocumentPath($record, $state);
-                                    }
-                                }),
+                            Actions::make([
+                                InfolistAction::make('upload_prescription')
+                                    ->label('Upload Prescription')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Prescription')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'prescriptions'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updatePrescriptionDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Prescription uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('prescriptions', 'Prescriptions'),
                         ]),
                     
                     InfolistSection::make('Bills')
                         ->schema([
-                            FileUpload::make('bill_upload')
-                                ->label('Upload Bill')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'bills'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateBillDocumentPath($record, $state);
-                                    }
-                                }),
+                            Actions::make([
+                                InfolistAction::make('upload_bill')
+                                    ->label('Upload Bill')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Bill')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'bills'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateBillDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Bill uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('bills', 'Bills'),
                         ]),
                     
                     InfolistSection::make('Invoices')
                         ->schema([
-                            FileUpload::make('invoice_upload')
-                                ->label('Upload Invoice')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'invoices'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateInvoiceDocumentPath($record, $state);
-                                    }
-                                }),
+                            Actions::make([
+                                InfolistAction::make('upload_invoice')
+                                    ->label('Upload Invoice')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Invoice')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'invoices'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateInvoiceDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Invoice uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('invoices', 'Invoices'),
                         ]),
                     
                     InfolistSection::make('Transactions')
                         ->schema([
-                            FileUpload::make('transaction_in_upload')
-                                ->label('Upload Transaction (In)')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'transactions/in'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateTransactionDocumentPath($record, $state, 'in');
-                                    }
-                                }),
-                            FileUpload::make('transaction_out_upload')
-                                ->label('Upload Transaction (Out)')
-                                ->directory(fn () => app(DocumentPathResolver::class)->dirFor($record, 'transactions/out'))
-                                ->disk('public')
-                                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                ->maxFiles(1)
-                                ->afterStateUpdated(function ($state, $record) {
-                                    if ($state) {
-                                        $this->updateTransactionDocumentPath($record, $state, 'out');
-                                    }
-                                }),
+                            Actions::make([
+                                InfolistAction::make('upload_transaction_in')
+                                    ->label('Upload Transaction In Document')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Transaction In Document')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'transactions/in'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateTransactionDocumentPath($this->record, $data['file'], 'in');
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Transaction In document uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                                InfolistAction::make('upload_transaction_out')
+                                    ->label('Upload Transaction Out Document')
+                                    ->icon('heroicon-o-cloud-arrow-up')
+                                    ->color('primary')
+                                    ->form([
+                                        \Filament\Forms\Components\FileUpload::make('file')
+                                            ->label('Select Transaction Out Document')
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'transactions/out'))
+                                            ->disk('public')
+                                            ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                            ->maxFiles(1)
+                                            ->required(),
+                                    ])
+                                    ->action(function (array $data) {
+                                        if (isset($data['file'])) {
+                                            $this->updateTransactionDocumentPath($this->record, $data['file'], 'out');
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Transaction Out document uploaded successfully')
+                                                ->send();
+                                        }
+                                    }),
+                            ]),
                             $this->getDocumentTable('transactions/in', 'Transactions (In)'),
                             $this->getDocumentTable('transactions/out', 'Transactions (Out)'),
                         ]),
@@ -483,7 +567,7 @@ class ViewFile extends ViewRecord
         ];
     }
 
-    protected function getDocumentTable(string $category, string $title): \Filament\Infolists\Components\Table
+    protected function getDocumentTable(string $category, string $title): \Filament\Infolists\Components\Section
     {
         $record = $this->record;
         $resolver = app(DocumentPathResolver::class);
@@ -503,44 +587,46 @@ class ViewFile extends ViewRecord
             }
         }
         
-        return \Filament\Infolists\Components\Table::make()
-            ->label($title)
-            ->rows($files)
-            ->columns([
-                \Filament\Tables\Columns\TextColumn::make('name')
-                    ->label('Filename')
-                    ->searchable(),
-                \Filament\Tables\Columns\TextColumn::make('size')
-                    ->label('Size')
-                    ->formatStateUsing(fn ($state) => $this->formatFileSize($state)),
-                \Filament\Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created')
-                    ->formatStateUsing(fn ($state) => date('Y-m-d H:i:s', $state)),
-            ])
-            ->actions([
-                TableAction::make('preview')
-                    ->label('Preview')
-                    ->icon('heroicon-o-eye')
-                    ->url(fn ($record) => Storage::disk('public')->url($record['path']))
-                    ->openUrlInNewTab(),
-                TableAction::make('download')
-                    ->label('Download')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->action(function ($record) {
-                        return Storage::disk('public')->download($record['path']);
-                    }),
-                DeleteAction::make('delete')
-                    ->label('Delete')
-                    ->icon('heroicon-o-trash')
-                    ->requiresConfirmation()
-                    ->action(function ($record) {
-                        Storage::disk('public')->delete($record['path']);
-                        Notification::make()
-                            ->title('File deleted')
-                            ->success()
-                            ->send();
-                    }),
-            ]);
+        $components = [];
+        
+        if (empty($files)) {
+            $components[] = TextEntry::make('no_files')
+                ->label('')
+                ->state('No files found')
+                ->color('gray');
+        } else {
+            foreach ($files as $index => $file) {
+                $components[] = InfolistSection::make("file_{$index}")
+                    ->schema([
+                        TextEntry::make('name')
+                            ->label('Filename')
+                            ->state($file['name']),
+                        TextEntry::make('size')
+                            ->label('Size')
+                            ->state($this->formatFileSize($file['size'])),
+                        TextEntry::make('created_at')
+                            ->label('Created')
+                            ->state(date('Y-m-d H:i:s', $file['created_at'])),
+                        TextEntry::make('actions')
+                            ->label('Actions')
+                            ->state(function () use ($file) {
+                                $previewUrl = asset('storage/' . $file['path']);
+                                $downloadUrl = route('docs.serve', ['type' => 'file', 'id' => $this->record->id]);
+                                
+                                return "
+                                    <a href='{$previewUrl}' target='_blank' class='text-blue-600 hover:text-blue-800'>Preview</a> | 
+                                    <a href='{$downloadUrl}' class='text-green-600 hover:text-green-800'>Download</a> | 
+                                    <button onclick='deleteFile(\"{$file['path']}\")' class='text-red-600 hover:text-red-800'>Delete</button>
+                                ";
+                            })
+                            ->html(),
+                    ])
+                    ->columns(2);
+            }
+        }
+        
+        return InfolistSection::make($title)
+            ->schema($components);
     }
 
     protected function formatFileSize(int $bytes): string
@@ -673,7 +759,7 @@ class ViewFile extends ViewRecord
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
                             // Table-like header
-                            Grid::make(10)
+                            Grid::make(11)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
                                         ->label('')
@@ -713,6 +799,10 @@ class ViewFile extends ViewRecord
                                         ->label('Cost')
                                         ->content('')
                                         ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_communication')
+                                        ->label('Contact By')
+                                        ->content('')
+                                        ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_contact')
                                         ->label('Contact')
                                         ->content('')
@@ -720,7 +810,7 @@ class ViewFile extends ViewRecord
                                     \Filament\Forms\Components\Placeholder::make('header_distance')
                                         ->label('Distance')
                                         ->content('')
-                                        ->columnSpan(1),
+                                        ->columnSpan(2),
                                 ])
                                 ->extraAttributes(['class' => 'bg-gray-50 border-b-2 border-gray-200 font-semibold text-sm']),
                             
@@ -1650,12 +1740,24 @@ class ViewFile extends ViewRecord
             $description[] = "Priority: " . ($branch->priority ?? 'N/A');
             
             // Add cost
-            $service = $branch->branchServices()
+            $service = $branch->services()
                 ->where('service_type_id', $record->service_type_id)
-                ->where('is_active', true)
                 ->first();
             if ($service) {
-                $description[] = "Cost: $" . number_format($service->cost, 2);
+                $minCost = $service->pivot->min_cost;
+                $maxCost = $service->pivot->max_cost;
+                
+                if ($minCost && $maxCost) {
+                    if ($minCost == $maxCost) {
+                        $description[] = "Cost: €" . number_format($minCost, 2);
+                    } else {
+                        $description[] = "Cost: €" . number_format($minCost, 2) . " - €" . number_format($maxCost, 2);
+                    }
+                } elseif ($minCost) {
+                    $description[] = "Cost: €" . number_format($minCost, 2);
+                } elseif ($maxCost) {
+                    $description[] = "Cost: €" . number_format($maxCost, 2);
+                }
             }
             
             // Add distance if available
@@ -1701,7 +1803,7 @@ class ViewFile extends ViewRecord
         }
         
         return \App\Models\ProviderBranch::whereIn('id', $uniqueIds)
-            ->with(['provider', 'city', 'branchServices.serviceType', 'gopContact', 'operationContact'])
+            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
             ->orderBy('priority', 'asc')
             ->get();
     }
@@ -1815,7 +1917,7 @@ class ViewFile extends ViewRecord
         $rows = [];
         
         foreach ($branches as $branch) {
-            $rows[] = Grid::make(10)
+            $rows[] = Grid::make(11)
                 ->schema([
                     // Checkbox column
                     Checkbox::make("branch_{$branch->id}")
@@ -1877,27 +1979,35 @@ class ViewFile extends ViewRecord
                         ->label('')
                         ->content(function () use ($branch) {
                             if ($this->record && $this->record->service_type_id) {
-                                $service = $branch->branchServices()
+                                $service = $branch->services()
                                     ->where('service_type_id', $this->record->service_type_id)
-                                    ->where('is_active', true)
                                     ->first();
                                 if ($service) {
-                                    $costs = array_filter([
-                                        $service->day_cost,
-                                        $service->night_cost,
-                                        $service->weekend_cost,
-                                        $service->weekend_night_cost
-                                    ], function($cost) {
-                                        return $cost !== null && $cost > 0;
-                                    });
+                                    $minCost = $service->pivot->min_cost;
+                                    $maxCost = $service->pivot->max_cost;
                                     
-                                    if (!empty($costs)) {
-                                        return '€' . number_format(min($costs), 2);
+                                    if ($minCost && $maxCost) {
+                                        if ($minCost == $maxCost) {
+                                            return '€' . number_format($minCost, 2);
+                                        } else {
+                                            return '€' . number_format($minCost, 2) . ' - €' . number_format($maxCost, 2);
+                                        }
+                                    } elseif ($minCost) {
+                                        return '€' . number_format($minCost, 2);
+                                    } elseif ($maxCost) {
+                                        return '€' . number_format($maxCost, 2);
                                     }
                                 }
                             }
                             return 'N/A';
                         })
+                        ->extraAttributes(['class' => 'text-sm leading-tight'])
+                        ->columnSpan(1),
+                    
+                    // Communication method column
+                    \Filament\Forms\Components\Placeholder::make("communication_{$branch->id}")
+                        ->label('')
+                        ->content($branch->communication_method ?? 'N/A')
                         ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(1),
                     
@@ -1957,22 +2067,15 @@ class ViewFile extends ViewRecord
         
         // Add cost for current service type
         if ($this->record && $this->record->service_type_id) {
-            $service = $branch->branchServices()
+            $service = $branch->services()
                 ->where('service_type_id', $this->record->service_type_id)
-                ->where('is_active', true)
                 ->first();
             if ($service) {
-                $costs = array_filter([
-                    $service->day_cost,
-                    $service->night_cost,
-                    $service->weekend_cost,
-                    $service->weekend_night_cost
-                ], function($cost) {
-                    return $cost !== null && $cost > 0;
-                });
+                $minCost = $service->pivot->min_cost;
+                $maxCost = $service->pivot->max_cost;
                 
-                if (!empty($costs)) {
-                    $cheapestCost = min($costs);
+                if ($minCost || $maxCost) {
+                    $cheapestCost = $minCost ?: $maxCost;
                     $description[] = "From: €" . number_format($cheapestCost, 2);
                 } else {
                     $description[] = "No pricing available";

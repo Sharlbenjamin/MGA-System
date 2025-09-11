@@ -367,6 +367,9 @@ class BillsWithoutDocumentsResource extends Resource
                                         ->send();
                                 } else {
                                     Log::error('Failed to upload bill to Google Drive');
+                                    
+                                    $selectedBill->save();
+                                    
                                     Notification::make()
                                         ->danger()
                                         ->title('Google Drive upload failed')

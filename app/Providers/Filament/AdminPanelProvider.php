@@ -22,6 +22,7 @@ use App\Filament\Resources\InvoiceResource;
 use App\Filament\Resources\BillResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Resources\BranchAvailabilityResource;
+use App\Filament\Pages\BulkAddBranches;
 use App\Filament\Widgets\FilesPerClient;
 use App\Filament\Widgets\FilesPerCountry;
 use App\Filament\Widgets\FilesPerMonth;
@@ -94,6 +95,9 @@ class AdminPanelProvider extends PanelProvider
             ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->pages([
+                BulkAddBranches::class,
+            ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->middleware([
                 EncryptCookies::class,

@@ -35,9 +35,9 @@ protected static ?string $navigationIcon = 'heroicon-o-map-pin'; // 📍 Cities 
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->sortable(),
-                Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable(),
-                Tables\Columns\TextColumn::make('province.name')->label('province')->sortable(),
+                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('province.name')->label('province')->sortable()->searchable(),
             ])
             ->filters([])
             ->actions([
@@ -46,7 +46,9 @@ protected static ?string $navigationIcon = 'heroicon-o-map-pin'; // 📍 Cities 
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ])
+            ->searchOnBlur()
+            ->defaultSort('name');
     }
 
     public static function getRelations(): array

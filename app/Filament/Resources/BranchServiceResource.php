@@ -51,7 +51,9 @@ class BranchServiceResource extends Resource
                             ->schema([
                                 Select::make('provider_branch_id')
                                     ->label('Provider Branch')
-                                    ->options(ProviderBranch::with('provider')->get()->pluck('provider.name', 'id'))
+                                    ->options(ProviderBranch::with('provider')->get()->mapWithKeys(function ($branch) {
+                                        return [$branch->id => $branch->provider->name . ' - ' . $branch->branch_name];
+                                    }))
                                     ->searchable()
                                     ->required()
                                     ->reactive(),

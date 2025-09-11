@@ -45,21 +45,18 @@ class TestServiceTypeFilter extends Command
         
         // Test the exact same query as the filter
         $query = ProviderBranch::query();
-        $query->whereHas('branchServices', function (Builder $query) use ($serviceTypeId) {
-            $query->where('service_type_id', $serviceTypeId)
-                  ->where('is_active', 1);
+        $query->whereHas('services', function (Builder $query) use ($serviceTypeId) {
+            $query->where('service_type_id', $serviceTypeId);
         });
         
-        $results = $query->with(['provider', 'branchServices.serviceType'])->get();
+        $results = $query->with(['provider', 'services'])->get();
         
         $this->info("Found {$results->count()} branches with this service type:");
         
         foreach ($results as $branch) {
-            $services = $branch->branchServices()
-                ->where('is_active', 1)
-                ->with('serviceType')
+            $services = $branch->services()
                 ->get()
-                ->pluck('serviceType.name')
+                ->pluck('name')
                 ->implode(', ');
                 
             $this->line("  - {$branch->branch_name} (Provider: {$branch->provider->name})");

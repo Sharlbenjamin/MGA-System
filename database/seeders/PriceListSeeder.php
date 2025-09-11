@@ -60,15 +60,12 @@ class PriceListSeeder extends Seeder
 
                     foreach ($providerBranches as $branch) {
                         // Use provider's actual costs as base and add markup
-                        $branchService = $branch->branchServices()
+                        $branchService = $branch->services()
                             ->where('service_type_id', $serviceType->id)
-                            ->where('is_active', true)
                             ->first();
                         
-                        $baseDayCost = $branchService && $branchService->day_cost ? $branchService->day_cost : fake()->randomFloat(2, 60, 200);
-                        $baseWeekendCost = $branchService && $branchService->weekend_cost ? $branchService->weekend_cost : $baseDayCost * 1.2;
-                        $baseNightCost = $branchService && $branchService->night_cost ? $branchService->night_cost : $baseDayCost * 1.4;
-                        $baseWeekendNightCost = $branchService && $branchService->weekend_night_cost ? $branchService->weekend_night_cost : $baseDayCost * 1.6;
+                        $baseMinCost = $branchService && $branchService->pivot->min_cost ? $branchService->pivot->min_cost : fake()->randomFloat(2, 60, 200);
+                        $baseMaxCost = $branchService && $branchService->pivot->max_cost ? $branchService->pivot->max_cost : $baseMinCost * 1.5;
                         
                         $markup = fake()->randomFloat(2, 1.15, 1.35);
 
@@ -77,10 +74,8 @@ class PriceListSeeder extends Seeder
                             'city_id' => $city->id,
                             'service_type_id' => $serviceType->id,
                             'provider_branch_id' => $branch->id,
-                            'day_price' => round($baseDayCost * $markup, 2),
-                            'weekend_price' => round($baseWeekendCost * $markup, 2),
-                            'night_weekday_price' => round($baseNightCost * $markup, 2),
-                            'night_weekend_price' => round($baseWeekendNightCost * $markup, 2),
+                            'min_price' => round($baseMinCost * $markup, 2),
+                            'max_price' => round($baseMaxCost * $markup, 2),
                             'suggested_markup' => $markup,
                             'final_price_notes' => "Provider-specific pricing for {$branch->provider->name} - {$branch->branch_name}",
                         ]);

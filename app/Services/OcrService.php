@@ -87,6 +87,26 @@ class OcrService
                 $data['patient_address'] = trim($matches[1]);
             }
             
+            // Look for city patterns (bullet point format)
+            if (preg_match('/•\s*City\s*:\s*(.+)/i', $line, $matches)) {
+                $data['city'] = trim($matches[1]);
+            }
+            
+            // Look for country patterns (bullet point format)
+            if (preg_match('/•\s*Country\s*:\s*(.+)/i', $line, $matches)) {
+                $data['country'] = trim($matches[1]);
+            }
+            
+            // Look for city patterns (non-bullet format)
+            if (preg_match('/^City\s*:\s*(.+)/i', $line, $matches)) {
+                $data['city'] = trim($matches[1]);
+            }
+            
+            // Look for country patterns (non-bullet format)
+            if (preg_match('/^Country\s*:\s*(.+)/i', $line, $matches)) {
+                $data['country'] = trim($matches[1]);
+            }
+            
             // Look for telephone patterns
             if (preg_match('/•\s*Telephone\s*:\s*(.+)/i', $line, $matches)) {
                 $data['phone'] = trim($matches[1]);
@@ -97,6 +117,12 @@ class OcrService
             if (preg_match('/Phone\s*:\s*(.+)/i', $line, $matches)) {
                 $data['phone'] = trim($matches[1]);
                 $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
+            }
+            
+            // Look for patient phone patterns
+            if (preg_match('/Patient\s+Phone\s*:\s*(.+)/i', $line, $matches)) {
+                $data['phone'] = trim($matches[1]);
+                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Patient Phone: ' . trim($matches[1]);
             }
             
             // Look for DOB patterns (bullet point format)
@@ -149,17 +175,18 @@ class OcrService
                 $data['service_type'] = trim($matches[1]);
             }
             
-            // Parse address to extract city and country
-            if (!empty($data['patient_address'])) {
-                $addressParts = $this->parseAddress($data['patient_address']);
-                $data['city'] = $addressParts['city'] ?? '';
-                $data['country'] = $addressParts['country'] ?? '';
-            }
+            // Note: Country and city are extracted from specific fields above, not from address parsing
             
             // Also handle non-bullet point formats
             if (preg_match('/(?:address|location)\s*:\s*(.+)/i', $line, $matches)) {
                 $data['patient_address'] = trim($matches[1]);
             }
+            
+            // Look for address in Patient Address section
+            if (preg_match('/^Address\s*:\s*(.+)/i', $line, $matches)) {
+                $data['patient_address'] = trim($matches[1]);
+            }
+            
             
             if (preg_match('/(?:dob|date of birth|birth date)\s*:\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i', $line, $matches)) {
                 $data['date_of_birth'] = $matches[1];
@@ -205,19 +232,29 @@ class OcrService
             // Pattern: "3, University Halls, Newcastle Rd, Galway, Ireland"
             '/.*?,\s*([^,]+),\s*([^,]+)$/i' => ['city', 'country'],
             
-            // Pattern: "Street, City, Country"
-            '/.*?,\s*([^,]+),\s*([^,]+)$/i' => ['city', 'country'],
+            // Pattern: "Street, City, Country" (more specific)
+            '/^[^,]+,\s*([^,]+),\s*([^,]+)$/i' => ['city', 'country'],
             
-            // Pattern: "Address, City, Country"
-            '/.*?,\s*([^,]+),\s*([^,]+)$/i' => ['city', 'country'],
+            // Pattern: "Address, City, Country" (with more context)
+            '/.*?,\s*([A-Za-z\s]+),\s*([A-Za-z\s]+)$/i' => ['city', 'country'],
+            
+            // Pattern: "City, Country" (simple format)
+            '/^([^,]+),\s*([^,]+)$/i' => ['city', 'country'],
         ];
         
         foreach ($patterns as $pattern => $fields) {
             if (preg_match($pattern, $address, $matches)) {
                 if (isset($matches[1]) && isset($matches[2])) {
-                    $result[$fields[0]] = trim($matches[1]);
-                    $result[$fields[1]] = trim($matches[2]);
-                    break;
+                    $city = trim($matches[1]);
+                    $country = trim($matches[2]);
+                    
+                    // Basic validation - skip if city or country is too short or contains numbers
+                    if (strlen($city) >= 2 && strlen($country) >= 2 && 
+                        !preg_match('/^\d+$/', $city) && !preg_match('/^\d+$/', $country)) {
+                        $result[$fields[0]] = $city;
+                        $result[$fields[1]] = $country;
+                        break;
+                    }
                 }
             }
         }

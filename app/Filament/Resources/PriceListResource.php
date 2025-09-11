@@ -115,9 +115,8 @@ class PriceListResource extends Resource
                                         
                                         // Filter by service type if available
                                         if ($serviceTypeId) {
-                                            $query->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                                                $q->where('service_type_id', $serviceTypeId)
-                                                  ->where('is_active', true);
+                                            $query->whereHas('services', function ($q) use ($serviceTypeId) {
+                                                $q->where('service_type_id', $serviceTypeId);
                                             });
                                         }
                                         
@@ -131,9 +130,8 @@ class PriceListResource extends Resource
                                                     $q->where('country_id', $countryId);
                                                 })
                                                 ->when($serviceTypeId, function ($q) use ($serviceTypeId) {
-                                                    $q->whereHas('branchServices', function ($subQ) use ($serviceTypeId) {
-                                                        $subQ->where('service_type_id', $serviceTypeId)
-                                                             ->where('is_active', true);
+                                                    $q->whereHas('services', function ($subQ) use ($serviceTypeId) {
+                                                        $subQ->where('service_type_id', $serviceTypeId);
                                                     });
                                                 })
                                                 ->with('provider')
@@ -148,11 +146,10 @@ class PriceListResource extends Resource
                                         
                                         return $branches->mapWithKeys(function ($branch) use ($serviceTypeId) {
                                             $providerName = $branch->provider->name ?? 'Unknown Provider';
-                                            $branchService = $branch->branchServices()
+                                            $branchService = $branch->services()
                                                 ->where('service_type_id', $serviceTypeId)
-                                                ->where('is_active', true)
                                                 ->first();
-                                            $dayCost = $branchService && $branchService->day_cost ? "€" . number_format($branchService->day_cost, 2) : '';
+                                            $dayCost = $branchService && $branchService->pivot->min_cost ? "€" . number_format($branchService->pivot->min_cost, 2) : '';
                                             $label = "{$providerName} - {$branch->branch_name}";
                                             if ($dayCost) {
                                                 $label .= " ({$dayCost})";
@@ -235,9 +232,8 @@ class PriceListResource extends Resource
                                                 
                                                 // Filter by service type if available
                                                 if ($serviceTypeId) {
-                                                    $query->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                                                        $q->where('service_type_id', $serviceTypeId)
-                                                          ->where('is_active', true);
+                                                    $query->whereHas('services', function ($q) use ($serviceTypeId) {
+                                                        $q->where('service_type_id', $serviceTypeId);
                                                     });
                                                 }
                                                 
@@ -251,9 +247,8 @@ class PriceListResource extends Resource
                                                             $q->where('country_id', $countryId);
                                                         })
                                                         ->when($serviceTypeId, function ($q) use ($serviceTypeId) {
-                                                            $q->whereHas('branchServices', function ($subQ) use ($serviceTypeId) {
-                                                                $subQ->where('service_type_id', $serviceTypeId)
-                                                                     ->where('is_active', true);
+                                                            $q->whereHas('services', function ($subQ) use ($serviceTypeId) {
+                                                                $subQ->where('service_type_id', $serviceTypeId);
                                                             });
                                                         })
                                                         ->get();
@@ -266,9 +261,8 @@ class PriceListResource extends Resource
                                                 // Get branch services for the specified service type
                                                 $branchServices = collect();
                                                 foreach ($branches as $branch) {
-                                                    $branchService = $branch->branchServices()
+                                                    $branchService = $branch->services()
                                                         ->where('service_type_id', $serviceTypeId)
-                                                        ->where('is_active', true)
                                                         ->first();
                                                     if ($branchService) {
                                                         $branchServices->push($branchService);
@@ -279,28 +273,24 @@ class PriceListResource extends Resource
                                                     return 'No active branch services found for the selected criteria.';
                                                 }
                                                 
-                                                // Sort by day_cost to get lowest costs
-                                                $branchServices = $branchServices->sortBy('day_cost');
+                                                // Sort by min_cost to get lowest costs
+                                                $branchServices = $branchServices->sortBy('pivot.min_cost');
                                                 
-                                                $lowestDayCost = $branchServices->first()->day_cost ? round($branchServices->first()->day_cost, 2) : 0;
-                                                $lowestWeekendCost = $branchServices->min('weekend_cost') ? round($branchServices->min('weekend_cost'), 2) : 0;
-                                                $lowestNightCost = $branchServices->min('night_cost') ? round($branchServices->min('night_cost'), 2) : 0;
-                                                $lowestWeekendNightCost = $branchServices->min('weekend_night_cost') ? round($branchServices->min('weekend_night_cost'), 2) : 0;
+                                                $lowestMinCost = $branchServices->first()->pivot->min_cost ? round($branchServices->first()->pivot->min_cost, 2) : 0;
+                                                $lowestMaxCost = $branchServices->min('pivot.max_cost') ? round($branchServices->min('pivot.max_cost'), 2) : 0;
                                                 
                                                 $result = "{$branchServices->count()} active branch service(s) found\n\n";
                                                 $result .= "Lowest Costs:\n";
-                                                $result .= "• Day Cost: €{$lowestDayCost}\n";
-                                                $result .= "• Weekend Cost: €{$lowestWeekendCost}\n";
-                                                $result .= "• Night Weekday: €{$lowestNightCost}\n";
-                                                $result .= "• Night Weekend: €{$lowestWeekendNightCost}\n\n";
+                                                $result .= "• Min Cost: €{$lowestMinCost}\n";
+                                                $result .= "• Max Cost: €{$lowestMaxCost}\n\n";
                                                 
                                                 if ($branchServices->count() <= 5) {
                                                     $result .= "Provider Details (sorted by cost):\n";
                                                     foreach ($branchServices as $branchService) {
-                                                        $branch = $branchService->providerBranch;
+                                                        $branch = $branchService->pivot->providerBranch ?? $branchService->providerBranches->first();
                                                         $providerName = $branch->provider->name ?? 'N/A';
-                                                        $dayCost = $branchService->day_cost ? "€" . number_format($branchService->day_cost, 2) : 'N/A';
-                                                        $result .= "• {$providerName} - {$branch->branch_name} ({$dayCost})\n";
+                                                        $minCost = $branchService->pivot->min_cost ? "€" . number_format($branchService->pivot->min_cost, 2) : 'N/A';
+                                                        $result .= "• {$providerName} - {$branch->branch_name} ({$minCost})\n";
                                                     }
                                                 } else {
                                                     $result .= "Showing lowest costs from {$branchServices->count()} branch services";

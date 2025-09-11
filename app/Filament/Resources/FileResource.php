@@ -96,9 +96,8 @@ class FileResource extends Resource
             Select::make('provider_branch_id')->label('Provider Branch')->searchable()->nullable()->options(fn ($get) => \App\Models\ProviderBranch::when($get('service_type_id') != 2, function ($query) use ($get) {
                 return $query->whereHas('branchCities', fn ($q) => $q->where('city_id', $get('city_id')));
             })->when($get('service_type_id'), function ($query) use ($get) {
-                return $query->whereHas('branchServices', function ($q) use ($get) {
-                    $q->where('service_type_id', $get('service_type_id'))
-                      ->where('is_active', true);
+                return $query->whereHas('services', function ($q) use ($get) {
+                    $q->where('service_type_id', $get('service_type_id'));
                 });
             })->orderBy('priority', 'asc')->pluck('branch_name', 'id'))->reactive(),
             Select::make('status')->options(['New' => 'New','Handling' => 'Handling','Available' => 'Available', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required()->live(),

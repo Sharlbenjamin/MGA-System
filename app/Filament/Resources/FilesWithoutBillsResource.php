@@ -292,7 +292,6 @@ class FilesWithoutBillsResource extends Resource
                                         ->title('Bill uploaded successfully')
                                         ->body('Bill document has been saved locally and uploaded to Google Drive.')
                                         ->send();
-                                        
                                 } catch (\Exception $e) {
                                     Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
                                     Notification::make()
@@ -304,11 +303,11 @@ class FilesWithoutBillsResource extends Resource
                                 }
                             }
                         } catch (\Exception $e) {
-                            Log::error('Bill upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
+                            Log::error('Bill creation error:', ['error' => $e->getMessage(), 'record' => $record->id]);
                             Notification::make()
                                 ->danger()
-                                ->title('Upload error')
-                                ->body('An error occurred during upload: ' . $e->getMessage())
+                                ->title('Bill creation error')
+                                ->body('An error occurred while creating the bill: ' . $e->getMessage())
                                 ->send();
                         }
                     }),

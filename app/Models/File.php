@@ -71,9 +71,8 @@ class File extends Model
             return collect();
         }
 
-        return $this->providerBranch->branchServices()
+        return $this->providerBranch->services()
             ->where('service_type_id', $this->service_type_id)
-            ->where('is_active', true)
             ->get();
     }
 
@@ -163,9 +162,8 @@ class File extends Model
 
         return \App\Models\ProviderBranch::query()
             ->when($serviceTypeId, fn ($query) =>
-                $query->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                    $q->where('service_type_id', $serviceTypeId)
-                      ->where('is_active', true);
+                $query->whereHas('services', function ($q) use ($serviceTypeId) {
+                    $q->where('service_type_id', $serviceTypeId);
                 })
             )
             ->when($this->city_id, fn ($query) =>
@@ -185,9 +183,8 @@ class File extends Model
         if ($this->service_type_id == 2) {
             $allBranches = \App\Models\ProviderBranch::query()
                 ->where('status', 'Active')
-                ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                    $q->where('service_type_id', $serviceTypeId)
-                      ->where('is_active', true);
+                ->whereHas('services', function ($q) use ($serviceTypeId) {
+                    $q->where('service_type_id', $serviceTypeId);
                 })
                 ->orderBy('priority', 'asc')
                 ->get();
@@ -202,9 +199,8 @@ class File extends Model
         if (!$this->country_id) {
             $allBranches = \App\Models\ProviderBranch::query()
                 ->where('status', 'Active')
-                ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                    $q->where('service_type_id', $serviceTypeId)
-                      ->where('is_active', true);
+                ->whereHas('services', function ($q) use ($serviceTypeId) {
+                    $q->where('service_type_id', $serviceTypeId);
                 })
                 ->orderBy('priority', 'asc')
                 ->get();
@@ -218,9 +214,8 @@ class File extends Model
         // Filter branches by city (direct or via pivot) or all_country
         $cityBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
-            ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                $q->where('service_type_id', $serviceTypeId)
-                  ->where('is_active', true);
+            ->whereHas('services', function ($q) use ($serviceTypeId) {
+                $q->where('service_type_id', $serviceTypeId);
             })
             ->whereHas('provider', function ($q) {
                 // Filter by country - provider must be in the file's country
@@ -238,9 +233,8 @@ class File extends Model
         // For allBranches, include branches that serve all cities in the country OR serve this specific city
         $allBranches = \App\Models\ProviderBranch::query()
             ->where('status', 'Active')
-            ->whereHas('branchServices', function ($q) use ($serviceTypeId) {
-                $q->where('service_type_id', $serviceTypeId)
-                  ->where('is_active', true);
+            ->whereHas('services', function ($q) use ($serviceTypeId) {
+                $q->where('service_type_id', $serviceTypeId);
             })
             ->whereHas('provider', function ($q) {
                 // Filter by country - provider must be in the file's country
