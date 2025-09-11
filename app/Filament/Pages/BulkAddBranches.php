@@ -26,6 +26,38 @@ class BulkAddBranches extends Page
 
     public ?array $data = [];
 
+    public function mount(): void
+    {
+        $this->form->fill([
+            'data' => [
+                'provider_id' => null,
+                'branches' => [
+                    [
+                        'branch_name' => '',
+                        'city_id' => null,
+                        'additional_cities' => [],
+                        'address' => '',
+                        'email' => '',
+                        'phone' => '',
+                        'services' => [
+                            [
+                                'service_type_id' => null,
+                                'day_cost' => null,
+                                'weekend_night_cost' => null,
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+    }
+
+    public function debugFormState(): void
+    {
+        $state = $this->form->getState();
+        $this->notify('info', 'Form state: ' . json_encode($state));
+    }
+
     public function form(Form $form): Form
     {
         return $form->statePath('data')->schema([
@@ -64,25 +96,28 @@ class BulkAddBranches extends Page
                             Forms\Components\Select::make('service_type_id')
                                 ->label('Service')->options(ServiceType::pluck('name','id'))
                                 ->searchable()->required()->columnSpan(2),
-                    Forms\Components\TextInput::make('min_cost')
-                        ->label('Minimum Cost')
+                    Forms\Components\TextInput::make('day_cost')
+                        ->label('Day Cost')
                         ->numeric()
                         ->suffix('€')
                         ->minValue(0)
                         ->step(0.01),
-                    Forms\Components\TextInput::make('max_cost')
-                        ->label('Maximum Cost')
+                    Forms\Components\TextInput::make('weekend_night_cost')
+                        ->label('Weekend Night Cost')
                         ->numeric()
                         ->suffix('€')
                         ->minValue(0)
-                        ->step(0.01)
-                        ->rules(['gte:min_cost']),
+                        ->step(0.01),
                         ])->columnSpanFull(),
                 ]),
             Forms\Components\Actions::make([
+                Forms\Components\Actions\Action::make('debug')
+                    ->label('Debug Form State')
+                    ->action('debugFormState')
+                    ->color('gray'),
                 Forms\Components\Actions\Action::make('save')
                     ->label('Insert All')
-                    ->action('saveAll')
+                    ->submit('saveAll')
                     ->color('primary')
                     ->requiresConfirmation()
                     ->modalHeading('Confirm Branch Creation')
@@ -95,6 +130,15 @@ class BulkAddBranches extends Page
     public function saveAll(): void
     {
         $state = $this->form->getState();
+        
+        // Debug: Log the form state to see what's being submitted
+        \Log::info('BulkAddBranches form state:', $state);
+        
+        // Debug: Check if provider_id is present
+        if (empty($state['provider_id'])) {
+            $this->notify('danger', 'Provider is required. Please select a provider. Current state: ' . json_encode($state));
+            return;
+        }
         
         try {
             DB::transaction(function () use ($state) {
@@ -118,8 +162,8 @@ class BulkAddBranches extends Page
                         $attach = [];
                         foreach ($b['services'] as $s) {
                             $attach[$s['service_type_id']] = [
-                                'min_cost' => $s['min_cost'] ?? null,
-                                'max_cost' => $s['max_cost'] ?? null,
+                                'day_cost' => $s['day_cost'] ?? null,
+                                'weekend_night_cost' => $s['weekend_night_cost'] ?? null,
                             ];
                         }
                         $branch->services()->attach($attach);

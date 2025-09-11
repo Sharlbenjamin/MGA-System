@@ -41,7 +41,7 @@ class ServiceType extends Model
     public function providerBranches()
     {
         return $this->belongsToMany(ProviderBranch::class, 'branch_service')
-            ->withPivot(['min_cost', 'max_cost'])
+            ->withPivot(['day_cost', 'weekend_night_cost'])
             ->withTimestamps();
     }
 }

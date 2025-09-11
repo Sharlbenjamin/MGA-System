@@ -23,8 +23,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('provider_branch_id')->constrained('provider_branches')->onDelete('cascade');
             $table->foreignId('service_type_id')->constrained('service_types')->onDelete('cascade');
-            $table->decimal('min_cost', 8, 2)->nullable();
-            $table->decimal('max_cost', 8, 2)->nullable();
+            $table->decimal('day_cost', 8, 2)->nullable();
+            $table->decimal('weekend_night_cost', 8, 2)->nullable();
             $table->timestamps();
             
             // Ensure unique combination of branch and service type
@@ -34,22 +34,11 @@ return new class extends Migration
         // Migrate existing data if any
         if ($existingData->isNotEmpty()) {
             foreach ($existingData as $record) {
-                // Use day_cost as min_cost and the highest cost as max_cost
-                $costs = array_filter([
-                    $record->day_cost,
-                    $record->night_cost,
-                    $record->weekend_cost,
-                    $record->weekend_night_cost
-                ]);
-                
-                $minCost = !empty($costs) ? min($costs) : null;
-                $maxCost = !empty($costs) ? max($costs) : null;
-                
                 DB::table('branch_service')->insert([
                     'provider_branch_id' => $record->provider_branch_id,
                     'service_type_id' => $record->service_type_id,
-                    'min_cost' => $minCost,
-                    'max_cost' => $maxCost,
+                    'day_cost' => $record->day_cost,
+                    'weekend_night_cost' => $record->weekend_night_cost,
                     'created_at' => $record->created_at,
                     'updated_at' => $record->updated_at,
                 ]);
@@ -90,10 +79,10 @@ return new class extends Migration
                 DB::table('branch_services')->insert([
                     'provider_branch_id' => $record->provider_branch_id,
                     'service_type_id' => $record->service_type_id,
-                    'day_cost' => $record->min_cost,
-                    'night_cost' => $record->max_cost,
-                    'weekend_cost' => $record->max_cost,
-                    'weekend_night_cost' => $record->max_cost,
+                    'day_cost' => $record->day_cost,
+                    'night_cost' => null,
+                    'weekend_cost' => null,
+                    'weekend_night_cost' => $record->weekend_night_cost,
                     'is_active' => true,
                     'created_at' => $record->created_at,
                     'updated_at' => $record->updated_at,
