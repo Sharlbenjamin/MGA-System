@@ -6,7 +6,9 @@ use App\Models\{Provider, ProviderBranch, ServiceType, City};
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Pages\Page;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class BulkAddBranches extends Page
@@ -55,7 +57,11 @@ class BulkAddBranches extends Page
     public function debugFormState(): void
     {
         $state = $this->form->getState();
-        $this->notify('info', 'Form state: ' . json_encode($state));
+        Notification::make()
+            ->title('Form State Debug')
+            ->body('Form state: ' . json_encode($state))
+            ->info()
+            ->send();
     }
 
     public function form(Form $form): Form
@@ -132,11 +138,15 @@ class BulkAddBranches extends Page
         $state = $this->form->getState();
         
         // Debug: Log the form state to see what's being submitted
-        \Log::info('BulkAddBranches form state:', $state);
+        Log::info('BulkAddBranches form state:', $state);
         
         // Debug: Check if provider_id is present
         if (empty($state['provider_id'])) {
-            $this->notify('danger', 'Provider is required. Please select a provider. Current state: ' . json_encode($state));
+            Notification::make()
+                ->title('Provider Required')
+                ->body('Provider is required. Please select a provider. Current state: ' . json_encode($state))
+                ->danger()
+                ->send();
             return;
         }
         
@@ -171,11 +181,19 @@ class BulkAddBranches extends Page
                 }
             });
 
-            $this->notify('success', 'Branches created successfully!');
+            Notification::make()
+                ->title('Success')
+                ->body('Branches created successfully!')
+                ->success()
+                ->send();
             $this->form->fill(['provider_id' => $state['provider_id'], 'branches' => []]);
             
         } catch (\Exception $e) {
-            $this->notify('danger', 'Error creating branches: ' . $e->getMessage());
+            Notification::make()
+                ->title('Error')
+                ->body('Error creating branches: ' . $e->getMessage())
+                ->danger()
+                ->send();
         }
     }
 }
