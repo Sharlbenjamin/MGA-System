@@ -302,6 +302,7 @@ class FilesWithoutBillsResource extends Resource
                                         ->send();
                                     return;
                                 }
+                            }
                         } catch (\Exception $e) {
                             Log::error('Bill upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
                             Notification::make()
