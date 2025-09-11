@@ -42,6 +42,16 @@ class ListFiles extends ListRecords
                                    ->preload()
                                    ->helperText('Select the client for this patient'),
                                
+                               Select::make('language')
+                                   ->label('Document Language')
+                                   ->options([
+                                       'english' => 'English',
+                                       'spanish' => 'Spanish'
+                                   ])
+                                   ->default('english')
+                                   ->required()
+                                   ->helperText('Select the language of the document to improve extraction accuracy'),
+                               
                                Textarea::make('text_input')
                                    ->label('Patient Information Text')
                                    ->rows(10)
@@ -77,8 +87,8 @@ class ListFiles extends ListRecords
                         // Get the OCR service
                         $ocrService = app(OcrService::class);
                         
-                        // Process text input
-                        $extractedData = $ocrService->extractTextFromString($data['text_input']);
+                        // Process text input with language parameter
+                        $extractedData = $ocrService->extractTextFromString($data['text_input'], $data['language'] ?? 'english');
                         
                         // Clean the extracted data
                         $cleanedData = $ocrService->cleanExtractedData($extractedData);

@@ -10,19 +10,23 @@ class OcrService
     /**
      * Extract text data from a string input
      */
-    public function extractTextFromString(string $text): array
+    public function extractTextFromString(string $text, string $language = 'english'): array
     {
         try {
-            Log::info('Processing text input', ['text_length' => strlen($text)]);
+            Log::info('Processing text input', [
+                'text_length' => strlen($text),
+                'language' => $language
+            ]);
             
             // Parse the text to find structured data
-            $extractedData = $this->parseExtractedText($text);
+            $extractedData = $this->parseExtractedText($text, $language);
             
             return $extractedData;
         } catch (\Exception $e) {
             Log::error('Text processing failed', [
                 'error' => $e->getMessage(),
-                'text_length' => strlen($text)
+                'text_length' => strlen($text),
+                'language' => $language
             ]);
             
             return [
@@ -45,7 +49,7 @@ class OcrService
      * Parse extracted text to find structured data
      * This method analyzes the text and extracts specific fields
      */
-    private function parseExtractedText($text): array
+    private function parseExtractedText($text, string $language = 'english'): array
     {
         $data = [
             'patient_name' => '',
@@ -70,138 +74,10 @@ class OcrService
             // Skip empty lines
             if (empty($line)) continue;
             
-            // Look for patient name patterns (multiple formats)
-            if (preg_match('/Patient\s*:\s*(.+)/i', $line, $matches)) {
-                $data['patient_name'] = trim($matches[1]);
-            }
-            
-            // Look for patient name in pipe-separated format
-            if (preg_match('/(\d{7}-\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)/i', $line, $matches)) {
-                $data['client_reference'] = trim($matches[1]);
-                $data['patient_name'] = trim($matches[2]);
-                $data['extra_field'] = 'Policy: ' . trim($matches[3]);
-            }
-            
-            // Look for address patterns (bullet point format)
-            if (preg_match('/•\s*Address\s*:\s*(.+)/i', $line, $matches)) {
-                $data['patient_address'] = trim($matches[1]);
-            }
-            
-            // Look for city patterns (bullet point format)
-            if (preg_match('/•\s*City\s*:\s*(.+)/i', $line, $matches)) {
-                $data['city'] = trim($matches[1]);
-            }
-            
-            // Look for country patterns (bullet point format)
-            if (preg_match('/•\s*Country\s*:\s*(.+)/i', $line, $matches)) {
-                $data['country'] = trim($matches[1]);
-            }
-            
-            // Look for city patterns (non-bullet format)
-            if (preg_match('/^City\s*:\s*(.+)/i', $line, $matches)) {
-                $data['city'] = trim($matches[1]);
-            }
-            
-            // Look for country patterns (non-bullet format)
-            if (preg_match('/^Country\s*:\s*(.+)/i', $line, $matches)) {
-                $data['country'] = trim($matches[1]);
-            }
-            
-            // Look for telephone patterns
-            if (preg_match('/•\s*Telephone\s*:\s*(.+)/i', $line, $matches)) {
-                $data['phone'] = trim($matches[1]);
-                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
-            }
-            
-            // Look for phone patterns (non-bullet)
-            if (preg_match('/Phone\s*:\s*(.+)/i', $line, $matches)) {
-                $data['phone'] = trim($matches[1]);
-                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
-            }
-            
-            // Look for patient phone patterns
-            if (preg_match('/Patient\s+Phone\s*:\s*(.+)/i', $line, $matches)) {
-                $data['phone'] = trim($matches[1]);
-                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Patient Phone: ' . trim($matches[1]);
-            }
-            
-            // Look for DOB patterns (bullet point format)
-            if (preg_match('/•\s*DOB\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
-                $data['date_of_birth'] = $matches[1];
-            }
-            
-            // Look for D.O.B patterns (with dots)
-            if (preg_match('/D\.O\.B\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
-                $data['date_of_birth'] = $matches[1];
-            }
-            
-            // Look for symptoms patterns (bullet point format)
-            if (preg_match('/•\s*Symptoms\s*:\s*(.+)/i', $line, $matches)) {
-                $data['symptoms'] = trim($matches[1]);
-            }
-            
-            // Look for symptoms patterns (non-bullet)
-            if (preg_match('/Symptoms\s*:\s*(.+)/i', $line, $matches)) {
-                $data['symptoms'] = trim($matches[1]);
-            }
-            
-            // Look for reference number patterns (bullet point format)
-            if (preg_match('/•\s*Our\s+Reference\s+number\s*:\s*(.+)/i', $line, $matches)) {
-                $data['client_reference'] = trim($matches[1]);
-            }
-            
-            // Look for Our Reference patterns (non-bullet)
-            if (preg_match('/Our\s+Reference\s*:\s*(.+)/i', $line, $matches)) {
-                $data['client_reference'] = trim($matches[1]);
-            }
-            
-            // Look for nationality patterns
-            if (preg_match('/•\s*Nationality\s*:\s*(.+)/i', $line, $matches)) {
-                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Nationality: ' . trim($matches[1]);
-            }
-            
-            // Look for assistance type patterns
-            if (preg_match('/•\s*Kind\s+of\s+assistance\s*:\s*(.+)/i', $line, $matches)) {
-                $data['service_type'] = trim($matches[1]);
-            }
-            
-            // Look for Policy Number patterns
-            if (preg_match('/Policy\s+Number\s*:\s*(.+)/i', $line, $matches)) {
-                $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Policy: ' . trim($matches[1]);
-            }
-            
-            // Look for Medical Provider patterns
-            if (preg_match('/Medical\s+Provider\s*:\s*(.+)/i', $line, $matches)) {
-                $data['service_type'] = trim($matches[1]);
-            }
-            
-            // Note: Country and city are extracted from specific fields above, not from address parsing
-            
-            // Also handle non-bullet point formats
-            if (preg_match('/(?:address|location)\s*:\s*(.+)/i', $line, $matches)) {
-                $data['patient_address'] = trim($matches[1]);
-            }
-            
-            // Look for address in Patient Address section
-            if (preg_match('/^Address\s*:\s*(.+)/i', $line, $matches)) {
-                $data['patient_address'] = trim($matches[1]);
-            }
-            
-            
-            if (preg_match('/(?:dob|date of birth|birth date)\s*:\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i', $line, $matches)) {
-                $data['date_of_birth'] = $matches[1];
-            }
-            
-            if (preg_match('/(?:reference|ref|client ref)\s*:\s*([A-Z0-9\-]+)/i', $line, $matches)) {
-                $data['client_reference'] = trim($matches[1]);
-            }
-            
-            if (preg_match('/(?:symptoms|complaints)\s*:\s*(.+)/i', $line, $matches)) {
-                $data['symptoms'] = trim($matches[1]);
-            }
-            
-            if (preg_match('/(?:service|consultation|treatment|assistance)\s*:\s*(.+)/i', $line, $matches)) {
-                $data['service_type'] = trim($matches[1]);
+            if ($language === 'spanish') {
+                $this->parseSpanishLine($line, $data);
+            } else {
+                $this->parseEnglishLine($line, $data);
             }
         }
         
@@ -215,9 +91,221 @@ class OcrService
         $data['confidence'] = min(100, ($foundFields / 7) * 100);
         
         // Map service types to database IDs
-        $data['service_type'] = $this->mapServiceType($data['service_type']);
+        $data['service_type'] = $this->mapServiceType($data['service_type'], $language);
         
         return $data;
+    }
+    
+    /**
+     * Parse Spanish language patterns
+     */
+    private function parseSpanishLine(string $line, array &$data): void
+    {
+        // Spanish patterns based on the example provided
+        
+        // Look for patient name patterns
+        if (preg_match('/Paciente\s*:\s*(.+)/i', $line, $matches)) {
+            $data['patient_name'] = trim($matches[1]);
+        }
+        
+        // Look for date patterns
+        if (preg_match('/Fecha\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Date: ' . trim($matches[1]);
+        }
+        
+        // Look for phone patterns
+        if (preg_match('/Teléfono\s*:\s*(.+)/i', $line, $matches)) {
+            $data['phone'] = trim($matches[1]);
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
+        }
+        
+        // Look for reference patterns
+        if (preg_match('/Nuestra Referencia\s*:\s*(.+)/i', $line, $matches)) {
+            $data['client_reference'] = trim($matches[1]);
+        }
+        
+        // Look for policy number patterns
+        if (preg_match('/Número de Póliza\s*:\s*(.+)/i', $line, $matches)) {
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Policy: ' . trim($matches[1]);
+        }
+        
+        // Look for birth date patterns
+        if (preg_match('/Fecha de nacimiento\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
+            $data['date_of_birth'] = $matches[1];
+        }
+        
+        // Look for symptoms patterns
+        if (preg_match('/Sintomas\s*:\s*(.+)/i', $line, $matches)) {
+            $data['symptoms'] = trim($matches[1]);
+        }
+        
+        // Look for service type patterns
+        if (preg_match('/CONSULTA INICIAL/i', $line, $matches)) {
+            $data['service_type'] = 'Initial Consultation';
+        }
+        
+        // Look for country patterns
+        if (preg_match('/País\s*:\s*(.+)/i', $line, $matches)) {
+            $data['country'] = trim($matches[1]);
+        }
+        
+        // Look for state/region patterns
+        if (preg_match('/Estado\s*:\s*(.+)/i', $line, $matches)) {
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'State: ' . trim($matches[1]);
+        }
+        
+        // Look for city patterns
+        if (preg_match('/Ciudad\s*:\s*(.+)/i', $line, $matches)) {
+            $data['city'] = trim($matches[1]);
+        }
+        
+        // Look for address patterns
+        if (preg_match('/Dirección\s*:\s*(.+)/i', $line, $matches)) {
+            $data['patient_address'] = trim($matches[1]);
+        }
+        
+        // Look for patient phone patterns
+        if (preg_match('/Teléfono del Paciente\s*:\s*(.+)/i', $line, $matches)) {
+            $data['phone'] = trim($matches[1]);
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Patient Phone: ' . trim($matches[1]);
+        }
+    }
+    
+    /**
+     * Parse English language patterns (existing logic)
+     */
+    private function parseEnglishLine(string $line, array &$data): void
+    {
+        // Look for patient name patterns (multiple formats)
+        if (preg_match('/Patient\s*:\s*(.+)/i', $line, $matches)) {
+            $data['patient_name'] = trim($matches[1]);
+        }
+        
+        // Look for patient name in pipe-separated format
+        if (preg_match('/(\d{7}-\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)/i', $line, $matches)) {
+            $data['client_reference'] = trim($matches[1]);
+            $data['patient_name'] = trim($matches[2]);
+            $data['extra_field'] = 'Policy: ' . trim($matches[3]);
+        }
+        
+        // Look for address patterns (bullet point format)
+        if (preg_match('/•\s*Address\s*:\s*(.+)/i', $line, $matches)) {
+            $data['patient_address'] = trim($matches[1]);
+        }
+        
+        // Look for city patterns (bullet point format)
+        if (preg_match('/•\s*City\s*:\s*(.+)/i', $line, $matches)) {
+            $data['city'] = trim($matches[1]);
+        }
+        
+        // Look for country patterns (bullet point format)
+        if (preg_match('/•\s*Country\s*:\s*(.+)/i', $line, $matches)) {
+            $data['country'] = trim($matches[1]);
+        }
+        
+        // Look for city patterns (non-bullet format)
+        if (preg_match('/^City\s*:\s*(.+)/i', $line, $matches)) {
+            $data['city'] = trim($matches[1]);
+        }
+        
+        // Look for country patterns (non-bullet format)
+        if (preg_match('/^Country\s*:\s*(.+)/i', $line, $matches)) {
+            $data['country'] = trim($matches[1]);
+        }
+        
+        // Look for telephone patterns
+        if (preg_match('/•\s*Telephone\s*:\s*(.+)/i', $line, $matches)) {
+            $data['phone'] = trim($matches[1]);
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
+        }
+        
+        // Look for phone patterns (non-bullet)
+        if (preg_match('/Phone\s*:\s*(.+)/i', $line, $matches)) {
+            $data['phone'] = trim($matches[1]);
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Phone: ' . trim($matches[1]);
+        }
+        
+        // Look for patient phone patterns
+        if (preg_match('/Patient\s+Phone\s*:\s*(.+)/i', $line, $matches)) {
+            $data['phone'] = trim($matches[1]);
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Patient Phone: ' . trim($matches[1]);
+        }
+        
+        // Look for DOB patterns (bullet point format)
+        if (preg_match('/•\s*DOB\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
+            $data['date_of_birth'] = $matches[1];
+        }
+        
+        // Look for D.O.B patterns (with dots)
+        if (preg_match('/D\.O\.B\s*:\s*(\d{4}-\d{2}-\d{2})/i', $line, $matches)) {
+            $data['date_of_birth'] = $matches[1];
+        }
+        
+        // Look for symptoms patterns (bullet point format)
+        if (preg_match('/•\s*Symptoms\s*:\s*(.+)/i', $line, $matches)) {
+            $data['symptoms'] = trim($matches[1]);
+        }
+        
+        // Look for symptoms patterns (non-bullet)
+        if (preg_match('/Symptoms\s*:\s*(.+)/i', $line, $matches)) {
+            $data['symptoms'] = trim($matches[1]);
+        }
+        
+        // Look for reference number patterns (bullet point format)
+        if (preg_match('/•\s*Our\s+Reference\s+number\s*:\s*(.+)/i', $line, $matches)) {
+            $data['client_reference'] = trim($matches[1]);
+        }
+        
+        // Look for Our Reference patterns (non-bullet)
+        if (preg_match('/Our\s+Reference\s*:\s*(.+)/i', $line, $matches)) {
+            $data['client_reference'] = trim($matches[1]);
+        }
+        
+        // Look for nationality patterns
+        if (preg_match('/•\s*Nationality\s*:\s*(.+)/i', $line, $matches)) {
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Nationality: ' . trim($matches[1]);
+        }
+        
+        // Look for assistance type patterns
+        if (preg_match('/•\s*Kind\s+of\s+assistance\s*:\s*(.+)/i', $line, $matches)) {
+            $data['service_type'] = trim($matches[1]);
+        }
+        
+        // Look for Policy Number patterns
+        if (preg_match('/Policy\s+Number\s*:\s*(.+)/i', $line, $matches)) {
+            $data['extra_field'] = ($data['extra_field'] ? $data['extra_field'] . ' | ' : '') . 'Policy: ' . trim($matches[1]);
+        }
+        
+        // Look for Medical Provider patterns
+        if (preg_match('/Medical\s+Provider\s*:\s*(.+)/i', $line, $matches)) {
+            $data['service_type'] = trim($matches[1]);
+        }
+        
+        // Also handle non-bullet point formats
+        if (preg_match('/(?:address|location)\s*:\s*(.+)/i', $line, $matches)) {
+            $data['patient_address'] = trim($matches[1]);
+        }
+        
+        // Look for address in Patient Address section
+        if (preg_match('/^Address\s*:\s*(.+)/i', $line, $matches)) {
+            $data['patient_address'] = trim($matches[1]);
+        }
+        
+        if (preg_match('/(?:dob|date of birth|birth date)\s*:\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i', $line, $matches)) {
+            $data['date_of_birth'] = $matches[1];
+        }
+        
+        if (preg_match('/(?:reference|ref|client ref)\s*:\s*([A-Z0-9\-]+)/i', $line, $matches)) {
+            $data['client_reference'] = trim($matches[1]);
+        }
+        
+        if (preg_match('/(?:symptoms|complaints)\s*:\s*(.+)/i', $line, $matches)) {
+            $data['symptoms'] = trim($matches[1]);
+        }
+        
+        if (preg_match('/(?:service|consultation|treatment|assistance)\s*:\s*(.+)/i', $line, $matches)) {
+            $data['service_type'] = trim($matches[1]);
+        }
     }
     
     /**
@@ -265,20 +353,31 @@ class OcrService
     /**
      * Map service type names to database IDs
      */
-    private function mapServiceType(string $serviceType): string
+    private function mapServiceType(string $serviceType, string $language = 'english'): string
     {
         $serviceType = strtolower(trim($serviceType));
         
-        $mappings = [
-            'medical center' => '5', // Clinic Visit
-            'medical centre' => '5', // Clinic Visit
-            'clinic' => '5', // Clinic Visit
-            'clinic visit' => '5', // Clinic Visit
-            'house call' => '1',
-            'telemedicine' => '2',
-            'hospital visit' => '3',
-            'dental clinic' => '4',
-        ];
+        if ($language === 'spanish') {
+            $mappings = [
+                'consulta inicial' => '2', // Telemedicine
+                'consulta' => '2', // Telemedicine
+                'visita médica' => '5', // Clinic Visit
+                'llamada a domicilio' => '1', // House Call
+                'visita hospitalaria' => '3', // Hospital Visit
+                'clínica dental' => '4', // Dental Clinic
+            ];
+        } else {
+            $mappings = [
+                'medical center' => '5', // Clinic Visit
+                'medical centre' => '5', // Clinic Visit
+                'clinic' => '5', // Clinic Visit
+                'clinic visit' => '5', // Clinic Visit
+                'house call' => '1',
+                'telemedicine' => '2',
+                'hospital visit' => '3',
+                'dental clinic' => '4',
+            ];
+        }
         
         return $mappings[$serviceType] ?? $serviceType;
     }
