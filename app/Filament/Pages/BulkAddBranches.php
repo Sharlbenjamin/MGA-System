@@ -64,19 +64,6 @@ class BulkAddBranches extends Page
             ->send();
     }
 
-    protected function getFormActions(): array
-    {
-        return [
-            Forms\Components\Actions\Action::make('save')
-                ->label('Insert All')
-                ->submit('saveAll')
-                ->color('primary')
-                ->requiresConfirmation()
-                ->modalHeading('Confirm Branch Creation')
-                ->modalDescription('Are you sure you want to create all these branches? This action cannot be undone.')
-                ->modalSubmitActionLabel('Yes, Create All Branches'),
-        ];
-    }
 
     public function form(Form $form): Form
     {
@@ -135,6 +122,14 @@ class BulkAddBranches extends Page
                     ->label('Debug Form State')
                     ->action('debugFormState')
                     ->color('gray'),
+                Forms\Components\Actions\Action::make('save')
+                    ->label('Insert All')
+                    ->submit('saveAll')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirm Branch Creation')
+                    ->modalDescription('Are you sure you want to create all these branches? This action cannot be undone.')
+                    ->modalSubmitActionLabel('Yes, Create All Branches'),
             ])->alignEnd(),
         ]);
     }
