@@ -38,7 +38,7 @@ class BranchServicesRelationManager extends RelationManager
                                 function () {
                                     return function (string $attribute, $value, \Closure $fail) {
                                         $ownerRecord = $this->getOwnerRecord();
-                                        $exists = $ownerRecord->services()->where('id', $value)->exists();
+                                        $exists = $ownerRecord->services()->where('service_types.id', $value)->exists();
                                         
                                         if ($exists) {
                                             $fail('This service type is already associated with this branch.');
