@@ -376,7 +376,6 @@ class BillsWithoutDocumentsResource extends Resource
                                         ->body('The file was saved locally but failed to upload to Google Drive.')
                                         ->send();
                                 }
-                                    
                             } catch (\Exception $e) {
                                 Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
                                 Notification::make()

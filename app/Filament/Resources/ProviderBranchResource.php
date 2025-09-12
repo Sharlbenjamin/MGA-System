@@ -32,6 +32,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Collection;
 
 class ProviderBranchResource extends Resource
 {
@@ -404,14 +405,196 @@ class ProviderBranchResource extends Resource
                     ->label('Service Type')
                     ->collapsible(),
             ])
+            ->headerActions([
+                Tables\Actions\CreateAction::make(),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('Overview')
                 ->url(fn (ProviderBranch $record) => ProviderBranchResource::getUrl('overview', ['record' => $record]))->color('success'),
+                Tables\Actions\Action::make('Add Services')
+                    ->icon('heroicon-o-plus')
+                    ->color('info')
+                    ->visible(true)
+                    ->form([
+                        Forms\Components\Select::make('service_types')
+                            ->label('Service Types')
+                            ->multiple()
+                            ->options(ServiceType::pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->helperText('Select multiple service types to add to this branch'),
+                        
+                        Forms\Components\Section::make('Default Costs (Optional)')
+                            ->description('Set default costs for all selected services. You can modify individual costs later.')
+                            ->schema([
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('default_min_cost')
+                                            ->label('Default Minimum Cost')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step(0.01)
+                                            ->nullable()
+                                            ->helperText('Will be applied to all services if set'),
+                                        
+                                        Forms\Components\TextInput::make('default_max_cost')
+                                            ->label('Default Maximum Cost')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step(0.01)
+                                            ->nullable()
+                                            ->helperText('Will be applied to all services if set'),
+                                    ]),
+                            ])
+                            ->collapsible()
+                            ->collapsed(),
+                    ])
+                    ->action(function (ProviderBranch $record, array $data) {
+                        $addedCount = 0;
+                        $skippedCount = 0;
+                        
+                        foreach ($data['service_types'] as $serviceTypeId) {
+                            // Check if service is already associated
+                            if ($record->services()->where('service_type_id', $serviceTypeId)->exists()) {
+                                $skippedCount++;
+                                continue;
+                            }
+                            
+                            // Attach the service with default costs
+                            $record->services()->attach($serviceTypeId, [
+                                'min_cost' => $data['default_min_cost'] ?? null,
+                                'max_cost' => $data['default_max_cost'] ?? null,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                            
+                            $addedCount++;
+                        }
+                        
+                        // Show notification with results
+                        if ($addedCount > 0) {
+                            $message = "Successfully added {$addedCount} service(s) to {$record->branch_name}";
+                            if ($skippedCount > 0) {
+                                $message .= " ({$skippedCount} service(s) were already associated)";
+                            }
+                            
+                            Notification::make()
+                                ->title('Services Added Successfully')
+                                ->body($message)
+                                ->success()
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->title('No Services Added')
+                                ->body('All selected services were already associated with this branch.')
+                                ->warning()
+                                ->send();
+                        }
+                    })
+                    ->modalWidth('lg')
+                    ->modalHeading('Add Services to Branch')
+                    ->modalDescription('Select multiple service types to add to this branch with optional default costs.'),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\BulkAction::make('add_services')
+                    ->label('Add Services to Selected Branches')
+                    ->icon('heroicon-o-plus')
+                    ->color('info')
+                    ->form([
+                        Forms\Components\Select::make('service_types')
+                            ->label('Service Types')
+                            ->multiple()
+                            ->options(ServiceType::pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->helperText('Select multiple service types to add to all selected branches'),
+                        
+                        Forms\Components\Section::make('Default Costs (Optional)')
+                            ->description('Set default costs for all selected services. You can modify individual costs later.')
+                            ->schema([
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('default_min_cost')
+                                            ->label('Default Minimum Cost')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step(0.01)
+                                            ->nullable()
+                                            ->helperText('Will be applied to all services if set'),
+                                        
+                                        Forms\Components\TextInput::make('default_max_cost')
+                                            ->label('Default Maximum Cost')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->step(0.01)
+                                            ->nullable()
+                                            ->helperText('Will be applied to all services if set'),
+                                    ]),
+                            ])
+                            ->collapsible()
+                            ->collapsed(),
+                    ])
+                    ->action(function (Collection $records, array $data) {
+                        $totalAdded = 0;
+                        $totalSkipped = 0;
+                        $processedBranches = 0;
+                        
+                        foreach ($records as $branch) {
+                            $branchAdded = 0;
+                            $branchSkipped = 0;
+                            
+                            foreach ($data['service_types'] as $serviceTypeId) {
+                                // Check if service is already associated
+                                if ($branch->services()->where('service_type_id', $serviceTypeId)->exists()) {
+                                    $branchSkipped++;
+                                    continue;
+                                }
+                                
+                                // Attach the service with default costs
+                                $branch->services()->attach($serviceTypeId, [
+                                    'min_cost' => $data['default_min_cost'] ?? null,
+                                    'max_cost' => $data['default_max_cost'] ?? null,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]);
+                                
+                                $branchAdded++;
+                            }
+                            
+                            $totalAdded += $branchAdded;
+                            $totalSkipped += $branchSkipped;
+                            $processedBranches++;
+                        }
+                        
+                        // Show notification with results
+                        if ($totalAdded > 0) {
+                            $message = "Successfully added {$totalAdded} service(s) to {$processedBranches} branch(es)";
+                            if ($totalSkipped > 0) {
+                                $message .= " ({$totalSkipped} service(s) were already associated)";
+                            }
+                            
+                            Notification::make()
+                                ->title('Services Added Successfully')
+                                ->body($message)
+                                ->success()
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->title('No Services Added')
+                                ->body('All selected services were already associated with the selected branches.')
+                                ->warning()
+                                ->send();
+                        }
+                    })
+                    ->modalWidth('lg')
+                    ->modalHeading('Add Services to Multiple Branches')
+                    ->modalDescription('Select multiple service types to add to all selected branches with optional default costs.')
+                    ->deselectAllRecordsAfterCompletion(),
             ]);
     }
 

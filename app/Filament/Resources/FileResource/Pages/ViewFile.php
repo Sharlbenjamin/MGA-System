@@ -15,6 +15,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Repeater;
@@ -32,7 +33,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Filament\Infolists\Components\Actions\Action as InfolistAction;
 use Illuminate\Support\Str;
 use App\Models\DraftMail;
 use Filament\Forms\Components\RichEditor;
