@@ -29,11 +29,12 @@ class BranchServicesRelationManager extends RelationManager
             ->schema([
                 Section::make('Service Information')
                     ->schema([
-                        Select::make('id')
+                        Select::make('service_type_id')
                             ->label('Service Type')
                             ->options(ServiceType::pluck('name', 'id'))
                             ->searchable()
                             ->required()
+                            ->disabled(fn ($record) => $record !== null) // Disable when editing
                             ->rules([
                                 function () {
                                     return function (string $attribute, $value, \Closure $fail) {
@@ -67,7 +68,21 @@ class BranchServicesRelationManager extends RelationManager
                                     ]),
                             ]),
                     ]),
-            ]);
+            ])
+            ->mutateFormDataUsing(function (array $data, $record): array {
+                // Load pivot data when editing
+                if ($record) {
+                    $ownerRecord = $this->getOwnerRecord();
+                    $pivotData = $ownerRecord->services()->where('service_type_id', $record->id)->first()?->pivot;
+                    
+                    if ($pivotData) {
+                        $data['min_cost'] = $pivotData->min_cost;
+                        $data['max_cost'] = $pivotData->max_cost;
+                    }
+                }
+                
+                return $data;
+            });
     }
 
     public function table(Table $table): Table
@@ -94,11 +109,48 @@ class BranchServicesRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->mutateFormDataUsing(function (array $data): array {
+                        // For many-to-many relationships, we need to handle the pivot data differently
+                        return $data;
+                    })
+                    ->using(function (array $data): \Illuminate\Database\Eloquent\Model {
+                        $ownerRecord = $this->getOwnerRecord();
+                        
+                        // Get the service type
+                        $serviceType = ServiceType::findOrFail($data['service_type_id']);
+                        
+                        // Attach the service type to the branch with pivot data
+                        $ownerRecord->services()->attach($serviceType->id, [
+                            'min_cost' => $data['min_cost'] ?? null,
+                            'max_cost' => $data['max_cost'] ?? null,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        
+                        // Return the service type for the relation manager
+                        return $serviceType;
+                    }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->using(function (array $data, \Illuminate\Database\Eloquent\Model $record): \Illuminate\Database\Eloquent\Model {
+                        $ownerRecord = $this->getOwnerRecord();
+                        
+                        // Update the pivot table data
+                        $ownerRecord->services()->updateExistingPivot($record->id, [
+                            'min_cost' => $data['min_cost'] ?? null,
+                            'max_cost' => $data['max_cost'] ?? null,
+                            'updated_at' => now(),
+                        ]);
+                        
+                        return $record;
+                    }),
+                Tables\Actions\DeleteAction::make()
+                    ->using(function (\Illuminate\Database\Eloquent\Model $record): void {
+                        $ownerRecord = $this->getOwnerRecord();
+                        $ownerRecord->services()->detach($record->id);
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
