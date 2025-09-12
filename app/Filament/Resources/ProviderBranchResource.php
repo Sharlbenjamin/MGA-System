@@ -405,6 +405,9 @@ class ProviderBranchResource extends Resource
                     ->label('Service Type')
                     ->collapsible(),
             ])
+            ->headerActions([
+                Tables\Actions\CreateAction::make(),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('Overview')
@@ -412,6 +415,7 @@ class ProviderBranchResource extends Resource
                 Tables\Actions\Action::make('Add Services')
                     ->icon('heroicon-o-plus')
                     ->color('info')
+                    ->visible(true)
                     ->form([
                         Forms\Components\Select::make('service_types')
                             ->label('Service Types')
