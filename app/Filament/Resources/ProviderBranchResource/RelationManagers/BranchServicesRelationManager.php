@@ -34,9 +34,18 @@ class BranchServicesRelationManager extends RelationManager
                             ->options(ServiceType::pluck('name', 'id'))
                             ->searchable()
                             ->required()
-                            ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
-                                return $rule->where('provider_branch_id', $this->getOwnerRecord()->id);
-                            }),
+                            ->rules([
+                                function () {
+                                    return function (string $attribute, $value, \Closure $fail) {
+                                        $ownerRecord = $this->getOwnerRecord();
+                                        $exists = $ownerRecord->services()->where('service_type_id', $value)->exists();
+                                        
+                                        if ($exists) {
+                                            $fail('This service type is already associated with this branch.');
+                                        }
+                                    };
+                                },
+                            ]),
 
                         Section::make('Cost Information')
                             ->schema([
