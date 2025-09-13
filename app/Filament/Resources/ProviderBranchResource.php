@@ -593,8 +593,7 @@ class ProviderBranchResource extends Resource
                     })
                     ->modalWidth('lg')
                     ->modalHeading('Add Services to Multiple Branches')
-                    ->modalDescription('Select multiple service types to add to all selected branches with optional default costs.')
-                    ->deselectAllRecordsAfterCompletion(),
+                    ->modalDescription('Select multiple service types to add to all selected branches with optional default costs.'),
             ]);
     }
 
