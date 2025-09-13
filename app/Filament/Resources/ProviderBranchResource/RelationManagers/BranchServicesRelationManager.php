@@ -68,21 +68,7 @@ class BranchServicesRelationManager extends RelationManager
                                     ]),
                             ]),
                     ]),
-            ])
-            ->mutateFormDataUsing(function (array $data, $record): array {
-                // Load pivot data when editing
-                if ($record) {
-                    $ownerRecord = $this->getOwnerRecord();
-                    $pivotData = $ownerRecord->services()->where('service_type_id', $record->id)->first()?->pivot;
-                    
-                    if ($pivotData) {
-                        $data['min_cost'] = $pivotData->min_cost;
-                        $data['max_cost'] = $pivotData->max_cost;
-                    }
-                }
-                
-                return $data;
-            });
+            ]);
     }
 
     public function table(Table $table): Table
@@ -134,6 +120,20 @@ class BranchServicesRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
+                    ->mutateFormDataUsing(function (array $data, $record): array {
+                        // Load pivot data when editing
+                        if ($record) {
+                            $ownerRecord = $this->getOwnerRecord();
+                            $pivotData = $ownerRecord->services()->where('service_types.id', $record->id)->first()?->pivot;
+                            
+                            if ($pivotData) {
+                                $data['min_cost'] = $pivotData->min_cost;
+                                $data['max_cost'] = $pivotData->max_cost;
+                            }
+                        }
+                        
+                        return $data;
+                    })
                     ->using(function (array $data, \Illuminate\Database\Eloquent\Model $record): \Illuminate\Database\Eloquent\Model {
                         $ownerRecord = $this->getOwnerRecord();
                         
