@@ -31,7 +31,6 @@ class ItemsRelationManager extends RelationManager
 
                         $services = \App\Models\ProviderBranch::find($bill->branch_id)
                             ->services()
-                            ->with('serviceType')
                             ->get()
                             ->mapWithKeys(function ($serviceType) {
                                 $serviceName = $serviceType->name;
@@ -49,15 +48,18 @@ class ItemsRelationManager extends RelationManager
                     ->reactive()
                     ->afterStateUpdated(function ($state, $set, $get) {
                         if ($state && $state !== 'custom') {
-                            $branchService = \App\Models\BranchService::find($state);
-                            if ($branchService) {
-                                $bill = $this->getOwnerRecord();
-                                $serviceName = $branchService->serviceType->name;
-                                $serviceDate = $bill->file->service_date ?? now();
-                                $description = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
-                                
-                                $set('description', $description);
-                                $set('amount', $branchService->min_cost ?? 0);
+                            $bill = $this->getOwnerRecord();
+                            $branch = \App\Models\ProviderBranch::find($bill->branch_id);
+                            if ($branch) {
+                                $serviceType = $branch->services()->wherePivot('id', $state)->first();
+                                if ($serviceType) {
+                                    $serviceName = $serviceType->name;
+                                    $serviceDate = $bill->file->service_date ?? now();
+                                    $description = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
+                                    
+                                    $set('description', $description);
+                                    $set('amount', $serviceType->pivot->min_cost ?? 0);
+                                }
                             }
                         } else {
                             // Clear fields when custom is selected
@@ -107,13 +109,16 @@ class ItemsRelationManager extends RelationManager
                     ->using(function (array $data) {
                         // If a service was selected, ensure description and amount are set
                         if (isset($data['service_selector']) && $data['service_selector'] !== 'custom') {
-                            $branchService = \App\Models\BranchService::with('serviceType')->find($data['service_selector']);
-                            if ($branchService) {
-                                $bill = $this->getOwnerRecord();
-                                $serviceName = $branchService->serviceType->name;
-                                $serviceDate = $bill->file->service_date ?? now();
-                                $data['description'] = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
-                                $data['amount'] = $branchService->min_cost ?? 0;
+                            $bill = $this->getOwnerRecord();
+                            $branch = \App\Models\ProviderBranch::find($bill->branch_id);
+                            if ($branch) {
+                                $serviceType = $branch->services()->wherePivot('id', $data['service_selector'])->first();
+                                if ($serviceType) {
+                                    $serviceName = $serviceType->name;
+                                    $serviceDate = $bill->file->service_date ?? now();
+                                    $data['description'] = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
+                                    $data['amount'] = $serviceType->pivot->min_cost ?? 0;
+                                }
                             }
                         }
                         
