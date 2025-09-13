@@ -69,39 +69,21 @@ class BranchServiceResource extends Resource
                             ->schema([
                                 Grid::make(2)
                                     ->schema([
-                                        TextInput::make('day_cost')
-                                            ->label('Day Cost')
+                                        TextInput::make('min_cost')
+                                            ->label('Minimum Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
                                             ->nullable(),
 
-                                        TextInput::make('night_cost')
-                                            ->label('Night Cost')
-                                            ->numeric()
-                                            ->minValue(0)
-                                            ->step(0.01)
-                                            ->nullable(),
-
-                                        TextInput::make('weekend_cost')
-                                            ->label('Weekend Cost')
-                                            ->numeric()
-                                            ->minValue(0)
-                                            ->step(0.01)
-                                            ->nullable(),
-
-                                        TextInput::make('weekend_night_cost')
-                                            ->label('Weekend Night Cost')
+                                        TextInput::make('max_cost')
+                                            ->label('Maximum Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
                                             ->nullable(),
                                     ]),
                             ]),
-
-                        Toggle::make('is_active')
-                            ->label('Active')
-                            ->default(true),
                     ]),
             ]);
     }
@@ -125,33 +107,14 @@ class BranchServiceResource extends Resource
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('day_cost')
-                    ->label('Day Cost')
+                TextColumn::make('min_cost')
+                    ->label('Minimum Cost')
                     ->money('USD')
                     ->sortable(),
 
-                TextColumn::make('night_cost')
-                    ->label('Night Cost')
+                TextColumn::make('max_cost')
+                    ->label('Maximum Cost')
                     ->money('USD')
-                    ->sortable(),
-
-                TextColumn::make('weekend_cost')
-                    ->label('Weekend Cost')
-                    ->money('USD')
-                    ->sortable(),
-
-                TextColumn::make('weekend_night_cost')
-                    ->label('Weekend Night Cost')
-                    ->money('USD')
-                    ->sortable(),
-
-                BadgeColumn::make('is_active')
-                    ->label('Status')
-                    ->colors([
-                        'success' => true,
-                        'danger' => false,
-                    ])
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'Active' : 'Inactive')
                     ->sortable(),
             ])
             ->filters([
@@ -167,11 +130,6 @@ class BranchServiceResource extends Resource
                     ->searchable()
                     ->preload(),
 
-                TernaryFilter::make('is_active')
-                    ->label('Status')
-                    ->placeholder('All')
-                    ->trueLabel('Active')
-                    ->falseLabel('Inactive'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

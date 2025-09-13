@@ -177,9 +177,8 @@ class PriceList extends Model
         }
         
         if ($this->service_type_id) {
-            $query->whereHas('branchServices', function ($q) {
-                $q->where('service_type_id', $this->service_type_id)
-                  ->where('is_active', true);
+            $query->whereHas('services', function ($q) {
+                $q->where('service_type_id', $this->service_type_id);
             });
         }
         
@@ -187,10 +186,8 @@ class PriceList extends Model
         
         if ($branches->isEmpty()) {
             return [
-                'day_cost' => 0,
-                'weekend_cost' => 0,
-                'night_cost' => 0,
-                'weekend_night_cost' => 0,
+                'min_cost' => 0,
+                'max_cost' => 0,
                 'count' => 0,
             ];
         }
@@ -208,19 +205,15 @@ class PriceList extends Model
         
         if ($branchServices->isEmpty()) {
             return [
-                'day_cost' => 0,
-                'weekend_cost' => 0,
-                'night_cost' => 0,
-                'weekend_night_cost' => 0,
+                'min_cost' => 0,
+                'max_cost' => 0,
                 'count' => 0,
             ];
         }
         
         return [
-            'day_cost' => round($branchServices->avg('day_cost'), 2),
-            'weekend_cost' => round($branchServices->avg('weekend_cost'), 2),
-            'night_cost' => round($branchServices->avg('night_cost'), 2),
-            'weekend_night_cost' => round($branchServices->avg('weekend_night_cost'), 2),
+            'min_cost' => round($branchServices->avg('pivot.min_cost'), 2),
+            'max_cost' => round($branchServices->avg('pivot.max_cost'), 2),
             'count' => $branchServices->count(),
         ];
     }

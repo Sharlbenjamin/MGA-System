@@ -29,14 +29,14 @@ class ItemsRelationManager extends RelationManager
                             return ['custom' => 'Custom Item'];
                         }
 
-                        $services = BranchService::where('provider_branch_id', $bill->branch_id)
-                            ->where('is_active', true)
+                        $services = \App\Models\ProviderBranch::find($bill->branch_id)
+                            ->services()
                             ->with('serviceType')
                             ->get()
-                            ->mapWithKeys(function ($branchService) {
-                                $serviceName = $branchService->serviceType->name;
-                                $cost = $branchService->day_cost ?? 0;
-                                return [$branchService->id => "{$serviceName} - €{$cost}"];
+                            ->mapWithKeys(function ($serviceType) {
+                                $serviceName = $serviceType->name;
+                                $cost = $serviceType->pivot->min_cost ?? 0;
+                                return [$serviceType->pivot->id => "{$serviceName} - €{$cost}"];
                             });
 
                         // Add custom option
@@ -49,7 +49,7 @@ class ItemsRelationManager extends RelationManager
                     ->reactive()
                     ->afterStateUpdated(function ($state, $set, $get) {
                         if ($state && $state !== 'custom') {
-                            $branchService = BranchService::with('serviceType')->find($state);
+                            $branchService = \App\Models\BranchService::find($state);
                             if ($branchService) {
                                 $bill = $this->getOwnerRecord();
                                 $serviceName = $branchService->serviceType->name;
@@ -57,7 +57,7 @@ class ItemsRelationManager extends RelationManager
                                 $description = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
                                 
                                 $set('description', $description);
-                                $set('amount', $branchService->day_cost ?? 0);
+                                $set('amount', $branchService->min_cost ?? 0);
                             }
                         } else {
                             // Clear fields when custom is selected
@@ -107,13 +107,13 @@ class ItemsRelationManager extends RelationManager
                     ->using(function (array $data) {
                         // If a service was selected, ensure description and amount are set
                         if (isset($data['service_selector']) && $data['service_selector'] !== 'custom') {
-                            $branchService = BranchService::with('serviceType')->find($data['service_selector']);
+                            $branchService = \App\Models\BranchService::with('serviceType')->find($data['service_selector']);
                             if ($branchService) {
                                 $bill = $this->getOwnerRecord();
                                 $serviceName = $branchService->serviceType->name;
                                 $serviceDate = $bill->file->service_date ?? now();
                                 $data['description'] = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
-                                $data['amount'] = $branchService->day_cost ?? 0;
+                                $data['amount'] = $branchService->min_cost ?? 0;
                             }
                         }
                         

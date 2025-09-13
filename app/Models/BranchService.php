@@ -10,25 +10,21 @@ class BranchService extends Model
 {
     use HasFactory;
 
+    protected $table = 'branch_service';
+
     protected $fillable = [
         'provider_branch_id',
         'service_type_id',
-        'day_cost',
-        'night_cost',
-        'weekend_cost',
-        'weekend_night_cost',
-        'is_active',
+        'min_cost',
+        'max_cost',
     ];
 
     protected $casts = [
         'id' => 'integer',
         'provider_branch_id' => 'integer',
         'service_type_id' => 'integer',
-        'day_cost' => 'decimal:2',
-        'night_cost' => 'decimal:2',
-        'weekend_cost' => 'decimal:2',
-        'weekend_night_cost' => 'decimal:2',
-        'is_active' => 'boolean',
+        'min_cost' => 'decimal:2',
+        'max_cost' => 'decimal:2',
     ];
 
     public function providerBranch(): BelongsTo
