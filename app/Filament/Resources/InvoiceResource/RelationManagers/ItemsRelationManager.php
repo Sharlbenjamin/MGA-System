@@ -39,7 +39,7 @@ class ItemsRelationManager extends RelationManager
                         foreach ($billItems as $billItem) {
                             $options->put(
                                 "bill_item_{$billItem->id}", 
-                                "Bill Item: {$billItem->description}"
+                                "Bill Item: {$billItem->description} - €{$billItem->amount}"
                             );
                         }
 
@@ -52,7 +52,7 @@ class ItemsRelationManager extends RelationManager
                             $cityName = $fileFee->city ? $fileFee->city->name : '';
                             
                             $location = trim("{$countryName} {$cityName}");
-                            $label = $location ? "{$serviceName} ({$location})" : $serviceName;
+                            $label = $location ? "{$serviceName} ({$location}) - €{$fileFee->amount}" : "{$serviceName} - €{$fileFee->amount}";
                             
                             $options->put("file_fee_{$fileFee->id}", $label);
                         }
@@ -103,7 +103,21 @@ class ItemsRelationManager extends RelationManager
                     ->numeric()
                     ->inputMode('decimal')
                     ->step('0.01')
-                    ->prefix('€'),
+                    ->prefix('€')
+                    ->placeholder(function ($get) {
+                        if ($get('item_selector') && $get('item_selector') !== 'custom') {
+                            if (str_starts_with($get('item_selector'), 'bill_item_')) {
+                                $billItemId = str_replace('bill_item_', '', $get('item_selector'));
+                                $billItem = \App\Models\BillItem::find($billItemId);
+                                return $billItem ? '€' . number_format($billItem->amount, 2) : null;
+                            } elseif (str_starts_with($get('item_selector'), 'file_fee_')) {
+                                $fileFeeId = str_replace('file_fee_', '', $get('item_selector'));
+                                $fileFee = \App\Models\FileFee::find($fileFeeId);
+                                return $fileFee ? '€' . number_format($fileFee->amount, 2) : null;
+                            }
+                        }
+                        return null;
+                    }),
 
                 Forms\Components\TextInput::make('discount')
                     ->numeric()
