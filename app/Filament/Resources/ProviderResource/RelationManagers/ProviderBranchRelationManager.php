@@ -29,7 +29,7 @@ class ProviderBranchRelationManager extends RelationManager
     public static function query(Builder $query): Builder
     {
         return $query->where('provider_id', static::getOwnerRecord()->id)
-                    ->with(['cities', 'branchServices.serviceType']);
+                    ->with(['cities', 'services']);
     }
     public function form(Forms\Form $form): Forms\Form
 {
@@ -104,7 +104,7 @@ class ProviderBranchRelationManager extends RelationManager
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('branchServices.serviceType.name')
+                TextColumn::make('services.name')
                     ->label('Services')
                     ->listWithLineBreaks()
                     ->bulleted()
