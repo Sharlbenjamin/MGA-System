@@ -39,7 +39,7 @@ class FileFeePolicy
      */
     public function update(User $user, FileFee $fileFee): bool
     {
-        return $user->can('update FileFee');
+        return $user->can('edit FileFee');
     }
 
     /**
