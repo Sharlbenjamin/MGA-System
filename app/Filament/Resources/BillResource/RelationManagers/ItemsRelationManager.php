@@ -35,7 +35,7 @@ class ItemsRelationManager extends RelationManager
                             ->mapWithKeys(function ($serviceType) {
                                 $serviceName = $serviceType->name;
                                 $cost = $serviceType->pivot->min_cost ?? 0;
-                                return [$serviceType->pivot->id => "{$serviceName} - €{$cost}"];
+                                return ["service_{$serviceType->id}" => "{$serviceName} - €{$cost}"];
                             });
 
                         // Add custom option
@@ -47,11 +47,13 @@ class ItemsRelationManager extends RelationManager
                     ->preload()
                     ->reactive()
                     ->afterStateUpdated(function ($state, $set, $get) {
-                        if ($state && $state !== 'custom') {
+                        if ($state && $state !== 'custom' && str_starts_with($state, 'service_')) {
                             $bill = $this->getOwnerRecord();
                             $branch = \App\Models\ProviderBranch::find($bill->branch_id);
                             if ($branch) {
-                                $serviceType = $branch->services()->wherePivot('id', $state)->first();
+                                // Extract service type ID from the state
+                                $serviceTypeId = str_replace('service_', '', $state);
+                                $serviceType = $branch->services()->where('service_types.id', $serviceTypeId)->first();
                                 if ($serviceType) {
                                     $serviceName = $serviceType->name;
                                     $serviceDate = $bill->file->service_date ?? now();
@@ -108,11 +110,12 @@ class ItemsRelationManager extends RelationManager
                 Tables\Actions\CreateAction::make()
                     ->using(function (array $data) {
                         // If a service was selected, ensure description and amount are set
-                        if (isset($data['service_selector']) && $data['service_selector'] !== 'custom') {
+                        if (isset($data['service_selector']) && $data['service_selector'] !== 'custom' && str_starts_with($data['service_selector'], 'service_')) {
                             $bill = $this->getOwnerRecord();
                             $branch = \App\Models\ProviderBranch::find($bill->branch_id);
                             if ($branch) {
-                                $serviceType = $branch->services()->wherePivot('id', $data['service_selector'])->first();
+                                $serviceTypeId = str_replace('service_', '', $data['service_selector']);
+                                $serviceType = $branch->services()->where('service_types.id', $serviceTypeId)->first();
                                 if ($serviceType) {
                                     $serviceName = $serviceType->name;
                                     $serviceDate = $bill->file->service_date ?? now();
