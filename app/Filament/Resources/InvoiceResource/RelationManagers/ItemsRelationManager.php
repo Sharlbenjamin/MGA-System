@@ -39,7 +39,7 @@ class ItemsRelationManager extends RelationManager
                         foreach ($billItems as $billItem) {
                             $options->put(
                                 "bill_item_{$billItem->id}", 
-                                "Bill Item: {$billItem->description} - €{$billItem->amount}"
+                                "Bill Item: {$billItem->description}"
                             );
                         }
 
@@ -52,7 +52,7 @@ class ItemsRelationManager extends RelationManager
                             $cityName = $fileFee->city ? $fileFee->city->name : '';
                             
                             $location = trim("{$countryName} {$cityName}");
-                            $label = $location ? "{$serviceName} ({$location}) - €{$fileFee->amount}" : "{$serviceName} - €{$fileFee->amount}";
+                            $label = $location ? "{$serviceName} ({$location})" : $serviceName;
                             
                             $options->put("file_fee_{$fileFee->id}", $label);
                         }
@@ -67,20 +67,24 @@ class ItemsRelationManager extends RelationManager
                     ->reactive()
                     ->afterStateUpdated(function ($state, $set, $get) {
                         if ($state && $state !== 'custom') {
+                            $invoice = $this->getOwnerRecord();
+                            $serviceDate = $invoice->file->service_date ?? now();
+                            $dateString = $serviceDate->format('d/m/Y');
+                            
                             if (str_starts_with($state, 'bill_item_')) {
                                 $billItemId = str_replace('bill_item_', '', $state);
                                 $billItem = BillItem::find($billItemId);
                                 if ($billItem) {
-                                    $set('description', $billItem->description);
-                                    $set('amount', $billItem->amount);
+                                    $set('description', "{$billItem->description} on {$dateString}");
+                                    // Don't auto-fill amount
                                 }
                             } elseif (str_starts_with($state, 'file_fee_')) {
                                 $fileFeeId = str_replace('file_fee_', '', $state);
                                 $fileFee = FileFee::with('serviceType')->find($fileFeeId);
                                 if ($fileFee) {
                                     $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
-                                    $set('description', $serviceName);
-                                    $set('amount', $fileFee->amount);
+                                    $set('description', "{$serviceName} on {$dateString}");
+                                    // Don't auto-fill amount
                                 }
                             }
                         } else {
@@ -127,22 +131,26 @@ class ItemsRelationManager extends RelationManager
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->using(function (array $data) {
-                        // If an item was selected, ensure description and amount are set
+                        // If an item was selected, ensure description is set with service date
                         if (isset($data['item_selector']) && $data['item_selector'] !== 'custom') {
+                            $invoice = $this->getOwnerRecord();
+                            $serviceDate = $invoice->file->service_date ?? now();
+                            $dateString = $serviceDate->format('d/m/Y');
+                            
                             if (str_starts_with($data['item_selector'], 'bill_item_')) {
                                 $billItemId = str_replace('bill_item_', '', $data['item_selector']);
                                 $billItem = BillItem::find($billItemId);
                                 if ($billItem) {
-                                    $data['description'] = $billItem->description;
-                                    $data['amount'] = $billItem->amount;
+                                    $data['description'] = "{$billItem->description} on {$dateString}";
+                                    // Don't auto-fill amount
                                 }
                             } elseif (str_starts_with($data['item_selector'], 'file_fee_')) {
                                 $fileFeeId = str_replace('file_fee_', '', $data['item_selector']);
                                 $fileFee = FileFee::with('serviceType')->find($fileFeeId);
                                 if ($fileFee) {
                                     $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
-                                    $data['description'] = $serviceName;
-                                    $data['amount'] = $fileFee->amount;
+                                    $data['description'] = "{$serviceName} on {$dateString}";
+                                    // Don't auto-fill amount
                                 }
                             }
                         }
