@@ -83,7 +83,7 @@ class ItemsRelationManager extends RelationManager
                                 $fileFee = FileFee::with('serviceType')->find($fileFeeId);
                                 if ($fileFee) {
                                     $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
-                                    $set('description', "{$serviceName} on {$dateString}");
+                                    $set('description', "File Fee: {$serviceName} on {$dateString}");
                                     // Don't auto-fill amount
                                 }
                             }
@@ -163,7 +163,7 @@ class ItemsRelationManager extends RelationManager
                                 $fileFee = FileFee::with('serviceType')->find($fileFeeId);
                                 if ($fileFee) {
                                     $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
-                                    $data['description'] = "{$serviceName} on {$dateString}";
+                                    $data['description'] = "File Fee: {$serviceName} on {$dateString}";
                                     // Don't auto-fill amount
                                 }
                             }
