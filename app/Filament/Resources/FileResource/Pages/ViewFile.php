@@ -693,7 +693,7 @@ class ViewFile extends ViewRecord
         } else {
             $record->bills()->create([
                 'name' => 'Uploaded Bill',
-                'due_date' => now()->addDays(30),
+                'due_date' => now()->addDays(14),
                 'total_amount' => 0,
                 'discount' => 0,
                 'status' => 'Unpaid',
