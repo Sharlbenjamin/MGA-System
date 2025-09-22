@@ -1,9 +1,14 @@
+@php
+    $componentId = 'file-upload-' . uniqid();
+    $componentName = 'file_upload';
+@endphp
+
 <div class="space-y-4">
     <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
         <input 
             type="file" 
-            id="{{ $getId() }}" 
-            name="{{ $getName() }}"
+            id="{{ $componentId }}" 
+            name="{{ $componentName }}"
             accept="{{ implode(',', $getAcceptedFileTypes()) }}"
             class="hidden"
             onchange="handleFileSelect(this)"
@@ -15,7 +20,7 @@
             </svg>
             
             <div class="text-sm text-gray-600">
-                <label for="{{ $getId() }}" class="cursor-pointer">
+                <label for="{{ $componentId }}" class="cursor-pointer">
                     <span class="font-medium text-primary-600 hover:text-primary-500">Click to upload</span>
                     or drag and drop
                 </label>
@@ -28,14 +33,14 @@
         </div>
     </div>
     
-    <div id="{{ $getId() }}-progress" class="hidden">
+    <div id="{{ $componentId }}-progress" class="hidden">
         <div class="bg-gray-200 rounded-full h-2">
             <div class="bg-primary-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
         </div>
         <p class="text-sm text-gray-600 mt-2">Uploading...</p>
     </div>
     
-    <div id="{{ $getId() }}-success" class="hidden">
+    <div id="{{ $componentId }}-success" class="hidden">
         <div class="bg-green-50 border border-green-200 rounded-md p-3">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -50,7 +55,7 @@
         </div>
     </div>
     
-    <div id="{{ $getId() }}-error" class="hidden">
+    <div id="{{ $componentId }}-error" class="hidden">
         <div class="bg-red-50 border border-red-200 rounded-md p-3">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -59,7 +64,7 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-red-800" id="{{ $getId() }}-error-message">Upload failed!</p>
+                    <p class="text-sm font-medium text-red-800" id="{{ $componentId }}-error-message">Upload failed!</p>
                 </div>
             </div>
         </div>
@@ -71,9 +76,10 @@ function handleFileSelect(input) {
     const file = input.files[0];
     if (!file) return;
     
-    const progressDiv = document.getElementById('{{ $getId() }}-progress');
-    const successDiv = document.getElementById('{{ $getId() }}-success');
-    const errorDiv = document.getElementById('{{ $getId() }}-error');
+    const componentId = '{{ $componentId }}';
+    const progressDiv = document.getElementById(componentId + '-progress');
+    const successDiv = document.getElementById(componentId + '-success');
+    const errorDiv = document.getElementById(componentId + '-error');
     const progressBar = progressDiv.querySelector('.bg-primary-600');
     
     // Hide previous messages
@@ -123,7 +129,7 @@ function handleFileSelect(input) {
                 }, 1500);
             } else {
                 errorDiv.classList.remove('hidden');
-                document.getElementById('{{ $getId() }}-error-message').textContent = data.error || 'Upload failed!';
+                document.getElementById(componentId + '-error-message').textContent = data.error || 'Upload failed!';
             }
         }, 500);
     })
@@ -131,7 +137,7 @@ function handleFileSelect(input) {
         clearInterval(progressInterval);
         progressDiv.classList.add('hidden');
         errorDiv.classList.remove('hidden');
-        document.getElementById('{{ $getId() }}-error-message').textContent = 'Upload failed: ' + error.message;
+        document.getElementById(componentId + '-error-message').textContent = 'Upload failed: ' + error.message;
     });
 }
 </script>
