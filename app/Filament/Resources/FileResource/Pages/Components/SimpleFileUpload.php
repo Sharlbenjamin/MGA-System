@@ -88,7 +88,7 @@ class SimpleFileUpload extends Component
         return $this->documentType;
     }
     
-    public function getRecord(): mixed
+    public function getRecord(): ?\Illuminate\Database\Eloquent\Model
     {
         return $this->record;
     }
