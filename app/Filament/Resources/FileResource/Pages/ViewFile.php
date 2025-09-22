@@ -52,7 +52,6 @@ use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Actions\DeleteAction;
 use Illuminate\Support\Facades\Storage;
 use App\Services\DocumentPathResolver;
-use App\Filament\Resources\FileResource\Pages\Components\SimpleFileUpload;
 
 class ViewFile extends ViewRecord
 {
@@ -377,21 +376,22 @@ class ViewFile extends ViewRecord
                                     ->icon('heroicon-o-cloud-arrow-up')
                                     ->color('primary')
                                     ->form([
-                                        SimpleFileUpload::make('file')
+                                        \Filament\Forms\Components\FileUpload::make('file')
                                             ->label('Select GOP Document')
-                                            ->directory(app(DocumentPathResolver::class)->dirFor($this->record, 'gops'))
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'gops'))
                                             ->disk('public')
                                             ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                            ->maxFileSize(10240)
-                                            ->documentType('gop')
-                                            ->record($this->record),
+                                            ->maxFiles(1)
+                                            ->required(),
                                     ])
                                     ->action(function (array $data) {
-                                        // File upload is handled by the SimpleFileUpload component
-                                        Notification::make()
-                                            ->success()
-                                            ->title('GOP Document uploaded successfully')
-                                            ->send();
+                                        if (isset($data['file'])) {
+                                            $this->updateGopDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('GOP Document uploaded successfully')
+                                                ->send();
+                                        }
                                     }),
                             ]),
                             $this->getDocumentTable('gops', 'GOP Documents'),
@@ -405,21 +405,22 @@ class ViewFile extends ViewRecord
                                     ->icon('heroicon-o-cloud-arrow-up')
                                     ->color('primary')
                                     ->form([
-                                        SimpleFileUpload::make('file')
+                                        \Filament\Forms\Components\FileUpload::make('file')
                                             ->label('Select Medical Report')
-                                            ->directory(app(DocumentPathResolver::class)->dirFor($this->record, 'medical_reports'))
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'medical_reports'))
                                             ->disk('public')
                                             ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                            ->maxFileSize(10240)
-                                            ->documentType('medical_report')
-                                            ->record($this->record),
+                                            ->maxFiles(1)
+                                            ->required(),
                                     ])
                                     ->action(function (array $data) {
-                                        // File upload is handled by the SimpleFileUpload component
-                                        Notification::make()
-                                            ->success()
-                                            ->title('Medical Report uploaded successfully')
-                                            ->send();
+                                        if (isset($data['file'])) {
+                                            $this->updateMedicalReportDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Medical Report uploaded successfully')
+                                                ->send();
+                                        }
                                     }),
                             ]),
                             $this->getDocumentTable('medical_reports', 'Medical Reports'),
@@ -433,21 +434,22 @@ class ViewFile extends ViewRecord
                                     ->icon('heroicon-o-cloud-arrow-up')
                                     ->color('primary')
                                     ->form([
-                                        SimpleFileUpload::make('file')
+                                        \Filament\Forms\Components\FileUpload::make('file')
                                             ->label('Select Prescription')
-                                            ->directory(app(DocumentPathResolver::class)->dirFor($this->record, 'prescriptions'))
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'prescriptions'))
                                             ->disk('public')
                                             ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                            ->maxFileSize(10240)
-                                            ->documentType('prescription')
-                                            ->record($this->record),
+                                            ->maxFiles(1)
+                                            ->required(),
                                     ])
                                     ->action(function (array $data) {
-                                        // File upload is handled by the SimpleFileUpload component
-                                        Notification::make()
-                                            ->success()
-                                            ->title('Prescription uploaded successfully')
-                                            ->send();
+                                        if (isset($data['file'])) {
+                                            $this->updatePrescriptionDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Prescription uploaded successfully')
+                                                ->send();
+                                        }
                                     }),
                             ]),
                             $this->getDocumentTable('prescriptions', 'Prescriptions'),
@@ -461,21 +463,22 @@ class ViewFile extends ViewRecord
                                     ->icon('heroicon-o-cloud-arrow-up')
                                     ->color('primary')
                                     ->form([
-                                        SimpleFileUpload::make('file')
+                                        \Filament\Forms\Components\FileUpload::make('file')
                                             ->label('Select Bill')
-                                            ->directory(app(DocumentPathResolver::class)->dirFor($this->record, 'bills'))
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'bills'))
                                             ->disk('public')
                                             ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                            ->maxFileSize(10240)
-                                            ->documentType('bill')
-                                            ->record($this->record),
+                                            ->maxFiles(1)
+                                            ->required(),
                                     ])
                                     ->action(function (array $data) {
-                                        // File upload is handled by the SimpleFileUpload component
-                                        Notification::make()
-                                            ->success()
-                                            ->title('Bill uploaded successfully')
-                                            ->send();
+                                        if (isset($data['file'])) {
+                                            $this->updateBillDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Bill uploaded successfully')
+                                                ->send();
+                                        }
                                     }),
                             ]),
                             $this->getDocumentTable('bills', 'Bills'),
@@ -489,21 +492,22 @@ class ViewFile extends ViewRecord
                                     ->icon('heroicon-o-cloud-arrow-up')
                                     ->color('primary')
                                     ->form([
-                                        SimpleFileUpload::make('file')
+                                        \Filament\Forms\Components\FileUpload::make('file')
                                             ->label('Select Invoice')
-                                            ->directory(app(DocumentPathResolver::class)->dirFor($this->record, 'invoices'))
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'invoices'))
                                             ->disk('public')
                                             ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                            ->maxFileSize(10240)
-                                            ->documentType('invoice')
-                                            ->record($this->record),
+                                            ->maxFiles(1)
+                                            ->required(),
                                     ])
                                     ->action(function (array $data) {
-                                        // File upload is handled by the SimpleFileUpload component
-                                        Notification::make()
-                                            ->success()
-                                            ->title('Invoice uploaded successfully')
-                                            ->send();
+                                        if (isset($data['file'])) {
+                                            $this->updateInvoiceDocumentPath($this->record, $data['file']);
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Invoice uploaded successfully')
+                                                ->send();
+                                        }
                                     }),
                             ]),
                             $this->getDocumentTable('invoices', 'Invoices'),
@@ -517,42 +521,44 @@ class ViewFile extends ViewRecord
                                     ->icon('heroicon-o-cloud-arrow-up')
                                     ->color('primary')
                                     ->form([
-                                        SimpleFileUpload::make('file')
+                                        \Filament\Forms\Components\FileUpload::make('file')
                                             ->label('Select Transaction In Document')
-                                            ->directory(app(DocumentPathResolver::class)->dirFor($this->record, 'transactions/in'))
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'transactions/in'))
                                             ->disk('public')
                                             ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                            ->maxFileSize(10240)
-                                            ->documentType('transaction_in')
-                                            ->record($this->record),
+                                            ->maxFiles(1)
+                                            ->required(),
                                     ])
                                     ->action(function (array $data) {
-                                        // File upload is handled by the SimpleFileUpload component
-                                        Notification::make()
-                                            ->success()
-                                            ->title('Transaction In document uploaded successfully')
-                                            ->send();
+                                        if (isset($data['file'])) {
+                                            $this->updateTransactionDocumentPath($this->record, $data['file'], 'in');
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Transaction In document uploaded successfully')
+                                                ->send();
+                                        }
                                     }),
                                 InfolistAction::make('upload_transaction_out')
                                     ->label('Upload Transaction Out Document')
                                     ->icon('heroicon-o-cloud-arrow-up')
                                     ->color('primary')
                                     ->form([
-                                        SimpleFileUpload::make('file')
+                                        \Filament\Forms\Components\FileUpload::make('file')
                                             ->label('Select Transaction Out Document')
-                                            ->directory(app(DocumentPathResolver::class)->dirFor($this->record, 'transactions/out'))
+                                            ->directory(fn () => app(DocumentPathResolver::class)->dirFor($this->record, 'transactions/out'))
                                             ->disk('public')
                                             ->acceptedFileTypes(['application/pdf', 'image/*'])
-                                            ->maxFileSize(10240)
-                                            ->documentType('transaction_out')
-                                            ->record($this->record),
+                                            ->maxFiles(1)
+                                            ->required(),
                                     ])
                                     ->action(function (array $data) {
-                                        // File upload is handled by the SimpleFileUpload component
-                                        Notification::make()
-                                            ->success()
-                                            ->title('Transaction Out document uploaded successfully')
-                                            ->send();
+                                        if (isset($data['file'])) {
+                                            $this->updateTransactionDocumentPath($this->record, $data['file'], 'out');
+                                            Notification::make()
+                                                ->success()
+                                                ->title('Transaction Out document uploaded successfully')
+                                                ->send();
+                                        }
                                     }),
                             ]),
                             $this->getDocumentTable('transactions/in', 'Transactions (In)'),
