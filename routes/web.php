@@ -101,6 +101,9 @@ Route::middleware([FilamentAuthenticate::class])->group(function () {
         
         return response()->json(['exists' => $exists]);
     });
+
+    // File upload route
+    Route::post('/files/{file}/upload-document', [\App\Http\Controllers\FileUploadController::class, 'uploadDocument'])->name('filament.admin.resources.files.upload-document');
 });
 
 // Google Meet Route
