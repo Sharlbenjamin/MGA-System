@@ -867,6 +867,7 @@ class TransactionResource extends Resource
                 'Insurance' => 'Insurance',
                 'Legal' => 'Legal',
                 'Accounting' => 'Accounting',
+                'Travel' => 'Travel',
                 'Other' => 'Other',
 
             ],
