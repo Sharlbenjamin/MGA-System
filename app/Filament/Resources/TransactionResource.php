@@ -858,8 +858,17 @@ class TransactionResource extends Resource
                 'Branch' => 'Branch',
             ],
             'Expense' => [
-                'Provider' => 'Provider',
-                'Branch' => 'Branch',
+                'Lawyer' => 'Lawyer',
+                'Taxes' => 'Taxes',
+                'Utility' => 'Utility',
+                'Salary' => 'Salary',
+                'Rent' => 'Rent',
+                'Marketing' => 'Marketing',
+                'Insurance' => 'Insurance',
+                'Legal' => 'Legal',
+                'Accounting' => 'Accounting',
+                'Other' => 'Other',
+
             ],
             default => [],
         };
