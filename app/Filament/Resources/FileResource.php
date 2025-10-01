@@ -133,6 +133,13 @@ class FileResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->columns([
                 // Enhanced columns
+                     
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Case Date')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->searchable(),
+                    
                 Tables\Columns\TextColumn::make('patient.client.company_name')
                     ->label('Client')
                     ->description(fn ($record) => $record->client_reference ? "Ref: {$record->client_reference}" : null)
@@ -155,23 +162,16 @@ class FileResource extends Resource
                     ->sortable()
                     ->searchable(),
                 
-                Tables\Columns\TextColumn::make('serviceType.name')
-                    ->label('Service')
+                Tables\Columns\TextColumn::make('service_date')
+                    ->label('Service Date')
+                    ->date('d/m/Y')
                     ->description(fn ($record) => 
-                        ($record->service_date ? $record->service_date->format('d/m/Y') : 'No Date') . 
+                        ($record->serviceType?->name ?? 'No Service Type') . 
                         ($record->service_time ? ' at ' . \Carbon\Carbon::parse($record->service_time)->format('H:i') : '')
                     )
-                    ->formatStateUsing(fn ($record) => 
-                        $record->serviceType?->name ?? 'No Service Type'
-                    )
                     ->sortable()
-                    ->searchable(),
-                
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Case Date')
-                    ->date('d/m/Y')
-                    ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->placeholder('No Date Set'),
                 
                 Tables\Columns\TextColumn::make('providerBranch.branch_name')
                     ->label('Provider')

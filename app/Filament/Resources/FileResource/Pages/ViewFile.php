@@ -120,7 +120,9 @@ class ViewFile extends ViewRecord
                                         ),
                                     TextEntry::make('patient.dob')
                                         ->color('danger')
-                                        ->label('Age'),
+                                        ->label('Age')
+                                        ->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->format('d/m/Y')),
+                                        
                                     TextEntry::make('client_reference')
                                         ->label('Client Reference')
                                         ->color('success')
