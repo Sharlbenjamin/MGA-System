@@ -167,6 +167,12 @@ class FileResource extends Resource
                     ->sortable()
                     ->searchable(),
                 
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Case Date')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->searchable(),
+                
                 Tables\Columns\TextColumn::make('providerBranch.branch_name')
                     ->label('Provider')
                     ->description(fn ($record) => $record->providerBranch?->provider?->name)

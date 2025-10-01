@@ -120,17 +120,7 @@ class ViewFile extends ViewRecord
                                         ),
                                     TextEntry::make('patient.dob')
                                         ->color('danger')
-                                        ->label('Age')
-                                        ->formatStateUsing(fn ($state) => \Carbon\Carbon::parse($state)->age . ' years')
-                                        ->suffixAction(
-                                            InfolistAction::make('copy_patient_age')
-                                                ->icon('heroicon-o-clipboard-document')
-                                                ->color('gray')
-                                                ->action(function ($record) {
-                                                    $text = \Carbon\Carbon::parse($record->patient->dob)->age . ' years';
-                                                    $this->copyToClipboard($text, 'Patient Age');
-                                                })
-                                        ),
+                                        ->label('Age'),
                                     TextEntry::make('client_reference')
                                         ->label('Client Reference')
                                         ->color('success')
