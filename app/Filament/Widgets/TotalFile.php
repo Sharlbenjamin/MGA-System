@@ -6,11 +6,17 @@ use App\Models\File;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Widgets\Traits\HasDashboardFilters;
 
 class TotalFile extends ChartWidget
 {
     use HasDashboardFilters;
+
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
 
     protected static ?int $sort = 5;
 

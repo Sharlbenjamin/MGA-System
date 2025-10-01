@@ -6,9 +6,14 @@ use App\Models\Bill;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class UnpaidBillsSummary extends BaseWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
 
     protected function getStats(): array
     {

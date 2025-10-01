@@ -4,10 +4,16 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\Widget;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardFilterWidget extends Widget
 {
     protected static string $view = 'filament.widgets.dashboard-filter-widget';
+
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
 
     public ?string $selectedDuration = 'Month';
     public ?string $selectedMonth = null;

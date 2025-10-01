@@ -4,9 +4,14 @@ namespace App\Filament\Widgets;
 
 use App\Models\File;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Auth;
 
 class FilesPerClient extends ChartWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     protected static ?int $sort = 9;
 
     protected static ?string $heading = 'Files per Client';

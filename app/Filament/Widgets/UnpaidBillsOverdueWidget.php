@@ -6,9 +6,14 @@ use App\Models\Bill;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class UnpaidBillsOverdueWidget extends StatsOverviewWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     protected static ?int $sort = 2;
     
     protected function getStats(): array

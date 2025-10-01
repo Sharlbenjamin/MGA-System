@@ -5,9 +5,14 @@ namespace App\Filament\Widgets;
 use App\Models\File;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class CasesPerMonthStatus extends ChartWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     protected static ?int $sort = 2;
 
     protected static ?string $heading = 'Cases per Month by Status';

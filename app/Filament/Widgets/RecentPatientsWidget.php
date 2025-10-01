@@ -9,9 +9,14 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Auth;
 
 class RecentPatientsWidget extends BaseWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     protected static ?string $heading = 'Recent Patients';
 
     protected int | string | array $columnSpan = 'full';

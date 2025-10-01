@@ -4,9 +4,14 @@ namespace App\Filament\Widgets;
 
 use App\Models\File;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Auth;
 
 class FilesPerCountry extends ChartWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     protected static ?int $sort = 8;
 
     protected static ?string $heading = 'Files per Country';

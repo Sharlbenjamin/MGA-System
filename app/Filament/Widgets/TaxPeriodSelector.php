@@ -6,9 +6,14 @@ use Filament\Widgets\Widget;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Section;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class TaxPeriodSelector extends Widget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     protected static string $view = 'filament.widgets.tax-period-selector';
 
     public ?string $selectedYear = null;

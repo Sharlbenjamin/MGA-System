@@ -6,9 +6,14 @@ use App\Models\Patient;
 use App\Models\File;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class PatientTrendsWidget extends ChartWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     protected static ?string $heading = 'Patient Trends';
 
     protected static ?int $sort = 2;

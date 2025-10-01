@@ -6,12 +6,18 @@ use App\Models\File;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Filament\Widgets\Traits\HasDashboardFilters;
 use Carbon\Carbon;
 
 class MonthlyProfit extends ChartWidget
 {
     use HasDashboardFilters;
+
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
 
     protected static ?int $sort = 3;
     protected static ?string $heading = 'Profit Trend';

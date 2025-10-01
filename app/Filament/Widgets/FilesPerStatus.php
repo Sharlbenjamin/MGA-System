@@ -5,9 +5,14 @@ namespace App\Filament\Widgets;
 use App\Models\File;
 use Filament\Widgets\ChartWidget;
 use App\Models\ServiceType;
+use Illuminate\Support\Facades\Auth;
 
 class FilesPerStatus extends ChartWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     protected static ?int $sort = 4;
 
     protected static ?string $heading = 'Files per Status';

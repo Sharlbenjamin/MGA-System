@@ -7,11 +7,16 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\Invoice;
 use App\Models\Bill;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 
 class TaxSummaryWidget extends BaseWidget
 {
+    public static function shouldLoad(): bool
+    {
+        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+    }
     public ?string $selectedYear = null;
     public ?string $selectedQuarter = null;
 
