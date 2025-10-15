@@ -89,9 +89,12 @@ class BillResource extends Resource
                             }),
                         Forms\Components\Select::make('bank_account_id')
                             ->label('Bank Account')
-                            ->relationship('bankAccount', 'provider.name', function ($query) {
+                            ->relationship('bankAccount', 'owner_name', function ($query) {
                                 return $query->where('type', 'Provider')->with(['provider']);
                             })
+                            ->getOptionLabelFromRecordUsing(fn (BankAccount $record): string =>
+                                $record->provider?->name ?? 'Unknown Provider'
+                            )
                             ->searchable()
                             ->preload()
                             ->nullable()
