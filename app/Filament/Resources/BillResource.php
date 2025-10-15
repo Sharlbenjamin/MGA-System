@@ -92,6 +92,9 @@ class BillResource extends Resource
                             ->relationship('bankAccount', 'owner_name', function ($query) {
                                 return $query->where('type', 'Provider');
                             })
+                            ->getOptionLabelFromRecordUsing(fn (BankAccount $record): string => 
+                                $record->provider->name
+                            )
                             ->searchable()
                             ->preload()
                             ->nullable()
