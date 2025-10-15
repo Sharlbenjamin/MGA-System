@@ -84,7 +84,7 @@ class ItemsRelationManager extends RelationManager
                                 if ($fileFee) {
                                     $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
                                     $isTelemedicine = $fileFee->serviceType && strtolower($fileFee->serviceType->name) === 'telemedicine';
-                                    $description = $isTelemedicine ? "{$serviceName} on {$dateString}" : "File Fee: {$serviceName} on {$dateString}";
+                                    $description = $isTelemedicine ? "{$serviceName} on {$dateString}" : "File Fee";
                                     $set('description', $description);
                                     // Don't auto-fill amount
                                 }
@@ -166,7 +166,7 @@ class ItemsRelationManager extends RelationManager
                                 if ($fileFee) {
                                     $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
                                     $isTelemedicine = $fileFee->serviceType && strtolower($fileFee->serviceType->name) === 'telemedicine';
-                                    $data['description'] = $isTelemedicine ? "{$serviceName} on {$dateString}" : "File Fee: {$serviceName} on {$dateString}";
+                                    $data['description'] = $isTelemedicine ? "{$serviceName} on {$dateString}" : "File Fee";
                                     // Don't auto-fill amount
                                 }
                             }

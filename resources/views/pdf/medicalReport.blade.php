@@ -186,7 +186,7 @@
             <div class="doctor-info">
                 <p>
                     <span class="bold">Doctor: </span>
-                    <span class="data">{{ $medicalReport->file->providerBranch?->provider?->name ?? 'N/A' }}</span>
+                    <span class="data">{{ $customDoctorName ?? ($medicalReport->file->providerBranch?->provider?->name ?? 'N/A') }}</span>
                     <span style="float: right;">
                         <span class="bold">Date: </span>
                         <span class="data">{{ $medicalReport->date?->format('d/m/Y') ?? now()->format('d/m/Y') }}</span>
@@ -229,6 +229,19 @@
                     </div>
                 @endif
 
+                @if($medicalReport->history)
+                    <div class="advice-info">
+                        <p class="bold">Medical History: </p>
+                        <span class="data">{{ $medicalReport->history }}</span>
+                    </div>
+                @endif
+                @if($medicalReport->examination)
+                    <div class="advice-info">
+                        <p class="bold">Medical Examination: </p>
+                        <span class="data">{{ $medicalReport->examination }}</span>
+                    </div>
+                @endif
+                
                 @if($medicalReport->advice)
                     <div class="advice-info">
                         <p class="bold">Medical Advice: </p>

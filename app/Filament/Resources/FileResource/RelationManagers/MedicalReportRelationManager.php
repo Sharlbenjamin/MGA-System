@@ -78,9 +78,24 @@ class MedicalReportRelationManager extends RelationManager
                 ->label('Export PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success')
-                ->action(function ($record) {
+                ->modalHeading('Export Medical Report PDF')
+                ->modalDescription('Customize the doctor name for this medical report')
+                ->modalWidth('md')
+                ->form([
+                    \Filament\Forms\Components\TextInput::make('doctor_name')
+                        ->label('Doctor Name')
+                        ->default(fn ($record) => $record->file->providerBranch?->provider?->name ?? 'N/A')
+                        ->required()
+                        ->placeholder('Enter doctor name')
+                ])
+                ->action(function ($record, array $data) {
                     $medicalReport = $record;
-                    $pdf = Pdf::loadView('pdf.medicalReport', ['medicalReport' => $medicalReport]);
+                    $customDoctorName = $data['doctor_name'];
+                    
+                    $pdf = Pdf::loadView('pdf.medicalReport', [
+                        'medicalReport' => $medicalReport,
+                        'customDoctorName' => $customDoctorName
+                    ]);
                     $fileName = $medicalReport->file->patient->name . ' Medical Report ' . $medicalReport->file->mga_reference . '.pdf';
                     
                     return response()->streamDownload(
