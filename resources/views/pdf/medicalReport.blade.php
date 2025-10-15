@@ -231,13 +231,13 @@
 
                 @if($medicalReport->history)
                     <div class="advice-info">
-                        <p class="bold">Medical History: </p>
+                        <p class="bold">History: </p>
                         <span class="data">{{ $medicalReport->history }}</span>
                     </div>
                 @endif
                 @if($medicalReport->examination)
                     <div class="advice-info">
-                        <p class="bold">Medical Examination: </p>
+                        <p class="bold">Examination: </p>
                         <span class="data">{{ $medicalReport->examination }}</span>
                     </div>
                 @endif
