@@ -95,6 +95,9 @@ class BillResource extends Resource
                             ->getOptionLabelFromRecordUsing(fn (BankAccount $record): string => 
                                 $record->provider->name
                             )
+                            ->getOptionValueFromRecordUsing(fn (BankAccount $record): string => 
+                                $record->id
+                            )
                             ->searchable()
                             ->preload()
                             ->nullable()
