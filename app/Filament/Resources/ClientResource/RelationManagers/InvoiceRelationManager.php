@@ -45,6 +45,14 @@ class InvoiceRelationManager extends RelationManager
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('file.mga_reference')
+                    ->label('MGA Reference')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('file.client_reference')
+                    ->label('Client Reference')
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'Draft' => 'gray',
                     'Sent' => 'info',
