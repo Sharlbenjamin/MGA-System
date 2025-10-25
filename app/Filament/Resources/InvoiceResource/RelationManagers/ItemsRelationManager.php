@@ -157,7 +157,7 @@ class ItemsRelationManager extends RelationManager
                                 $billItemId = str_replace('bill_item_', '', $data['item_selector']);
                                 $billItem = BillItem::find($billItemId);
                                 if ($billItem) {
-                                    $data['description'] = "{$billItem->description} on {$dateString}";
+                                    $data['description'] = "{$billItem->description}";
                                     // Don't auto-fill amount
                                 }
                             } elseif (str_starts_with($data['item_selector'], 'file_fee_')) {
