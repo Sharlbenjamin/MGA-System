@@ -48,11 +48,13 @@ class InvoiceRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('MGA Reference')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable(),
                 Tables\Columns\TextColumn::make('file.client_reference')
                     ->label('Client Reference')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'Draft' => 'gray',
                     'Sent' => 'info',
