@@ -147,6 +147,31 @@ class ItemsRelationManager extends RelationManager
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->using(function (array $data) {
+                        // If an item was selected, ensure description is set with service date
+                        if (isset($data['item_selector']) && $data['item_selector'] !== 'custom') {
+                            $invoice = $this->getOwnerRecord();
+                            $serviceDate = $invoice->file->service_date ?? now();
+                            $dateString = $serviceDate->format('d/m/Y');
+                            
+                            if (str_starts_with($data['item_selector'], 'bill_item_')) {
+                                $billItemId = str_replace('bill_item_', '', $data['item_selector']);
+                                $billItem = BillItem::find($billItemId);
+                                if ($billItem) {
+                                    $data['description'] = "{$billItem->description} on {$dateString}";
+                                    // Don't auto-fill amount
+                                }
+                            } elseif (str_starts_with($data['item_selector'], 'file_fee_')) {
+                                $fileFeeId = str_replace('file_fee_', '', $data['item_selector']);
+                                $fileFee = FileFee::with('serviceType')->find($fileFeeId);
+                                if ($fileFee) {
+                                    $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
+                                    $isTelemedicine = $fileFee->serviceType && strtolower($fileFee->serviceType->name) === 'telemedicine';
+                                    $data['description'] = $isTelemedicine ? "{$serviceName} on {$dateString}" : "File Fee";
+                                    // Don't auto-fill amount
+                                }
+                            }
+                        }
+                        
                         // Remove the item_selector field as it's not part of the model
                         unset($data['item_selector']);
                         
