@@ -3,24 +3,29 @@
 namespace App\Filament\Pages;
 
 use App\Models\{Provider, ProviderBranch, ServiceType, City, Country, NetworkData};
-use Filament\Pages\ListRecords;
+use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\MultiSelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
-class OurNetwork extends ListRecords
+class OurNetwork extends Page implements HasTable
 {
     protected static ?string $navigationGroup = 'PRM';
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-group';
     protected static ?string $title = 'Our Network';
+    protected static string $view = 'filament-panels::pages.list-records';
+    
+    use InteractsWithTable;
 
     public function table(Table $table): Table
     {
         return $table
-            ->query($this->getEloquentQuery())
+            ->query($this->getTableQuery())
             ->heading('Provider Network Overview')
             ->description('Medical services availability across cities from our active provider network')
             ->columns([
@@ -90,7 +95,7 @@ class OurNetwork extends ListRecords
             ->paginated(false);
     }
 
-    protected function getEloquentQuery(): Builder
+    protected function getTableQuery(): Builder
     {
         return NetworkData::whereHas('branchCities.branch.provider', function ($query) {
             $query->where('status', 'Active');
