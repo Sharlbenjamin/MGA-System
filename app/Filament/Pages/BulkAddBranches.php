@@ -15,7 +15,7 @@ class BulkAddBranches extends Page
 {
     protected static ?string $navigationGroup = 'PRM';
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
-    protected static ?string $title = 'Bulk Add Provider Branches';
+    protected static ?string $title = 'Bulk Add Branches';
     protected static string $view = 'filament.pages.blank';
     
     public static function shouldRegisterNavigation(): bool
