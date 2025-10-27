@@ -10,6 +10,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\MultiSelectFilter;
+use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -32,8 +33,7 @@ class OurNetwork extends Page implements HasTable
                 Tables\Columns\TextColumn::make('country')
                     ->label('Country')
                     ->sortable()
-                    ->searchable()
-                    ->groupable(),
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('city')
                     ->label('City')
                     ->sortable()
@@ -90,7 +90,11 @@ class OurNetwork extends Page implements HasTable
                         });
                     }),
             ])
-            ->defaultGroup('country')
+            ->groups([
+                Group::make('country')
+                    ->label('Country')
+                    ->collapsible(),
+            ])
             ->defaultSort('country')
             ->paginated(false);
     }
