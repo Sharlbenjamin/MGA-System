@@ -19,6 +19,7 @@ class OurNetwork extends Page implements HasTable
     protected static ?string $navigationGroup = 'PRM';
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-group';
     protected static ?string $title = 'Our Network';
+    protected static string $view = 'filament-panels::page';
     
     use InteractsWithTable;
 
