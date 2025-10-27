@@ -96,7 +96,7 @@ class OurNetwork extends Page implements HasTable
                     ->label('Country')
                     ->collapsible(),
             ])
-            ->defaultSort('country')
+            ->defaultSort('country_id')
             ->paginated(false);
     }
 
