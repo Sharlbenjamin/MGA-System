@@ -35,7 +35,7 @@ class OurNetworkProvider extends ListRecords
         ];
     }
 
-    protected function getTabs(): array
+    public function getTabs(): array
 {
     return [
         'all' => Tab::make('All Providers')
