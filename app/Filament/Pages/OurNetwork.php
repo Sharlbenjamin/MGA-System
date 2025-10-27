@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class OurNetwork extends ListRecords
 {
     protected static ?string $navigationGroup = 'PRM';
-    protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-group';
     protected static ?string $title = 'Our Network';
 
     public function table(Table $table): Table
