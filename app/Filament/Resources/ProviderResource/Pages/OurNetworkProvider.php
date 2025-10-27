@@ -24,9 +24,11 @@ class OurNetworkProvider extends ListRecords
 
     protected static ?string $title = 'Our Network';
 
+    
+    protected static ?string $navigationGroup = 'PRM';
+    protected static ?int $navigationSort = 5;
+    protected static ?string $navigationIcon = 'heroicon-o-truck';
     protected static ?string $navigationLabel = 'Our Network';
-
-    protected static ?string $slug = 'our-network';
 
     protected function getHeaderActions(): array
     {
