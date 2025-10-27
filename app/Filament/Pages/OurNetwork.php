@@ -31,7 +31,7 @@ class OurNetwork extends Page implements HasTable
             ->heading('Provider Network Overview')
             ->description('Medical services availability across cities from our active provider network')
             ->columns([
-                Tables\Columns\TextColumn::make('country')
+                Tables\Columns\TextColumn::make('country.name')
                     ->label('Country')
                     ->sortable()
                     ->searchable(),

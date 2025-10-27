@@ -95,50 +95,128 @@ class City extends Model
 
     public function getTelemedicineAttribute()
     {
-        return $this->formatServiceAvailability('Telemedicine');
+        return $this->formatServiceWithProviders('Telemedicine', true);
     }
 
     public function getHouseVisitAttribute()
     {
-        return $this->formatServiceAvailability('House Call');
+        return $this->formatServiceWithProviders('House Call');
     }
 
     public function getDentalAttribute()
     {
-        return $this->formatServiceAvailability('Dental Clinic');
+        return $this->formatServiceWithProviders('Dental Clinic');
     }
 
     public function getClinicAttribute()
     {
-        return $this->formatServiceAvailability('Clinic Visit');
+        return $this->formatServiceWithProviders('Clinic Visit');
     }
 
     public function getCostAttribute()
     {
-        $services = $this->services;
+        $allProviders = collect();
         
-        if ($services->isEmpty()) {
+        // Collect all providers from all services
+        foreach ($this->branchCities as $branchCity) {
+            $branch = $branchCity->branch;
+            if ($branch && $branch->provider && $branch->provider->status === 'Active') {
+                foreach ($branch->services as $service) {
+                    $allProviders->push([
+                        'provider_name' => $branch->provider->name,
+                        'service_name' => $service->name,
+                        'min_cost' => $service->pivot->min_cost,
+                        'max_cost' => $service->pivot->max_cost,
+                    ]);
+                }
+            }
+        }
+        
+        if ($allProviders->isEmpty()) {
             return "<span class='text-red-600 font-medium'>No Services</span>";
         }
         
-        $costs = $services->map(function ($service) {
-            return $this->formatCostRange($service['min_cost'], $service['max_cost']);
-        })->filter()->unique();
+        // Group by provider and show all their services
+        $groupedProviders = $allProviders->groupBy('provider_name');
         
-        return $costs->implode('<br>');
+        $providerList = $groupedProviders->map(function ($services, $providerName) {
+            $serviceCosts = $services->map(function ($service) {
+                $cost = $this->formatCostRange($service['min_cost'], $service['max_cost']);
+                return "{$service['service_name']}: {$cost}";
+            })->implode(', ');
+            
+            return "• {$providerName} ({$serviceCosts})";
+        })->implode('<br>');
+        
+        return $providerList;
     }
 
-    protected function formatServiceAvailability($serviceName)
+    protected function formatServiceWithProviders($serviceName, $isCountryLevel = false)
     {
-        $hasService = $this->services->contains('service_name', $serviceName);
+        $providers = collect();
         
-        if ($hasService) {
-            $service = $this->services->firstWhere('service_name', $serviceName);
-            $cost = $this->formatCostRange($service['min_cost'], $service['max_cost']);
-            return "<span class='text-green-600 font-medium'>Available</span><br><small class='text-gray-500'>{$cost}</small>";
+        if ($isCountryLevel) {
+            // For Telemedicine, check all cities in the same country
+            $countryCities = City::where('country_id', $this->country_id)
+                ->whereHas('branchCities.branch.provider', function ($query) {
+                    $query->where('status', 'Active');
+                })
+                ->with(['branchCities.branch' => function ($query) {
+                    $query->whereHas('provider', function ($q) {
+                        $q->where('status', 'Active');
+                    })->with(['provider', 'services']);
+                }])
+                ->get();
+                
+            foreach ($countryCities as $city) {
+                foreach ($city->branchCities as $branchCity) {
+                    $branch = $branchCity->branch;
+                    if ($branch && $branch->provider && $branch->provider->status === 'Active') {
+                        foreach ($branch->services as $service) {
+                            if ($service->name === $serviceName) {
+                                $providers->push([
+                                    'provider_name' => $branch->provider->name,
+                                    'min_cost' => $service->pivot->min_cost,
+                                    'max_cost' => $service->pivot->max_cost,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // For other services, check only current city
+            foreach ($this->branchCities as $branchCity) {
+                $branch = $branchCity->branch;
+                if ($branch && $branch->provider && $branch->provider->status === 'Active') {
+                    foreach ($branch->services as $service) {
+                        if ($service->name === $serviceName) {
+                            $providers->push([
+                                'provider_name' => $branch->provider->name,
+                                'min_cost' => $service->pivot->min_cost,
+                                'max_cost' => $service->pivot->max_cost,
+                            ]);
+                        }
+                    }
+                }
+            }
         }
         
-        return "<span class='text-red-600 font-medium'>Missing</span>";
+        // Remove duplicates based on provider name and cost
+        $providers = $providers->unique(function ($provider) {
+            return $provider['provider_name'] . $provider['min_cost'] . $provider['max_cost'];
+        });
+        
+        if ($providers->isEmpty()) {
+            return "<span class='text-red-600 font-medium'>Missing</span>";
+        }
+        
+        $providerList = $providers->map(function ($provider) {
+            $cost = $this->formatCostRange($provider['min_cost'], $provider['max_cost']);
+            return "• {$provider['provider_name']} ({$cost})";
+        })->implode('<br>');
+        
+        return $providerList;
     }
 
     protected function formatCostRange($minCost, $maxCost)
