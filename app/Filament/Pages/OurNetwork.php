@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\{Provider, ProviderBranch, ServiceType, City, Country, NetworkData};
+use App\Models\{Provider, ProviderBranch, ServiceType, City, Country};
 use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -102,7 +102,7 @@ class OurNetwork extends Page implements HasTable
 
     protected function getTableQuery(): Builder
     {
-        return NetworkData::whereHas('branchCities.branch.provider', function ($query) {
+        return City::whereHas('branchCities.branch.provider', function ($query) {
             $query->where('status', 'Active');
         })->with(['country', 'branchCities.branch' => function ($query) {
             $query->whereHas('provider', function ($q) {
