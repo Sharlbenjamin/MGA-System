@@ -33,14 +33,17 @@ class OurNetwork extends Page implements HasTable
                 Tables\Columns\TextColumn::make('country.name')
                     ->label('Country')
                     ->sortable()
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('branchCities.branch.provider', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        });
+                    })
                     ->getStateUsing(function ($record) {
                         return $record->country->name ?? 'Unknown';
                     }),
                 Tables\Columns\TextColumn::make('city')
                     ->label('City')
-                    ->sortable()
-                    ->searchable(),
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('telemedicine')
                     ->label('Telemedicine')
                     ->html(),
