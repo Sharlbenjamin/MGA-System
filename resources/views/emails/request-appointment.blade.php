@@ -49,6 +49,12 @@
         <div class="appointment-details">
             <div class="detail-line"><strong>MGA Reference:</strong> {{ $file->mga_reference }}</div>
             <div class="detail-line"><strong>Patient Name:</strong> {{ $file->patient->name }}</div>
+            <div class="detail-line"><strong>Date of Birth:</strong> {{ $file->patient->dob ? \Carbon\Carbon::parse($file->patient->dob)->format('d-m-Y') : 'N/A' }}</div>
+            <div class="detail-line"><strong>Gender:</strong> {{ $file->patient->gender }}</div>
+            @if($file->serviceType->id != 1)
+                <div class="detail-line"><strong>Address:</strong> {{ $file->address }}</div>
+                <div class="detail-line"><strong>Phone:</strong> {{ $file->phone }}</div>
+            @endif
             
             <p style="margin-top: 15px; margin-bottom: 10px;"><strong>Appointment Details:</strong></p>
             
