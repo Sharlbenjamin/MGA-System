@@ -184,7 +184,6 @@ class City extends Model
                                     'provider_name' => $branch->provider->name,
                                     'min_cost' => $service->pivot->min_cost,
                                     'max_cost' => $service->pivot->max_cost,
-                                    'priority' => $branch->provider->priority ?? 999, // Default priority if not set
                                 ]);
                             }
                         }
@@ -202,7 +201,6 @@ class City extends Model
                                 'provider_name' => $branch->provider->name,
                                 'min_cost' => $service->pivot->min_cost,
                                 'max_cost' => $service->pivot->max_cost,
-                                'priority' => $branch->provider->priority ?? 999, // Default priority if not set
                             ]);
                         }
                     }
@@ -215,8 +213,11 @@ class City extends Model
             return $provider['provider_name'] . $provider['min_cost'] . $provider['max_cost'];
         });
         
-        // Sort by priority (lower number = higher priority)
-        $providers = $providers->sortBy('priority');
+        // Sort by cost (lowest first) - using min_cost as the primary sort
+        $providers = $providers->sortBy(function ($provider) {
+            // Use min_cost for sorting, default to 999999 if no cost
+            return $provider['min_cost'] ?? 999999;
+        });
         
         if ($providers->isEmpty()) {
             return "<span style='font-weight: bold; color: #dc2626;'>Missing</span>";
