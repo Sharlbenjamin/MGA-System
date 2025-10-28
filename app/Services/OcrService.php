@@ -181,6 +181,11 @@ class OcrService
             $data['patient_name'] = trim($matches[1]);
         }
         
+        // Look for patient name in "Name:" format
+        if (preg_match('/Name\s*:\s*(.+)/i', $line, $matches)) {
+            $data['patient_name'] = trim($matches[1]);
+        }
+        
         // Look for patient name in pipe-separated format
         if (preg_match('/(\d{7}-\d{2})\s*\|\s*(.+?)\s*\|\s*(\d+)/i', $line, $matches)) {
             $data['client_reference'] = trim($matches[1]);
