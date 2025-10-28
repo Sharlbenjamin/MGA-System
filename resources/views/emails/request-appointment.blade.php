@@ -52,8 +52,12 @@
             <div class="detail-line"><strong>Date of Birth:</strong> {{ $file->patient->dob ? \Carbon\Carbon::parse($file->patient->dob)->format('d-m-Y') : 'N/A' }}</div>
             <div class="detail-line"><strong>Gender:</strong> {{ $file->patient->gender }}</div>
             @if($file->serviceType->id == 1)
+                @if($file->address)
                 <div class="detail-line"><strong>Address:</strong> {{ $file->address }}</div>
-                <div class="detail-line"><strong>Phone:</strong> {{ $file->phone }}</div>
+                @endif
+                @if($file->phone)
+                    <div class="detail-line"><strong>Phone:</strong> {{ $file->phone }}</div>
+                @endif
             @endif
             
             <p style="margin-top: 15px; margin-bottom: 10px;"><strong>Appointment Details:</strong></p>
