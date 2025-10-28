@@ -11,8 +11,6 @@ use Filament\Infolists\Components\Grid as InfolistGrid;
 use Filament\Infolists\Infolist;
 use App\Filament\Resources\FileResource;
 use Filament\Infolists\Components\Card;
-use Filament\Infolists\Components\TextEntry\TextEntrySize;
-use Filament\Infolists\Components\HtmlEntry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
@@ -353,12 +351,15 @@ class ViewFile extends ViewRecord
                                 ->schema([
                                     Card::make()
                                         ->schema([
-                                            HtmlEntry::make('current_text')
+                                            TextEntry::make('current_text')
                                                 ->label('Current Text')
                                                 ->state(function ($record) {
-                                                    $text = $this->formatCaseInfo($record);
-                                                    return '<pre class="whitespace-pre-wrap font-mono text-sm">' . htmlspecialchars($text) . '</pre>';
+                                                    return $this->formatCaseInfo($record);
                                                 })
+                                                ->formatStateUsing(function ($state) {
+                                                    return '<div style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">' . htmlspecialchars($state) . '</div>';
+                                                })
+                                                ->html()
                                                 ->suffixAction(
                                                     InfolistAction::make('copy_current_text')
                                                         ->icon('heroicon-o-clipboard-document')
