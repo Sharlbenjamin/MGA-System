@@ -351,7 +351,7 @@ class ViewFile extends ViewRecord
                             ->schema([
                                 TextEntry::make('current_text')
                                     ->label('Current Text')
-                                    ->formatStateUsing(function ($state, $record) {
+                                    ->state(function ($record) {
                                         return $this->formatCaseInfo($record);
                                     })
                                     ->extraAttributes(['class' => 'whitespace-pre-wrap font-mono'])
