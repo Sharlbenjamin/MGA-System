@@ -95,22 +95,22 @@ class City extends Model
 
     public function getTelemedicineAttribute()
     {
-        return $this->formatServiceWithProviders('Telemedicine', true);
+        return $this->formatServiceWithProviders('Telemedicine', true, 'bg-blue-50 text-blue-800 border-blue-200');
     }
 
     public function getHouseVisitAttribute()
     {
-        return $this->formatServiceWithProviders('House Call');
+        return $this->formatServiceWithProviders('House Call', false, 'bg-green-50 text-green-800 border-green-200');
     }
 
     public function getDentalAttribute()
     {
-        return $this->formatServiceWithProviders('Dental Clinic');
+        return $this->formatServiceWithProviders('Dental Clinic', false, 'bg-purple-50 text-purple-800 border-purple-200');
     }
 
     public function getClinicAttribute()
     {
-        return $this->formatServiceWithProviders('Clinic Visit');
+        return $this->formatServiceWithProviders('Clinic Visit', false, 'bg-orange-50 text-orange-800 border-orange-200');
     }
 
     public function getCostAttribute()
@@ -127,19 +127,25 @@ class City extends Model
                         'service_name' => $service->name,
                         'min_cost' => $service->pivot->min_cost,
                         'max_cost' => $service->pivot->max_cost,
+                        'priority' => $branch->provider->priority ?? 999,
                     ]);
                 }
             }
         }
         
         if ($allProviders->isEmpty()) {
-            return "<span class='text-red-600 font-medium'>No Services</span>";
+            return "<span class='font-bold text-red-600'>No Services</span>";
         }
         
-        // Group by provider and show all their services
+        // Group by provider and sort by priority
         $groupedProviders = $allProviders->groupBy('provider_name');
         
-        $providerList = $groupedProviders->map(function ($services, $providerName) {
+        // Sort providers by priority
+        $sortedProviders = $groupedProviders->sortBy(function ($services) {
+            return $services->first()['priority'];
+        });
+        
+        $providerList = $sortedProviders->map(function ($services, $providerName) {
             $serviceCosts = $services->map(function ($service) {
                 $cost = $this->formatCostRange($service['min_cost'], $service['max_cost']);
                 return "{$service['service_name']}: {$cost}";
@@ -148,10 +154,10 @@ class City extends Model
             return "• {$providerName} ({$serviceCosts})";
         })->implode('<br>');
         
-        return $providerList;
+        return "<div class='bg-gray-50 text-gray-800 border border-gray-200 rounded p-2'>{$providerList}</div>";
     }
 
-    protected function formatServiceWithProviders($serviceName, $isCountryLevel = false)
+    protected function formatServiceWithProviders($serviceName, $isCountryLevel = false, $colorClasses = '')
     {
         $providers = collect();
         
@@ -178,6 +184,7 @@ class City extends Model
                                     'provider_name' => $branch->provider->name,
                                     'min_cost' => $service->pivot->min_cost,
                                     'max_cost' => $service->pivot->max_cost,
+                                    'priority' => $branch->provider->priority ?? 999, // Default priority if not set
                                 ]);
                             }
                         }
@@ -195,6 +202,7 @@ class City extends Model
                                 'provider_name' => $branch->provider->name,
                                 'min_cost' => $service->pivot->min_cost,
                                 'max_cost' => $service->pivot->max_cost,
+                                'priority' => $branch->provider->priority ?? 999, // Default priority if not set
                             ]);
                         }
                     }
@@ -207,14 +215,22 @@ class City extends Model
             return $provider['provider_name'] . $provider['min_cost'] . $provider['max_cost'];
         });
         
+        // Sort by priority (lower number = higher priority)
+        $providers = $providers->sortBy('priority');
+        
         if ($providers->isEmpty()) {
-            return "<span class='text-red-600 font-medium'>Missing</span>";
+            return "<span class='font-bold text-red-600'>Missing</span>";
         }
         
         $providerList = $providers->map(function ($provider) {
             $cost = $this->formatCostRange($provider['min_cost'], $provider['max_cost']);
             return "• {$provider['provider_name']} ({$cost})";
         })->implode('<br>');
+        
+        // Wrap in colored container if color classes provided
+        if ($colorClasses) {
+            return "<div class='{$colorClasses} border rounded p-2'>{$providerList}</div>";
+        }
         
         return $providerList;
     }
