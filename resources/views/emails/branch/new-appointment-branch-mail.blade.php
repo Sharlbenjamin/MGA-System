@@ -6,6 +6,10 @@
     <p>We are Requesting an appointment availability with the following details.</p>
     <p><strong>MGA Reference:</strong> {{ $appointment->file->mga_reference }}</p>
     <p><strong>Patient Name:</strong> {{ $appointment->file->patient->name }}</p>
+    <p><strong>Date of Birth:</strong> {{ $appointment->file->patient->dob ?? 'N/A' }}</p>
+    @if($appointment->file->serviceType->id != 1)
+    <p><strong>Patient Address:</strong> {{ $appointment->file->address ?? 'N/A' }}</p>
+    @endif
     <p><strong>Appointment Details:</strong></p>
     <ul>
     <li><strong>Date:</strong> {{ date('d-m-Y', strtotime($appointment->service_date)) }}</li>
