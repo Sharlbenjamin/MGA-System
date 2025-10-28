@@ -56,9 +56,6 @@ class OurNetwork extends Page implements HasTable
                 Tables\Columns\TextColumn::make('clinic')
                     ->label('Clinic')
                     ->html(),
-                Tables\Columns\TextColumn::make('cost')
-                    ->label('Cost')
-                    ->html(),
             ])
             ->filters([
                 MultiSelectFilter::make('country')
