@@ -77,6 +77,7 @@ class FileRelationManager extends RelationManager
             }]))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('client_reference')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'New' => 'success',
                     'Handling' => 'info',

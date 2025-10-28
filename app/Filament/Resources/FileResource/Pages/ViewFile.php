@@ -265,6 +265,27 @@ class ViewFile extends ViewRecord
                             ])
                             ->columnSpan(1),
 
+                        // Current Text (Full Width)
+                        Card::make()
+                            ->schema([
+                                TextEntry::make('current_text')
+                                    ->label('Current Text')
+                                    ->formatStateUsing(function ($state, $record) {
+                                        return $this->formatCaseInfo($record);
+                                    })
+                                    ->extraAttributes(['class' => 'whitespace-pre-wrap font-mono'])
+                                    ->suffixAction(
+                                        InfolistAction::make('copy_current_text')
+                                            ->icon('heroicon-o-clipboard-document')
+                                            ->color('gray')
+                                            ->action(function ($record) {
+                                                $text = $this->formatCaseInfo($record);
+                                                $this->copyToClipboard($text, 'Current Text');
+                                            })
+                                    ),
+                            ])
+                            ->columnSpan(3),
+
                         // Column 3: Location & Medical Info (Condensed)
                         Card::make()
                             ->schema([
@@ -1314,9 +1335,21 @@ class ViewFile extends ViewRecord
         }
         
         $request = "{$serviceType} on {$serviceDate} at {$serviceTime}";
-        
+
+        // Get phone with fallback
+        $phone = 'N/A';
+        if (!$isEmpty($record->phone)) {
+            $phone = trim($record->phone);
+        }
+
+        // Get address with fallback
+        $address = 'N/A';
+        if (!$isEmpty($record->address)) {
+            $address = trim($record->address);
+        }
+
         // Return formatted string with proper line breaks
-        return "Patient Name: {$patientName}\nDOB: {$dob}\nMGA Reference: {$mgaReference}\nSymptoms: {$symptoms}\nRequest: {$request}";
+        return "Patient Name: {$patientName}\nDOB: {$dob}\nMGA Reference: {$mgaReference}\nSymptoms: {$symptoms}\nRequest: {$request}\nPhone: {$phone}\nAddress: {$address}";
     }
 
     /**
