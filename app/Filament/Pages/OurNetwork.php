@@ -8,7 +8,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\MultiSelectFilter;
 use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,7 +33,10 @@ class OurNetwork extends Page implements HasTable
                 Tables\Columns\TextColumn::make('country.name')
                     ->label('Country')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->getStateUsing(function ($record) {
+                        return $record->country->name ?? 'Unknown';
+                    }),
                 Tables\Columns\TextColumn::make('city')
                     ->label('City')
                     ->sortable()
@@ -56,27 +58,27 @@ class OurNetwork extends Page implements HasTable
                     ->html(),
             ])
             ->filters([
-                SelectFilter::make('country')
+                MultiSelectFilter::make('country')
                     ->label('Country')
                     ->options(Country::pluck('name', 'id'))
                     ->searchable()
                     ->preload()
                     ->query(function (Builder $query, array $data): Builder {
-                        if (empty($data['value'])) {
+                        if (empty($data['values'])) {
                             return $query;
                         }
-                        return $query->where('country_id', $data['value']);
+                        return $query->whereIn('country_id', $data['values']);
                     }),
-                SelectFilter::make('city')
+                MultiSelectFilter::make('city')
                     ->label('City')
                     ->options(City::pluck('name', 'id'))
                     ->searchable()
                     ->preload()
                     ->query(function (Builder $query, array $data): Builder {
-                        if (empty($data['value'])) {
+                        if (empty($data['values'])) {
                             return $query;
                         }
-                        return $query->where('id', $data['value']);
+                        return $query->whereIn('id', $data['values']);
                     }),
                 MultiSelectFilter::make('service_types')
                     ->label('Service Types')
@@ -92,7 +94,7 @@ class OurNetwork extends Page implements HasTable
                     }),
             ])
             ->groups([
-                Group::make('country')
+                Group::make('country_id')
                     ->label('Country')
                     ->collapsible(),
             ])
