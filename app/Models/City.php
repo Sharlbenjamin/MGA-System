@@ -95,22 +95,22 @@ class City extends Model
 
     public function getTelemedicineAttribute()
     {
-        return $this->formatServiceWithProviders('Telemedicine', true, 'bg-blue-50 text-blue-800 border-blue-200');
+        return $this->formatServiceWithProviders('Telemedicine', true, 'background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; padding: 8px; border-radius: 6px;');
     }
 
     public function getHouseVisitAttribute()
     {
-        return $this->formatServiceWithProviders('House Call', false, 'bg-green-50 text-green-800 border-green-200');
+        return $this->formatServiceWithProviders('House Call', false, 'background-color: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 8px; border-radius: 6px;');
     }
 
     public function getDentalAttribute()
     {
-        return $this->formatServiceWithProviders('Dental Clinic', false, 'bg-purple-50 text-purple-800 border-purple-200');
+        return $this->formatServiceWithProviders('Dental Clinic', false, 'background-color: #f3e8ff; color: #7c3aed; border: 1px solid #c4b5fd; padding: 8px; border-radius: 6px;');
     }
 
     public function getClinicAttribute()
     {
-        return $this->formatServiceWithProviders('Clinic Visit', false, 'bg-orange-50 text-orange-800 border-orange-200');
+        return $this->formatServiceWithProviders('Clinic Visit', false, 'background-color: #fed7aa; color: #ea580c; border: 1px solid #fdba74; padding: 8px; border-radius: 6px;');
     }
 
     public function getCostAttribute()
@@ -134,7 +134,7 @@ class City extends Model
         }
         
         if ($allProviders->isEmpty()) {
-            return "<span class='font-bold text-red-600'>No Services</span>";
+            return "<span style='font-weight: bold; color: #dc2626;'>No Services</span>";
         }
         
         // Group by provider and sort by priority
@@ -154,7 +154,7 @@ class City extends Model
             return "• {$providerName} ({$serviceCosts})";
         })->implode('<br>');
         
-        return "<div class='bg-gray-50 text-gray-800 border border-gray-200 rounded p-2'>{$providerList}</div>";
+        return "<div style='background-color: #f9fafb; color: #374151; border: 1px solid #d1d5db; padding: 8px; border-radius: 6px;'>{$providerList}</div>";
     }
 
     protected function formatServiceWithProviders($serviceName, $isCountryLevel = false, $colorClasses = '')
@@ -219,7 +219,7 @@ class City extends Model
         $providers = $providers->sortBy('priority');
         
         if ($providers->isEmpty()) {
-            return "<span class='font-bold text-red-600'>Missing</span>";
+            return "<span style='font-weight: bold; color: #dc2626;'>Missing</span>";
         }
         
         $providerList = $providers->map(function ($provider) {
@@ -229,7 +229,7 @@ class City extends Model
         
         // Wrap in colored container if color classes provided
         if ($colorClasses) {
-            return "<div class='{$colorClasses} border rounded p-2'>{$providerList}</div>";
+            return "<div style='{$colorClasses}'>{$providerList}</div>";
         }
         
         return $providerList;
