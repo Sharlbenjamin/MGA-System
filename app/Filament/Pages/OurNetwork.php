@@ -109,11 +109,22 @@ class OurNetwork extends Page implements HasTable
     {
         return City::whereHas('branchCities.branch.provider', function ($query) {
             $query->where('status', 'Active');
-        })->with(['country', 'branchCities.branch' => function ($query) {
+        })
+        ->with(['country', 'branchCities.branch' => function ($query) {
             $query->whereHas('provider', function ($q) {
                 $q->where('status', 'Active');
             })->with(['provider', 'services']);
-        }]);
+        }])
+        ->leftJoin('countries', 'cities.country_id', '=', 'countries.id')
+        ->leftJoin('branch_cities', 'cities.id', '=', 'branch_cities.city_id')
+        ->leftJoin('provider_branches', 'branch_cities.provider_branch_id', '=', 'provider_branches.id')
+        ->leftJoin('providers', 'provider_branches.provider_id', '=', 'providers.id')
+        ->where('providers.status', 'Active')
+        ->select('cities.*')
+        ->selectRaw('COUNT(DISTINCT providers.id) as provider_count')
+        ->groupBy('cities.id', 'cities.name', 'cities.country_id', 'cities.province_id', 'cities.created_at', 'cities.updated_at')
+        ->orderBy('provider_count', 'desc')
+        ->orderBy('countries.name', 'asc');
     }
 
 }
