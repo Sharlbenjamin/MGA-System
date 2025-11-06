@@ -41,11 +41,6 @@ class GopRelationManager extends RelationManager
                 TextColumn::make('amount'),
                 TextColumn::make('date')->date(),
                 TextColumn::make('status')->badge()->color(fn($state) => $state === 'Sent' ? 'success' : 'danger'),
-                TextColumn::make('gop_google_drive_link')
-                    ->label('Google Drive Link')
-                    ->color('info')
-                    ->formatStateUsing(fn ($state) => $state)
-                    ->url(fn ($state) => str_starts_with($state, 'http') ? $state : "https://{$state}", true),
             ])
             ->headerActions([
                 // Create via modal action
@@ -71,9 +66,23 @@ class GopRelationManager extends RelationManager
                     })
             ])
             ->actions([
-                Action::make('viewGop')
+                Action::make('viewDocument')
                     ->label('View')
                     ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'gop', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->document_path)),
+                Action::make('downloadDocument')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'gop', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->document_path)),
+                Action::make('viewGop')
+                    ->label('View GOP')
+                    ->icon('heroicon-o-document-text')
                     ->url(fn ($record) => route('gop.view', $record))
                     ->openUrlInNewTab(),
                 Action::make('generate')

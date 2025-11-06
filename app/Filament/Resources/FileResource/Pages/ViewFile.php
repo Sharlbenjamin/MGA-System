@@ -802,7 +802,7 @@ class ViewFile extends ViewRecord
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
                             // Table-like header
-                            Grid::make(11)
+                            Grid::make(13)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
                                         ->label('')
@@ -830,10 +830,6 @@ class ViewFile extends ViewRecord
                                         ->label('Branch Name')
                                         ->content('')
                                         ->columnSpan(2),
-                                    \Filament\Forms\Components\Placeholder::make('header_provider')
-                                        ->label('Provider')
-                                        ->content('')
-                                        ->columnSpan(2),
                                     \Filament\Forms\Components\Placeholder::make('header_priority')
                                         ->label('Priority')
                                         ->content('')
@@ -848,6 +844,22 @@ class ViewFile extends ViewRecord
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_contact')
                                         ->label('Contact')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_phone')
+                                        ->label('Phone')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_address')
+                                        ->label('Address')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_website')
+                                        ->label('Website')
+                                        ->content('')
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_provider_comment')
+                                        ->label('Provider Comment')
                                         ->content('')
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_distance')
@@ -1972,7 +1984,7 @@ class ViewFile extends ViewRecord
         $rows = [];
         
         foreach ($branches as $branch) {
-            $rows[] = Grid::make(11)
+            $rows[] = Grid::make(13)
                 ->schema([
                     // Checkbox column
                     Checkbox::make("branch_{$branch->id}")
@@ -2004,21 +2016,13 @@ class ViewFile extends ViewRecord
                         })
                         ->columnSpan(1),
                     
-                    // Branch name column
+                    // Branch name column (with provider name as description)
                     \Filament\Forms\Components\View::make('branch_name_' . $branch->id)
                         ->view('filament.forms.components.branch-name-link')
                         ->viewData([
                             'branchName' => $branch->branch_name,
-                            'branchId' => $branch->id
-                        ])
-                        ->columnSpan(2),
-                    
-                    // Provider column
-                    \Filament\Forms\Components\View::make('provider_' . $branch->id)
-                        ->view('filament.forms.components.provider-name-link')
-                        ->viewData([
-                            'providerName' => $branch->provider->name ?? 'N/A',
-                            'providerId' => $branch->provider->id ?? null
+                            'branchId' => $branch->id,
+                            'providerName' => $branch->provider?->name ?? null
                         ])
                         ->columnSpan(2),
                     
@@ -2073,6 +2077,40 @@ class ViewFile extends ViewRecord
                             'contactInfo' => $this->getBranchContactInfo($branch),
                             'branchId' => $branch->id
                         ])
+                        ->columnSpan(1),
+                    
+                    // Phone column (copiable)
+                    \Filament\Forms\Components\View::make('phone_' . $branch->id)
+                        ->view('filament.forms.components.copiable-field')
+                        ->viewData([
+                            'label' => 'phone',
+                            'value' => $branch->phone ?? ($branch->getPrimaryPhoneAttribute() ?? 'N/A')
+                        ])
+                        ->columnSpan(1),
+                    
+                    // Address column (copiable)
+                    \Filament\Forms\Components\View::make('address_' . $branch->id)
+                        ->view('filament.forms.components.copiable-field')
+                        ->viewData([
+                            'label' => 'address',
+                            'value' => $branch->address ?? 'N/A'
+                        ])
+                        ->columnSpan(1),
+                    
+                    // Website column (copiable)
+                    \Filament\Forms\Components\View::make('website_' . $branch->id)
+                        ->view('filament.forms.components.copiable-field')
+                        ->viewData([
+                            'label' => 'website',
+                            'value' => $branch->website ?? 'N/A'
+                        ])
+                        ->columnSpan(1),
+                    
+                    // Provider comment column
+                    \Filament\Forms\Components\Placeholder::make("provider_comment_{$branch->id}")
+                        ->label('')
+                        ->content($branch->provider?->comment ?? 'N/A')
+                        ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(1),
                     
                     // Distance column

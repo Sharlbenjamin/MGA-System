@@ -247,6 +247,13 @@ class ProviderBranchResource extends Resource
                                             ->columnSpan(2)
                                             ->nullable()
                                             ->helperText('Direct address for this branch. Takes priority over contact relationships.'),
+
+                                        TextInput::make('website')
+                                            ->label('Website')
+                                            ->url()
+                                            ->nullable()
+                                            ->columnSpan(2)
+                                            ->helperText('Website URL for this branch.'),
                                     ]),
                             ])
                             ->collapsible()
@@ -330,6 +337,7 @@ class ProviderBranchResource extends Resource
                 TextColumn::make('email')->label('Branch Email')->searchable()->toggleable(),
                 TextColumn::make('phone')->label('Branch Phone')->searchable()->toggleable(),
                 TextColumn::make('address')->label('Branch Address')->searchable()->toggleable()->limit(50),
+                TextColumn::make('website')->label('Website')->searchable()->toggleable()->url(fn ($record) => $record->website ? (str_starts_with($record->website, 'http') ? $record->website : 'https://' . $record->website) : null)->openUrlInNewTab(),
 
                 BadgeColumn::make('status')
                     ->colors([

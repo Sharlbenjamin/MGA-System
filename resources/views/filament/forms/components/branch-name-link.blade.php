@@ -8,4 +8,7 @@
     @else
         <span class="text-sm font-bold text-primary-600">{{ $branchName }}</span>
     @endif
+    @if(isset($providerName) && $providerName)
+        <div class="text-xs text-gray-500 mt-1">{{ $providerName }}</div>
+    @endif
 </div>

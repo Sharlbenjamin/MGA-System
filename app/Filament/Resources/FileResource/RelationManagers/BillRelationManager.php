@@ -52,11 +52,6 @@ class BillRelationManager extends RelationManager
                     ->state(fn ($record) => $record->total_amount - $record->paid_amount)
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('bill_google_link')
-                    ->label('Google Drive Link')
-                    ->color('info')
-                    ->formatStateUsing(fn ($state) => $state)
-                    ->url(fn ($state) => str_starts_with($state, 'http') ? $state : "https://{$state}", true),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -67,6 +62,20 @@ class BillRelationManager extends RelationManager
                     ]),
             ])
             ->actions([
+                Action::make('viewDocument')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn ($record) => $record->bill_document_path ? route('docs.serve', ['type' => 'bill', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->bill_document_path)),
+                Action::make('downloadDocument')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(fn ($record) => $record->bill_document_path ? route('docs.serve', ['type' => 'bill', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->bill_document_path)),
                 Action::make('upload_bill_relation_manager')
                     ->label('Upload Document')
                     ->icon('heroicon-o-document-arrow-up')

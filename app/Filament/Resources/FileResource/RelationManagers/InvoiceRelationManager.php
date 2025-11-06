@@ -39,12 +39,6 @@ class InvoiceRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('total_amount')->sortable()->searchable()->money('EUR'),
                 Tables\Columns\TextColumn::make('paid_amount')->sortable()->searchable()->money('EUR'),
                 Tables\Columns\TextColumn::make('remaining_amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('invoice_google_link')
-                    ->label('PDF')
-                    ->weight('underline')->color('info')
-                    ->state(fn (Invoice $record) => $record->invoice_google_link ? 'View Invoice' : '')
-                    ->url(fn (Invoice $record) => $record->invoice_google_link)
-                    ->openUrlInNewTab(false),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -58,6 +52,20 @@ class InvoiceRelationManager extends RelationManager
                     ]),
             ])
             ->actions([
+                Action::make('viewDocument')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn ($record) => $record->invoice_document_path ? route('docs.serve', ['type' => 'invoice', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->invoice_document_path)),
+                Action::make('downloadDocument')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(fn ($record) => $record->invoice_document_path ? route('docs.serve', ['type' => 'invoice', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->invoice_document_path)),
                 Action::make('edit')->color('gray')->icon('heroicon-o-pencil')
                     ->url(fn ($record) => InvoiceResource::getUrl('edit', [
                         'record' => $record->id

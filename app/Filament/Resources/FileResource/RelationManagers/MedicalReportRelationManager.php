@@ -74,6 +74,20 @@ class MedicalReportRelationManager extends RelationManager
                     ->successNotificationTitle('Medical Report Created'),
             ])
             ->actions([
+                Actions\Action::make('viewDocument')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'medical_report', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->document_path)),
+                Actions\Action::make('downloadDocument')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'medical_report', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->document_path)),
                 Actions\Action::make('export')
                 ->label('Export PDF')
                 ->icon('heroicon-o-document-arrow-down')

@@ -50,6 +50,20 @@ class PrescriptionRelationManager extends RelationManager
                     }),
             ])
             ->actions([
+                Action::make('viewDocument')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'prescription', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->document_path)),
+                Action::make('downloadDocument')
+                    ->label('Download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'prescription', 'id' => $record->id]) : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => !empty($record->document_path)),
                 Action::make('edit')
                     ->label('Edit')
                     ->icon('heroicon-o-pencil')
