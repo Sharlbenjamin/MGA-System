@@ -8,8 +8,6 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 use App\Models\Country;
-use App\Models\Bill;
-use Illuminate\Database\Eloquent\Builder;
 
 class BillRelationManager extends RelationManager
 {
@@ -26,24 +24,9 @@ class BillRelationManager extends RelationManager
             ]);
     }
 
-    protected function getTableQuery(): Builder
-    {
-        $tableName = (new Bill())->getTable();
-        $query = parent::getTableQuery();
-        
-        // Ensure all columns are properly qualified to avoid ambiguity
-        return $query->select($tableName . '.*');
-    }
-
     public function table(Table $table): Table
     {
-        $tableName = (new Bill())->getTable();
-        
         return $table
-            ->modifyQueryUsing(function (Builder $query) use ($tableName) {
-                // Explicitly select bills table columns to avoid ambiguity
-                return $query->select($tableName . '.*');
-            })
             ->columns([
                 Tables\Columns\TextColumn::make('name'),
                 Tables\Columns\TextColumn::make('total_amount')->money('eur'),
@@ -53,19 +36,10 @@ class BillRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('bill_date')->date('d/m/Y'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('bill_status')
-                    ->label('Status')
-                    ->options([
-                        'Paid' => 'Paid',
-                        'Unpaid' => 'Unpaid',
-                    ])
-                    ->query(function (Builder $query, array $data) use ($tableName): Builder {
-                        if (!empty($data['value'])) {
-                            // Use whereRaw to ensure the column is explicitly qualified
-                            return $query->whereRaw("`{$tableName}`.`status` = ?", [$data['value']]);
-                        }
-                        return $query;
-                    }),
+                Tables\Filters\SelectFilter::make('status')->options([
+                    'Paid' => 'Paid',
+                    'Unpaid' => 'Unpaid',
+                ]),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
