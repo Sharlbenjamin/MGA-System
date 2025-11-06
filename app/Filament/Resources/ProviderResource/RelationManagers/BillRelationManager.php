@@ -8,6 +8,8 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 use App\Models\Country;
+use App\Models\Bill;
+use Illuminate\Database\Eloquent\Builder;
 
 class BillRelationManager extends RelationManager
 {
@@ -36,14 +38,16 @@ class BillRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('bill_date')->date('d/m/Y'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
+                Tables\Filters\SelectFilter::make('bill_status')
+                    ->label('Status')
                     ->options([
                         'Paid' => 'Paid',
                         'Unpaid' => 'Unpaid',
                     ])
-                    ->query(function ($query, array $data) {
+                    ->query(function (Builder $query, array $data): Builder {
                         if (!empty($data['value'])) {
-                            return $query->where('bills.status', $data['value']);
+                            $tableName = (new Bill())->getTable();
+                            return $query->where($tableName . '.status', $data['value']);
                         }
                         return $query;
                     }),
