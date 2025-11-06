@@ -202,10 +202,6 @@ class FileResource extends Resource
                         return $lastComment ? $lastComment->content : null;
                     })
                     ->limit(50)
-                    ->tooltip(fn ($record) => {
-                        $lastComment = $record->comments->first();
-                        return $lastComment ? $lastComment->content : null;
-                    })
                     ->placeholder('No comments'),
                 
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
