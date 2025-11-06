@@ -180,15 +180,24 @@ class GopRelationManager extends RelationManager
                                 }
                             }
 
-                        // Save to local storage using DocumentPathResolver
+                        // Save to local storage using DocumentPathResolver (PRIMARY storage)
                         $resolver = app(\App\Services\DocumentPathResolver::class);
                         $localPath = $resolver->ensurePathFor($record->file, 'gops', $fileName);
                         \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
                         
-                        // Update GOP with local document path
+                        // Update GOP with local document path (PRIMARY)
                         $record->document_path = $localPath;
 
-                        // Upload to Google Drive (keep as secondary)
+                        // Clean up temporary file if it exists (from FileUpload component)
+                        if (isset($uploadedFile) && $uploadedFile !== $localPath) {
+                            try {
+                                Storage::disk('public')->delete($uploadedFile);
+                            } catch (\Exception $e) {
+                                Log::warning('Could not delete temporary file', ['path' => $uploadedFile, 'error' => $e->getMessage()]);
+                            }
+                        }
+
+                        // Upload to Google Drive (SECONDARY/BACKUP only)
                         $uploader = app(UploadGopToGoogleDrive::class);
                         $result = $uploader->uploadGopToGoogleDrive(
                             $content,
@@ -197,7 +206,7 @@ class GopRelationManager extends RelationManager
                         );
 
                         if ($result !== false) {
-                            // Update GOP with Google Drive link if upload successful
+                            // Update GOP with Google Drive link if upload successful (backup only)
                             $record->gop_google_drive_link = $result;
                         }
 

@@ -55,6 +55,46 @@ class InvoiceRelationManager extends RelationManager
                     ->sortable()
                     ->searchable()
                     ->copyable(),
+                Tables\Columns\TextColumn::make('file.country.name')
+                    ->label('Country')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('file.city.name')
+                    ->label('City')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('file.patient.name')
+                    ->label('Patient')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('file.serviceType.name')
+                    ->label('Service Type')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('file.provider.name')
+                    ->label('Provider')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('file.bills_sum')
+                    ->label('Bills Total')
+                    ->state(fn (Invoice $record) => $record->file?->bills()->sum('total_amount') ?? 0)
+                    ->sortable()
+                    ->money('EUR'),
+                Tables\Columns\TextColumn::make('file.bills_first_status')
+                    ->label('Bill Status')
+                    ->state(fn (Invoice $record) => $record->file?->bills()->first()?->status ?? '-')
+                    ->sortable()
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'Draft' => 'gray',
+                        'Sent' => 'info',
+                        'Overdue' => 'danger',
+                        'Paid' => 'success',
+                        'Partial' => 'warning',
+                        'Posted' => 'primary',
+                        'Unpaid' => 'danger',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'Draft' => 'gray',
                     'Sent' => 'info',

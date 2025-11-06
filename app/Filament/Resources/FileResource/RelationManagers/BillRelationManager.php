@@ -151,22 +151,31 @@ class BillRelationManager extends RelationManager
                                 $fileName = 'Bill ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
                                 Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
                                 
-                                // Save to local storage using DocumentPathResolver
+                                // Save to local storage using DocumentPathResolver (PRIMARY storage)
                                 $resolver = app(\App\Services\DocumentPathResolver::class);
                                 $localPath = $resolver->ensurePathFor($record->file, 'bills', $fileName);
                                 \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
                                 
-                                // Update bill with local document path
+                                // Update bill with local document path (PRIMARY)
                                 $record->bill_document_path = $localPath;
 
-                                // Upload to Google Drive using the service (keep as secondary)
+                                // Clean up temporary file if it exists (from FileUpload component)
+                                if ($uploadedFile !== $localPath) {
+                                    try {
+                                        Storage::disk('public')->delete($uploadedFile);
+                                    } catch (\Exception $e) {
+                                        Log::warning('Could not delete temporary bill file', ['path' => $uploadedFile, 'error' => $e->getMessage()]);
+                                    }
+                                }
+
+                                // Upload to Google Drive using the service (SECONDARY/BACKUP only)
                                 $uploadService = new UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
                                 $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $record);
                                 
                                 if ($uploadResult) {
                                     Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
                                     
-                                    // Update the bill record with the Google Drive link
+                                    // Update the bill record with the Google Drive link (backup only)
                                     $record->bill_google_link = $uploadResult;
                                 }
                                 

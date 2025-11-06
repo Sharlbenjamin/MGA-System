@@ -84,15 +84,15 @@ class InvoiceRelationManager extends RelationManager
                         $content = $pdf->output();
                         $fileName = $record->name . '.pdf';
 
-                        // Save to local storage using DocumentPathResolver
+                        // Save to local storage using DocumentPathResolver (PRIMARY storage)
                         $resolver = app(\App\Services\DocumentPathResolver::class);
                         $localPath = $resolver->ensurePathFor($record->file, 'invoices', $fileName);
                         \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
                         
-                        // Update invoice with local document path
+                        // Update invoice with local document path (PRIMARY)
                         $record->invoice_document_path = $localPath;
 
-                        // Upload to Google Drive (keep as secondary)
+                        // Upload to Google Drive (SECONDARY/BACKUP only)
                         $uploader = app(UploadInvoiceToGoogleDrive::class);
                         $result = $uploader->uploadInvoiceToGoogleDrive(
                             $content,
@@ -101,7 +101,7 @@ class InvoiceRelationManager extends RelationManager
                         );
 
                         if ($result !== false) {
-                            // Update invoice with Google Drive link if upload successful
+                            // Update invoice with Google Drive link if upload successful (backup only)
                             $record->invoice_google_link = $result['webViewLink'];
                         }
 
