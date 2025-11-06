@@ -128,7 +128,8 @@ class FileResource extends Resource
                 'city',
                 'serviceType',
                 'providerBranch.provider',
-                'gops'
+                'gops',
+                'comments' => fn ($query) => $query->latest()->limit(1)
             ]))
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -193,6 +194,19 @@ class FileResource extends Resource
                         'Cancelled' => 'danger',
                         'Void' => 'gray',
                     }),
+                
+                Tables\Columns\TextColumn::make('last_comment')
+                    ->label('Last Comment')
+                    ->getStateUsing(function ($record) {
+                        $lastComment = $record->comments->first();
+                        return $lastComment ? $lastComment->content : null;
+                    })
+                    ->limit(50)
+                    ->tooltip(fn ($record) => {
+                        $lastComment = $record->comments->first();
+                        return $lastComment ? $lastComment->content : null;
+                    })
+                    ->placeholder('No comments'),
                 
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')
