@@ -70,14 +70,14 @@ class GopRelationManager extends RelationManager
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('info')
-                    ->url(fn ($record) => $record->getDocumentSignedUrl())
+                    ->url(fn ($record) => $record->document_path ? asset('storage/' . $record->document_path) : null)
                     ->openUrlInNewTab()
                     ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('downloadDocument')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->url(fn ($record) => $record->getDocumentSignedUrl())
+                    ->url(fn ($record) => $record->document_path ? asset('storage/' . $record->document_path) : null)
                     ->openUrlInNewTab()
                     ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('viewGop')
