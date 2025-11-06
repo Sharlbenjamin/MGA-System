@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Log;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists\Components\Section as InfolistSection;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\BadgeEntry;
 use Filament\Infolists\Components\Grid as InfolistGrid;
 use Filament\Infolists\Infolist;
 use App\Filament\Resources\FileResource;
@@ -202,6 +201,30 @@ class ViewFile extends ViewRecord
                                                 $this->copyToClipboard($text, 'Status');
                                             })
                                     ),
+                                TextEntry::make('invoice_status')
+                                    ->label('Invoice Status')
+                                    ->badge()
+                                    ->getStateUsing(function ($record) {
+                                        $latestInvoice = $record->invoices()->latest()->first();
+                                        return $latestInvoice ? $latestInvoice->status : 'No Invoice';
+                                    })
+                                    ->color(fn ($state) => match ($state) {
+                                        'Paid' => 'success',
+                                        'No Invoice' => 'gray',
+                                        default => 'warning',
+                                    }),
+                                TextEntry::make('bill_status')
+                                    ->label('Bill Status')
+                                    ->badge()
+                                    ->getStateUsing(function ($record) {
+                                        $latestBill = $record->bills()->latest()->first();
+                                        return $latestBill ? $latestBill->status : 'No Bill';
+                                    })
+                                    ->color(fn ($state) => match ($state) {
+                                        'Paid' => 'success',
+                                        'No Bill' => 'gray',
+                                        default => 'warning',
+                                    }),
                                 TextEntry::make('providerBranch.provider.name')
                                     ->label('Provider Name')
                                     ->color('info')
