@@ -70,21 +70,22 @@ class GopRelationManager extends RelationManager
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('info')
-                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'gop', 'id' => $record->id]) : null)
+                    ->url(fn ($record) => $record->getDocumentSignedUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn ($record) => !empty($record->document_path)),
+                    ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('downloadDocument')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'gop', 'id' => $record->id]) : null)
+                    ->url(fn ($record) => $record->getDocumentSignedUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn ($record) => !empty($record->document_path)),
+                    ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('viewGop')
-                    ->label('View GOP')
+                    ->label('View GOP Out')
                     ->icon('heroicon-o-document-text')
                     ->url(fn ($record) => route('gop.view', $record))
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => $record->type === 'Out'),
                 Action::make('generate')
                     ->label(fn ($record) => $record->type === 'Out' ? 'GOP Generate' : 'GOP Upload')
                     ->icon('heroicon-o-document-arrow-up')

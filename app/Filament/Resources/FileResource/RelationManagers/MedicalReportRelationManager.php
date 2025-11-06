@@ -78,16 +78,16 @@ class MedicalReportRelationManager extends RelationManager
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('info')
-                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'medical_report', 'id' => $record->id]) : null)
+                    ->url(fn ($record) => $record->getDocumentSignedUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn ($record) => !empty($record->document_path)),
+                    ->visible(fn ($record) => $record->hasLocalDocument()),
                 Actions\Action::make('downloadDocument')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->url(fn ($record) => $record->document_path ? route('docs.serve', ['type' => 'medical_report', 'id' => $record->id]) : null)
+                    ->url(fn ($record) => $record->getDocumentSignedUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn ($record) => !empty($record->document_path)),
+                    ->visible(fn ($record) => $record->hasLocalDocument()),
                 Actions\Action::make('export')
                 ->label('Export PDF')
                 ->icon('heroicon-o-document-arrow-down')

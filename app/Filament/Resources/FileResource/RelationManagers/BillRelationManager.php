@@ -66,16 +66,16 @@ class BillRelationManager extends RelationManager
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('info')
-                    ->url(fn ($record) => $record->bill_document_path ? route('docs.serve', ['type' => 'bill', 'id' => $record->id]) : null)
+                    ->url(fn ($record) => $record->getDocumentSignedUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn ($record) => !empty($record->bill_document_path)),
+                    ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('downloadDocument')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->url(fn ($record) => $record->bill_document_path ? route('docs.serve', ['type' => 'bill', 'id' => $record->id]) : null)
+                    ->url(fn ($record) => $record->getDocumentSignedUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn ($record) => !empty($record->bill_document_path)),
+                    ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('upload_bill_relation_manager')
                     ->label('Upload Document')
                     ->icon('heroicon-o-document-arrow-up')

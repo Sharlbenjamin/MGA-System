@@ -56,16 +56,16 @@ class InvoiceRelationManager extends RelationManager
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('info')
-                    ->url(fn ($record) => $record->invoice_document_path ? route('docs.serve', ['type' => 'invoice', 'id' => $record->id]) : null)
+                    ->url(fn ($record) => $record->getDocumentSignedUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn ($record) => !empty($record->invoice_document_path)),
+                    ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('downloadDocument')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->url(fn ($record) => $record->invoice_document_path ? route('docs.serve', ['type' => 'invoice', 'id' => $record->id]) : null)
+                    ->url(fn ($record) => $record->getDocumentSignedUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn ($record) => !empty($record->invoice_document_path)),
+                    ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('edit')->color('gray')->icon('heroicon-o-pencil')
                     ->url(fn ($record) => InvoiceResource::getUrl('edit', [
                         'record' => $record->id

@@ -250,10 +250,9 @@ class ProviderBranchResource extends Resource
 
                                         TextInput::make('website')
                                             ->label('Website')
-                                            ->url()
                                             ->nullable()
                                             ->columnSpan(2)
-                                            ->helperText('Website URL for this branch.'),
+                                            ->helperText('Website URL for this branch (e.g., example.com or https://example.com).'),
                                     ]),
                             ])
                             ->collapsible()
@@ -337,7 +336,12 @@ class ProviderBranchResource extends Resource
                 TextColumn::make('email')->label('Branch Email')->searchable()->toggleable(),
                 TextColumn::make('phone')->label('Branch Phone')->searchable()->toggleable(),
                 TextColumn::make('address')->label('Branch Address')->searchable()->toggleable()->limit(50),
-                TextColumn::make('website')->label('Website')->searchable()->toggleable()->url(fn ($record) => $record->website ? (str_starts_with($record->website, 'http') ? $record->website : 'https://' . $record->website) : null)->openUrlInNewTab(),
+                TextColumn::make('website')
+                    ->label('Website')
+                    ->searchable()
+                    ->toggleable()
+                    ->url(fn ($record) => $record->website ? (str_starts_with($record->website, 'http://') || str_starts_with($record->website, 'https://') ? $record->website : 'https://' . $record->website) : null)
+                    ->openUrlInNewTab(),
 
                 BadgeColumn::make('status')
                     ->colors([
