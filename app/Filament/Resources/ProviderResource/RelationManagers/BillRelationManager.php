@@ -43,7 +43,7 @@ class BillRelationManager extends RelationManager
                     ])
                     ->query(function ($query, array $data) {
                         if (!empty($data['value'])) {
-                            return $query->where('status', $data['value']);
+                            return $query->where('bills.status', $data['value']);
                         }
                         return $query;
                     }),
