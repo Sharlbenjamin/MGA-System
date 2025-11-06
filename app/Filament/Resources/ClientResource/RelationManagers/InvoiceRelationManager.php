@@ -58,28 +58,24 @@ class InvoiceRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('file.country.name')
                     ->label('Country')
                     ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('file.city.name')
-                    ->label('City')
-                    ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->description(fn (Invoice $record) => $record->file?->city?->name ?? '-'),
                 Tables\Columns\TextColumn::make('file.patient.name')
                     ->label('Patient')
                     ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('file.serviceType.name')
-                    ->label('Service Type')
-                    ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->description(fn (Invoice $record) => $record->file?->client_reference ?? '-'),
                 Tables\Columns\TextColumn::make('file.provider.name')
                     ->label('Provider')
                     ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('file.bills_sum')
-                    ->label('Bills Total')
-                    ->state(fn (Invoice $record) => $record->file?->bills()->sum('total_amount') ?? 0)
+                    ->searchable()
+                    ->description(fn (Invoice $record) => $record->file?->serviceType?->name ?? '-'),
+                Tables\Columns\TextColumn::make('file.bills_first_date')
+                    ->label('Bill Date')
+                    ->state(fn (Invoice $record) => $record->file?->bills()->first()?->bill_date)
+                    ->date()
                     ->sortable()
-                    ->money('EUR'),
+                    ->description(fn (Invoice $record) => 'Total: ' . number_format($record->file?->bills()->sum('total_amount') ?? 0, 2) . ' EUR'),
                 Tables\Columns\TextColumn::make('file.bills_first_status')
                     ->label('Bill Status')
                     ->state(fn (Invoice $record) => $record->file?->bills()->first()?->status ?? '-')
