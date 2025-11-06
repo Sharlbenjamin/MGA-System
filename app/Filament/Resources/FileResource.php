@@ -128,8 +128,7 @@ class FileResource extends Resource
                 'city',
                 'serviceType',
                 'providerBranch.provider',
-                'gops',
-                'comments' => fn ($query) => $query->latest()->limit(1)
+                'gops'
             ]))
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -198,8 +197,12 @@ class FileResource extends Resource
                 Tables\Columns\TextColumn::make('last_comment')
                     ->label('Last Comment')
                     ->getStateUsing(function ($record) {
-                        $lastComment = $record->comments->first();
-                        return $lastComment ? $lastComment->content : null;
+                        try {
+                            $lastComment = $record->comments()->latest()->first();
+                            return $lastComment ? $lastComment->content : null;
+                        } catch (\Exception $e) {
+                            return null;
+                        }
                     })
                     ->limit(50)
                     ->placeholder('No comments'),
