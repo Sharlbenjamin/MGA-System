@@ -26,15 +26,27 @@ class BillRelationManager extends RelationManager
             ]);
     }
 
+    protected function getTableQuery(): Builder
+    {
+        $tableName = (new Bill())->getTable();
+        $query = parent::getTableQuery();
+        
+        // Ensure all columns are properly qualified to avoid ambiguity
+        return $query->select($tableName . '.*');
+    }
+
     public function table(Table $table): Table
     {
+        $tableName = (new Bill())->getTable();
+        
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name'),
                 Tables\Columns\TextColumn::make('total_amount')->money('eur'),
                 Tables\Columns\TextColumn::make('paid_amount')->money('eur'),
                 Tables\Columns\TextColumn::make('remaining_amount')->state(function ($record) {return $record->total_amount - $record->paid_amount;})->money('eur'),
-                Tables\Columns\TextColumn::make('status'),
+                Tables\Columns\TextColumn::make('status')
+                    ->toggleable(isToggledHiddenByDefault: false),
                 Tables\Columns\TextColumn::make('bill_date')->date('d/m/Y'),
             ])
             ->filters([
@@ -44,10 +56,10 @@ class BillRelationManager extends RelationManager
                         'Paid' => 'Paid',
                         'Unpaid' => 'Unpaid',
                     ])
-                    ->query(function (Builder $query, array $data): Builder {
+                    ->query(function (Builder $query, array $data) use ($tableName): Builder {
                         if (!empty($data['value'])) {
-                            $tableName = (new Bill())->getTable();
-                            return $query->where($tableName . '.status', $data['value']);
+                            // Use whereRaw to ensure proper table qualification
+                            return $query->whereRaw($tableName . '.status = ?', [$data['value']]);
                         }
                         return $query;
                     }),
