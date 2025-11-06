@@ -317,10 +317,10 @@ class Bill extends Model
             return null;
         }
 
-        return route('docs.serve', [
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'bill',
             'id' => $this->id
-        ], true, $expirationMinutes);
+        ]);
     }
 
     /**
@@ -335,9 +335,9 @@ class Bill extends Model
             return null;
         }
 
-        return route('docs.metadata', [
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'bill',
             'id' => $this->id
-        ], true, $expirationMinutes);
+        ]);
     }
 }

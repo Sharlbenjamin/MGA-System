@@ -66,10 +66,10 @@ class MedicalReport extends Model
             return null;
         }
 
-        return route('docs.serve', [
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'medical_report',
             'id' => $this->id
-        ], true, $expirationMinutes);
+        ]);
     }
 
     /**
@@ -84,9 +84,9 @@ class MedicalReport extends Model
             return null;
         }
 
-        return route('docs.metadata', [
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'medical_report',
             'id' => $this->id
-        ], true, $expirationMinutes);
+        ]);
     }
 }

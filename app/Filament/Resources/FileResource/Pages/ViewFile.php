@@ -802,7 +802,7 @@ class ViewFile extends ViewRecord
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
                             // Table-like header
-                            Grid::make(13)
+                            Grid::make(12)
                                 ->schema([
                                     Checkbox::make('select_all_branches')
                                         ->label('')
@@ -856,10 +856,6 @@ class ViewFile extends ViewRecord
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_website')
                                         ->label('Website')
-                                        ->content('')
-                                        ->columnSpan(1),
-                                    \Filament\Forms\Components\Placeholder::make('header_provider_comment')
-                                        ->label('Provider Comment')
                                         ->content('')
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_distance')
@@ -1984,7 +1980,7 @@ class ViewFile extends ViewRecord
         $rows = [];
         
         foreach ($branches as $branch) {
-            $rows[] = Grid::make(13)
+            $rows[] = Grid::make(12)
                 ->schema([
                     // Checkbox column
                     Checkbox::make("branch_{$branch->id}")
@@ -2016,13 +2012,14 @@ class ViewFile extends ViewRecord
                         })
                         ->columnSpan(1),
                     
-                    // Branch name column (with provider name as description)
+                    // Branch name column (with provider name and comment as description)
                     \Filament\Forms\Components\View::make('branch_name_' . $branch->id)
                         ->view('filament.forms.components.branch-name-link')
                         ->viewData([
                             'branchName' => $branch->branch_name,
                             'branchId' => $branch->id,
-                            'providerName' => $branch->provider?->name ?? null
+                            'providerName' => $branch->provider?->name ?? null,
+                            'providerComment' => $branch->provider?->comment ?? null
                         ])
                         ->columnSpan(2),
                     
@@ -2104,13 +2101,6 @@ class ViewFile extends ViewRecord
                             'label' => 'website',
                             'value' => $branch->website ?? 'N/A'
                         ])
-                        ->columnSpan(1),
-                    
-                    // Provider comment column
-                    \Filament\Forms\Components\Placeholder::make("provider_comment_{$branch->id}")
-                        ->label('')
-                        ->content($branch->provider?->comment ?? 'N/A')
-                        ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(1),
                     
                     // Distance column

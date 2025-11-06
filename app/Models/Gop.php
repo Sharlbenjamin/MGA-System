@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Mail\GopMailable;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 
 class Gop extends Model
 {
@@ -78,10 +79,10 @@ class Gop extends Model
             return null;
         }
 
-        return route('docs.serve', [
+        return URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'gop',
             'id' => $this->id
-        ], true, $expirationMinutes);
+        ]);
     }
 
     /**
@@ -96,9 +97,9 @@ class Gop extends Model
             return null;
         }
 
-        return route('docs.metadata', [
+        return URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'gop',
             'id' => $this->id
-        ], true, $expirationMinutes);
+        ]);
     }
 }

@@ -11,4 +11,7 @@
     @if(isset($providerName) && $providerName)
         <div class="text-xs text-gray-500 mt-1">{{ $providerName }}</div>
     @endif
+    @if(isset($providerComment) && $providerComment)
+        <div class="text-xs text-gray-400 mt-1 italic">{{ $providerComment }}</div>
+    @endif
 </div>
