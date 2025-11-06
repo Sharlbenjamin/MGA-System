@@ -36,10 +36,17 @@ class BillRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('bill_date')->date('d/m/Y'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('status')->options([
-                    'Paid' => 'Paid',
-                    'Unpaid' => 'Unpaid',
-                ]),
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'Paid' => 'Paid',
+                        'Unpaid' => 'Unpaid',
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (!empty($data['value'])) {
+                            return $query->where('status', $data['value']);
+                        }
+                        return $query;
+                    }),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
