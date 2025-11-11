@@ -54,7 +54,7 @@ protected static ?string $navigationIcon = 'heroicon-o-map-pin'; // 📍 Cities 
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\FileRelationManager::class,
         ];
     }
 
