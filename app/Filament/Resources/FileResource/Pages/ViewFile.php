@@ -942,168 +942,83 @@ class ViewFile extends ViewRecord
                     );
                 }),
             Action::make('notifyClient')
-                ->label('Notify Client')
+                ->label('Ready Replies')
                 ->slideOver()
                 ->icon('heroicon-o-paper-airplane')
                 ->color('warning')
-                ->modalHeading('Notify Client')
+                ->modalHeading('Ready Replies')
                 ->modalWidth('7xl')
                 ->form([
-                    Select::make('draft_mail_id')
-                        ->label('Select Template')
-                        ->options(function () {
-                            return DraftMail::where('type', 'file')
-                                ->pluck('mail_name', 'id')
-                                ->toArray();
-                        })
-                        ->searchable()
+                    Select::make('category')
+                        ->label('Category')
+                        ->options([
+                            'Provider' => 'Provider',
+                            'Patient' => 'Patient',
+                            'Client' => 'Client',
+                        ])
                         ->required()
                         ->live()
                         ->afterStateUpdated(function ($state, $set, $record, $get) {
-                            Log::info('Template selected', ['draft_mail_id' => $state]);
-                            if ($state) {
-                                $draftMail = DraftMail::find($state);
-                                if ($draftMail) {
-                                    $this->updatePreview($set, $record, $get);
-                                }
-                            }
+                            $this->updateReadyReplyMessage($set, $record, $get);
                         }),
                     
-                    CheckboxList::make('include_fields')
-                        ->label('Include Optional Fields')
+                    Select::make('status')
+                        ->label('Status')
                         ->options([
-                            'patient_name' => 'Patient Name',
-                            'service_type' => 'Service Type',
-                            'country' => 'Country',
-                            'city' => 'City',
-                            'provider_branch' => 'Provider Branch',
-                            'provider_name' => 'Provider Name',
+                            'New' => 'New',
+                            'Available' => 'Available',
+                            'Confirmed' => 'Confirmed',
+                            'Assisted' => 'Assisted',
+                            'Cancelled' => 'Cancelled',
+                            'Void' => 'Void',
                         ])
-                        ->columns(3)
-                        ->default(['patient_name', 'service_type', 'diagnosis'])
+                        ->required()
                         ->live()
                         ->afterStateUpdated(function ($state, $set, $record, $get) {
-                            Log::info('Checkbox state updated', ['state' => $state]);
-                            $this->updatePreview($set, $record, $get);
+                            $this->updateReadyReplyMessage($set, $record, $get);
                         }),
                     
-                    Textarea::make('custom_notes')
-                        ->label('Custom Notes')
-                        ->placeholder('Add any additional notes to append to the message...')
-                        ->rows(3)
-                        ->live()
-                        ->afterStateUpdated(function ($state, $set, $record, $get) {
-                            Log::info('Custom notes updated', ['notes' => $state]);
-                            $this->updatePreview($set, $record, $get);
-                        }),
-                    
-                    Textarea::make('preview_content')
-                        ->label('Message Preview')
+                    Textarea::make('message_display')
+                        ->label('Message')
                         ->rows(10)
                         ->disabled()
-                        ->placeholder('Select a template to see the preview...')
+                        ->placeholder('Select Category and Status to see the message...')
                         ->columnSpanFull(),
                     
-
                 ])
                 ->modalSubmitAction(false)
                 ->extraModalFooterActions([
-                    \Filament\Actions\Action::make('translate_spanish')
-                        ->label('Spanish')
-                        ->icon('heroicon-o-language')
-                        ->color(Color::Blue)
-                        ->modalHeading('Translated Message (Spanish)')
-                        ->modalContent(function ($record) {
-                            // For now, show a simple notification with translation info
-                            return view('filament.forms.components.translated-message', [
-                                'translatedMessage' => 'Please use the copy button to copy the current message, then translate it using an external translation service.',
-                                'languageName' => 'Spanish'
-                            ]);
-                        })
-                        ->modalActions([
-                            \Filament\Actions\Action::make('copy_spanish')
-                                ->label('Copy Current Message')
-                                ->color(Color::Gray)
-                                ->action(function ($record) {
-                                    // Copy the current preview content
-                                    $this->copyToClipboard('Current message copied. Please translate externally.', 'Current Message');
-                                }),
-                        ]),
-                    
-                    \Filament\Actions\Action::make('translate_italian')
-                        ->label('Italian')
-                        ->icon('heroicon-o-language')
-                        ->color(Color::Green)
-                        ->modalHeading('Translated Message (Italian)')
-                        ->modalContent(function ($record) {
-                            // For now, show a simple notification with translation info
-                            return view('filament.forms.components.translated-message', [
-                                'translatedMessage' => 'Please use the copy button to copy the current message, then translate it using an external translation service.',
-                                'languageName' => 'Italian'
-                            ]);
-                        })
-                        ->modalActions([
-                            \Filament\Actions\Action::make('copy_italian')
-                                ->label('Copy Current Message')
-                                ->color(Color::Gray)
-                                ->action(function ($record) {
-                                    // Copy the current preview content
-                                    $this->copyToClipboard('Current message copied. Please translate externally.', 'Current Message');
-                                }),
-                        ]),
-                    
-                    \Filament\Actions\Action::make('translate_german')
-                        ->label('German')
-                        ->icon('heroicon-o-language')
-                        ->color(Color::Orange)
-                        ->modalHeading('Translated Message (German)')
-                        ->modalContent(function ($record) {
-                            // For now, show a simple notification with translation info
-                            return view('filament.forms.components.translated-message', [
-                                'translatedMessage' => 'Please use the copy button to copy the current message, then translate it using an external translation service.',
-                                'languageName' => 'German'
-                            ]);
-                        })
-                        ->modalActions([
-                            \Filament\Actions\Action::make('copy_german')
-                                ->label('Copy Current Message')
-                                ->color(Color::Gray)
-                                ->action(function ($record) {
-                                    // Copy the current preview content
-                                    $this->copyToClipboard('Current message copied. Please translate externally.', 'Current Message');
-                                }),
-                        ]),
-                    
-                    \Filament\Actions\Action::make('translate_french')
-                        ->label('French')
-                        ->icon('heroicon-o-language')
-                        ->color(Color::Purple)
-                        ->modalHeading('Translated Message (French)')
-                        ->modalContent(function ($record) {
-                            // For now, show a simple notification with translation info
-                            return view('filament.forms.components.translated-message', [
-                                'translatedMessage' => 'Please use the copy button to copy the current message, then translate it using an external translation service.',
-                                'languageName' => 'French'
-                            ]);
-                        })
-                        ->modalActions([
-                            \Filament\Actions\Action::make('copy_french')
-                                ->label('Copy Current Message')
-                                ->color(Color::Gray)
-                                ->action(function ($record) {
-                                    // Copy the current preview content
-                                    $this->copyToClipboard('Current message copied. Please translate externally.', 'Current Message');
-                                }),
-                        ]),
-                    
-                    \Filament\Actions\Action::make('copy_to_clipboard')
-                        ->label('Copy Current Message')
+                    \Filament\Actions\Action::make('copy_message')
+                        ->label('Copy Message')
                         ->icon('heroicon-o-clipboard-document')
                         ->color(Color::Gray)
-                        ->action(function ($record) {
-                            // Get the current preview content from the form
-                            $previewContent = request()->input('preview_content') ?? 'No message available';
-                            $this->copyToClipboard($previewContent, 'Current Message');
+                        ->action(function ($record, $get) {
+                            $category = $get('category');
+                            $status = $get('status');
+                            
+                            if (!$category || !$status) {
+                                Notification::make()
+                                    ->title('No message to copy')
+                                    ->body('Please select Category and Status first.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+                            
+                            $readyReplies = $this->getReadyReplies();
+                            
+                            if (!isset($readyReplies[$category][$status])) {
+                                Notification::make()
+                                    ->title('Message not found')
+                                    ->body('Message not found for this combination.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+                            
+                            $message = $readyReplies[$category][$status];
+                            $processedMessage = $this->processReadyReplyPlaceholders($message, $record);
+                            $this->copyToClipboard($processedMessage, 'Ready Reply Message');
                         }),
                 ]),
             Action::make('viewFinancial')
@@ -1510,6 +1425,115 @@ class ViewFile extends ViewRecord
         }
         
         return $data;
+    }
+
+    /**
+     * Get ready replies data structure
+     */
+    public function getReadyReplies(): array
+    {
+        return [
+            'Provider' => [
+                'New' => 'We have a new patient requesting a {Service_type}',
+                'Available' => 'N/A',
+                'Confirmed' => 'The apatient confirmed {service_date} and {service_time}',
+                'Assisted' => 'Thanks',
+                'Cancelled' => 'The patient cancelled, Sorry.',
+                'Void' => 'The patient cancelled, Sorry.',
+            ],
+            'Patient' => [
+                'New' => 'I am contacting you on behalf of {file->client->name}. We received your medical request for a {service_type} Please confirm your address and let us know you availability ot book you an appointment',
+                'Available' => 'We have an appiontment in this address : {file->provider->branch->address} on ((on {Serivce_date} or Today) at {service_time}. Please let us know it thats suits you so that we can confirm the appointment',
+                'Confirmed' => 'The appointment has been confirmed (on {Serivce_date} or Today) at {service_time}. Please note we will be charged for a no show.',
+                'Assisted' => 'Let us know if you need any help',
+                'Cancelled' => 'Noted we will inform your insurance',
+                'Void' => 'Noted we will inform your insurance',
+            ],
+            'Client' => [
+                'New' => 'We received the case and we will insert the patient details in our platform and feedback to you with the available appointments details',
+                'Available' => 'We have an availble appointment on {file->service_date} at {file->service_Time}. Please send us a GOP for {Gop->where(type="In")->first()->amount} to confirm the appointment',
+                'Confirmed' => 'The appointment has been confirmed (on {Serivce_date} or Today) at {service_time}. Please note we will be charged for a no show.',
+                'Assisted' => 'Please note that the patient has been assisted and our financial department will send you the invoice shortly',
+                'Cancelled' => 'Noted, Case cancelled without any charges',
+                'Void' => 'Noted, Case cancelled without any charges',
+            ],
+        ];
+    }
+
+    /**
+     * Update ready reply message when category or status changes
+     */
+    public function updateReadyReplyMessage($set, $record, $get): void
+    {
+        $category = $get('category');
+        $status = $get('status');
+        
+        if (!$category || !$status) {
+            $set('message_display', '');
+            return;
+        }
+        
+        $readyReplies = $this->getReadyReplies();
+        
+        if (!isset($readyReplies[$category][$status])) {
+            $set('message_display', 'Message not found for this combination.');
+            return;
+        }
+        
+        $message = $readyReplies[$category][$status];
+        $processedMessage = $this->processReadyReplyPlaceholders($message, $record);
+        
+        $set('message_display', $processedMessage);
+    }
+
+    /**
+     * Process placeholders in ready reply messages
+     */
+    public function processReadyReplyPlaceholders(string $message, $record): string
+    {
+        // Handle {Service_type} or {service_type}
+        $serviceType = $record->serviceType ? $record->serviceType->name : 'N/A';
+        $message = str_replace(['{Service_type}', '{service_type}'], $serviceType, $message);
+        
+        // Handle {service_date} or {Serivce_date} (typo in original)
+        $serviceDate = $record->service_date ? $record->service_date->format('d/m/Y') : 'N/A';
+        
+        // Handle conditional date: ((on {Serivce_date} or Today) - must be done before regular replacement
+        if ($record->service_date && $record->service_date->isToday()) {
+            $message = str_replace('(on {Serivce_date} or Today)', 'Today', $message);
+            $message = str_replace('((on {Serivce_date} or Today)', 'Today', $message);
+        } else {
+            $message = str_replace('(on {Serivce_date} or Today)', "(on {$serviceDate})", $message);
+            $message = str_replace('((on {Serivce_date} or Today)', "(on {$serviceDate})", $message);
+        }
+        
+        // Now replace regular date placeholders
+        $message = str_replace(['{service_date}', '{Serivce_date}'], $serviceDate, $message);
+        
+        // Handle {service_time} or {service_Time}
+        $serviceTime = $record->service_time ?? 'N/A';
+        $message = str_replace(['{service_time}', '{service_Time}'], $serviceTime, $message);
+        
+        // Handle {file->client->name}
+        $clientName = ($record->client && $record->client->name) ? $record->client->name : 'N/A';
+        $message = str_replace('{file->client->name}', $clientName, $message);
+        
+        // Handle {file->provider->branch->address}
+        $providerBranchAddress = 'N/A';
+        if ($record->providerBranch) {
+            $providerBranchAddress = $record->providerBranch->address ?? 'N/A';
+        }
+        $message = str_replace('{file->provider->branch->address}', $providerBranchAddress, $message);
+        
+        // Handle {file->service_date}
+        $message = str_replace('{file->service_date}', $serviceDate, $message);
+        
+        // Handle {Gop->where(type="In")->first()->amount}
+        $gopIn = $record->gops()->where('type', 'In')->first();
+        $gopInAmount = $gopIn ? $gopIn->amount : 'N/A';
+        $message = str_replace('{Gop->where(type="In")->first()->amount}', $gopInAmount, $message);
+        
+        return $message;
     }
 
     /**
