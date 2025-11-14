@@ -798,6 +798,19 @@ class ViewFile extends ViewRecord
                 ->modalDescription('Choose which provider branches to send appointment requests to. Branches are filtered by city, service type, and active status, sorted by priority.')
                 ->modalWidth('7xl')
                 ->form([
+                    Section::make('Options')
+                        ->description('Configure appointment request options')
+                        ->schema([
+                            Toggle::make('check_distance')
+                                ->label('Check Distance')
+                                ->helperText('Enable to calculate and display distance information for each branch')
+                                ->default(false)
+                                ->live()
+                                ->columnSpanFull(),
+                        ])
+                        ->collapsible()
+                        ->collapsed(),
+                    
                     Section::make('Available Branches')
                         ->description('Select the provider branches you want to send appointment requests to')
                         ->schema([
@@ -2127,12 +2140,19 @@ class ViewFile extends ViewRecord
                         ])
                         ->columnSpan(1),
                     
-                    // Distance column
-                    \Filament\Forms\Components\View::make('distance_' . $branch->id)
-                        ->view('filament.forms.components.distance-info')
-                        ->viewData([
-                            'distanceInfo' => $this->getBranchDistanceInfo($branch)
-                        ])
+                    // Distance column (reactive based on check_distance toggle)
+                    \Filament\Forms\Components\Placeholder::make("distance_{$branch->id}")
+                        ->label('')
+                        ->content(function ($get) use ($branch) {
+                            $checkDistance = $get('check_distance') ?? false;
+                            if ($checkDistance) {
+                                return view('filament.forms.components.distance-info', [
+                                    'distanceInfo' => $this->getBranchDistanceInfo($branch)
+                                ])->render();
+                            }
+                            return '<span class="text-gray-400 text-sm">Enable "Check Distance" to see distance information</span>';
+                        })
+                        ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(2),
                 ])
                 ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
