@@ -52,6 +52,17 @@ class DistanceCalculationService
             if ($response->successful()) {
                 $data = $response->json();
 
+                // Check for API errors
+                if (isset($data['error_message'])) {
+                    Log::error('Google Maps API Error', [
+                        'error_message' => $data['error_message'],
+                        'status' => $data['status'] ?? 'unknown',
+                        'origin' => $originAddress,
+                        'destination' => $destinationAddress
+                    ]);
+                    return null;
+                }
+
                 if ($data['status'] === 'OK' && !empty($data['rows'][0]['elements'][0])) {
                     $element = $data['rows'][0]['elements'][0];
 
@@ -66,19 +77,28 @@ class DistanceCalculationService
                     } else {
                         Log::warning('Distance Matrix element status not OK', [
                             'element_status' => $element['status'],
-                            'element' => $element
+                            'element' => $element,
+                            'origin' => $originAddress,
+                            'destination' => $destinationAddress,
+                            'mode' => $mode
                         ]);
                     }
                 } else {
                     Log::warning('Distance Matrix response not OK', [
                         'response_status' => $data['status'] ?? 'unknown',
-                        'data' => $data
+                        'data' => $data,
+                        'origin' => $originAddress,
+                        'destination' => $destinationAddress,
+                        'mode' => $mode
                     ]);
                 }
             } else {
                 Log::error('Distance Matrix API request failed', [
                     'status_code' => $response->status(),
-                    'response_body' => $response->body()
+                    'response_body' => $response->body(),
+                    'origin' => $originAddress,
+                    'destination' => $destinationAddress,
+                    'mode' => $mode
                 ]);
             }
 

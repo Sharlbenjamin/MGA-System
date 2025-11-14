@@ -1436,7 +1436,7 @@ class ViewFile extends ViewRecord
             'Provider' => [
                 'New' => 'We have a new patient requesting a {Service_type}',
                 'Available' => 'N/A',
-                'Confirmed' => 'The apatient confirmed their {service_date} and {service_time}',
+                'Confirmed' => 'The apatient confirmed their availability on {service_date} and {service_time}',
                 'Assisted' => 'Thanks',
                 'Cancelled' => 'The patient cancelled, Sorry.',
                 'Void' => 'The patient cancelled, Sorry.',
@@ -1943,27 +1943,40 @@ class ViewFile extends ViewRecord
     protected function getBranchDistanceInfo($branch): string
     {
         if (!$this->record || !$this->record->address) {
-            return 'No file address';
+            return '<span class="text-gray-400 text-sm">No file address</span>';
         }
 
-        if (!$branch->address) {
-            return 'No branch address';
+        // Try branch address first, then operation contact address (same logic as DistanceCalculationService)
+        $branchAddress = $branch->address ?? $branch->operationContact?->address;
+        
+        if (!$branchAddress) {
+            return '<span class="text-gray-400 text-sm">No branch address</span>';
         }
 
         try {
             $distanceService = new \App\Services\DistanceCalculationService();
             
+            // Check if API key is configured
+            $apiKey = config('services.google.maps_api_key');
+            if (empty($apiKey)) {
+                \Illuminate\Support\Facades\Log::warning('Google Maps API key not configured', [
+                    'branch_id' => $branch->id,
+                    'file_id' => $this->record->id
+                ]);
+                return '<span class="text-yellow-600 text-sm">API key not configured</span>';
+            }
+            
             // Calculate driving distance
             $drivingDistance = $distanceService->calculateDistance(
                 $this->record->address,
-                $branch->address,
+                $branchAddress,
                 'driving'
             );
             
             // Calculate walking distance
             $walkingDistance = $distanceService->calculateDistance(
                 $this->record->address,
-                $branch->address,
+                $branchAddress,
                 'walking'
             );
 
@@ -1980,7 +1993,15 @@ class ViewFile extends ViewRecord
             }
 
             if (empty($result)) {
-                return 'Distance unavailable';
+                // Log the issue for debugging
+                \Illuminate\Support\Facades\Log::warning('Distance calculation returned empty', [
+                    'branch_id' => $branch->id,
+                    'branch_address' => $branchAddress,
+                    'file_id' => $this->record->id,
+                    'file_address' => $this->record->address,
+                    'api_key_configured' => !empty($apiKey)
+                ]);
+                return '<span class="text-yellow-600 text-sm">Distance unavailable<br><span class="text-xs">Check API key & addresses</span></span>';
             }
 
             return '<ul class="list-disc list-inside space-y-1">' . 
@@ -1990,10 +2011,13 @@ class ViewFile extends ViewRecord
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Distance calculation error', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'branch_id' => $branch->id,
-                'file_id' => $this->record->id
+                'branch_address' => $branchAddress ?? 'N/A',
+                'file_id' => $this->record->id,
+                'file_address' => $this->record->address ?? 'N/A'
             ]);
-            return 'Distance calculation failed';
+            return '<span class="text-red-600 text-sm">Calculation error<br><span class="text-xs">Check logs</span></span>';
         }
     }
 
