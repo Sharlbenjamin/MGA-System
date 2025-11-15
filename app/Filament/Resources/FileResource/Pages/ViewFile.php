@@ -1972,6 +1972,7 @@ class ViewFile extends ViewRecord
                 $branchAddress,
                 'driving'
             );
+            $drivingError = $distanceService->getLastError();
             
             // Calculate walking distance
             $walkingDistance = $distanceService->calculateDistance(
@@ -1979,6 +1980,7 @@ class ViewFile extends ViewRecord
                 $branchAddress,
                 'walking'
             );
+            $walkingError = $distanceService->getLastError();
 
             $result = [];
             
@@ -1993,15 +1995,29 @@ class ViewFile extends ViewRecord
             }
 
             if (empty($result)) {
+                // Get error details from the service (prefer the most recent, or combine if both failed)
+                $errorMessage = $walkingError ?: $drivingError;
+                
                 // Log the issue for debugging
                 \Illuminate\Support\Facades\Log::warning('Distance calculation returned empty', [
                     'branch_id' => $branch->id,
                     'branch_address' => $branchAddress,
                     'file_id' => $this->record->id,
                     'file_address' => $this->record->address,
-                    'api_key_configured' => !empty($apiKey)
+                    'api_key_configured' => !empty($apiKey),
+                    'last_error' => $errorMessage
                 ]);
-                return '<span class="text-yellow-600 text-sm">Distance unavailable<br><span class="text-xs">Check API key & addresses</span></span>';
+                
+                $displayMessage = 'Distance unavailable';
+                if ($errorMessage) {
+                    // Truncate long error messages
+                    $shortError = strlen($errorMessage) > 60 ? substr($errorMessage, 0, 60) . '...' : $errorMessage;
+                    $displayMessage .= '<br><span class="text-xs">' . htmlspecialchars($shortError) . '</span>';
+                } else {
+                    $displayMessage .= '<br><span class="text-xs">Check API key & addresses</span>';
+                }
+                
+                return '<span class="text-yellow-600 text-sm">' . $displayMessage . '</span>';
             }
 
             return '<ul class="list-disc list-inside space-y-1">' . 

@@ -9,10 +9,19 @@ class DistanceCalculationService
 {
     protected $apiKey;
     protected $baseUrl = 'https://maps.googleapis.com/maps/api/distancematrix/json';
+    protected $lastError = null;
 
     public function __construct()
     {
         $this->apiKey = config('services.google.maps_api_key');
+    }
+
+    /**
+     * Get the last error message
+     */
+    public function getLastError(): ?string
+    {
+        return $this->lastError;
     }
 
     /**
@@ -30,6 +39,7 @@ class DistanceCalculationService
         }
 
         if (empty($this->apiKey)) {
+            $this->lastError = 'API key not configured';
             Log::warning('Google Maps API key not configured for distance calculation');
             return null;
         }
@@ -54,6 +64,7 @@ class DistanceCalculationService
 
                 // Check for API errors
                 if (isset($data['error_message'])) {
+                    $this->lastError = $data['error_message'];
                     Log::error('Google Maps API Error', [
                         'error_message' => $data['error_message'],
                         'status' => $data['status'] ?? 'unknown',
@@ -67,6 +78,7 @@ class DistanceCalculationService
                     $element = $data['rows'][0]['elements'][0];
 
                     if ($element['status'] === 'OK') {
+                        $this->lastError = null; // Clear error on success
                         return [
                             'distance' => $element['distance']['text'],
                             'distance_meters' => $element['distance']['value'],
@@ -75,6 +87,7 @@ class DistanceCalculationService
                             'duration_minutes' => round($element['duration']['value'] / 60, 1),
                         ];
                     } else {
+                        $this->lastError = 'Element status: ' . ($element['status'] ?? 'UNKNOWN');
                         Log::warning('Distance Matrix element status not OK', [
                             'element_status' => $element['status'],
                             'element' => $element,
@@ -84,6 +97,7 @@ class DistanceCalculationService
                         ]);
                     }
                 } else {
+                    $this->lastError = 'API status: ' . ($data['status'] ?? 'UNKNOWN');
                     Log::warning('Distance Matrix response not OK', [
                         'response_status' => $data['status'] ?? 'unknown',
                         'data' => $data,
@@ -93,6 +107,7 @@ class DistanceCalculationService
                     ]);
                 }
             } else {
+                $this->lastError = 'HTTP Error: ' . $response->status();
                 Log::error('Distance Matrix API request failed', [
                     'status_code' => $response->status(),
                     'response_body' => $response->body(),
