@@ -34,7 +34,7 @@ class EditInvoice extends EditRecord
             Actions\Action::make('send_invoice')
                 ->label('Send Invoice to Client')
                 ->icon('heroicon-o-paper-airplane')
-                ->color('warning')
+                ->color('danger')
                 ->modalHeading('Sending invoice to client')
                 ->modalDescription('Choose what to attachment in the email')
                 ->modalSubmitActionLabel('Send Invoice')
