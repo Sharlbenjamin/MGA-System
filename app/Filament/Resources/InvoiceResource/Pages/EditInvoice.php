@@ -53,10 +53,22 @@ class EditInvoice extends EditRecord
                             'invoice' => $this->record,
                         ]),
                 ])
-                ->action(function ($data = []) {
-                    // Ensure $data is an array
-                    if (!is_array($data)) {
+                ->action(function ($data = null) {
+                    // Ensure $data is an array - handle all possible input types
+                    if ($data === null) {
                         $data = [];
+                    } elseif (!is_array($data)) {
+                        if (is_string($data)) {
+                            $data = [];
+                        } elseif (is_object($data)) {
+                            try {
+                                $data = (array) $data;
+                            } catch (\Exception $e) {
+                                $data = [];
+                            }
+                        } else {
+                            $data = [];
+                        }
                     }
                     
                     $invoice = $this->record;
@@ -99,7 +111,11 @@ class EditInvoice extends EditRecord
                     
                     // Build attachments array with safe checks
                     $attachments = [];
-                    $attachInvoice = isset($data['attach_invoice']) ? (bool) $data['attach_invoice'] : false;
+                    
+                    // Safely check for attach_invoice using data_get helper
+                    $attachInvoiceValue = data_get($data, 'attach_invoice', false);
+                    $attachInvoice = ($attachInvoiceValue === true || $attachInvoiceValue === 1 || $attachInvoiceValue === '1' || $attachInvoiceValue === 'true' || $attachInvoiceValue === 'on');
+                    
                     if ($attachInvoice && $invoice->hasLocalDocument()) {
                         $attachments[] = 'invoice';
                     }
