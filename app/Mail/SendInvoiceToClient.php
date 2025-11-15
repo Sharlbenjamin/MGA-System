@@ -26,8 +26,9 @@ class SendInvoiceToClient extends Mailable
         $emailBody
     ) {
         $this->invoice = $invoice;
-        $this->attachments = $attachments;
-        $this->emailBody = $emailBody;
+        // Ensure attachments is always an array
+        $this->attachments = is_array($attachments) ? $attachments : [];
+        $this->emailBody = is_string($emailBody) ? $emailBody : '';
     }
 
     public function build()
@@ -35,8 +36,18 @@ class SendInvoiceToClient extends Mailable
         // Ensure attachments is always an array
         $attachments = is_array($this->attachments) ? $this->attachments : [];
         
+        // Ensure invoice relationships are loaded
+        if (!$this->invoice->relationLoaded('file')) {
+            $this->invoice->load('file');
+        }
+        
+        $file = $this->invoice->file;
+        if (!$file) {
+            throw new \Exception('Invoice file relationship not found');
+        }
+        
         $mail = $this->view('emails.financial.send-invoice-to-client')
-            ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . $this->invoice->file->client_reference . ' | ' . $this->invoice->file->mga_reference);
+            ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . ($file->client_reference ?? '') . ' | ' . ($file->mga_reference ?? ''));
 
         // Attach invoice PDF if selected
         if (in_array('invoice', $attachments) && $this->invoice->hasLocalDocument()) {
@@ -50,43 +61,55 @@ class SendInvoiceToClient extends Mailable
         }
 
         // Attach bill PDF if selected
-        if (in_array('bill', $attachments)) {
-            $bills = $this->invoice->file->bills()->whereNotNull('bill_document_path')->get();
+        if (in_array('bill', $attachments) && $file) {
+            $bills = $file->bills()->whereNotNull('bill_document_path')->get();
             foreach ($bills as $bill) {
-                $billPath = Storage::disk('public')->path($bill->bill_document_path);
-                if (file_exists($billPath)) {
-                    $mail->attach($billPath, [
-                        'as' => 'Bill for ' . $this->invoice->file->patient->name . ' | ' . $this->invoice->file->mga_reference . '.pdf',
-                        'mime' => 'application/pdf',
-                    ]);
+                if ($bill && $bill->bill_document_path) {
+                    $billPath = Storage::disk('public')->path($bill->bill_document_path);
+                    if (file_exists($billPath)) {
+                        $patientName = $file->patient->name ?? 'Unknown';
+                        $mgaRef = $file->mga_reference ?? '';
+                        $mail->attach($billPath, [
+                            'as' => 'Bill for ' . $patientName . ' | ' . $mgaRef . '.pdf',
+                            'mime' => 'application/pdf',
+                        ]);
+                    }
                 }
             }
         }
 
         // Attach medical report PDF if selected
-        if (in_array('medical_report', $attachments)) {
-            $medicalReports = $this->invoice->file->medicalReports()->whereNotNull('document_path')->get();
+        if (in_array('medical_report', $attachments) && $file) {
+            $medicalReports = $file->medicalReports()->whereNotNull('document_path')->get();
             foreach ($medicalReports as $report) {
-                $reportPath = Storage::disk('public')->path($report->document_path);
-                if (file_exists($reportPath)) {
-                    $mail->attach($reportPath, [
-                        'as' => 'Medical Report for ' . $this->invoice->file->patient->name . ' | ' . $this->invoice->file->mga_reference . '.pdf',
-                        'mime' => 'application/pdf',
-                    ]);
+                if ($report && $report->document_path) {
+                    $reportPath = Storage::disk('public')->path($report->document_path);
+                    if (file_exists($reportPath)) {
+                        $patientName = $file->patient->name ?? 'Unknown';
+                        $mgaRef = $file->mga_reference ?? '';
+                        $mail->attach($reportPath, [
+                            'as' => 'Medical Report for ' . $patientName . ' | ' . $mgaRef . '.pdf',
+                            'mime' => 'application/pdf',
+                        ]);
+                    }
                 }
             }
         }
 
         // Attach GOP In PDF if selected
-        if (in_array('gop', $attachments)) {
-            $gops = $this->invoice->file->gops()->where('type', 'In')->whereNotNull('document_path')->get();
+        if (in_array('gop', $attachments) && $file) {
+            $gops = $file->gops()->where('type', 'In')->whereNotNull('document_path')->get();
             foreach ($gops as $gop) {
-                $gopPath = Storage::disk('public')->path($gop->document_path);
-                if (file_exists($gopPath)) {
-                    $mail->attach($gopPath, [
-                        'as' => 'GOP for ' . $this->invoice->file->patient->name . ' | ' . $this->invoice->file->mga_reference . '.pdf',
-                        'mime' => 'application/pdf',
-                    ]);
+                if ($gop && $gop->document_path) {
+                    $gopPath = Storage::disk('public')->path($gop->document_path);
+                    if (file_exists($gopPath)) {
+                        $patientName = $file->patient->name ?? 'Unknown';
+                        $mgaRef = $file->mga_reference ?? '';
+                        $mail->attach($gopPath, [
+                            'as' => 'GOP for ' . $patientName . ' | ' . $mgaRef . '.pdf',
+                            'mime' => 'application/pdf',
+                        ]);
+                    }
                 }
             }
         }

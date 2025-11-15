@@ -105,13 +105,13 @@ class EditInvoice extends EditRecord
                     
                     $emailBody = "Dear team,\n\n";
                     $emailBody .= "Find Attached the Invoice {$invoice->name}:\n\n";
-                    $emailBody .= "Your Reference: {$invoice->file->client_reference}\n";
-                    $emailBody .= "Patient Name: {$invoice->file->patient->name}\n\n";
-                    $emailBody .= "MGA Reference: {$invoice->file->mga_reference}\n\n";
-                    $emailBody .= "Issue Date: " . $invoice->invoice_date->format('d/m/Y') . "\n";
-                    $emailBody .= "Due Date: " . $invoice->due_date->format('d/m/Y') . "\n";
-                    $emailBody .= "Total: " . number_format($invoice->total_amount, 2) . "€\n\n";
-                    $emailBody .= "GOP Total: " . number_format($gopTotal, 2) . "€\n\n";
+                    $emailBody .= "Your Reference : {$invoice->file->client_reference}\n";
+                    $emailBody .= "Patient Name : {$invoice->file->patient->name}\n";
+                    $emailBody .= "MGA Reference : {$invoice->file->mga_reference}\n";
+                    $emailBody .= "Issue Date : " . $invoice->invoice_date->format('d/m/Y') . "\n";
+                    $emailBody .= "Due Date : " . $invoice->due_date->format('d/m/Y') . "\n";
+                    $emailBody .= "Total : " . number_format($invoice->total_amount, 2) . "€\n";
+                    $emailBody .= "GOP Total : " . number_format($gopTotal, 2) . "€\n\n";
                     
                     if (!empty($attachmentList)) {
                         $emailBody .= "Attachments\n\n";
@@ -143,6 +143,9 @@ class EditInvoice extends EditRecord
                     
                     // Send email
                     try {
+                        // Ensure invoice relationships are loaded before sending
+                        $invoice->load(['file.patient.client', 'file.bills', 'file.medicalReports', 'file.gops']);
+                        
                         Mail::mailer($mailer)->to($recipientEmail)->send(
                             new SendInvoiceToClient($invoice, $attachments, $emailBody)
                         );
