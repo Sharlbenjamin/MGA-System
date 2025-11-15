@@ -154,15 +154,8 @@ class EditInvoice extends EditRecord
                         $emailBody .= implode("\n", $attachmentList);
                     }
                     
-                    // Set mailer based on user's role and SMTP credentials (same as SendBalanceUpdate)
-                    $mailer = 'financial';
-                    $user = \App\Models\User::find(Auth::id());
-                    $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
-                    
-                    if ($user && $user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
-                        Config::set('mail.mailers.financial.username', $user->smtp_username);
-                        Config::set('mail.mailers.financial.password', $user->smtp_password);
-                    }
+                    // Use default smtp mailer for testing (uses MAIL_USERNAME/MAIL_PASSWORD from .env)
+                    $mailer = 'smtp';
                     
                     // Get recipient email from client
                     $recipientEmail = $client->email ?? null;
