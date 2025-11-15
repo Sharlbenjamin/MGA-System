@@ -98,8 +98,8 @@ class EditInvoice extends EditRecord
                     $emailBody .= "Total : " . number_format($invoice->total_amount ?? 0, 2) . "€\n";
                     $emailBody .= "GOP Total : " . number_format($gopTotal, 2) . "€\n";
                     
-                    // Use financial mailer (configured in .env)
-                    $mailer = 'financial';
+                    // Use default smtp mailer for testing (uses MAIL_USERNAME/MAIL_PASSWORD from .env)
+                    $mailer = 'smtp';
                     
                     // Get recipient email from client
                     $recipientEmail = $client->email ?? null;
