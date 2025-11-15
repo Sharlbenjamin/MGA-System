@@ -53,11 +53,12 @@ class EditInvoice extends EditRecord
                             'invoice' => $this->record,
                         ]),
                 ])
-                ->action(function ($data) {
+                ->action(function ($data = []) {
                     // Ensure $data is an array
                     if (!is_array($data)) {
                         $data = [];
                     }
+                    
                     $invoice = $this->record;
                     
                     // Ensure invoice relationships are loaded
@@ -96,9 +97,10 @@ class EditInvoice extends EditRecord
                         return;
                     }
                     
-                    // Build attachments array
+                    // Build attachments array with safe checks
                     $attachments = [];
-                    if (isset($data['attach_invoice']) && $data['attach_invoice'] && $invoice->hasLocalDocument()) {
+                    $attachInvoice = isset($data['attach_invoice']) ? (bool) $data['attach_invoice'] : false;
+                    if ($attachInvoice && $invoice->hasLocalDocument()) {
                         $attachments[] = 'invoice';
                     }
                     
@@ -124,8 +126,8 @@ class EditInvoice extends EditRecord
                         $emailBody .= implode("\n", $attachmentList);
                     }
                     
-                    // Use financial mailer (configured in .env)
-                    $mailer = 'financial';
+                    // Use default smtp mailer for testing (uses MAIL_USERNAME/MAIL_PASSWORD from .env)
+                    $mailer = 'smtp';
                     
                     // Get recipient email from client
                     $recipientEmail = $client->email ?? null;
