@@ -37,6 +37,8 @@ class EditInvoice extends EditRecord
                 ->color('warning')
                 ->modalHeading('Sending invoice to client')
                 ->modalDescription('Choose what to attachment in the email')
+                ->modalSubmitActionLabel('Send Invoice')
+                ->modalSubmitAction(fn (Actions\Action $action) => $action->color('primary'))
                 ->form([
                     Forms\Components\Checkbox::make('attach_invoice')
                         ->label('The generated draft invoice')
@@ -66,16 +68,6 @@ class EditInvoice extends EditRecord
                 ])
                 ->action(function (array $data) {
                     $invoice = $this->record;
-                    
-                    // Check if client has financial contact
-                    if (!$invoice->file->patient->client->financialContact) {
-                        Notification::make()
-                            ->title('No Financial Contact Found')
-                            ->body('The client does not have a financial contact configured.')
-                            ->danger()
-                            ->send();
-                        return;
-                    }
                     
                     // Build attachments array
                     $attachments = [];
@@ -134,20 +126,14 @@ class EditInvoice extends EditRecord
                         Config::set('mail.mailers.financial.password', $user->smtp_password);
                     }
                     
-                    // Get recipient email
-                    $financialContact = $invoice->file->patient->client->financialContact;
-                    $recipientEmail = null;
-                    
-                    if ($financialContact->preferred_contact == 'Email') {
-                        $recipientEmail = $financialContact->email;
-                    } elseif ($financialContact->preferred_contact == 'Second Email') {
-                        $recipientEmail = $financialContact->second_email;
-                    }
+                    // Get recipient email from client
+                    $client = $invoice->file->patient->client;
+                    $recipientEmail = $client->email;
                     
                     if (!$recipientEmail) {
                         Notification::make()
                             ->title('No Email Found')
-                            ->body('The financial contact does not have an email address configured.')
+                            ->body('The client does not have an email address configured.')
                             ->danger()
                             ->send();
                         return;
