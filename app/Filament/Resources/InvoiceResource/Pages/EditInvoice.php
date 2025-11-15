@@ -55,36 +55,36 @@ class EditInvoice extends EditRecord
                         ]),
                 ])
                 ->action(function ($data) {
+                    // Start with empty attachments - we'll build it safely
+                    $attachments = [];
+                    
                     try {
                         // Debug: Log what we receive
-                        \Log::info('SendInvoice action called', [
+                        Log::info('SendInvoice action called', [
                             'data_type' => gettype($data),
-                            'data' => $data,
-                            'is_array' => is_array($data),
-                            'is_string' => is_string($data),
-                            'is_object' => is_object($data),
+                            'data' => is_array($data) ? $data : 'not_array',
+                            'data_string' => is_string($data) ? substr($data, 0, 100) : 'not_string',
                         ]);
                         
-                        // Ensure $data is an array - handle all possible input types
-                        if ($data === null) {
-                            $data = [];
-                        } elseif (!is_array($data)) {
-                            if (is_string($data)) {
-                                \Log::warning('Data is string, converting to empty array', ['data' => $data]);
-                                $data = [];
-                            } elseif (is_object($data)) {
-                                try {
-                                    $data = (array) $data;
-                                } catch (\Exception $e) {
-                                    \Log::error('Failed to convert object to array', ['error' => $e->getMessage()]);
-                                    $data = [];
-                                }
-                            } else {
-                                $data = [];
+                        // Safely check for attach_invoice - use multiple methods
+                        $attachInvoice = false;
+                        
+                        // Method 1: Check if data is array and has the key
+                        if (is_array($data)) {
+                            Log::info('Data is array', ['keys' => array_keys($data)]);
+                            if (array_key_exists('attach_invoice', $data)) {
+                                $value = $data['attach_invoice'];
+                                Log::info('Found attach_invoice key', ['value' => $value, 'type' => gettype($value)]);
+                                $attachInvoice = ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'on');
                             }
                         }
+                        // Method 2: Try data_get as fallback
+                        elseif (!is_string($data)) {
+                            $value = data_get($data, 'attach_invoice', false);
+                            $attachInvoice = ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'on');
+                        }
                         
-                        \Log::info('Data after processing', ['data' => $data, 'is_array' => is_array($data)]);
+                        Log::info('Attachment check result', ['attachInvoice' => $attachInvoice]);
                         
                         $invoice = $this->record;
                         
@@ -124,27 +124,13 @@ class EditInvoice extends EditRecord
                         return;
                     }
                     
-                        // Build attachments array with safe checks
-                        $attachments = [];
-                        
-                        try {
-                            \Log::info('Checking attach_invoice', ['data_keys' => is_array($data) ? array_keys($data) : 'not_array']);
-                            
-                            // Safely check for attach_invoice using data_get helper
-                            $attachInvoiceValue = data_get($data, 'attach_invoice', false);
-                            \Log::info('attach_invoice value', ['value' => $attachInvoiceValue, 'type' => gettype($attachInvoiceValue)]);
-                            
-                            $attachInvoice = ($attachInvoiceValue === true || $attachInvoiceValue === 1 || $attachInvoiceValue === '1' || $attachInvoiceValue === 'true' || $attachInvoiceValue === 'on');
-                            
-                            if ($attachInvoice && $invoice->hasLocalDocument()) {
-                                $attachments[] = 'invoice';
-                            }
-                            
-                            \Log::info('Attachments array built', ['attachments' => $attachments]);
-                        } catch (\Exception $e) {
-                            \Log::error('Error building attachments', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-                            $attachments = [];
+                        // Add invoice to attachments if checked and available
+                        if ($attachInvoice && $invoice->hasLocalDocument()) {
+                            $attachments[] = 'invoice';
+                            Log::info('Added invoice to attachments');
                         }
+                        
+                        Log::info('Final attachments array', ['attachments' => $attachments, 'count' => count($attachments)]);
                     
                     // Build attachment list for email body
                     $attachmentList = [];
@@ -192,7 +178,7 @@ class EditInvoice extends EditRecord
                     
                         // Send email
                         try {
-                            \Log::info('Preparing to send email', [
+                            Log::info('Preparing to send email', [
                                 'attachments' => $attachments,
                                 'attachments_type' => gettype($attachments),
                                 'is_array' => is_array($attachments),
@@ -201,7 +187,7 @@ class EditInvoice extends EditRecord
                             // Ensure attachments is definitely an array
                             $attachmentsArray = is_array($attachments) ? $attachments : [];
                             
-                            \Log::info('Sending email', [
+                            Log::info('Sending email', [
                                 'mailer' => $mailer,
                                 'recipient' => $recipientEmail,
                                 'attachments_array' => $attachmentsArray,
@@ -217,7 +203,7 @@ class EditInvoice extends EditRecord
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
-                            \Log::error('Error sending email', [
+                            Log::error('Error sending email', [
                                 'error' => $e->getMessage(),
                                 'trace' => $e->getTraceAsString(),
                                 'file' => $e->getFile(),
@@ -231,7 +217,7 @@ class EditInvoice extends EditRecord
                                 ->send();
                         }
                     } catch (\Exception $e) {
-                        \Log::error('Error in SendInvoice action', [
+                        Log::error('Error in SendInvoice action', [
                             'error' => $e->getMessage(),
                             'trace' => $e->getTraceAsString(),
                             'file' => $e->getFile(),
