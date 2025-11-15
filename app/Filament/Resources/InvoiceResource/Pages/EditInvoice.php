@@ -38,7 +38,9 @@ class EditInvoice extends EditRecord
                 ->modalHeading('Sending invoice to client')
                 ->modalDescription('Choose what to attachment in the email')
                 ->modalSubmitActionLabel('Send Invoice')
-                ->modalSubmitAction(fn (Actions\Action $action) => $action->color('primary'))
+                ->modalSubmitAction(function ($action) {
+                    return $action->color('primary');
+                })
                 ->form([
                     Forms\Components\Checkbox::make('attach_invoice')
                         ->label('The generated draft invoice')
