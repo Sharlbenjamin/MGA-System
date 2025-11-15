@@ -40,7 +40,7 @@
             </div>
             <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Body:</span>
-                <div class="text-sm text-gray-900 dark:text-gray-100 mt-1 whitespace-pre-wrap font-mono">{{ $preview }}</div>
+                <div class="text-sm text-gray-900 dark:text-gray-100 mt-1 whitespace-pre-wrap font-mono break-words" style="white-space: pre-wrap; word-wrap: break-word;">{{ $preview }}</div>
             </div>
         </div>
     </div>

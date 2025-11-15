@@ -156,6 +156,10 @@ class InvoiceRelationManager extends RelationManager
                     ->modalDescription('This will generate and upload the invoice to Google Drive.')
                     ->visible(fn (Invoice $record): bool => $record->status === 'Draft')
                     ->action(function (Invoice $record) {
+                        // Refresh the invoice record to get the latest data from database
+                        $record->refresh();
+                        $record->load(['file', 'file.patient', 'file.patient.client', 'file.bills']);
+                        
                         // First generate PDF
                         $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
                         $content = $pdf->output();
