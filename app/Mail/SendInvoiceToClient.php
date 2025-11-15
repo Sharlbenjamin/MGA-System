@@ -13,17 +13,17 @@ class SendInvoiceToClient extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public Invoice $invoice;
-    public array $attachments;
-    public string $emailBody;
+    public $invoice;
+    public $attachments;
+    public $emailBody;
 
     /**
      * Create a new message instance.
      */
     public function __construct(
         Invoice $invoice,
-        array $attachments,
-        string $emailBody
+        $attachments,
+        $emailBody
     ) {
         $this->invoice = $invoice;
         $this->attachments = $attachments;
@@ -33,7 +33,8 @@ class SendInvoiceToClient extends Mailable
     public function build()
     {
         $mail = $this->view('emails.financial.send-invoice-to-client')
-            ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . $this->invoice->file->client_reference . ' | ' . $this->invoice->file->mga_reference);
+            ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . $this->invoice->file->client_reference . ' | ' . $this->invoice->file->mga_reference)
+            ->from('mga.financial@medguarda.com', 'Med Guard Assistance - Financial Department');
 
         // Attach invoice PDF if selected
         if (in_array('invoice', $this->attachments) && $this->invoice->hasLocalDocument()) {

@@ -6,7 +6,14 @@
 <body>
     {!! nl2br(e($emailBody)) !!}
 
-    @include('draftsignature', ['signature' => auth()->user()->signature ?? ''])
+    @php
+        $user = auth()->user();
+        $signature = $user ? $user->signature : null;
+    @endphp
+    
+    @if($signature)
+        @include('draftsignature', ['signature' => $signature])
+    @endif
 </body>
 </html>
 
