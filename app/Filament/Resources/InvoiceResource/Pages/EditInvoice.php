@@ -175,6 +175,16 @@ class EditInvoice extends EditRecord
                         'financial_port' => config('mail.mailers.financial.port'),
                     ]);
                     
+                    // Debug: Log which mailer we're using
+                    Log::info('Mailer selection', [
+                        'mailer' => $mailer,
+                        'smtp_config' => [
+                            'host' => config('mail.mailers.smtp.host'),
+                            'username' => config('mail.mailers.smtp.username'),
+                            'port' => config('mail.mailers.smtp.port'),
+                        ],
+                    ]);
+                    
                     // Get recipient email from client
                     $recipientEmail = $client->email ?? null;
                     
