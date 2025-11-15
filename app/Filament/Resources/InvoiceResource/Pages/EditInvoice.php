@@ -154,25 +154,28 @@ class EditInvoice extends EditRecord
                         $emailBody .= implode("\n", $attachmentList);
                     }
                     
-                    // Set mailer based on user's role and SMTP credentials (same as SendBalanceUpdate)
-                    $mailer = 'financial';
+                    // Use Operation Mailer (smtp) - same pattern as LeadResource
+                    $mailer = 'smtp';
                     $user = \App\Models\User::find(Auth::id());
-                    $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
                     
-                    if ($user && $user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
-                        Config::set('mail.mailers.financial.username', $user->smtp_username);
-                        Config::set('mail.mailers.financial.password', $user->smtp_password);
+                    // Get SMTP credentials (use user's credentials if available, otherwise system defaults)
+                    $smtpUsername = $user && $user->smtp_username ? $user->smtp_username : Config::get('mail.mailers.smtp.username');
+                    $smtpPassword = $user && $user->smtp_password ? $user->smtp_password : Config::get('mail.mailers.smtp.password');
+                    
+                    // Dynamically set the mail configuration for operation mailer
+                    if ($smtpUsername && $smtpPassword) {
+                        Config::set('mail.mailers.smtp.username', $smtpUsername);
+                        Config::set('mail.mailers.smtp.password', $smtpPassword);
                     }
                     
                     // Debug: Log mailer configuration
                     Log::info('Mailer configuration check', [
                         'mailer' => $mailer,
                         'user_id' => $user->id ?? null,
-                        'user_has_role' => $user && $user->hasRole($financialRoles),
                         'user_has_smtp' => $user && $user->smtp_username && $user->smtp_password,
-                        'financial_username' => config('mail.mailers.financial.username'),
-                        'financial_host' => config('mail.mailers.financial.host'),
-                        'financial_port' => config('mail.mailers.financial.port'),
+                        'smtp_username' => $smtpUsername ? 'set' : 'not_set',
+                        'smtp_host' => config('mail.mailers.smtp.host'),
+                        'smtp_port' => config('mail.mailers.smtp.port'),
                     ]);
                     
                     // Debug: Log which mailer we're using
@@ -180,7 +183,7 @@ class EditInvoice extends EditRecord
                         'mailer' => $mailer,
                         'smtp_config' => [
                             'host' => config('mail.mailers.smtp.host'),
-                            'username' => config('mail.mailers.smtp.username'),
+                            'username' => config('mail.mailers.smtp.username') ? 'set' : 'not_set',
                             'port' => config('mail.mailers.smtp.port'),
                         ],
                     ]);
