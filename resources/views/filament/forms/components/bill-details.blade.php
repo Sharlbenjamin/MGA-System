@@ -1,19 +1,31 @@
 @php
+    // Access the record from Filament's form context
+    // In Filament forms, we can access the record through the Livewire component
+    $record = method_exists($this, 'getRecord') ? $this->getRecord() : ($this->record ?? null);
     $allBillItems = collect();
     $billWithDocument = null;
     
-    foreach ($bills as $bill) {
-        foreach ($bill->items as $item) {
-            $allBillItems->push([
-                'description' => $item->description,
-                'amount' => $item->amount,
-            ]);
+    if ($record && $record->file) {
+        // Eager load bills with their items
+        $bills = $record->file->bills()->with('items')->get();
+        
+        foreach ($bills as $bill) {
+            foreach ($bill->items as $item) {
+                $allBillItems->push([
+                    'description' => $item->description,
+                    'amount' => $item->amount,
+                ]);
+            }
+            
+            // Find first bill with document for PDF link
+            if (!$billWithDocument && $bill->hasLocalDocument()) {
+                $billWithDocument = $bill;
+            }
         }
         
-        // Find first bill with document for PDF link
-        if (!$billWithDocument && $bill->hasLocalDocument()) {
-            $billWithDocument = $bill;
-        }
+        $total = $record->file->billsTotal();
+    } else {
+        $total = 0;
     }
 @endphp
 
