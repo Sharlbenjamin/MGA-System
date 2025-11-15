@@ -68,7 +68,17 @@ class EditInvoice extends EditRecord
                             'invoice' => $this->record,
                         ]),
                 ])
-                ->action(function (array $data) {
+                ->action(function ($data) {
+                    // Ensure $data is an array
+                    if (!is_array($data)) {
+                        Notification::make()
+                            ->title('Error')
+                            ->body('Invalid form data received.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+                    
                     $invoice = $this->record;
                     
                     // Ensure invoice relationships are loaded
@@ -76,16 +86,16 @@ class EditInvoice extends EditRecord
                     
                     // Build attachments array with defensive checks
                     $attachments = [];
-                    if (isset($data['attach_invoice']) && !empty($data['attach_invoice']) && $invoice->hasLocalDocument()) {
+                    if (isset($data['attach_invoice']) && $data['attach_invoice'] && $invoice->hasLocalDocument()) {
                         $attachments[] = 'invoice';
                     }
-                    if (isset($data['attach_bill']) && !empty($data['attach_bill'])) {
+                    if (isset($data['attach_bill']) && $data['attach_bill']) {
                         $attachments[] = 'bill';
                     }
-                    if (isset($data['attach_medical_report']) && !empty($data['attach_medical_report'])) {
+                    if (isset($data['attach_medical_report']) && $data['attach_medical_report']) {
                         $attachments[] = 'medical_report';
                     }
-                    if (isset($data['attach_gop']) && !empty($data['attach_gop'])) {
+                    if (isset($data['attach_gop']) && $data['attach_gop']) {
                         $attachments[] = 'gop';
                     }
                     
@@ -182,8 +192,11 @@ class EditInvoice extends EditRecord
                     
                     // Send email
                     try {
+                        // Ensure attachments is definitely an array
+                        $attachmentsArray = is_array($attachments) ? $attachments : [];
+                        
                         Mail::mailer($mailer)->to($recipientEmail)->send(
-                            new SendInvoiceToClient($invoice, $attachments, $emailBody)
+                            new SendInvoiceToClient($invoice, $attachmentsArray, $emailBody)
                         );
                         
                         Notification::make()
