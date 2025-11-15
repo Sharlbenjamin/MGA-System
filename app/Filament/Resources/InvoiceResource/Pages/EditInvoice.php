@@ -154,8 +154,26 @@ class EditInvoice extends EditRecord
                         $emailBody .= implode("\n", $attachmentList);
                     }
                     
-                    // Use default smtp mailer for testing (uses MAIL_USERNAME/MAIL_PASSWORD from .env)
-                    $mailer = 'smtp';
+                    // Set mailer based on user's role and SMTP credentials (same as SendBalanceUpdate)
+                    $mailer = 'financial';
+                    $user = \App\Models\User::find(Auth::id());
+                    $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
+                    
+                    if ($user && $user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
+                        Config::set('mail.mailers.financial.username', $user->smtp_username);
+                        Config::set('mail.mailers.financial.password', $user->smtp_password);
+                    }
+                    
+                    // Debug: Log mailer configuration
+                    Log::info('Mailer configuration check', [
+                        'mailer' => $mailer,
+                        'user_id' => $user->id ?? null,
+                        'user_has_role' => $user && $user->hasRole($financialRoles),
+                        'user_has_smtp' => $user && $user->smtp_username && $user->smtp_password,
+                        'financial_username' => config('mail.mailers.financial.username'),
+                        'financial_host' => config('mail.mailers.financial.host'),
+                        'financial_port' => config('mail.mailers.financial.port'),
+                    ]);
                     
                     // Get recipient email from client
                     $recipientEmail = $client->email ?? null;
@@ -175,6 +193,8 @@ class EditInvoice extends EditRecord
                                 'attachments' => $attachments,
                                 'attachments_type' => gettype($attachments),
                                 'is_array' => is_array($attachments),
+                                'mailer_being_used' => $mailer,
+                                'mailer_config' => config("mail.mailers.{$mailer}"),
                             ]);
                             
                             // Ensure attachments is definitely an array
