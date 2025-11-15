@@ -58,27 +58,11 @@ class EditInvoice extends EditRecord
                         ->default(false)
                         ->visible(fn () => $this->record->file->gops()->where('type', 'In')->whereNotNull('document_path')->exists()),
                     
-                    Forms\Components\Placeholder::make('email_preview')
-                        ->label('Email Preview')
-                        ->content(function () {
-                            $invoice = $this->record;
-                            $gopTotal = $invoice->file->gops()->where('type', 'In')->sum('amount');
-                            
-                            $preview = "Subject: MGA Invoice {$invoice->name} for {$invoice->file->client_reference} | {$invoice->file->mga_reference}\n\n";
-                            $preview .= "Dear team,\n\n";
-                            $preview .= "Find Attached the Invoice {$invoice->name}:\n\n";
-                            $preview .= "Your Reference: {$invoice->file->client_reference}\n";
-                            $preview .= "Patient Name: {$invoice->file->patient->name}\n\n";
-                            $preview .= "MGA Reference: {$invoice->file->mga_reference}\n\n";
-                            $preview .= "Issue Date: " . $invoice->invoice_date->format('d/m/Y') . "\n";
-                            $preview .= "Due Date: " . $invoice->due_date->format('d/m/Y') . "\n";
-                            $preview .= "Total: " . number_format($invoice->total_amount, 2) . "€\n\n";
-                            $preview .= "GOP Total: " . number_format($gopTotal, 2) . "€\n\n";
-                            $preview .= "Attachments (selected items will be shown here)\n";
-                            
-                            return '<div style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem; background: #f5f5f5; padding: 1rem; border-radius: 0.375rem;">' . e($preview) . '</div>';
-                        })
-                        ->extraAttributes(['class' => 'mt-4']),
+                    Forms\Components\View::make('email_preview')
+                        ->view('filament.forms.components.invoice-email-preview')
+                        ->viewData([
+                            'invoice' => $this->record,
+                        ]),
                 ])
                 ->action(function (array $data) {
                     $invoice = $this->record;
