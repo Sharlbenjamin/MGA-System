@@ -42,13 +42,22 @@ class EditInvoice extends EditRecord
                     return $action->color('primary');
                 })
                 ->form([
+                    Forms\Components\Checkbox::make('attach_invoice')
+                        ->label('The generated draft invoice')
+                        ->default(true)
+                        ->visible(fn () => $this->record->hasLocalDocument()),
+                    
                     Forms\Components\View::make('email_preview')
                         ->view('filament.forms.components.invoice-email-preview')
                         ->viewData([
                             'invoice' => $this->record,
                         ]),
                 ])
-                ->action(function () {
+                ->action(function ($data) {
+                    // Ensure $data is an array
+                    if (!is_array($data)) {
+                        $data = [];
+                    }
                     $invoice = $this->record;
                     
                     // Ensure invoice relationships are loaded
@@ -87,7 +96,19 @@ class EditInvoice extends EditRecord
                         return;
                     }
                     
-                    // Build email body - no attachments for now
+                    // Build attachments array
+                    $attachments = [];
+                    if (isset($data['attach_invoice']) && $data['attach_invoice'] && $invoice->hasLocalDocument()) {
+                        $attachments[] = 'invoice';
+                    }
+                    
+                    // Build attachment list for email body
+                    $attachmentList = [];
+                    if (in_array('invoice', $attachments)) {
+                        $attachmentList[] = '· Invoice ' . $invoice->name;
+                    }
+                    
+                    // Build email body
                     $emailBody = "Dear team,\n\n";
                     $emailBody .= "Find Attached the Invoice {$invoice->name}:\n\n";
                     $emailBody .= "Your Reference : " . ($file->client_reference ?? '') . "\n";
@@ -98,8 +119,13 @@ class EditInvoice extends EditRecord
                     $emailBody .= "Total : " . number_format($invoice->total_amount ?? 0, 2) . "€\n";
                     $emailBody .= "GOP Total : " . number_format($gopTotal, 2) . "€\n";
                     
-                    // Use default smtp mailer for testing (uses MAIL_USERNAME/MAIL_PASSWORD from .env)
-                    $mailer = 'smtp';
+                    if (!empty($attachmentList)) {
+                        $emailBody .= "\nAttachments\n";
+                        $emailBody .= implode("\n", $attachmentList);
+                    }
+                    
+                    // Use financial mailer (configured in .env)
+                    $mailer = 'financial';
                     
                     // Get recipient email from client
                     $recipientEmail = $client->email ?? null;
@@ -113,12 +139,13 @@ class EditInvoice extends EditRecord
                         return;
                     }
                     
-                    // Send email - no attachments for now
+                    // Send email
                     try {
-                        $attachments = []; // Empty array for now
+                        // Ensure attachments is definitely an array
+                        $attachmentsArray = is_array($attachments) ? $attachments : [];
                         
                         Mail::mailer($mailer)->to($recipientEmail)->send(
-                            new SendInvoiceToClient($invoice, $attachments, $emailBody)
+                            new SendInvoiceToClient($invoice, $attachmentsArray, $emailBody)
                         );
                         
                         Notification::make()
