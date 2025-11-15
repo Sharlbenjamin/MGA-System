@@ -46,8 +46,11 @@ class SendInvoiceToClient extends Mailable
             throw new \Exception('Invoice file relationship not found');
         }
         
+        $patient = $file->patient ?? null;
+        $patientName = $patient->name ?? '';
+        
         $mail = $this->view('emails.financial.send-invoice-to-client')
-            ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . ($file->client_reference ?? '') . ' | ' . ($file->mga_reference ?? ''));
+            ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . $patientName . ' | ' . ($file->client_reference ?? '') . ' | ' . ($file->mga_reference ?? ''));
 
         // Attach invoice PDF if selected
         if (in_array('invoice', $attachments) && $this->invoice->hasLocalDocument()) {

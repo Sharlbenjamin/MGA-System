@@ -12,7 +12,8 @@
     if ($invoice) {
         $gopTotal = $invoice->file->gops()->where('type', 'In')->sum('amount');
         
-        $subject = "MGA Invoice {$invoice->name} for {$invoice->file->client_reference} | {$invoice->file->mga_reference}";
+        $patientName = $invoice->file->patient->name ?? '';
+        $subject = "MGA Invoice {$invoice->name} for {$patientName} | {$invoice->file->client_reference} | {$invoice->file->mga_reference}";
         
         $preview = "Dear team,\n\n";
         $preview .= "Find Attached the Invoice {$invoice->name}:\n\n";
