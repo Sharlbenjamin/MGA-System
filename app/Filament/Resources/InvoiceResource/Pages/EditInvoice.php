@@ -98,15 +98,8 @@ class EditInvoice extends EditRecord
                     $emailBody .= "Total : " . number_format($invoice->total_amount ?? 0, 2) . "€\n";
                     $emailBody .= "GOP Total : " . number_format($gopTotal, 2) . "€\n";
                     
-                    // Set mailer based on user's role and SMTP credentials
+                    // Use financial mailer (configured in .env)
                     $mailer = 'financial';
-                    $user = \App\Models\User::find(Auth::id());
-                    $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
-                    
-                    if ($user && $user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
-                        Config::set('mail.mailers.financial.username', $user->smtp_username);
-                        Config::set('mail.mailers.financial.password', $user->smtp_password);
-                    }
                     
                     // Get recipient email from client
                     $recipientEmail = $client->email ?? null;
