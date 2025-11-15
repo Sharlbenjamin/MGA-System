@@ -13,6 +13,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Mail\SendInvoiceToClient;
 use Illuminate\Support\Facades\Storage;
 
@@ -53,28 +54,42 @@ class EditInvoice extends EditRecord
                             'invoice' => $this->record,
                         ]),
                 ])
-                ->action(function ($data = null) {
-                    // Ensure $data is an array - handle all possible input types
-                    if ($data === null) {
-                        $data = [];
-                    } elseif (!is_array($data)) {
-                        if (is_string($data)) {
+                ->action(function ($data) {
+                    try {
+                        // Debug: Log what we receive
+                        \Log::info('SendInvoice action called', [
+                            'data_type' => gettype($data),
+                            'data' => $data,
+                            'is_array' => is_array($data),
+                            'is_string' => is_string($data),
+                            'is_object' => is_object($data),
+                        ]);
+                        
+                        // Ensure $data is an array - handle all possible input types
+                        if ($data === null) {
                             $data = [];
-                        } elseif (is_object($data)) {
-                            try {
-                                $data = (array) $data;
-                            } catch (\Exception $e) {
+                        } elseif (!is_array($data)) {
+                            if (is_string($data)) {
+                                \Log::warning('Data is string, converting to empty array', ['data' => $data]);
+                                $data = [];
+                            } elseif (is_object($data)) {
+                                try {
+                                    $data = (array) $data;
+                                } catch (\Exception $e) {
+                                    \Log::error('Failed to convert object to array', ['error' => $e->getMessage()]);
+                                    $data = [];
+                                }
+                            } else {
                                 $data = [];
                             }
-                        } else {
-                            $data = [];
                         }
-                    }
-                    
-                    $invoice = $this->record;
-                    
-                    // Ensure invoice relationships are loaded
-                    $invoice->load(['file.patient.client', 'file.gops']);
+                        
+                        \Log::info('Data after processing', ['data' => $data, 'is_array' => is_array($data)]);
+                        
+                        $invoice = $this->record;
+                        
+                        // Ensure invoice relationships are loaded
+                        $invoice->load(['file.patient.client', 'file.gops']);
                     
                     // Build email body
                     $file = $invoice->file;
@@ -109,16 +124,27 @@ class EditInvoice extends EditRecord
                         return;
                     }
                     
-                    // Build attachments array with safe checks
-                    $attachments = [];
-                    
-                    // Safely check for attach_invoice using data_get helper
-                    $attachInvoiceValue = data_get($data, 'attach_invoice', false);
-                    $attachInvoice = ($attachInvoiceValue === true || $attachInvoiceValue === 1 || $attachInvoiceValue === '1' || $attachInvoiceValue === 'true' || $attachInvoiceValue === 'on');
-                    
-                    if ($attachInvoice && $invoice->hasLocalDocument()) {
-                        $attachments[] = 'invoice';
-                    }
+                        // Build attachments array with safe checks
+                        $attachments = [];
+                        
+                        try {
+                            \Log::info('Checking attach_invoice', ['data_keys' => is_array($data) ? array_keys($data) : 'not_array']);
+                            
+                            // Safely check for attach_invoice using data_get helper
+                            $attachInvoiceValue = data_get($data, 'attach_invoice', false);
+                            \Log::info('attach_invoice value', ['value' => $attachInvoiceValue, 'type' => gettype($attachInvoiceValue)]);
+                            
+                            $attachInvoice = ($attachInvoiceValue === true || $attachInvoiceValue === 1 || $attachInvoiceValue === '1' || $attachInvoiceValue === 'true' || $attachInvoiceValue === 'on');
+                            
+                            if ($attachInvoice && $invoice->hasLocalDocument()) {
+                                $attachments[] = 'invoice';
+                            }
+                            
+                            \Log::info('Attachments array built', ['attachments' => $attachments]);
+                        } catch (\Exception $e) {
+                            \Log::error('Error building attachments', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                            $attachments = [];
+                        }
                     
                     // Build attachment list for email body
                     $attachmentList = [];
@@ -142,8 +168,15 @@ class EditInvoice extends EditRecord
                         $emailBody .= implode("\n", $attachmentList);
                     }
                     
-                    // Use default smtp mailer for testing (uses MAIL_USERNAME/MAIL_PASSWORD from .env)
-                    $mailer = 'smtp';
+                    // Set mailer based on user's role and SMTP credentials (same as SendBalanceUpdate)
+                    $mailer = 'financial';
+                    $user = \App\Models\User::find(Auth::id());
+                    $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
+                    
+                    if ($user && $user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
+                        Config::set('mail.mailers.financial.username', $user->smtp_username);
+                        Config::set('mail.mailers.financial.password', $user->smtp_password);
+                    }
                     
                     // Get recipient email from client
                     $recipientEmail = $client->email ?? null;
@@ -157,24 +190,57 @@ class EditInvoice extends EditRecord
                         return;
                     }
                     
-                    // Send email
-                    try {
-                        // Ensure attachments is definitely an array
-                        $attachmentsArray = is_array($attachments) ? $attachments : [];
-                        
-                        Mail::mailer($mailer)->to($recipientEmail)->send(
-                            new SendInvoiceToClient($invoice, $attachmentsArray, $emailBody)
-                        );
-                        
-                        Notification::make()
-                            ->title('Invoice Sent')
-                            ->body('Invoice has been sent to the client successfully.')
-                            ->success()
-                            ->send();
+                        // Send email
+                        try {
+                            \Log::info('Preparing to send email', [
+                                'attachments' => $attachments,
+                                'attachments_type' => gettype($attachments),
+                                'is_array' => is_array($attachments),
+                            ]);
+                            
+                            // Ensure attachments is definitely an array
+                            $attachmentsArray = is_array($attachments) ? $attachments : [];
+                            
+                            \Log::info('Sending email', [
+                                'mailer' => $mailer,
+                                'recipient' => $recipientEmail,
+                                'attachments_array' => $attachmentsArray,
+                            ]);
+                            
+                            Mail::mailer($mailer)->to($recipientEmail)->send(
+                                new SendInvoiceToClient($invoice, $attachmentsArray, $emailBody)
+                            );
+                            
+                            Notification::make()
+                                ->title('Invoice Sent')
+                                ->body('Invoice has been sent to the client successfully.')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            \Log::error('Error sending email', [
+                                'error' => $e->getMessage(),
+                                'trace' => $e->getTraceAsString(),
+                                'file' => $e->getFile(),
+                                'line' => $e->getLine(),
+                            ]);
+                            
+                            Notification::make()
+                                ->title('Failed to Send Invoice')
+                                ->body('Error: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
                     } catch (\Exception $e) {
+                        \Log::error('Error in SendInvoice action', [
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                        ]);
+                        
                         Notification::make()
-                            ->title('Failed to Send Invoice')
-                            ->body('Error: ' . $e->getMessage())
+                            ->title('Error')
+                            ->body('An error occurred: ' . $e->getMessage() . ' (Check logs for details)')
                             ->danger()
                             ->send();
                     }
