@@ -1984,16 +1984,36 @@ class ViewFile extends ViewRecord
 
             $result = [];
             
-            if ($drivingDistance && isset($drivingDistance['duration_minutes'])) {
-                // Format: "X min by 🚗" - ensure we use duration_minutes, not distance
-                $minutes = number_format($drivingDistance['duration_minutes'], 1);
-                $result[] = $minutes . " min by 🚗";
+            if ($drivingDistance) {
+                // Use duration_minutes (time) not distance - convert from seconds if needed
+                $minutes = null;
+                if (isset($drivingDistance['duration_minutes'])) {
+                    $minutes = $drivingDistance['duration_minutes'];
+                } elseif (isset($drivingDistance['duration_seconds'])) {
+                    // Calculate minutes from seconds if duration_minutes not available
+                    $minutes = round($drivingDistance['duration_seconds'] / 60, 1);
+                }
+                
+                if ($minutes !== null) {
+                    // Format: "X.X min by 🚗" - showing TIME, not distance
+                    $result[] = number_format($minutes, 1) . " min by 🚗";
+                }
             }
             
-            if ($walkingDistance && isset($walkingDistance['duration_minutes'])) {
-                // Format: "X min by 🚶" - ensure we use duration_minutes, not distance
-                $minutes = number_format($walkingDistance['duration_minutes'], 1);
-                $result[] = $minutes . " min by 🚶";
+            if ($walkingDistance) {
+                // Use duration_minutes (time) not distance - convert from seconds if needed
+                $minutes = null;
+                if (isset($walkingDistance['duration_minutes'])) {
+                    $minutes = $walkingDistance['duration_minutes'];
+                } elseif (isset($walkingDistance['duration_seconds'])) {
+                    // Calculate minutes from seconds if duration_minutes not available
+                    $minutes = round($walkingDistance['duration_seconds'] / 60, 1);
+                }
+                
+                if ($minutes !== null) {
+                    // Format: "X.X min by 🚶" - showing TIME, not distance
+                    $result[] = number_format($minutes, 1) . " min by 🚶";
+                }
             }
 
             if (empty($result)) {
