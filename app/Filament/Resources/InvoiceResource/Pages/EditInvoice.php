@@ -71,46 +71,86 @@ class EditInvoice extends EditRecord
                 ->action(function (array $data) {
                     $invoice = $this->record;
                     
-                    // Build attachments array
+                    // Ensure invoice relationships are loaded
+                    $invoice->load(['file.patient.client', 'file.bills', 'file.medicalReports', 'file.gops']);
+                    
+                    // Build attachments array with defensive checks
                     $attachments = [];
-                    if (!empty($data['attach_invoice']) && $invoice->hasLocalDocument()) {
+                    if (isset($data['attach_invoice']) && !empty($data['attach_invoice']) && $invoice->hasLocalDocument()) {
                         $attachments[] = 'invoice';
                     }
-                    if (!empty($data['attach_bill'])) {
+                    if (isset($data['attach_bill']) && !empty($data['attach_bill'])) {
                         $attachments[] = 'bill';
                     }
-                    if (!empty($data['attach_medical_report'])) {
+                    if (isset($data['attach_medical_report']) && !empty($data['attach_medical_report'])) {
                         $attachments[] = 'medical_report';
                     }
-                    if (!empty($data['attach_gop'])) {
+                    if (isset($data['attach_gop']) && !empty($data['attach_gop'])) {
                         $attachments[] = 'gop';
                     }
                     
                     // Build email body
-                    $gopTotal = $invoice->file->gops()->where('type', 'In')->sum('amount');
-                    $attachmentList = [];
+                    $file = $invoice->file;
+                    if (!$file) {
+                        Notification::make()
+                            ->title('Error')
+                            ->body('Invoice file relationship not found.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
                     
+                    $gopTotal = $file->gops()->where('type', 'In')->sum('amount');
+                    
+                    $patient = $file->patient;
+                    if (!$patient) {
+                        Notification::make()
+                            ->title('Error')
+                            ->body('Patient relationship not found.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+                    
+                    $client = $patient->client;
+                    if (!$client) {
+                        Notification::make()
+                            ->title('Error')
+                            ->body('Client relationship not found.')
+                            ->danger()
+                            ->send();
+                        return;
+                    }
+                    
+                    // Build attachment list
+                    $attachmentList = [];
                     if (in_array('invoice', $attachments)) {
                         $attachmentList[] = '· Invoice ' . $invoice->name;
                     }
                     if (in_array('medical_report', $attachments)) {
-                        $attachmentList[] = '· Medical Report for ' . $invoice->file->patient->name . ' | ' . $invoice->file->mga_reference;
+                        $patientName = $patient->name ?? 'Unknown';
+                        $mgaRef = $file->mga_reference ?? '';
+                        $attachmentList[] = '· Medical Report for ' . $patientName . ' | ' . $mgaRef;
                     }
                     if (in_array('gop', $attachments)) {
-                        $attachmentList[] = '· GOP for ' . $invoice->file->patient->name . ' | ' . $invoice->file->mga_reference;
+                        $patientName = $patient->name ?? 'Unknown';
+                        $mgaRef = $file->mga_reference ?? '';
+                        $attachmentList[] = '· GOP for ' . $patientName . ' | ' . $mgaRef;
                     }
                     if (in_array('bill', $attachments)) {
-                        $attachmentList[] = '· Bill for ' . $invoice->file->patient->name . ' | ' . $invoice->file->mga_reference;
+                        $patientName = $patient->name ?? 'Unknown';
+                        $mgaRef = $file->mga_reference ?? '';
+                        $attachmentList[] = '· Bill for ' . $patientName . ' | ' . $mgaRef;
                     }
                     
                     $emailBody = "Dear team,\n\n";
                     $emailBody .= "Find Attached the Invoice {$invoice->name}:\n\n";
-                    $emailBody .= "Your Reference : {$invoice->file->client_reference}\n";
-                    $emailBody .= "Patient Name : {$invoice->file->patient->name}\n";
-                    $emailBody .= "MGA Reference : {$invoice->file->mga_reference}\n";
-                    $emailBody .= "Issue Date : " . $invoice->invoice_date->format('d/m/Y') . "\n";
-                    $emailBody .= "Due Date : " . $invoice->due_date->format('d/m/Y') . "\n";
-                    $emailBody .= "Total : " . number_format($invoice->total_amount, 2) . "€\n";
+                    $emailBody .= "Your Reference : " . ($file->client_reference ?? '') . "\n";
+                    $emailBody .= "Patient Name : " . ($patient->name ?? '') . "\n";
+                    $emailBody .= "MGA Reference : " . ($file->mga_reference ?? '') . "\n";
+                    $emailBody .= "Issue Date : " . ($invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : '') . "\n";
+                    $emailBody .= "Due Date : " . ($invoice->due_date ? $invoice->due_date->format('d/m/Y') : '') . "\n";
+                    $emailBody .= "Total : " . number_format($invoice->total_amount ?? 0, 2) . "€\n";
                     $emailBody .= "GOP Total : " . number_format($gopTotal, 2) . "€\n\n";
                     
                     if (!empty($attachmentList)) {
@@ -123,14 +163,13 @@ class EditInvoice extends EditRecord
                     $user = \App\Models\User::find(Auth::id());
                     $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
                     
-                    if ($user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
+                    if ($user && $user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
                         Config::set('mail.mailers.financial.username', $user->smtp_username);
                         Config::set('mail.mailers.financial.password', $user->smtp_password);
                     }
                     
                     // Get recipient email from client
-                    $client = $invoice->file->patient->client;
-                    $recipientEmail = $client->email;
+                    $recipientEmail = $client->email ?? null;
                     
                     if (!$recipientEmail) {
                         Notification::make()
@@ -143,9 +182,6 @@ class EditInvoice extends EditRecord
                     
                     // Send email
                     try {
-                        // Ensure invoice relationships are loaded before sending
-                        $invoice->load(['file.patient.client', 'file.bills', 'file.medicalReports', 'file.gops']);
-                        
                         Mail::mailer($mailer)->to($recipientEmail)->send(
                             new SendInvoiceToClient($invoice, $attachments, $emailBody)
                         );
