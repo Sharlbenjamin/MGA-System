@@ -33,8 +33,7 @@ class SendInvoiceToClient extends Mailable
     public function build()
     {
         $mail = $this->view('emails.financial.send-invoice-to-client')
-            ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . $this->invoice->file->client_reference . ' | ' . $this->invoice->file->mga_reference)
-            ->from('mga.financial@medguarda.com', 'Med Guard Assistance - Financial Department');
+            ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . $this->invoice->file->client_reference . ' | ' . $this->invoice->file->mga_reference);
 
         // Attach invoice PDF if selected
         if (in_array('invoice', $this->attachments) && $this->invoice->hasLocalDocument()) {
