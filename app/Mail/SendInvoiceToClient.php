@@ -15,7 +15,7 @@ class SendInvoiceToClient extends Mailable
     use Queueable, SerializesModels;
 
     public $invoice;
-    public $attachments;
+    public $attachmentTypes; // Renamed to avoid conflict with Laravel's $attachments property
     public $emailBody;
 
     /**
@@ -27,22 +27,22 @@ class SendInvoiceToClient extends Mailable
         $emailBody
     ) {
         $this->invoice = $invoice;
-        // Ensure attachments is always an array
-        $this->attachments = is_array($attachments) ? $attachments : [];
+        // Ensure attachmentTypes is always an array
+        $this->attachmentTypes = is_array($attachments) ? $attachments : [];
         $this->emailBody = is_string($emailBody) ? $emailBody : '';
     }
 
     public function build()
     {
-        // Ensure attachments is always an array - handle all possible types
-        $attachments = [];
-        if (is_array($this->attachments)) {
-            $attachments = $this->attachments;
-        } elseif (is_string($this->attachments)) {
+        // Ensure attachmentTypes is always an array - handle all possible types
+        $attachmentTypes = [];
+        if (is_array($this->attachmentTypes)) {
+            $attachmentTypes = $this->attachmentTypes;
+        } elseif (is_string($this->attachmentTypes)) {
             // If it's a string, try to decode it (might be JSON)
-            $decoded = json_decode($this->attachments, true);
+            $decoded = json_decode($this->attachmentTypes, true);
             if (is_array($decoded)) {
-                $attachments = $decoded;
+                $attachmentTypes = $decoded;
             }
         }
         
@@ -62,9 +62,9 @@ class SendInvoiceToClient extends Mailable
         $mail = $this->view('emails.financial.send-invoice-to-client')
             ->subject('MGA Invoice ' . $this->invoice->name . ' for ' . $patientName . ' | ' . ($file->client_reference ?? '') . ' | ' . ($file->mga_reference ?? ''));
 
-        // Attach invoice PDF if selected - double check attachments is array
+        // Attach invoice PDF if selected - double check attachmentTypes is array
         try {
-            if (is_array($attachments) && in_array('invoice', $attachments) && $this->invoice->hasLocalDocument()) {
+            if (is_array($attachmentTypes) && in_array('invoice', $attachmentTypes) && $this->invoice->hasLocalDocument()) {
                 $invoicePath = Storage::disk('public')->path($this->invoice->invoice_document_path);
                 if (file_exists($invoicePath)) {
                     $mail->attach($invoicePath, [
@@ -76,13 +76,13 @@ class SendInvoiceToClient extends Mailable
         } catch (\Exception $e) {
             Log::error('Error attaching invoice', [
                 'error' => $e->getMessage(),
-                'attachments_type' => gettype($attachments),
-                'attachments' => $attachments,
+                'attachmentTypes_type' => gettype($attachmentTypes),
+                'attachmentTypes' => $attachmentTypes,
             ]);
         }
 
-        // Attach bill PDF if selected - double check attachments is array
-        if (is_array($attachments) && in_array('bill', $attachments) && $file) {
+        // Attach bill PDF if selected - double check attachmentTypes is array
+        if (is_array($attachmentTypes) && in_array('bill', $attachmentTypes) && $file) {
             $bills = $file->bills()->whereNotNull('bill_document_path')->get();
             foreach ($bills as $bill) {
                 if ($bill && $bill->bill_document_path) {
@@ -99,8 +99,8 @@ class SendInvoiceToClient extends Mailable
             }
         }
 
-        // Attach medical report PDF if selected - double check attachments is array
-        if (is_array($attachments) && in_array('medical_report', $attachments) && $file) {
+        // Attach medical report PDF if selected - double check attachmentTypes is array
+        if (is_array($attachmentTypes) && in_array('medical_report', $attachmentTypes) && $file) {
             $medicalReports = $file->medicalReports()->whereNotNull('document_path')->get();
             foreach ($medicalReports as $report) {
                 if ($report && $report->document_path) {
@@ -117,8 +117,8 @@ class SendInvoiceToClient extends Mailable
             }
         }
 
-        // Attach GOP In PDF if selected - double check attachments is array
-        if (is_array($attachments) && in_array('gop', $attachments) && $file) {
+        // Attach GOP In PDF if selected - double check attachmentTypes is array
+        if (is_array($attachmentTypes) && in_array('gop', $attachmentTypes) && $file) {
             $gops = $file->gops()->where('type', 'In')->whereNotNull('document_path')->get();
             foreach ($gops as $gop) {
                 if ($gop && $gop->document_path) {
