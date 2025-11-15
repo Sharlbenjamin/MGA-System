@@ -16,13 +16,13 @@
         
         $preview = "Dear team,\n\n";
         $preview .= "Find Attached the Invoice {$invoice->name}:\n\n";
-        $preview .= "Your Reference: {$invoice->file->client_reference}\n";
-        $preview .= "Patient Name: {$invoice->file->patient->name}\n\n";
-        $preview .= "MGA Reference: {$invoice->file->mga_reference}\n\n";
-        $preview .= "Issue Date: " . $invoice->invoice_date->format('d/m/Y') . "\n";
-        $preview .= "Due Date: " . $invoice->due_date->format('d/m/Y') . "\n";
-        $preview .= "Total: " . number_format($invoice->total_amount, 2) . "€\n\n";
-        $preview .= "GOP Total: " . number_format($gopTotal, 2) . "€\n\n";
+        $preview .= "Your Reference : {$invoice->file->client_reference}\n";
+        $preview .= "Patient Name : {$invoice->file->patient->name}\n";
+        $preview .= "MGA Reference : {$invoice->file->mga_reference}\n";
+        $preview .= "Issue Date : " . $invoice->invoice_date->format('d/m/Y') . "\n";
+        $preview .= "Due Date : " . $invoice->due_date->format('d/m/Y') . "\n";
+        $preview .= "Total : " . number_format($invoice->total_amount, 2) . "€\n";
+        $preview .= "GOP Total : " . number_format($gopTotal, 2) . "€\n\n";
         $preview .= "Attachments (selected items will be shown here)";
     } else {
         $subject = '';
