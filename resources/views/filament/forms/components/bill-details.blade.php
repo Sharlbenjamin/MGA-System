@@ -1,7 +1,13 @@
 @php
-    // Access the record from Filament's form context
-    // In Filament forms, we can access the record through the Livewire component
-    $record = method_exists($this, 'getRecord') ? $this->getRecord() : ($this->record ?? null);
+    // Access the record from the Livewire component
+    // In Filament forms, View components have access to the Livewire component
+    try {
+        $livewire = $getLivewire();
+        $record = $livewire->record ?? null;
+    } catch (\Exception $e) {
+        $record = null;
+    }
+    
     $allBillItems = collect();
     $billWithDocument = null;
     
