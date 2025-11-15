@@ -95,9 +95,24 @@ class InvoiceResource extends Resource
                             ->label('GOP In Total')
                             ->content(fn (?Invoice $record): string => $record ? '€'.number_format($record->file->gopInTotal(), 2) : '0.00'),
 
-                        Forms\Components\Placeholder::make('bills_total')
-                            ->label('Bills Total')
-                            ->content(fn (?Invoice $record): string => $record ? '€'.number_format($record->file->billsTotal(), 2) : '0.00'),
+                        Forms\Components\View::make('filament.forms.components.bill-details')
+                            ->label('Bill Details')
+                            ->viewData(function (?Invoice $record): array {
+                                if (!$record || !$record->file) {
+                                    return [
+                                        'bills' => collect(),
+                                        'total' => 0,
+                                    ];
+                                }
+                                
+                                // Eager load bills with their items
+                                $bills = $record->file->bills()->with('items')->get();
+                                
+                                return [
+                                    'bills' => $bills,
+                                    'total' => $record->file->billsTotal(),
+                                ];
+                            }),
 
                         Forms\Components\Placeholder::make('due_date')
                             ->label('Due date')
