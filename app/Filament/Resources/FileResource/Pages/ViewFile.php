@@ -1984,14 +1984,16 @@ class ViewFile extends ViewRecord
 
             $result = [];
             
-            if ($drivingDistance) {
-                // Format: "X min by 🚗"
-                $result[] = $drivingDistance['duration_minutes'] . " min by 🚗";
+            if ($drivingDistance && isset($drivingDistance['duration_minutes'])) {
+                // Format: "X min by 🚗" - ensure we use duration_minutes, not distance
+                $minutes = number_format($drivingDistance['duration_minutes'], 1);
+                $result[] = $minutes . " min by 🚗";
             }
             
-            if ($walkingDistance) {
-                // Format: "X min by 🚶"
-                $result[] = $walkingDistance['duration_minutes'] . " min by 🚶";
+            if ($walkingDistance && isset($walkingDistance['duration_minutes'])) {
+                // Format: "X min by 🚶" - ensure we use duration_minutes, not distance
+                $minutes = number_format($walkingDistance['duration_minutes'], 1);
+                $result[] = $minutes . " min by 🚶";
             }
 
             if (empty($result)) {
@@ -2010,9 +2012,8 @@ class ViewFile extends ViewRecord
                 
                 $displayMessage = 'Distance unavailable';
                 if ($errorMessage) {
-                    // Truncate long error messages
-                    $shortError = strlen($errorMessage) > 60 ? substr($errorMessage, 0, 60) . '...' : $errorMessage;
-                    $displayMessage .= '<br><span class="text-xs">' . htmlspecialchars($shortError) . '</span>';
+                    // Show full error message but wrap it nicely
+                    $displayMessage .= '<br><span class="text-xs block mt-1">' . htmlspecialchars($errorMessage) . '</span>';
                 } else {
                     $displayMessage .= '<br><span class="text-xs">Check API key & addresses</span>';
                 }
