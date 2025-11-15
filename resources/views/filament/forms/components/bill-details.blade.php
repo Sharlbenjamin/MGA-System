@@ -36,6 +36,8 @@
 @endphp
 
 <div class="space-y-2">
+    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Bill Details</h3>
+    
     @if($allBillItems->isEmpty())
         <p class="text-sm text-gray-500">No bill items found</p>
     @else
@@ -44,7 +46,7 @@
                 <div class="text-sm">
                     <span>{{ $index + 1 }})</span>
                     <span> {{ $item['description'] }} </span>
-                    <span>{{ number_format($item['amount'], 2) }}€</span>
+                    <span class="font-bold">{{ number_format($item['amount'], 2) }}€</span>
                 </div>
             @endforeach
         </div>
