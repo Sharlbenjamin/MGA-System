@@ -318,7 +318,7 @@ class EditInvoice extends EditRecord
                     $emailBody .= "MGA Reference : " . ($file->mga_reference ?? '') . "\n";
                     $emailBody .= "Issue Date : " . ($invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : '') . "\n";
                     $emailBody .= "Due Date : " . ($invoice->due_date ? $invoice->due_date->format('d/m/Y') : '') . "\n";
-                    $emailBody .= "Total : " . number_format($invoice->total_amount ?? 0, 2) . "€\n";
+                    $emailBody .= "Invoice Total : " . number_format($invoice->total_amount ?? 0, 0) . "€\n";
                     $emailBody .= "GOP Total : " . number_format($gopTotal, 2) . "€\n";
                     
                     if (!empty($attachmentList)) {
