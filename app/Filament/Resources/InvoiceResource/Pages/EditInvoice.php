@@ -46,7 +46,9 @@ class EditInvoice extends EditRecord
                     Forms\Components\Checkbox::make('attach_invoice')
                         ->label('The generated draft invoice')
                         ->default(true)
-                        ->visible(fn () => $this->record->hasLocalDocument())
+                        ->visible(function () {
+                            return $this->record->file !== null;
+                        })
                         ->disabled(fn () => !$this->record->hasLocalDocument())
                         ->helperText(fn () => !$this->record->hasLocalDocument() ? 'No invoice attachment available' : null),
                     
