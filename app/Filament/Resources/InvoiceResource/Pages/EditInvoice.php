@@ -51,7 +51,18 @@ class EditInvoice extends EditRecord
                         ->helperText(fn () => !$this->record->hasLocalDocument() ? 'No invoice attachment available' : null),
                     
                     Forms\Components\Checkbox::make('attach_gop')
-                        ->label('GOP (Goods of Purchase)')
+                        ->label(function () {
+                            $file = $this->record->file;
+                            if (!$file) return 'GOP (Guarantee of Payment)';
+                            
+                            $gopsIn = $file->gops()->where('type', 'In')->get();
+                            if ($gopsIn->isEmpty()) {
+                                return 'GOP (Guarantee of Payment)';
+                            }
+                            
+                            $totalAmount = $gopsIn->sum('amount');
+                            return 'GOP (Guarantee of Payment) - Total: ' . number_format($totalAmount, 2) . '€';
+                        })
                         ->default(false)
                         ->visible(function () {
                             return $this->record->file !== null;
@@ -71,9 +82,11 @@ class EditInvoice extends EditRecord
                             $hasAttachment = $file->gops()->where('type', 'In')->whereNotNull('document_path')->exists();
                             
                             if (!$hasGop) {
-                                return 'No GOP found in file';
+                                return 'No GOP (type In) found in file';
                             } elseif (!$hasAttachment) {
-                                return 'GOP exists but no attachment available';
+                                $gopsIn = $file->gops()->where('type', 'In')->get();
+                                $totalAmount = $gopsIn->sum('amount');
+                                return 'GOP exists (Total: ' . number_format($totalAmount, 2) . '€) but no attachment available';
                             }
                             return null;
                         }),
