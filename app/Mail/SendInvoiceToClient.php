@@ -46,6 +46,9 @@ class SendInvoiceToClient extends Mailable
             }
         }
         
+        // Refresh invoice to ensure we have the latest data, especially invoice_document_path
+        $this->invoice->refresh();
+        
         // Ensure invoice relationships are loaded
         if (!$this->invoice->relationLoaded('file')) {
             $this->invoice->load('file');
@@ -64,20 +67,57 @@ class SendInvoiceToClient extends Mailable
 
         // Attach invoice PDF if selected - double check attachmentTypes is array
         try {
-            if (is_array($attachmentTypes) && in_array('invoice', $attachmentTypes) && $this->invoice->hasLocalDocument()) {
-                $invoicePath = Storage::disk('public')->path($this->invoice->invoice_document_path);
-                if (file_exists($invoicePath)) {
-                    $mail->attach($invoicePath, [
-                        'as' => $this->invoice->name . '.pdf',
-                        'mime' => 'application/pdf',
+            Log::info('Checking invoice attachment', [
+                'attachmentTypes_is_array' => is_array($attachmentTypes),
+                'attachmentTypes' => $attachmentTypes,
+                'has_invoice_in_array' => is_array($attachmentTypes) ? in_array('invoice', $attachmentTypes) : false,
+                'invoice_has_local_document' => $this->invoice->hasLocalDocument(),
+                'invoice_document_path' => $this->invoice->invoice_document_path,
+            ]);
+            
+            if (is_array($attachmentTypes) && in_array('invoice', $attachmentTypes)) {
+                if ($this->invoice->hasLocalDocument()) {
+                    $invoicePath = Storage::disk('public')->path($this->invoice->invoice_document_path);
+                    Log::info('Invoice attachment path', [
+                        'invoice_path' => $invoicePath,
+                        'file_exists' => file_exists($invoicePath),
+                    ]);
+                    
+                    if (file_exists($invoicePath)) {
+                        $mail->attach($invoicePath, [
+                            'as' => $this->invoice->name . '.pdf',
+                            'mime' => 'application/pdf',
+                        ]);
+                        Log::info('Invoice attached successfully', [
+                            'invoice_name' => $this->invoice->name,
+                            'attachment_name' => $this->invoice->name . '.pdf',
+                        ]);
+                    } else {
+                        Log::warning('Invoice file does not exist at path', [
+                            'invoice_path' => $invoicePath,
+                            'invoice_document_path' => $this->invoice->invoice_document_path,
+                        ]);
+                    }
+                } else {
+                    Log::warning('Invoice selected but has no local document', [
+                        'invoice_id' => $this->invoice->id,
+                        'invoice_document_path' => $this->invoice->invoice_document_path,
                     ]);
                 }
+            } else {
+                Log::info('Invoice not in attachment types or attachmentTypes is not array', [
+                    'attachmentTypes' => $attachmentTypes,
+                    'is_array' => is_array($attachmentTypes),
+                ]);
             }
         } catch (\Exception $e) {
             Log::error('Error attaching invoice', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'attachmentTypes_type' => gettype($attachmentTypes),
                 'attachmentTypes' => $attachmentTypes,
+                'invoice_id' => $this->invoice->id,
+                'invoice_document_path' => $this->invoice->invoice_document_path ?? 'null',
             ]);
         }
 

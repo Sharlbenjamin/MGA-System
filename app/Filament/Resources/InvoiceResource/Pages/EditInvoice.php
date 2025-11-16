@@ -46,7 +46,108 @@ class EditInvoice extends EditRecord
                     Forms\Components\Checkbox::make('attach_invoice')
                         ->label('The generated draft invoice')
                         ->default(true)
-                        ->visible(fn () => $this->record->hasLocalDocument()),
+                        ->visible(function () {
+                            return $this->record->file !== null;
+                        })
+                        ->disabled(fn () => !$this->record->hasLocalDocument())
+                        ->helperText(fn () => !$this->record->hasLocalDocument() ? 'No invoice attachment available' : null),
+                    
+                    Forms\Components\Checkbox::make('attach_gop')
+                        ->label(function () {
+                            $file = $this->record->file;
+                            if (!$file) return 'GOP (Guarantee of Payment)';
+                            
+                            $gopsIn = $file->gops()->where('type', 'In')->get();
+                            if ($gopsIn->isEmpty()) {
+                                return 'GOP (Guarantee of Payment)';
+                            }
+                            
+                            $totalAmount = $gopsIn->sum('amount');
+                            return 'GOP (Guarantee of Payment) - Total: ' . number_format($totalAmount, 2) . '€';
+                        })
+                        ->default(false)
+                        ->visible(function () {
+                            return $this->record->file !== null;
+                        })
+                        ->disabled(function () {
+                            $file = $this->record->file;
+                            if (!$file) return true;
+                            $hasGop = $file->gops()->where('type', 'In')->exists();
+                            if (!$hasGop) return true;
+                            $hasAttachment = $file->gops()->where('type', 'In')->whereNotNull('document_path')->exists();
+                            return !$hasAttachment;
+                        })
+                        ->helperText(function () {
+                            $file = $this->record->file;
+                            if (!$file) return 'File not found';
+                            $hasGop = $file->gops()->where('type', 'In')->exists();
+                            $hasAttachment = $file->gops()->where('type', 'In')->whereNotNull('document_path')->exists();
+                            
+                            if (!$hasGop) {
+                                return 'No GOP (type In) found in file';
+                            } elseif (!$hasAttachment) {
+                                $gopsIn = $file->gops()->where('type', 'In')->get();
+                                $totalAmount = $gopsIn->sum('amount');
+                                return 'GOP exists (Total: ' . number_format($totalAmount, 2) . '€) but no attachment available';
+                            }
+                            return null;
+                        }),
+                    
+                    Forms\Components\Checkbox::make('attach_medical_report')
+                        ->label('Medical Report')
+                        ->default(false)
+                        ->visible(function () {
+                            return $this->record->file !== null;
+                        })
+                        ->disabled(function () {
+                            $file = $this->record->file;
+                            if (!$file) return true;
+                            $hasMedicalReport = $file->medicalReports()->exists();
+                            if (!$hasMedicalReport) return true;
+                            $hasAttachment = $file->medicalReports()->whereNotNull('document_path')->exists();
+                            return !$hasAttachment;
+                        })
+                        ->helperText(function () {
+                            $file = $this->record->file;
+                            if (!$file) return 'File not found';
+                            $hasMedicalReport = $file->medicalReports()->exists();
+                            $hasAttachment = $file->medicalReports()->whereNotNull('document_path')->exists();
+                            
+                            if (!$hasMedicalReport) {
+                                return 'No medical report found in file';
+                            } elseif (!$hasAttachment) {
+                                return 'Medical report exists but no attachment available';
+                            }
+                            return null;
+                        }),
+                    
+                    Forms\Components\Checkbox::make('attach_bill')
+                        ->label('Bill')
+                        ->default(false)
+                        ->visible(function () {
+                            return $this->record->file !== null;
+                        })
+                        ->disabled(function () {
+                            $file = $this->record->file;
+                            if (!$file) return true;
+                            $hasBill = $file->bills()->exists();
+                            if (!$hasBill) return true;
+                            $hasAttachment = $file->bills()->whereNotNull('bill_document_path')->exists();
+                            return !$hasAttachment;
+                        })
+                        ->helperText(function () {
+                            $file = $this->record->file;
+                            if (!$file) return 'File not found';
+                            $hasBill = $file->bills()->exists();
+                            $hasAttachment = $file->bills()->whereNotNull('bill_document_path')->exists();
+                            
+                            if (!$hasBill) {
+                                return 'No bill found in file';
+                            } elseif (!$hasAttachment) {
+                                return 'Bill exists but no attachment available';
+                            }
+                            return null;
+                        }),
                     
                     Forms\Components\View::make('email_preview')
                         ->view('filament.forms.components.invoice-email-preview')
@@ -66,30 +167,48 @@ class EditInvoice extends EditRecord
                             'data_string' => is_string($data) ? substr($data, 0, 100) : 'not_string',
                         ]);
                         
-                        // Safely check for attach_invoice - use multiple methods
-                        $attachInvoice = false;
-                        
-                        // Method 1: Check if data is array and has the key
-                        if (is_array($data)) {
-                            Log::info('Data is array', ['keys' => array_keys($data)]);
-                            if (array_key_exists('attach_invoice', $data)) {
-                                $value = $data['attach_invoice'];
-                                Log::info('Found attach_invoice key', ['value' => $value, 'type' => gettype($value)]);
-                                $attachInvoice = ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'on');
+                        // Helper function to safely check checkbox values
+                        $getCheckboxValue = function ($key, $default = false) use ($data) {
+                            if (is_array($data)) {
+                                if (array_key_exists($key, $data)) {
+                                    $value = $data[$key];
+                                    // Explicitly check for false/null/0/empty to handle unchecked checkboxes
+                                    if ($value === false || $value === null || $value === 0 || $value === '0' || $value === 'false' || $value === 'off') {
+                                        return false;
+                                    }
+                                    // Check for truthy values
+                                    return ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'on');
+                                }
+                            } elseif (!is_string($data)) {
+                                $value = data_get($data, $key, $default);
+                                // Explicitly check for false/null/0/empty to handle unchecked checkboxes
+                                if ($value === false || $value === null || $value === 0 || $value === '0' || $value === 'false' || $value === 'off') {
+                                    return false;
+                                }
+                                // Check for truthy values
+                                return ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'on');
                             }
-                        }
-                        // Method 2: Try data_get as fallback
-                        elseif (!is_string($data)) {
-                            $value = data_get($data, 'attach_invoice', false);
-                            $attachInvoice = ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'on');
-                        }
+                            return $default;
+                        };
                         
-                        Log::info('Attachment check result', ['attachInvoice' => $attachInvoice]);
+                        // Safely check for all attachment checkboxes
+                        // Invoice defaults to true, so use true as default if not in data
+                        $attachInvoice = $getCheckboxValue('attach_invoice', true);
+                        $attachGop = $getCheckboxValue('attach_gop', false);
+                        $attachMedicalReport = $getCheckboxValue('attach_medical_report', false);
+                        $attachBill = $getCheckboxValue('attach_bill', false);
+                        
+                        Log::info('Attachment check results', [
+                            'attachInvoice' => $attachInvoice,
+                            'attachGop' => $attachGop,
+                            'attachMedicalReport' => $attachMedicalReport,
+                            'attachBill' => $attachBill,
+                        ]);
                         
                         $invoice = $this->record;
                         
                         // Ensure invoice relationships are loaded
-                        $invoice->load(['file.patient.client', 'file.gops']);
+                        $invoice->load(['file.patient.client', 'file.gops', 'file.medicalReports', 'file.bills']);
                     
                     // Build email body
                     $file = $invoice->file;
@@ -124,18 +243,71 @@ class EditInvoice extends EditRecord
                         return;
                     }
                     
-                        // Add invoice to attachments if checked and available
-                        if ($attachInvoice && $invoice->hasLocalDocument()) {
+                    // Add invoice to attachments if checked and available
+                    if ($attachInvoice) {
+                        if ($invoice->hasLocalDocument()) {
                             $attachments[] = 'invoice';
-                            Log::info('Added invoice to attachments');
+                            Log::info('Added invoice to attachments', [
+                                'invoice_id' => $invoice->id,
+                                'has_document' => true,
+                                'document_path' => $invoice->invoice_document_path,
+                            ]);
+                        } else {
+                            Log::warning('Invoice checkbox checked but no document available', [
+                                'invoice_id' => $invoice->id,
+                                'has_document' => false,
+                                'document_path' => $invoice->invoice_document_path,
+                            ]);
                         }
-                        
-                        Log::info('Final attachments array', ['attachments' => $attachments, 'count' => count($attachments)]);
+                    } else {
+                        Log::info('Invoice checkbox not checked', ['attachInvoice' => $attachInvoice]);
+                    }
                     
-                    // Build attachment list for email body
+                    // Add GOP to attachments if checked and available
+                    if ($attachGop && $file) {
+                        $hasGopAttachment = $file->gops()->where('type', 'In')->whereNotNull('document_path')->exists();
+                        if ($hasGopAttachment) {
+                            $attachments[] = 'gop';
+                            Log::info('Added GOP to attachments');
+                        }
+                    }
+                    
+                    // Add medical report to attachments if checked and available
+                    if ($attachMedicalReport && $file) {
+                        $hasMedicalReportAttachment = $file->medicalReports()->whereNotNull('document_path')->exists();
+                        if ($hasMedicalReportAttachment) {
+                            $attachments[] = 'medical_report';
+                            Log::info('Added medical report to attachments');
+                        }
+                    }
+                    
+                    // Add bill to attachments if checked and available
+                    if ($attachBill && $file) {
+                        $hasBillAttachment = $file->bills()->whereNotNull('bill_document_path')->exists();
+                        if ($hasBillAttachment) {
+                            $attachments[] = 'bill';
+                            Log::info('Added bill to attachments');
+                        }
+                    }
+                    
+                    Log::info('Final attachments array', ['attachments' => $attachments, 'count' => count($attachments)]);
+                    
+                    // Build attachment list for email body - match the actual attachment names
                     $attachmentList = [];
+                    $patientName = $patient->name ?? 'Unknown';
+                    $mgaRef = $file->mga_reference ?? '';
+                    
                     if (in_array('invoice', $attachments)) {
-                        $attachmentList[] = '· Invoice ' . $invoice->name;
+                        $attachmentList[] = '· ' . $invoice->name . '.pdf';
+                    }
+                    if (in_array('gop', $attachments)) {
+                        $attachmentList[] = '· GOP for ' . $patientName . ' | ' . $mgaRef . '.pdf';
+                    }
+                    if (in_array('medical_report', $attachments)) {
+                        $attachmentList[] = '· Medical Report for ' . $patientName . ' | ' . $mgaRef . '.pdf';
+                    }
+                    if (in_array('bill', $attachments)) {
+                        $attachmentList[] = '· Bill for ' . $patientName . ' | ' . $mgaRef . '.pdf';
                     }
                     
                     // Build email body
@@ -146,7 +318,7 @@ class EditInvoice extends EditRecord
                     $emailBody .= "MGA Reference : " . ($file->mga_reference ?? '') . "\n";
                     $emailBody .= "Issue Date : " . ($invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : '') . "\n";
                     $emailBody .= "Due Date : " . ($invoice->due_date ? $invoice->due_date->format('d/m/Y') : '') . "\n";
-                    $emailBody .= "Total : " . number_format($invoice->total_amount ?? 0, 2) . "€\n";
+                    $emailBody .= "Invoice Total : " . number_format($invoice->total_amount ?? 0, 0) . "€\n";
                     $emailBody .= "GOP Total : " . number_format($gopTotal, 2) . "€\n";
                     
                     if (!empty($attachmentList)) {
