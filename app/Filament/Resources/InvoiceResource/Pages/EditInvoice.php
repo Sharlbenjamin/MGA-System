@@ -172,17 +172,28 @@ class EditInvoice extends EditRecord
                             if (is_array($data)) {
                                 if (array_key_exists($key, $data)) {
                                     $value = $data[$key];
+                                    // Explicitly check for false/null/0/empty to handle unchecked checkboxes
+                                    if ($value === false || $value === null || $value === 0 || $value === '0' || $value === 'false' || $value === 'off') {
+                                        return false;
+                                    }
+                                    // Check for truthy values
                                     return ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'on');
                                 }
                             } elseif (!is_string($data)) {
                                 $value = data_get($data, $key, $default);
+                                // Explicitly check for false/null/0/empty to handle unchecked checkboxes
+                                if ($value === false || $value === null || $value === 0 || $value === '0' || $value === 'false' || $value === 'off') {
+                                    return false;
+                                }
+                                // Check for truthy values
                                 return ($value === true || $value === 1 || $value === '1' || $value === 'true' || $value === 'on');
                             }
                             return $default;
                         };
                         
                         // Safely check for all attachment checkboxes
-                        $attachInvoice = $getCheckboxValue('attach_invoice', false);
+                        // Invoice defaults to true, so use true as default if not in data
+                        $attachInvoice = $getCheckboxValue('attach_invoice', true);
                         $attachGop = $getCheckboxValue('attach_gop', false);
                         $attachMedicalReport = $getCheckboxValue('attach_medical_report', false);
                         $attachBill = $getCheckboxValue('attach_bill', false);
@@ -233,9 +244,23 @@ class EditInvoice extends EditRecord
                     }
                     
                     // Add invoice to attachments if checked and available
-                    if ($attachInvoice && $invoice->hasLocalDocument()) {
-                        $attachments[] = 'invoice';
-                        Log::info('Added invoice to attachments');
+                    if ($attachInvoice) {
+                        if ($invoice->hasLocalDocument()) {
+                            $attachments[] = 'invoice';
+                            Log::info('Added invoice to attachments', [
+                                'invoice_id' => $invoice->id,
+                                'has_document' => true,
+                                'document_path' => $invoice->invoice_document_path,
+                            ]);
+                        } else {
+                            Log::warning('Invoice checkbox checked but no document available', [
+                                'invoice_id' => $invoice->id,
+                                'has_document' => false,
+                                'document_path' => $invoice->invoice_document_path,
+                            ]);
+                        }
+                    } else {
+                        Log::info('Invoice checkbox not checked', ['attachInvoice' => $attachInvoice]);
                     }
                     
                     // Add GOP to attachments if checked and available
@@ -267,19 +292,22 @@ class EditInvoice extends EditRecord
                     
                     Log::info('Final attachments array', ['attachments' => $attachments, 'count' => count($attachments)]);
                     
-                    // Build attachment list for email body
+                    // Build attachment list for email body - match the actual attachment names
                     $attachmentList = [];
+                    $patientName = $patient->name ?? 'Unknown';
+                    $mgaRef = $file->mga_reference ?? '';
+                    
                     if (in_array('invoice', $attachments)) {
-                        $attachmentList[] = '· Invoice ' . $invoice->name;
+                        $attachmentList[] = '· ' . $invoice->name . '.pdf';
                     }
                     if (in_array('gop', $attachments)) {
-                        $attachmentList[] = '· GOP (Goods of Purchase)';
+                        $attachmentList[] = '· GOP for ' . $patientName . ' | ' . $mgaRef . '.pdf';
                     }
                     if (in_array('medical_report', $attachments)) {
-                        $attachmentList[] = '· Medical Report';
+                        $attachmentList[] = '· Medical Report for ' . $patientName . ' | ' . $mgaRef . '.pdf';
                     }
                     if (in_array('bill', $attachments)) {
-                        $attachmentList[] = '· Bill';
+                        $attachmentList[] = '· Bill for ' . $patientName . ' | ' . $mgaRef . '.pdf';
                     }
                     
                     // Build email body
