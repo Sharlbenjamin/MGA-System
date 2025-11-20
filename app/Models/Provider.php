@@ -13,7 +13,7 @@ class Provider extends Model
 {
     use HasFactory;
     use HasRelationships;
-    protected $fillable = ['country_id','status','type','name','payment_due','payment_method','comment','gop_contact_id','operation_contact_id','financial_contact_id','phone','email',];
+    protected $fillable = ['country_id','status','type','name','payment_due','payment_method','comment','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','signed_contract_draft',];
 
     protected $casts = [
         'id' => 'integer',

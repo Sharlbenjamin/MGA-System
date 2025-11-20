@@ -43,6 +43,7 @@ class InvoiceRelationManager extends RelationManager
     {
         return $table
             ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(fn ($query) => $query->with(['file.providerBranch.provider']))
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
@@ -65,7 +66,7 @@ class InvoiceRelationManager extends RelationManager
                     ->sortable()
                     ->searchable()
                     ->description(fn (Invoice $record) => $record->file?->client_reference ?? '-'),
-                Tables\Columns\TextColumn::make('file.provider.name')
+                Tables\Columns\TextColumn::make('file.providerBranch.provider.name')
                     ->label('Provider')
                     ->sortable()
                     ->searchable()

@@ -113,6 +113,9 @@ class ListClients extends ListRecords
                 TextColumn::make('invoicesTotalNumber')
                     ->label('Total Invoices')
                     ->sortable(),
+                TextColumn::make('unsentInvoicesCount')
+                    ->label('Unsent Invoices')
+                    ->sortable(),
                 TextColumn::make('invoicesTotal')
                     ->label('Total Amount')
                     ->money('eur')
