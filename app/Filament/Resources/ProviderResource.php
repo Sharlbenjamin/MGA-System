@@ -15,6 +15,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\FileUpload;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
@@ -63,6 +64,19 @@ class ProviderResource extends Resource
             Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
             TextInput::make('phone')->label('Phone')->tel()->nullable(),
             TextInput::make('email')->label('Email')->email()->nullable(),
+            FileUpload::make('signed_contract_draft')
+                ->label('Signed Contract Draft (PDF)')
+                ->acceptedFileTypes(['application/pdf'])
+                ->maxSize(10240) // 10MB
+                ->nullable()
+                ->disk('public')
+                ->directory('contracts/providers')
+                ->visibility('public')
+                ->helperText('Upload a PDF draft of the signed contract')
+                ->downloadable()
+                ->openable()
+                ->preserveFilenames()
+                ->maxFiles(1),
         ]);
 }
 

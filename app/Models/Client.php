@@ -17,7 +17,7 @@ class Client extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity;
 
-    protected $fillable = ['company_name','type','status','initials','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email',];
+    protected $fillable = ['company_name','type','status','initials','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','signed_contract_draft',];
 
     protected $casts = [
         'id' => 'integer',
@@ -156,6 +156,11 @@ class Client extends Model
     public function getInvoicesTotalNumberAttribute()
     {
         return $this->invoices()->count();
+    }
+
+    public function getUnsentInvoicesCountAttribute()
+    {
+        return $this->invoices()->whereIn('status', ['Draft', 'Posted'])->count();
     }
 
     public function getInvoicesTotalAttribute()

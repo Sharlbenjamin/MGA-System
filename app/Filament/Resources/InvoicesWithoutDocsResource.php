@@ -21,7 +21,7 @@ class InvoicesWithoutDocsResource extends Resource
 
     protected static ?int $navigationSort = 7;
 
-    protected static ?string $navigationLabel = 'Invoices without docs';
+    protected static ?string $navigationLabel = 'Pending Invoices';
 
     public static function form(Form $form): Form
     {
@@ -58,6 +58,7 @@ class InvoicesWithoutDocsResource extends Resource
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('invoice_google_link')
                 ->orWhere('invoice_google_link', '')
+                ->whereIn('status', ['Draft', 'Posted'])
                 ->with(['file.patient.client']))
             ->columns([
                 Tables\Columns\TextColumn::make('name')
