@@ -12,6 +12,7 @@ use App\Models\Client;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\Patient;
+use App\Models\User;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -38,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
             'Provider' => Provider::class,
             'Branch' => ProviderBranch::class,
             'Patient' => Patient::class,
+            'User' => User::class,
         ]);
     }
 }
