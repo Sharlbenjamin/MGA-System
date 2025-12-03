@@ -66,7 +66,7 @@ class FilesWithoutInvoicesResource extends Resource
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'Assisted')
                 ->whereDoesntHave('invoices')
-                ->with('bills'))
+                ->with(['bills', 'providerBranch.provider']))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')
                     ->searchable()
@@ -76,6 +76,10 @@ class FilesWithoutInvoicesResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('patient.client.company_name')
                     ->label('Client')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('providerBranch.provider.name')
+                    ->label('Provider')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('country.name')
