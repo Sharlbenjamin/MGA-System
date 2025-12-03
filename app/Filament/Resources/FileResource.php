@@ -229,7 +229,7 @@ class FileResource extends Resource
                     }),
                 
                 Tables\Columns\TextColumn::make('bills_details')
-                    ->label('(Bills)')
+                    ->label('Bills')
                     ->state(function (File $record) {
                         // Ensure bills are loaded
                         if (!$record->relationLoaded('bills')) {

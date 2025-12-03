@@ -47,9 +47,35 @@ class BankAccountResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query) {
+                $query->with(['client', 'provider', 'branch', 'file']);
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('type')->searchable(),
-                Tables\Columns\TextColumn::make('owner_name')->label('Owner')->searchable(),
+                Tables\Columns\TextColumn::make('owner_name')
+                    ->label('Owner')
+                    ->searchable(query: function (Builder $query, string $search) {
+                        $searchLower = strtolower($search);
+                        return $query->where(function ($q) use ($search, $searchLower) {
+                            $q->whereHas('client', function ($query) use ($search) {
+                                $query->where('company_name', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('provider', function ($query) use ($search) {
+                                $query->where('name', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('branch', function ($query) use ($search) {
+                                $query->where('branch_name', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('file', function ($query) use ($search) {
+                                $query->where('mga_reference', 'like', "%{$search}%");
+                            })
+                            ->orWhere(function ($query) use ($searchLower) {
+                                if (str_contains($searchLower, 'med') || str_contains($searchLower, 'guard')) {
+                                    $query->where('type', 'Internal');
+                                }
+                            });
+                        });
+                    }),
                 Tables\Columns\TextColumn::make('beneficiary_name')->label('Name')->searchable(),
                 Tables\Columns\TextColumn::make('iban')->label('IBAN')->searchable(),
                 Tables\Columns\TextColumn::make('swift')->label('SWIFT')->searchable(),
