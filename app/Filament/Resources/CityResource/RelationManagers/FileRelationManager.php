@@ -51,6 +51,8 @@ class FileRelationManager extends RelationManager
                     'Confirmed' => 'Confirmed',
                     'Assisted' => 'Assisted',
                     'Hold' => 'Hold',
+                    'Waiting MR' => 'Waiting MR',
+                    'Refund' => 'Refund',
                     'Cancelled' => 'Cancelled',
                     'Void' => 'Void',
                 ])
@@ -131,6 +133,8 @@ class FileRelationManager extends RelationManager
                         'Confirmed' => 'success',
                         'Assisted' => 'success',
                         'Hold' => 'warning',
+                        'Waiting MR' => 'primary',
+                        'Refund' => 'primary',
                         'Cancelled' => 'danger',
                         'Void' => 'gray',
                         default => 'gray',
@@ -170,6 +174,8 @@ class FileRelationManager extends RelationManager
                         'Confirmed' => 'Confirmed',
                         'Assisted' => 'Assisted',
                         'Hold' => 'Hold',
+                        'Waiting MR' => 'Waiting MR',
+                        'Refund' => 'Refund',
                         'Cancelled' => 'Cancelled',
                         'Void' => 'Void',
                     ])

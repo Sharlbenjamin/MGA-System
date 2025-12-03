@@ -150,6 +150,8 @@ public static function form(Form $form): Form
         'Requesting GOP' => 'Requesting GOP',
         'Assisted' => 'Assisted',
         'Hold' => 'Hold',
+        'Waiting MR' => 'Waiting MR',
+        'Refund' => 'Refund',
         'Void' => 'Void',
     ];
      // $notificationStatuses = [
