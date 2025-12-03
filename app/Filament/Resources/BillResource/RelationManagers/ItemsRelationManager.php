@@ -11,11 +11,13 @@ use Filament\Tables\Table;
 use Filament\Tables;
 use App\Models\BranchService;
 use App\Models\ServiceType;
+use App\Models\BillItem;
 
 class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
     protected static ?string $recordTitleAttribute = 'description';
+    protected static ?string $model = BillItem::class;
 
     public function form(Form $form): Form
     {
@@ -46,6 +48,7 @@ class ItemsRelationManager extends RelationManager
                     ->searchable()
                     ->preload()
                     ->reactive()
+                    ->visibleOn('create')
                     ->afterStateUpdated(function ($state, $set, $get) {
                         if ($state && $state !== 'custom' && str_starts_with($state, 'service_')) {
                             $bill = $this->getOwnerRecord();
@@ -73,7 +76,10 @@ class ItemsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255)
-                    ->disabled(fn ($get) => $get('service_selector') && $get('service_selector') !== 'custom'),
+                    ->disabled(fn ($get) => 
+                        $get('service_selector') 
+                        && $get('service_selector') !== 'custom'
+                    ),
 
                 Forms\Components\TextInput::make('amount')
                     ->required()
@@ -81,7 +87,10 @@ class ItemsRelationManager extends RelationManager
                     ->inputMode('decimal')
                     ->step('0.01')
                     ->prefix('€')
-                    ->disabled(fn ($get) => $get('service_selector') && $get('service_selector') !== 'custom'),
+                    ->disabled(fn ($get) => 
+                        $get('service_selector') 
+                        && $get('service_selector') !== 'custom'
+                    ),
 
                 Forms\Components\TextInput::make('discount')
                     ->numeric()
@@ -100,8 +109,6 @@ class ItemsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('amount')
                     ->money('EUR'),
                 Tables\Columns\TextColumn::make('discount')
-                    ->money('EUR'),
-                Tables\Columns\TextColumn::make('tax')
                     ->money('EUR'),
                 Tables\Columns\TextColumn::make('total')
                     ->money('EUR'),
@@ -136,6 +143,11 @@ class ItemsRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
+                    ->mutateFormDataUsing(function (array $data): array {
+                        // Remove service_selector if it exists (shouldn't be in edit mode, but just in case)
+                        unset($data['service_selector']);
+                        return $data;
+                    })
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
                     }),

@@ -72,7 +72,7 @@ class FileResource extends Resource
                     $q->where('service_type_id', $get('service_type_id'));
                 });
             })->orderBy('priority', 'asc')->pluck('branch_name', 'id'))->reactive(),
-            Select::make('status')->options(['New' => 'New','Handling' => 'Handling','Available' => 'Available', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required(),
+            Select::make('status')->options(['New' => 'New','Handling' => 'Handling','Available' => 'Available', 'Confirmed' => 'Confirmed', 'Assisted' => 'Assisted','Hold' => 'Hold','Waiting MR' => 'Waiting MR','Refund' => 'Refund','Cancelled' => 'Cancelled','Void' => 'Void',])->default('New')->required(),
             DatePicker::make('service_date')->label('Service Date')->nullable(),
             TextInput::make('email')->label('Email')->email()->nullable(),
             TextInput::make('phone')->label('Phone')->tel()->nullable(),

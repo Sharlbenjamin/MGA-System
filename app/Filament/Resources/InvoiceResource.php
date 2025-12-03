@@ -166,6 +166,8 @@ class InvoiceResource extends Resource
                     'Confirmed' => 'success',
                     'Assisted' => 'success',
                     'Hold' => 'warning',
+                    'Waiting MR' => 'primary',
+                    'Refund' => 'primary',
                     'Cancelled' => 'danger',
                     'Void' => 'gray',
                 }),

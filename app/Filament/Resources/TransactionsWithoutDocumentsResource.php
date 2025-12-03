@@ -80,7 +80,8 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ->with([
                         'bankAccount', 
                         'invoices.file.patient.client', 
-                        'bills.file.patient.client'
+                        'bills.file.patient.client',
+                        'related'
                     ]);
             })
             ->columns([
@@ -93,35 +94,66 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('provider_or_client')
                     ->label('Provider / Client')
-                    ->formatStateUsing(function (Transaction $record) {
+                    ->getStateUsing(function (Transaction $record) {
+                        // Try to use the morphTo relationship first
+                        if ($record->relationLoaded('related') && $record->related) {
+                            $related = $record->related;
+                            
+                            if ($record->related_type === 'Provider') {
+                                return $related->name ?? 'N/A';
+                            }
+                            
+                            if ($record->related_type === 'Branch') {
+                                // Load provider if not already loaded
+                                if (!$related->relationLoaded('provider')) {
+                                    $related->load('provider');
+                                }
+                                if ($related->provider) {
+                                    return $related->provider->name ?? 'N/A';
+                                }
+                                return $related->name ?? $related->branch_name ?? 'N/A';
+                            }
+                            
+                            if ($record->related_type === 'Client') {
+                                return $related->company_name ?? $related->name ?? 'N/A';
+                            }
+                            
+                            if ($record->related_type === 'Patient') {
+                                return $related->name ?? 'N/A';
+                            }
+                        }
+                        
+                        // Fallback: manually resolve if relationship not loaded
                         if (!$record->related_type || !$record->related_id) {
                             return 'N/A';
                         }
                         
-                        // Resolve the related model based on related_type
-                        $related = null;
-                        switch ($record->related_type) {
-                            case 'Client':
-                                $related = \App\Models\Client::find($record->related_id);
-                                return $related ? ($related->company_name ?? $related->name ?? 'N/A') : 'N/A';
-                                
-                            case 'Provider':
-                                $related = \App\Models\Provider::find($record->related_id);
-                                return $related ? ($related->name ?? 'N/A') : 'N/A';
-                                
-                            case 'Branch':
-                                $related = \App\Models\ProviderBranch::with('provider')->find($record->related_id);
-                                if ($related && $related->provider) {
-                                    return $related->provider->name ?? 'N/A';
-                                }
-                                return $related ? ($related->name ?? $related->branch_name ?? 'N/A') : 'N/A';
-                                
-                            case 'Patient':
-                                $related = \App\Models\Patient::find($record->related_id);
-                                return $related ? ($related->name ?? 'N/A') : 'N/A';
-                                
-                            default:
-                                return 'N/A';
+                        try {
+                            switch ($record->related_type) {
+                                case 'Client':
+                                    $related = \App\Models\Client::find($record->related_id);
+                                    return $related ? ($related->company_name ?? $related->name ?? 'N/A') : 'N/A';
+                                    
+                                case 'Provider':
+                                    $related = \App\Models\Provider::find($record->related_id);
+                                    return $related ? ($related->name ?? 'N/A') : 'N/A';
+                                    
+                                case 'Branch':
+                                    $related = \App\Models\ProviderBranch::with('provider')->find($record->related_id);
+                                    if ($related && $related->provider) {
+                                        return $related->provider->name ?? 'N/A';
+                                    }
+                                    return $related ? ($related->name ?? $related->branch_name ?? 'N/A') : 'N/A';
+                                    
+                                case 'Patient':
+                                    $related = \App\Models\Patient::find($record->related_id);
+                                    return $related ? ($related->name ?? 'N/A') : 'N/A';
+                                    
+                                default:
+                                    return 'N/A';
+                            }
+                        } catch (\Exception $e) {
+                            return 'Error: ' . $e->getMessage();
                         }
                     })
                     ->searchable()

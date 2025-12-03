@@ -969,6 +969,8 @@ class ViewFile extends ViewRecord
                             'Available' => 'Available',
                             'Confirmed' => 'Confirmed',
                             'Assisted' => 'Assisted',
+                            'Waiting MR' => 'Waiting MR',
+                            'Refund' => 'Refund',
                             'Cancelled' => 'Cancelled',
                             'Void' => 'Void',
                         ])
