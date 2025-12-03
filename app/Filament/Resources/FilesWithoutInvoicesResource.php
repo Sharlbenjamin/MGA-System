@@ -91,9 +91,14 @@ class FilesWithoutInvoicesResource extends Resource
                 Tables\Columns\TextColumn::make('service_date')
                     ->date()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('bill_status')
+                Tables\Columns\TextColumn::make('bill_amount')
                     ->label('Bill')
-                    ->formatStateUsing(function (File $record) {
+                    ->state(function (File $record) {
+                        // Ensure bills are loaded
+                        if (!$record->relationLoaded('bills')) {
+                            $record->load('bills');
+                        }
+                        
                         $bills = $record->bills;
                         
                         if ($bills->isEmpty()) {
@@ -105,6 +110,11 @@ class FilesWithoutInvoicesResource extends Resource
                     })
                     ->badge()
                     ->color(function (File $record) {
+                        // Ensure bills are loaded
+                        if (!$record->relationLoaded('bills')) {
+                            $record->load('bills');
+                        }
+                        
                         $bills = $record->bills;
                         
                         if ($bills->isEmpty()) {
