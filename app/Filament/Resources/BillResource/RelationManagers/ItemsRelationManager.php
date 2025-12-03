@@ -48,7 +48,7 @@ class ItemsRelationManager extends RelationManager
                     ->searchable()
                     ->preload()
                     ->reactive()
-                    ->hidden(fn ($record) => $record !== null)
+                    ->visibleOn('create')
                     ->afterStateUpdated(function ($state, $set, $get) {
                         if ($state && $state !== 'custom' && str_starts_with($state, 'service_')) {
                             $bill = $this->getOwnerRecord();
@@ -76,9 +76,8 @@ class ItemsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255)
-                    ->disabled(fn ($get, $record) => 
-                        $record === null 
-                        && $get('service_selector') 
+                    ->disabled(fn ($get) => 
+                        $get('service_selector') 
                         && $get('service_selector') !== 'custom'
                     ),
 
@@ -88,20 +87,12 @@ class ItemsRelationManager extends RelationManager
                     ->inputMode('decimal')
                     ->step('0.01')
                     ->prefix('€')
-                    ->disabled(fn ($get, $record) => 
-                        $record === null 
-                        && $get('service_selector') 
+                    ->disabled(fn ($get) => 
+                        $get('service_selector') 
                         && $get('service_selector') !== 'custom'
                     ),
 
                 Forms\Components\TextInput::make('discount')
-                    ->numeric()
-                    ->inputMode('decimal')
-                    ->step('0.01')
-                    ->prefix('€')
-                    ->default('0'),
-
-                Forms\Components\TextInput::make('tax')
                     ->numeric()
                     ->inputMode('decimal')
                     ->step('0.01')
