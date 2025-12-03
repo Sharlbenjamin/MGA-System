@@ -32,8 +32,10 @@ class AppServiceProvider extends ServiceProvider
     {
         //FilamentDatabaseNotification::resolveUsing(function ($attributes) {return new LaravelDatabaseNotification($attributes);});
         
-        // Map morphTo relationship types to their model classes
-        Relation::enforceMorphMap([
+        // Map morphTo relationship types to their model classes (non-enforcing)
+        // This allows Transaction model to resolve short names like 'Client' to Client::class
+        // while still allowing other morphTo relationships to use full class names
+        Relation::morphMap([
             'Client' => Client::class,
             'Provider' => Provider::class,
             'Branch' => ProviderBranch::class,
