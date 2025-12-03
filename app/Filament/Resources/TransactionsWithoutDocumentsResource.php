@@ -74,15 +74,59 @@ class TransactionsWithoutDocumentsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('attachment_path')
-                ->orWhere('attachment_path', '')
-                ->with(['bankAccount', 'invoices.file.patient.client', 'bills.file.patient.client']))
+            ->modifyQueryUsing(function (Builder $query) {
+                $query = $query->whereNull('attachment_path')
+                    ->orWhere('attachment_path', '')
+                    ->with([
+                        'bankAccount', 
+                        'invoices.file.patient.client', 
+                        'bills.file.patient.client',
+                        'related'
+                    ]);
+                
+                // Eager load providers for Branch types
+                // We'll handle this in the column, but this ensures related is loaded
+                return $query;
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')
                     ->label('Bank Account')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('provider_or_client')
+                    ->label('Provider / Client')
+                    ->formatStateUsing(function (Transaction $record) {
+                        if (!$record->related) {
+                            return 'N/A';
+                        }
+                        
+                        // Show Provider name for Provider or Branch types
+                        if ($record->related_type === 'Provider') {
+                            return $record->related->name ?? 'N/A';
+                        }
+                        
+                        if ($record->related_type === 'Branch') {
+                            // For Branch, get the provider name through the branch
+                            // Load provider if not already loaded
+                            if (!$record->related->relationLoaded('provider')) {
+                                $record->related->load('provider');
+                            }
+                            if ($record->related->provider) {
+                                return $record->related->provider->name ?? 'N/A';
+                            }
+                            return $record->related->name ?? 'N/A';
+                        }
+                        
+                        // Show Client name for Client type
+                        if ($record->related_type === 'Client') {
+                            return $record->related->company_name ?? $record->related->name ?? 'N/A';
+                        }
+                        
+                        return 'N/A';
+                    })
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('client_reference')
