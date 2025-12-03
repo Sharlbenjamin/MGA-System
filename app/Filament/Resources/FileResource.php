@@ -242,53 +242,41 @@ class FileResource extends Resource
                             return 'No Bills';
                         }
                         
-                        $details = [];
+                        $badges = [];
                         foreach ($bills as $bill) {
                             $hasAttachment = !empty($bill->bill_document_path) || !empty($bill->bill_google_link);
-                            $attachmentStatus = $hasAttachment ? '✓ Attachment: Present' : '✗ Attachment: Not Present';
+                            $amount = '€' . number_format($bill->total_amount, 2);
                             
                             $paymentStatus = match($bill->status) {
-                                'Paid' => 'Status: Paid',
-                                'Partial' => 'Status: Partial',
-                                'Unpaid' => 'Status: Not Paid',
-                                default => 'Status: ' . ($bill->status ?? 'Unknown'),
+                                'Paid' => 'Paid',
+                                'Partial' => 'Partial',
+                                'Unpaid' => 'Not Paid',
+                                default => $bill->status ?? 'Unknown',
                             };
                             
-                            $details[] = $bill->name . ' - ' . $attachmentStatus . ' | ' . $paymentStatus;
+                            // Amount badge - green if attachment present, red if not
+                            $amountBgColor = $hasAttachment ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                            
+                            // Payment status badge
+                            $paymentBgColor = match($bill->status) {
+                                'Paid' => 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                                'Partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+                                'Unpaid' => 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+                                default => 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+                            };
+                            
+                            $badges[] = sprintf(
+                                '<div class="flex gap-1"><span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset %s">%s</span> <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset %s">%s</span></div>',
+                                $amountBgColor,
+                                $amount,
+                                $paymentBgColor,
+                                $paymentStatus
+                            );
                         }
                         
-                        return implode("\n", $details);
+                        return '<div class="flex flex-col gap-1">' . implode('', $badges) . '</div>';
                     })
-                    ->wrap()
-                    ->color(function (File $record) {
-                        // Ensure bills are loaded
-                        if (!$record->relationLoaded('bills')) {
-                            $record->load('bills');
-                        }
-                        
-                        $bills = $record->bills;
-                        
-                        if ($bills->isEmpty()) {
-                            return 'gray';
-                        }
-                        
-                        // Check if all bills have attachments and are paid
-                        $allHaveAttachments = $bills->every(function ($bill) {
-                            return !empty($bill->bill_document_path) || !empty($bill->bill_google_link);
-                        });
-                        
-                        $allPaid = $bills->every(function ($bill) {
-                            return $bill->status === 'Paid';
-                        });
-                        
-                        if ($allHaveAttachments && $allPaid) {
-                            return 'success';
-                        } elseif ($allHaveAttachments || $allPaid) {
-                            return 'warning';
-                        } else {
-                            return 'danger';
-                        }
-                    }),
+                    ->html(),
                 
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
