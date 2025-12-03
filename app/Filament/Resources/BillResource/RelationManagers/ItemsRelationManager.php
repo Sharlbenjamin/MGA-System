@@ -110,8 +110,6 @@ class ItemsRelationManager extends RelationManager
                     ->money('EUR'),
                 Tables\Columns\TextColumn::make('discount')
                     ->money('EUR'),
-                Tables\Columns\TextColumn::make('tax')
-                    ->money('EUR'),
                 Tables\Columns\TextColumn::make('total')
                     ->money('EUR'),
             ])
