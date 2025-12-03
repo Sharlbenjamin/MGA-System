@@ -210,8 +210,18 @@ class FileResource extends Resource
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')
                     ->badge()
-                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
-                    ->formatStateUsing(fn ($state) => $state > 0 ? '€' . number_format($state, 2) : '€0.00')
+                    ->color(function ($state, $record) {
+                        $firstGopIn = $record->gops()->where('type', 'In')->first();
+                        if (!$firstGopIn) {
+                            return 'danger'; // No GOP exists
+                        }
+                        // Green if attached (has document_path), red if not attached
+                        return !empty($firstGopIn->document_path) ? 'success' : 'danger';
+                    })
+                    ->formatStateUsing(function ($state, $record) {
+                        $firstGopIn = $record->gops()->where('type', 'In')->first();
+                        return $firstGopIn ? '€' . number_format($firstGopIn->amount, 2) : '€0.00';
+                    })
                     ->getStateUsing(function ($record) {
                         $firstGopIn = $record->gops()->where('type', 'In')->first();
                         return $firstGopIn ? $firstGopIn->amount : 0;
