@@ -11,11 +11,13 @@ use Filament\Tables\Table;
 use Filament\Tables;
 use App\Models\BranchService;
 use App\Models\ServiceType;
+use App\Models\BillItem;
 
 class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
     protected static ?string $recordTitleAttribute = 'description';
+    protected static ?string $model = BillItem::class;
 
     public function form(Form $form): Form
     {
