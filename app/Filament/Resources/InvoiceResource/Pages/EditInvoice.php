@@ -455,6 +455,18 @@ class EditInvoice extends EditRecord
                     
                     return TransactionResource::getUrl('create', $params);
                 }),
+            Actions\Action::make('view_transaction')
+                ->label('View Transaction')
+                ->icon('heroicon-o-rectangle-stack')
+                ->color('primary')
+                ->visible(fn () => $this->record->status === 'Paid' && $this->record->transactions()->exists())
+                ->url(function () {
+                    $transaction = $this->record->transactions()->first();
+                    if ($transaction) {
+                        return TransactionResource::getUrl('edit', ['record' => $transaction->id]);
+                    }
+                    return null;
+                }),
             Actions\DeleteAction::make(),
         ];
     }

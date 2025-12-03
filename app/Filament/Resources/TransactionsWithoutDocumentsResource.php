@@ -74,9 +74,15 @@ class TransactionsWithoutDocumentsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('attachment_path')
-                ->orWhere('attachment_path', '')
-                ->with(['bankAccount', 'invoices.file.patient.client', 'bills.file.patient.client']))
+            ->modifyQueryUsing(function (Builder $query) {
+                return $query->whereNull('attachment_path')
+                    ->orWhere('attachment_path', '')
+                    ->with([
+                        'bankAccount', 
+                        'invoices.file.patient.client', 
+                        'bills.file.patient.client'
+                    ]);
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
@@ -85,26 +91,38 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ->label('Bank Account')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('client_reference')
-                    ->label('Client Reference')
-                    ->formatStateUsing(function ($record) {
-                        // For Income transactions, try to get client from invoices
-                        if ($record->type === 'Income' && $record->invoices->isNotEmpty()) {
-                            $firstInvoice = $record->invoices->first();
-                            if ($firstInvoice->file && $firstInvoice->file->patient && $firstInvoice->file->patient->client) {
-                                return $firstInvoice->file->patient->client->company_name;
-                            }
+                Tables\Columns\TextColumn::make('provider_or_client')
+                    ->label('Provider / Client')
+                    ->formatStateUsing(function (Transaction $record) {
+                        if (!$record->related_type || !$record->related_id) {
+                            return 'N/A';
                         }
                         
-                        // For Outflow/Expense transactions, try to get client from bills
-                        if (in_array($record->type, ['Outflow', 'Expense']) && $record->bills->isNotEmpty()) {
-                            $firstBill = $record->bills->first();
-                            if ($firstBill->file && $firstBill->file->patient && $firstBill->file->patient->client) {
-                                return $firstBill->file->patient->client->company_name;
-                            }
+                        // Resolve the related model based on related_type
+                        $related = null;
+                        switch ($record->related_type) {
+                            case 'Client':
+                                $related = \App\Models\Client::find($record->related_id);
+                                return $related ? ($related->company_name ?? $related->name ?? 'N/A') : 'N/A';
+                                
+                            case 'Provider':
+                                $related = \App\Models\Provider::find($record->related_id);
+                                return $related ? ($related->name ?? 'N/A') : 'N/A';
+                                
+                            case 'Branch':
+                                $related = \App\Models\ProviderBranch::with('provider')->find($record->related_id);
+                                if ($related && $related->provider) {
+                                    return $related->provider->name ?? 'N/A';
+                                }
+                                return $related ? ($related->name ?? $related->branch_name ?? 'N/A') : 'N/A';
+                                
+                            case 'Patient':
+                                $related = \App\Models\Patient::find($record->related_id);
+                                return $related ? ($related->name ?? 'N/A') : 'N/A';
+                                
+                            default:
+                                return 'N/A';
                         }
-                        
-                        return 'N/A';
                     })
                     ->searchable()
                     ->sortable(),

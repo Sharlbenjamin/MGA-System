@@ -64,7 +64,9 @@ class FilesWithoutInvoicesResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'Assisted')->whereDoesntHave('invoices'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'Assisted')
+                ->whereDoesntHave('invoices')
+                ->with(['bills', 'providerBranch.provider']))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')
                     ->searchable()
@@ -74,6 +76,10 @@ class FilesWithoutInvoicesResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('patient.client.company_name')
                     ->label('Client')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('providerBranch.provider.name')
+                    ->label('Provider')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('country.name')
@@ -89,6 +95,47 @@ class FilesWithoutInvoicesResource extends Resource
                 Tables\Columns\TextColumn::make('service_date')
                     ->date()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('bill_amount')
+                    ->label('Bill')
+                    ->state(function (File $record) {
+                        // Ensure bills are loaded
+                        if (!$record->relationLoaded('bills')) {
+                            $record->load('bills');
+                        }
+                        
+                        $bills = $record->bills;
+                        
+                        if ($bills->isEmpty()) {
+                            return 'No Bill';
+                        }
+                        
+                        $totalAmount = $bills->sum('total_amount');
+                        return '€' . number_format($totalAmount, 2);
+                    })
+                    ->badge()
+                    ->color(function (File $record) {
+                        // Ensure bills are loaded
+                        if (!$record->relationLoaded('bills')) {
+                            $record->load('bills');
+                        }
+                        
+                        $bills = $record->bills;
+                        
+                        if ($bills->isEmpty()) {
+                            return 'gray';
+                        }
+                        
+                        $hasAttachment = $bills->contains(function ($bill) {
+                            return !empty($bill->bill_document_path) || !empty($bill->bill_google_link);
+                        });
+                        
+                        // Green if attachment present, red if no attachment
+                        return $hasAttachment ? 'success' : 'danger';
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->withSum('bills', 'total_amount')
+                            ->orderBy('bills_sum_total_amount', $direction);
+                    }),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {

@@ -128,7 +128,8 @@ class FileResource extends Resource
                 'city',
                 'serviceType',
                 'providerBranch.provider',
-                'gops'
+                'gops',
+                'bills'
             ]))
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -210,11 +211,83 @@ class FileResource extends Resource
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')
                     ->badge()
-                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
-                    ->formatStateUsing(fn ($state) => $state > 0 ? '€' . number_format($state, 2) : '€0.00')
+                    ->color(function ($state, $record) {
+                        $firstGopIn = $record->gops()->where('type', 'In')->first();
+                        if (!$firstGopIn) {
+                            return 'danger'; // No GOP exists
+                        }
+                        // Green if attached (has document_path), red if not attached
+                        return !empty($firstGopIn->document_path) ? 'success' : 'danger';
+                    })
+                    ->formatStateUsing(function ($state, $record) {
+                        $firstGopIn = $record->gops()->where('type', 'In')->first();
+                        return $firstGopIn ? '€' . number_format($firstGopIn->amount, 2) : '€0.00';
+                    })
                     ->getStateUsing(function ($record) {
                         $firstGopIn = $record->gops()->where('type', 'In')->first();
                         return $firstGopIn ? $firstGopIn->amount : 0;
+                    }),
+                
+                Tables\Columns\TextColumn::make('bills_details')
+                    ->label('Bills')
+                    ->state(function (File $record) {
+                        // Ensure bills are loaded
+                        if (!$record->relationLoaded('bills')) {
+                            $record->load('bills');
+                        }
+                        
+                        $bills = $record->bills;
+                        
+                        if ($bills->isEmpty()) {
+                            return 'No Bills';
+                        }
+                        
+                        $details = [];
+                        foreach ($bills as $bill) {
+                            $hasAttachment = !empty($bill->bill_document_path) || !empty($bill->bill_google_link);
+                            $attachmentStatus = $hasAttachment ? '✓ Attachment: Present' : '✗ Attachment: Not Present';
+                            
+                            $paymentStatus = match($bill->status) {
+                                'Paid' => 'Status: Paid',
+                                'Partial' => 'Status: Partial',
+                                'Unpaid' => 'Status: Not Paid',
+                                default => 'Status: ' . ($bill->status ?? 'Unknown'),
+                            };
+                            
+                            $details[] = $bill->name . ' - ' . $attachmentStatus . ' | ' . $paymentStatus;
+                        }
+                        
+                        return implode("\n", $details);
+                    })
+                    ->wrap()
+                    ->color(function (File $record) {
+                        // Ensure bills are loaded
+                        if (!$record->relationLoaded('bills')) {
+                            $record->load('bills');
+                        }
+                        
+                        $bills = $record->bills;
+                        
+                        if ($bills->isEmpty()) {
+                            return 'gray';
+                        }
+                        
+                        // Check if all bills have attachments and are paid
+                        $allHaveAttachments = $bills->every(function ($bill) {
+                            return !empty($bill->bill_document_path) || !empty($bill->bill_google_link);
+                        });
+                        
+                        $allPaid = $bills->every(function ($bill) {
+                            return $bill->status === 'Paid';
+                        });
+                        
+                        if ($allHaveAttachments && $allPaid) {
+                            return 'success';
+                        } elseif ($allHaveAttachments || $allPaid) {
+                            return 'warning';
+                        } else {
+                            return 'danger';
+                        }
                     }),
                 
                 Tables\Columns\TextColumn::make('email')
