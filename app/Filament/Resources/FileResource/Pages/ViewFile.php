@@ -795,11 +795,35 @@ class ViewFile extends ViewRecord
                 ->color('primary')
                 ->slideOver()
                 ->modalHeading('Request Appointment - Select Provider Branches')
-                ->modalDescription('Choose which provider branches to send appointment requests to. Branches are filtered by city, service type, and active status, sorted by priority.')
+                ->modalDescription('Choose which provider branches to send appointment requests to. Branches are filtered by country, service type, and active status, sorted by distance.')
                 ->modalWidth('7xl')
                 ->form([
+                    Section::make('Filters')
+                        ->description('Filter providers by country')
+                        ->schema([
+                            Select::make('country_filter')
+                                ->label('Filter by Country')
+                                ->options(function () {
+                                    return \App\Models\Country::whereHas('providers.branches')
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id');
+                                })
+                                ->searchable()
+                                ->preload()
+                                ->placeholder('All Countries')
+                                ->live()
+                                ->afterStateUpdated(function ($state, $set) {
+                                    // Clear selected branches when country filter changes
+                                    $set('selected_branches', []);
+                                    $set('select_all_branches', false);
+                                }),
+                        ])
+                        ->collapsible()
+                        ->collapsed(false),
+                    
                     Section::make('Available Branches')
                         ->description('Select the provider branches you want to send appointment requests to')
+                        ->key(fn ($get) => 'branches-' . ($get('country_filter') ?? 'all'))
                         ->schema([
                             // Table-like header
                             Grid::make(12)
@@ -808,7 +832,8 @@ class ViewFile extends ViewRecord
                                         ->label('')
                                         ->live()
                                         ->afterStateUpdated(function ($state, $set, $get) {
-                                            $branches = $this->getEligibleProviderBranches($this->record);
+                                            $countryFilter = $get('country_filter');
+                                            $branches = $this->getEligibleProviderBranches($this->record, $countryFilter);
                                             $branchIds = $branches->pluck('id')->toArray();
                                             
                                             if ($state) {
@@ -865,7 +890,8 @@ class ViewFile extends ViewRecord
                                 ])
                                 ->extraAttributes(['class' => 'bg-gray-50 border-b-2 border-gray-200 font-semibold text-sm']),
                             
-                            // Branch rows
+                            // Branch rows - reactive to country filter
+                            // The key() on the section will force re-render when country filter changes
                             ...$this->getBranchRows(),
                             
                             // Hidden field to capture selected branches
@@ -1867,34 +1893,31 @@ class ViewFile extends ViewRecord
 
     /**
      * Get eligible provider branches for a file
+     * Filters by country, service type, and active status
      */
-    protected function getEligibleProviderBranches($record)
+    protected function getEligibleProviderBranches($record, $countryId = null)
     {
-        // Use the File model's availableBranches method for consistent filtering
-        $availableBranches = $record->availableBranches();
+        $serviceTypeId = $record->service_type_id;
         
-        // Get the most relevant branches (city branches first, then all branches)
-        $branchIds = collect();
+        // Use country filter from parameter, fallback to file's country
+        $filterCountryId = $countryId ?? $record->country_id;
         
-        if (isset($availableBranches['cityBranches'])) {
-            $branchIds = $branchIds->merge($availableBranches['cityBranches']->pluck('id'));
+        $query = \App\Models\ProviderBranch::query()
+            ->where('status', 'Active') // Filter by active status
+            ->whereHas('services', function ($q) use ($serviceTypeId) {
+                $q->where('service_type_id', $serviceTypeId);
+            })
+            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact']);
+        
+        // Filter by country if provided
+        if ($filterCountryId) {
+            $query->whereHas('provider', function ($q) use ($filterCountryId) {
+                $q->where('country_id', $filterCountryId);
+            });
         }
         
-        if (isset($availableBranches['allBranches'])) {
-            $branchIds = $branchIds->merge($availableBranches['allBranches']->pluck('id'));
-        }
-        
-        // Remove duplicates and fetch with proper relationships
-        $uniqueIds = $branchIds->unique()->values()->toArray();
-        
-        if (empty($uniqueIds)) {
-            return collect();
-        }
-        
-        return \App\Models\ProviderBranch::whereIn('id', $uniqueIds)
-            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
-            ->orderBy('priority', 'asc')
-            ->get();
+        // Don't order here - sorting will be done by distance in getBranchRows
+        return $query->get();
     }
 
     /**
@@ -2063,12 +2086,154 @@ class ViewFile extends ViewRecord
     /**
      * Get branch rows for table-like display
      */
+    /**
+     * Calculate branch distance for sorting purposes
+     * Returns both sort value (numeric minutes) and display string
+     */
+    protected function calculateBranchDistanceForSorting($branch): array
+    {
+        if (!$this->record || !$this->record->address) {
+            return [
+                'sort_value' => 999999, // Put at end when sorting
+                'display' => '<span class="text-gray-400 text-sm">No file address</span>'
+            ];
+        }
+
+        $branchAddress = $branch->address ?? $branch->operationContact?->address;
+        
+        if (!$branchAddress) {
+            return [
+                'sort_value' => 999999,
+                'display' => '<span class="text-gray-400 text-sm">No branch address</span>'
+            ];
+        }
+
+        try {
+            $distanceService = new \App\Services\DistanceCalculationService();
+            $apiKey = config('services.google.maps_api_key');
+            
+            if (empty($apiKey)) {
+                return [
+                    'sort_value' => 999999,
+                    'display' => '<span class="text-yellow-600 text-sm">API key not configured</span>'
+                ];
+            }
+            
+            // Calculate driving distance (preferred for sorting)
+            $drivingDistance = $distanceService->calculateDistance(
+                $this->record->address,
+                $branchAddress,
+                'driving'
+            );
+            
+            if ($drivingDistance) {
+                $minutes = null;
+                if (isset($drivingDistance['duration_minutes'])) {
+                    $minutes = $drivingDistance['duration_minutes'];
+                } elseif (isset($drivingDistance['duration_seconds'])) {
+                    $minutes = round($drivingDistance['duration_seconds'] / 60, 1);
+                }
+                
+                if ($minutes !== null) {
+                    return [
+                        'sort_value' => $minutes,
+                        'display' => $this->getBranchDistanceInfo($branch) // Use existing method for display
+                    ];
+                }
+            }
+            
+            // Fallback: try walking distance
+            $walkingDistance = $distanceService->calculateDistance(
+                $this->record->address,
+                $branchAddress,
+                'walking'
+            );
+            
+            if ($walkingDistance) {
+                $minutes = null;
+                if (isset($walkingDistance['duration_minutes'])) {
+                    $minutes = $walkingDistance['duration_minutes'];
+                } elseif (isset($walkingDistance['duration_seconds'])) {
+                    $minutes = round($walkingDistance['duration_seconds'] / 60, 1);
+                }
+                
+                if ($minutes !== null) {
+                    return [
+                        'sort_value' => $minutes,
+                        'display' => $this->getBranchDistanceInfo($branch)
+                    ];
+                }
+            }
+            
+            // No distance available
+            return [
+                'sort_value' => 999999,
+                'display' => $this->getBranchDistanceInfo($branch)
+            ];
+            
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Distance calculation error', [
+                'branch_id' => $branch->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'sort_value' => 999999,
+                'display' => '<span class="text-gray-400 text-sm">Distance unavailable</span>'
+            ];
+        }
+    }
+
     protected function getBranchRows(): array
     {
-        $branches = $this->getEligibleProviderBranches($this->record);
+        // Get country filter from form state
+        // In Filament actions, when form re-renders due to ->live(), 
+        // the form state is available through the Livewire component's data
+        $countryFilter = null;
+        
+        // Try to get from mounted action data
+        // The structure varies, so we try multiple approaches
+        try {
+            if (property_exists($this, 'mountedActionsData') && isset($this->mountedActionsData['country_filter'])) {
+                $countryFilter = $this->mountedActionsData['country_filter'];
+            } elseif (property_exists($this, 'mountedActions') && isset($this->mountedActions['requestAppointment']['data']['country_filter'])) {
+                $countryFilter = $this->mountedActions['requestAppointment']['data']['country_filter'];
+            }
+        } catch (\Exception $e) {
+            // If we can't access form state, use null (will show all countries)
+            $countryFilter = null;
+        }
+        
+        $branches = $this->getEligibleProviderBranches($this->record, $countryFilter);
+        
+        // Calculate distances and attach sorting data to branches
+        $branchesWithSortData = $branches->map(function ($branch) {
+            $distanceData = $this->calculateBranchDistanceForSorting($branch);
+            
+            // Get service type for sorting (use the file's service type)
+            $serviceTypeId = $this->record->service_type_id ?? 999;
+            
+            // Get status for sorting (Active = 1, Hold = 2)
+            $statusSort = $branch->status === 'Active' ? 1 : 2;
+            
+            $branch->sort_distance = $distanceData['sort_value'];
+            $branch->distance_display = $distanceData['display'];
+            $branch->sort_service_type = $serviceTypeId;
+            $branch->sort_status = $statusSort;
+            
+            return $branch;
+        });
+        
+        // Sort by: distance (asc), then service type, then status (Active first)
+        $sortedBranches = $branchesWithSortData->sortBy([
+            ['sort_distance', 'asc'],      // Distance first (closest first)
+            ['sort_service_type', 'asc'],   // Then by service type
+            ['sort_status', 'asc'],         // Then by status (Active = 1 comes first)
+        ])->values();
+        
         $rows = [];
         
-        foreach ($branches as $branch) {
+        foreach ($sortedBranches as $branch) {
             $rows[] = Grid::make(12)
                 ->schema([
                     // Checkbox column
@@ -2087,7 +2252,8 @@ class ViewFile extends ViewRecord
                             $set('selected_branches', array_values($selectedBranches));
                             
                             // Update "Select All" checkbox state
-                            $branches = $this->getEligibleProviderBranches($this->record);
+                            $countryFilter = $get('country_filter');
+                            $branches = $this->getEligibleProviderBranches($this->record, $countryFilter);
                             $totalBranches = $branches->count();
                             $selectedCount = count($selectedBranches);
                             
@@ -2192,12 +2358,11 @@ class ViewFile extends ViewRecord
                         ])
                         ->columnSpan(1),
                     
-                    // Distance column (automatically calculated)
-                    \Filament\Forms\Components\View::make('distance_' . $branch->id)
-                        ->view('filament.forms.components.distance-info')
-                        ->viewData([
-                            'distanceInfo' => $this->getBranchDistanceInfo($branch)
-                        ])
+                    // Distance column - use the pre-calculated distance
+                    \Filament\Forms\Components\Placeholder::make("distance_{$branch->id}")
+                        ->label('')
+                        ->content($branch->distance_display ?? 'N/A')
+                        ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(2),
                 ])
                 ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
