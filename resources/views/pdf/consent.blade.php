@@ -113,13 +113,15 @@
             border-top: 3px solid #191970;
             font-size: 11px;
             line-height: 1.6;
-            display: flex;
-            align-items: center;
-            gap: 20px;
+            display: table;
+            width: 100%;
         }
 
         .footer-logo {
-            flex-shrink: 0;
+            display: table-cell;
+            vertical-align: middle;
+            width: 80px;
+            padding-right: 20px;
         }
 
         .footer-logo img {
@@ -128,7 +130,8 @@
         }
 
         .footer-content {
-            flex: 1;
+            display: table-cell;
+            vertical-align: middle;
         }
 
         .footer-info {
