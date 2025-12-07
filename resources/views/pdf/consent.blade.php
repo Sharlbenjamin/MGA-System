@@ -29,9 +29,15 @@
         }
 
         .header {
-            display: flex;
-            align-items: center;
+            display: table;
+            width: 100%;
             margin-bottom: 30px;
+        }
+
+        .header-logo {
+            display: table-cell;
+            vertical-align: middle;
+            width: 80px;
         }
 
         .header img {
@@ -39,9 +45,13 @@
             height: auto;
         }
 
-        .header h1 {
-            flex: 1;
+        .header-title {
+            display: table-cell;
+            vertical-align: middle;
             text-align: center;
+        }
+
+        .header h1 {
             font-size: 24px;
             font-weight: bold;
             margin: 0;
@@ -169,8 +179,12 @@
     <div class="page-wrapper">
         <div class="container">
             <div class="header">
-                <img src="{{ public_path('siglogo.png') }}" alt="Med Guard Assistance Logo">
-                <h1>Patient Consent Form</h1>
+                <div class="header-logo">
+                    <img src="{{ public_path('siglogo.png') }}" alt="Med Guard Assistance Logo">
+                </div>
+                <div class="header-title">
+                    <h1>Patient Consent Form</h1>
+                </div>
             </div>
 
             <div class="intro-text">
