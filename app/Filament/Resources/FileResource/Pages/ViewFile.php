@@ -795,25 +795,31 @@ class ViewFile extends ViewRecord
                 ->color('primary')
                 ->slideOver()
                 ->modalHeading('Request Appointment - Select Provider Branches')
-                ->modalDescription('Choose which provider branches to send appointment requests to. Branches are filtered by country, service type, and active status, sorted by distance.')
+                ->modalDescription('Choose which provider branches to send appointment requests to. Branches are filtered by city, service type, and active status, sorted by distance.')
                 ->modalWidth('7xl')
                 ->form([
                     Section::make('Filters')
-                        ->description('Filter providers by country')
+                        ->description('Filter providers by city (defaults to file\'s city)')
                         ->schema([
-                            Select::make('country_filter')
-                                ->label('Filter by Country')
+                            Select::make('city_filter')
+                                ->label('Filter by City')
                                 ->options(function () {
-                                    return \App\Models\Country::whereHas('providers.branches')
+                                    // Get cities from the same country as the file
+                                    $countryId = $this->record->country_id ?? null;
+                                    if (!$countryId) {
+                                        return \App\Models\City::orderBy('name')->pluck('name', 'id');
+                                    }
+                                    return \App\Models\City::where('country_id', $countryId)
                                         ->orderBy('name')
                                         ->pluck('name', 'id');
                                 })
                                 ->searchable()
                                 ->preload()
-                                ->placeholder('All Countries')
+                                ->placeholder('Use file\'s city')
+                                ->default(fn () => $this->record->city_id ?? null)
                                 ->live()
                                 ->afterStateUpdated(function ($state, $set) {
-                                    // Clear selected branches when country filter changes
+                                    // Clear selected branches when city filter changes
                                     $set('selected_branches', []);
                                     $set('select_all_branches', false);
                                 }),
@@ -823,7 +829,7 @@ class ViewFile extends ViewRecord
                     
                     Section::make('Available Branches')
                         ->description('Select the provider branches you want to send appointment requests to')
-                        ->key(fn ($get) => 'branches-' . ($get('country_filter') ?? 'all'))
+                        ->key(fn ($get) => 'branches-' . ($get('city_filter') ?? 'default'))
                         ->schema([
                             // Table-like header
                             Grid::make(12)
@@ -832,8 +838,8 @@ class ViewFile extends ViewRecord
                                         ->label('')
                                         ->live()
                                         ->afterStateUpdated(function ($state, $set, $get) {
-                                            $countryFilter = $get('country_filter');
-                                            $branches = $this->getEligibleProviderBranches($this->record, $countryFilter);
+                                            $cityFilter = $get('city_filter');
+                                            $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
                                             $branchIds = $branches->pluck('id')->toArray();
                                             
                                             if ($state) {
@@ -1906,26 +1912,57 @@ class ViewFile extends ViewRecord
 
     /**
      * Get eligible provider branches for a file
-     * Filters by country, service type, and active status
+     * Filters by city, service type, and active status
+     * Uses the original availableBranches logic but with optional city filter
      */
-    protected function getEligibleProviderBranches($record, $countryId = null)
+    protected function getEligibleProviderBranches($record, $cityId = null)
     {
         $serviceTypeId = $record->service_type_id;
         
-        // Use country filter from parameter, fallback to file's country
-        $filterCountryId = $countryId ?? $record->country_id;
+        // Use city filter from parameter, fallback to file's city
+        $filterCityId = $cityId ?? $record->city_id;
         
+        // If service type is 2 (telemedicine), ignore city filters
+        if ($record->service_type_id == 2) {
+            return \App\Models\ProviderBranch::query()
+                ->where('status', 'Active')
+                ->whereHas('services', function ($q) use ($serviceTypeId) {
+                    $q->where('service_type_id', $serviceTypeId);
+                })
+                ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
+                ->get();
+        }
+        
+        // If no country is assigned, show all branches with matching service type
+        if (!$record->country_id) {
+            return \App\Models\ProviderBranch::query()
+                ->where('status', 'Active')
+                ->whereHas('services', function ($q) use ($serviceTypeId) {
+                    $q->where('service_type_id', $serviceTypeId);
+                })
+                ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
+                ->get();
+        }
+        
+        // Filter branches by city (direct or via pivot) or all_country
         $query = \App\Models\ProviderBranch::query()
-            ->where('status', 'Active') // Filter by active status
+            ->where('status', 'Active')
             ->whereHas('services', function ($q) use ($serviceTypeId) {
                 $q->where('service_type_id', $serviceTypeId);
             })
+            ->whereHas('provider', function ($q) use ($record) {
+                // Filter by country - provider must be in the file's country
+                $q->where('country_id', $record->country_id);
+            })
             ->with(['provider', 'city', 'services', 'gopContact', 'operationContact']);
         
-        // Filter by country if provided
-        if ($filterCountryId) {
-            $query->whereHas('provider', function ($q) use ($filterCountryId) {
-                $q->where('country_id', $filterCountryId);
+        // Filter by city if provided
+        if ($filterCityId) {
+            $query->where(function ($q) use ($filterCityId) {
+                // Filter by city - branch serves this city in any way
+                $q->where('all_country', true)
+                  // OR branches assigned to this city via many-to-many relationship (branch_cities table)
+                  ->orWhereHas('cities', fn ($q) => $q->where('cities.id', $filterCityId));
             });
         }
         
@@ -2199,25 +2236,25 @@ class ViewFile extends ViewRecord
 
     protected function getBranchRows(): array
     {
-        // Get country filter from form state
+        // Get city filter from form state
         // In Filament actions, when form re-renders due to ->live(), 
         // the form state is available through the Livewire component's data
-        $countryFilter = null;
+        $cityFilter = null;
         
         // Try to get from mounted action data
         // The structure varies, so we try multiple approaches
         try {
-            if (property_exists($this, 'mountedActionsData') && isset($this->mountedActionsData['country_filter'])) {
-                $countryFilter = $this->mountedActionsData['country_filter'];
-            } elseif (property_exists($this, 'mountedActions') && isset($this->mountedActions['requestAppointment']['data']['country_filter'])) {
-                $countryFilter = $this->mountedActions['requestAppointment']['data']['country_filter'];
+            if (property_exists($this, 'mountedActionsData') && isset($this->mountedActionsData['city_filter'])) {
+                $cityFilter = $this->mountedActionsData['city_filter'];
+            } elseif (property_exists($this, 'mountedActions') && isset($this->mountedActions['requestAppointment']['data']['city_filter'])) {
+                $cityFilter = $this->mountedActions['requestAppointment']['data']['city_filter'];
             }
         } catch (\Exception $e) {
-            // If we can't access form state, use null (will show all countries)
-            $countryFilter = null;
+            // If we can't access form state, use null (will use file's city)
+            $cityFilter = null;
         }
         
-        $branches = $this->getEligibleProviderBranches($this->record, $countryFilter);
+        $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
         
         // Calculate distances and attach sorting data to branches
         $branchesWithSortData = $branches->map(function ($branch) {
@@ -2265,8 +2302,8 @@ class ViewFile extends ViewRecord
                             $set('selected_branches', array_values($selectedBranches));
                             
                             // Update "Select All" checkbox state
-                            $countryFilter = $get('country_filter');
-                            $branches = $this->getEligibleProviderBranches($this->record, $countryFilter);
+                            $cityFilter = $get('city_filter');
+                            $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
                             $totalBranches = $branches->count();
                             $selectedCount = count($selectedBranches);
                             
