@@ -14,7 +14,6 @@
             margin: 0;
             padding: 0;
             background: #fff;
-            min-height: 297mm;
             width: 210mm;
         }
 
