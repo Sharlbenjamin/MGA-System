@@ -81,6 +81,10 @@
         </div>
         @endif
 
+        <div class="important-note">
+            <p><strong>Important:</strong> Please note that we will only cover the cost of the {{ $file->serviceType->name }} service mentioned above. If you need to perform any additional procedures or tests beyond this service, please contact us first for approval before proceeding. If the patient insisted on proceeding you will have to inform them that they may have to pay as it may or may not be covered by the insurance.</p>
+        </div>
+
         <p>If the requested appointment is not availble, please let us know.</p>
 
         @include('draftsignature', ['signature' => auth()->user()->signature])

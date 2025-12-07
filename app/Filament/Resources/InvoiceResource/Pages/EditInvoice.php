@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Mail\SendInvoiceToClient;
 use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\UploadInvoiceToGoogleDrive;
 
 class EditInvoice extends EditRecord
 {
@@ -24,6 +26,55 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('generate')
+                ->label('Generate Invoice')
+                ->modalHeading('Generate Invoice')
+                ->modalSubmitActionLabel('Generate')
+                ->color('success')
+                ->icon('heroicon-o-document-arrow-up')
+                ->requiresConfirmation()
+                ->modalDescription('This will generate and upload the invoice to Google Drive.')
+                ->visible(fn (Invoice $record): bool => $record->status === 'Draft')
+                ->action(function (Invoice $record) {
+                    // Refresh the invoice record to get the latest data from database
+                    $record->refresh();
+                    $record->load(['file', 'file.patient', 'file.patient.client', 'file.bills']);
+                    
+                    // First generate PDF
+                    $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
+                    $content = $pdf->output();
+                    $fileName = $record->name . '.pdf';
+
+                    // Save to local storage using DocumentPathResolver (PRIMARY storage)
+                    $resolver = app(\App\Services\DocumentPathResolver::class);
+                    $localPath = $resolver->ensurePathFor($record->file, 'invoices', $fileName);
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
+                    
+                    // Update invoice with local document path (PRIMARY)
+                    $record->invoice_document_path = $localPath;
+
+                    // Upload to Google Drive (SECONDARY/BACKUP only)
+                    $uploader = app(UploadInvoiceToGoogleDrive::class);
+                    $result = $uploader->uploadInvoiceToGoogleDrive(
+                        $content,
+                        $fileName,
+                        $record
+                    );
+
+                    if ($result !== false) {
+                        // Update invoice with Google Drive link if upload successful (backup only)
+                        $record->invoice_google_link = $result['webViewLink'];
+                    }
+
+                    $record->status = 'Posted';
+                    $record->save();
+
+                    Notification::make()
+                        ->success()
+                        ->title('Invoice generated and uploaded successfully')
+                        ->body('Invoice has been uploaded to Google Drive.')
+                        ->send();
+                }),
             Actions\Action::make('file')
                 ->label('View File')
                 ->url(FileResource::getUrl('view', ['record' => $this->record->file_id]))
