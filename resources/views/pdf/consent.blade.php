@@ -100,7 +100,7 @@
             display: inline-block;
             min-width: 200px;
             margin: 0 10px;
-            margin-top: 200px;
+            margin-top: 100px;
         }
 
         .footer {
