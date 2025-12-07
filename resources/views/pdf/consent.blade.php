@@ -104,7 +104,7 @@
         }
 
         .signature-section {
-            margin-top: 30px;
+            margin-top: 15px;
             line-height: 1.8;
             font-size: 12px;
         }
