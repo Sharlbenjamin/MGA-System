@@ -24,11 +24,23 @@
             background: transparent;
         }
 
-        h1 {
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header img {
+            width: 80px;
+            height: auto;
+        }
+
+        .header h1 {
+            flex: 1;
+            text-align: center;
             font-size: 24px;
             font-weight: bold;
-            margin-bottom: 20px;
-            text-align: center;
+            margin: 0;
             color: #000;
         }
 
@@ -55,7 +67,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 20px auto;
             font-size: 12px;
         }
 
@@ -67,7 +79,8 @@
         }
 
         table th {
-            background-color: #f5f5f5;
+            background-color: #191970;
+            color: white;
             font-weight: bold;
             width: 40%;
         }
@@ -87,12 +100,13 @@
             display: inline-block;
             min-width: 200px;
             margin: 0 10px;
+            margin-top: 200px;
         }
 
         .footer {
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 1px solid #ddd;
+            border-top: 3px solid #191970;
             font-size: 11px;
             line-height: 1.6;
         }
@@ -103,12 +117,37 @@
 
         .bold {
             font-weight: bold;
+            color: #191970;
+        }
+
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+            text-align: center;
+            width: 100%;
+        }
+
+        .watermark img {
+            width: 500px;
+            height: auto;
         }
     </style>
 </head>
 <body>
+    <div class="watermark">
+        <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Watermark">
+    </div>
+    
     <div class="container">
-        <h1>Patient Consent Form</h1>
+        <div class="header">
+            <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Med Guard Assistance Logo">
+            <h1>Patient Consent Form</h1>
+        </div>
 
         <div class="intro-text">
             I, <span class="bold">{{ $file->patient->name ?? 'N/A' }}</span>, confirm that I have been informed of and understand the purpose of this form.
@@ -131,19 +170,19 @@
             </tr>
             <tr>
                 <td>Patient Name</td>
-                <td>{{ $file->patient->name ?? 'N/A' }}</td>
+                <td class="bold">{{ $file->patient->name ?? 'N/A' }}</td>
             </tr>
             <tr>
                 <td>Date of Birth</td>
-                <td>{{ $file->patient->dob ? $file->patient->dob->format('d/m/Y') : 'N/A' }}</td>
+                <td class="bold">{{ $file->patient->dob ? $file->patient->dob->format('d/m/Y') : 'N/A' }}</td>
             </tr>
             <tr>
                 <td>Medical Facility Name</td>
-                <td>{{ $file->providerBranch->branch_name ?? ($file->providerBranch->provider->name ?? 'N/A') }}</td>
+                <td class="bold">{{ $file->providerBranch->branch_name ?? ($file->providerBranch->provider->name ?? 'N/A') }}</td>
             </tr>
             <tr>
                 <td>Dates of Visit/Treatment</td>
-                <td>{{ $file->service_date ? $file->service_date->format('d/m/Y') : 'N/A' }}</td>
+                <td class="bold">{{ $file->service_date ? $file->service_date->format('d/m/Y') : 'N/A' }}</td>
             </tr>
         </table>
 
