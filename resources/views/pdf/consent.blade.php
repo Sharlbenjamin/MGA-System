@@ -65,7 +65,6 @@
         }
 
         table {
-            width: 100%;
             border-collapse: collapse;
             margin: 20px auto;
             font-size: 12px;
