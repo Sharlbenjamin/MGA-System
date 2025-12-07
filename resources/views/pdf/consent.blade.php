@@ -19,7 +19,6 @@
 
         .page-wrapper {
             position: relative;
-            min-height: 297mm;
             padding: 20mm;
             box-sizing: border-box;
         }
