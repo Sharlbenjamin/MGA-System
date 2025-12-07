@@ -12,10 +12,16 @@
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20mm;
+            padding: 0;
             background: #fff;
             min-height: 297mm;
             width: 210mm;
+        }
+
+        .page-wrapper {
+            position: relative;
+            min-height: 297mm;
+            padding: 20mm;
             box-sizing: border-box;
         }
 
@@ -65,6 +71,7 @@
         }
 
         table {
+            width: 100%;
             border-collapse: collapse;
             margin: 20px auto;
             font-size: 12px;
@@ -142,72 +149,74 @@
         <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Watermark">
     </div>
     
-    <div class="container">
-        <div class="header">
-            <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Med Guard Assistance Logo">
-            <h1>Patient Consent Form</h1>
-        </div>
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="header">
+                <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Med Guard Assistance Logo">
+                <h1>Patient Consent Form</h1>
+            </div>
 
-        <div class="intro-text">
-            I, <span class="bold">{{ $file->patient->name ?? 'N/A' }}</span>, confirm that I have been informed of and understand the purpose of this form.
-        </div>
+            <div class="intro-text">
+                I, <span class="bold">{{ $file->patient->name ?? 'N/A' }}</span>, confirm that I have been informed of and understand the purpose of this form.
+            </div>
 
-        <div class="authorization-text">
-            By signing below, I hereby authorize <span class="bold">Med Guard Assistance</span> to receive, obtain, and access my confidential medical and financial documents related to my visit to the medical facility mentioned below.
-        </div>
+            <div class="authorization-text">
+                By signing below, I hereby authorize <span class="bold">Med Guard Assistance</span> to receive, obtain, and access my confidential medical and financial documents related to my visit to the medical facility mentioned below.
+            </div>
 
-        <div class="authorization-text">
-            I authorize Med Guard Assistance to receive any medical documents related to my visit with the details below.
-        </div>
+            <div class="authorization-text">
+                I authorize Med Guard Assistance to receive any medical documents related to my visit with the details below.
+            </div>
 
-        <div class="section-title">Medical Facility and Visit Details</div>
+            <div class="section-title">Medical Facility and Visit Details</div>
 
-        <table>
-            <tr>
-                <th>Field</th>
-                <th>Information</th>
-            </tr>
-            <tr>
-                <td>Patient Name</td>
-                <td class="bold">{{ $file->patient->name ?? 'N/A' }}</td>
-            </tr>
-            <tr>
-                <td>Date of Birth</td>
-                <td class="bold">{{ $file->patient->dob ? $file->patient->dob->format('d/m/Y') : 'N/A' }}</td>
-            </tr>
-            <tr>
-                <td>Medical Facility Name</td>
-                <td class="bold">{{ $file->providerBranch->branch_name ?? ($file->providerBranch->provider->name ?? 'N/A') }}</td>
-            </tr>
-            <tr>
-                <td>Dates of Visit/Treatment</td>
-                <td class="bold">{{ $file->service_date ? $file->service_date->format('d/m/Y') : 'N/A' }}</td>
-            </tr>
-        </table>
+            <table>
+                <tr>
+                    <th>Field</th>
+                    <th>Information</th>
+                </tr>
+                <tr>
+                    <td>Patient Name</td>
+                    <td class="bold">{{ $file->patient->name ?? 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <td>Date of Birth</td>
+                    <td class="bold">{{ $file->patient->dob ? $file->patient->dob->format('d/m/Y') : 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <td>Medical Facility Name</td>
+                    <td class="bold">{{ $file->providerBranch->branch_name ?? ($file->providerBranch->provider->name ?? 'N/A') }}</td>
+                </tr>
+                <tr>
+                    <td>Dates of Visit/Treatment</td>
+                    <td class="bold">{{ $file->service_date ? $file->service_date->format('d/m/Y') : 'N/A' }}</td>
+                </tr>
+            </table>
 
-        <div class="section-title">Authorization and Signature</div>
+            <div class="section-title">Authorization and Signature</div>
 
-        <div class="authorization-text">
-            I understand that the information released may be used by <span class="bold">Med Guard Assistance</span> for the purpose of processing claims, coordinating assistance, and related administrative tasks.
-        </div>
+            <div class="authorization-text">
+                I understand that the information released may be used by <span class="bold">Med Guard Assistance</span> for the purpose of processing claims, coordinating assistance, and related administrative tasks.
+            </div>
 
-        <div class="authorization-text">
-            I understand that this authorization will remain in effect until the conclusion of the necessary administrative or claims processing activities related to the visit dates mentioned above, or until I revoke it in writing.
-        </div>
+            <div class="authorization-text">
+                I understand that this authorization will remain in effect until the conclusion of the necessary administrative or claims processing activities related to the visit dates mentioned above, or until I revoke it in writing.
+            </div>
 
-        <div class="signature-section">
-            <p>
-                Signature of : <span class="bold">{{ $file->patient->name ?? 'N/A' }}</span><br>
-                Date signed : <span class="bold">{{ now()->format('d/m/Y') }}</span><br>
-                Signature: <span class="signature-line"></span>
-            </p>
-        </div>
+            <div class="signature-section">
+                <p>
+                    Signature of : <span class="bold">{{ $file->patient->name ?? 'N/A' }}</span><br>
+                    Date signed : <span class="bold">{{ now()->format('d/m/Y') }}</span><br>
+                    Signature: <span class="signature-line"></span>
+                </p>
+            </div>
 
-        <div class="footer">
-            <div class="footer-info"><span class="bold">Company Name:</span> Med Guard Assistance</div>
-            <div class="footer-info"><span class="bold">Phone:</span> +34 634 070 722</div>
-            <div class="footer-info"><span class="bold">Email:</span> mga.financial@medguarda.com</div>
-            <div class="footer-info"><span class="bold">Website:</span> medguarda.com</div>
+            <div class="footer">
+                <div class="footer-info"><span class="bold">Company Name:</span> Med Guard Assistance</div>
+                <div class="footer-info"><span class="bold">Phone:</span> +34 634 070 722</div>
+                <div class="footer-info"><span class="bold">Email:</span> mga.financial@medguarda.com</div>
+                <div class="footer-info"><span class="bold">Website:</span> medguarda.com</div>
+            </div>
         </div>
     </div>
 </body>
