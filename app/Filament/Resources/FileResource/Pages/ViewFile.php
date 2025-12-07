@@ -2358,11 +2358,12 @@ class ViewFile extends ViewRecord
                         ])
                         ->columnSpan(1),
                     
-                    // Distance column - use the pre-calculated distance
-                    \Filament\Forms\Components\Placeholder::make("distance_{$branch->id}")
-                        ->label('')
-                        ->content($branch->distance_display ?? 'N/A')
-                        ->extraAttributes(['class' => 'text-sm leading-tight'])
+                    // Distance column (automatically calculated)
+                    \Filament\Forms\Components\View::make('distance_' . $branch->id)
+                        ->view('filament.forms.components.distance-info')
+                        ->viewData([
+                            'distanceInfo' => $this->getBranchDistanceInfo($branch)
+                        ])
                         ->columnSpan(2),
                 ])
                 ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
