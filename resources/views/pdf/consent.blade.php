@@ -45,7 +45,7 @@
             font-size: 24px;
             font-weight: bold;
             margin: 0;
-            color: #000;
+            color: #191970;
         }
 
         .intro-text {
@@ -113,6 +113,22 @@
             border-top: 3px solid #191970;
             font-size: 11px;
             line-height: 1.6;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .footer-logo {
+            flex-shrink: 0;
+        }
+
+        .footer-logo img {
+            width: 60px;
+            height: auto;
+        }
+
+        .footer-content {
+            flex: 1;
         }
 
         .footer-info {
@@ -210,10 +226,15 @@
             </div>
 
             <div class="footer">
-                <div class="footer-info"><span class="bold">Company Name:</span> Med Guard Assistance</div>
-                <div class="footer-info"><span class="bold">Phone:</span> +34 634 070 722</div>
-                <div class="footer-info"><span class="bold">Email:</span> mga.financial@medguarda.com</div>
-                <div class="footer-info"><span class="bold">Website:</span> medguarda.com</div>
+                <div class="footer-logo">
+                    <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Med Guard Assistance Logo">
+                </div>
+                <div class="footer-content">
+                    <div class="footer-info"><span class="bold">Company Name:</span> Med Guard Assistance</div>
+                    <div class="footer-info"><span class="bold">Phone:</span> +34 634 070 722</div>
+                    <div class="footer-info"><span class="bold">Email:</span> mga.financial@medguarda.com</div>
+                    <div class="footer-info"><span class="bold">Website:</span> medguarda.com</div>
+                </div>
             </div>
         </div>
     </div>
