@@ -163,13 +163,13 @@
 </head>
 <body>
     <div class="watermark">
-        <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Watermark">
+        <img src="{{ public_path('siglogo.png') }}" alt="Watermark">
     </div>
     
     <div class="page-wrapper">
         <div class="container">
             <div class="header">
-                <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Med Guard Assistance Logo">
+                <img src="{{ public_path('siglogo.png') }}" alt="Med Guard Assistance Logo">
                 <h1>Patient Consent Form</h1>
             </div>
 
@@ -230,7 +230,7 @@
 
             <div class="footer">
                 <div class="footer-logo">
-                    <img src="{{ storage_path('app/public/SigLogo.png') }}" alt="Med Guard Assistance Logo">
+                    <img src="{{ public_path('siglogo.png') }}" alt="Med Guard Assistance Logo">
                 </div>
                 <div class="footer-content">
                     <div class="footer-info"><span class="bold">Company Name:</span> Med Guard Assistance</div>
