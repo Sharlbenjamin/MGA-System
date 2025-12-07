@@ -967,6 +967,19 @@ class ViewFile extends ViewRecord
                         $fileName
                     );
                 }),
+            Action::make('extractConsent')
+                ->label('Extract consent')
+                ->icon('heroicon-o-document-text')
+                ->color('success')
+                ->action(function ($record) {
+                    $pdf = Pdf::loadView('pdf.consent', ['file' => $record]);
+                    $fileName = 'Consent_Form_' . ($record->patient->name ?? 'Patient') . '_' . $record->mga_reference . '.pdf';
+                    
+                    return response()->streamDownload(
+                        fn () => print($pdf->output()),
+                        $fileName
+                    );
+                }),
             Action::make('notifyClient')
                 ->label('Ready Replies')
                 ->slideOver()
