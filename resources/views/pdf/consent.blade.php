@@ -118,8 +118,8 @@
         }
 
         .footer {
-            margin-top: 40px;
-            padding-top: 20px;
+            margin-top: 30px;
+            padding-top: 15px;
             border-top: 3px solid #191970;
             font-size: 11px;
             line-height: 1.6;
