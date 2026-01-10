@@ -77,7 +77,7 @@ class BranchServiceResource extends Resource
                                             ->nullable(),
 
                                         TextInput::make('max_cost')
-                                            ->label('Maximum Cost')
+                                            ->label('Selling Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
@@ -113,7 +113,7 @@ class BranchServiceResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('max_cost')
-                    ->label('Maximum Cost')
+                    ->label('Selling Cost')
                     ->money('USD')
                     ->sortable(),
             ])

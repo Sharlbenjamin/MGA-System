@@ -452,7 +452,7 @@ class ProviderBranchResource extends Resource
                                             ->helperText('Will be applied to all services if set'),
                                         
                                         Forms\Components\TextInput::make('default_max_cost')
-                                            ->label('Default Maximum Cost')
+                                            ->label('Default Selling Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
@@ -540,7 +540,7 @@ class ProviderBranchResource extends Resource
                                             ->helperText('Will be applied to all services if set'),
                                         
                                         Forms\Components\TextInput::make('default_max_cost')
-                                            ->label('Default Maximum Cost')
+                                            ->label('Default Selling Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)

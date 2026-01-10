@@ -36,8 +36,13 @@ class BranchServicesRelationManager extends RelationManager
                             ->required()
                             ->disabled(fn ($record) => $record !== null) // Disable when editing
                             ->rules([
-                                function () {
-                                    return function (string $attribute, $value, \Closure $fail) {
+                                function ($get, $record) {
+                                    return function (string $attribute, $value, \Closure $fail) use ($record) {
+                                        // Skip validation if we're editing the same record
+                                        if ($record && $record->id == $value) {
+                                            return;
+                                        }
+                                        
                                         $ownerRecord = $this->getOwnerRecord();
                                         $exists = $ownerRecord->services()->where('service_types.id', $value)->exists();
                                         
@@ -60,7 +65,7 @@ class BranchServicesRelationManager extends RelationManager
                                             ->nullable(),
 
                                         TextInput::make('max_cost')
-                                            ->label('Maximum Cost')
+                                            ->label('Selling Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
@@ -87,7 +92,7 @@ class BranchServicesRelationManager extends RelationManager
                     ->sortable(),
 
                 TextColumn::make('pivot.max_cost')
-                    ->label('Maximum Cost')
+                    ->label('Selling Cost')
                     ->money('USD')
                     ->sortable(),
             ])
@@ -120,19 +125,22 @@ class BranchServicesRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->mutateFormDataUsing(function (array $data, $record): array {
+                    ->fillForm(function ($record) {
                         // Load pivot data when editing
                         if ($record) {
                             $ownerRecord = $this->getOwnerRecord();
                             $pivotData = $ownerRecord->services()->where('service_types.id', $record->id)->first()?->pivot;
                             
                             if ($pivotData) {
-                                $data['min_cost'] = $pivotData->min_cost;
-                                $data['max_cost'] = $pivotData->max_cost;
+                                return [
+                                    'service_type_id' => $record->id,
+                                    'min_cost' => $pivotData->min_cost,
+                                    'max_cost' => $pivotData->max_cost,
+                                ];
                             }
                         }
                         
-                        return $data;
+                        return [];
                     })
                     ->using(function (array $data, \Illuminate\Database\Eloquent\Model $record): \Illuminate\Database\Eloquent\Model {
                         $ownerRecord = $this->getOwnerRecord();
@@ -145,7 +153,13 @@ class BranchServicesRelationManager extends RelationManager
                         ]);
                         
                         return $record;
-                    }),
+                    })
+                    ->successNotification(
+                        \Filament\Notifications\Notification::make()
+                            ->success()
+                            ->title('Service updated')
+                            ->body('The service costs have been updated successfully.')
+                    ),
                 Tables\Actions\DeleteAction::make()
                     ->using(function (\Illuminate\Database\Eloquent\Model $record): void {
                         $ownerRecord = $this->getOwnerRecord();
