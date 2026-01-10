@@ -109,6 +109,18 @@ class FileStatsOverview extends  StatsOverviewWidget
                 $dateRange['current']['end']
             ])->count();
             
+        $cancelledCount = File::where('status', 'Cancelled')
+            ->whereBetween('created_at', [
+                $dateRange['current']['start'],
+                $dateRange['current']['end']
+            ])->count();
+            
+        $voidCount = File::where('status', 'Void')
+            ->whereBetween('created_at', [
+                $dateRange['current']['start'],
+                $dateRange['current']['end']
+            ])->count();
+            
         $totalFiles = File::whereBetween('created_at', [
             $dateRange['current']['start'],
             $dateRange['current']['end']
@@ -181,7 +193,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->descriptionIcon($activeFilesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($activeFilesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($activeFilesComparison)),
 
-            Stat::make('Cancelled', $cancelledFiles)
+            Stat::make("Cancelled ({$cancelledCount})", $cancelledFiles)
                 ->description($this->formatComparisonDescription($cancelledFilesComparison))
                 ->descriptionIcon($cancelledFilesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($cancelledFilesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($cancelledFilesComparison)),
