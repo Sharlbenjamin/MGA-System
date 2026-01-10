@@ -892,7 +892,11 @@ class ViewFile extends ViewRecord
                                     \Filament\Forms\Components\Placeholder::make('header_distance')
                                         ->label('Distance')
                                         ->content('')
-                                        ->columnSpan(2),
+                                        ->columnSpan(1),
+                                    \Filament\Forms\Components\Placeholder::make('header_request')
+                                        ->label('Request')
+                                        ->content('')
+                                        ->columnSpan(1),
                                 ])
                                 ->extraAttributes(['class' => 'bg-gray-50 border-b-2 border-gray-200 font-semibold text-sm']),
                             
@@ -2414,7 +2418,17 @@ class ViewFile extends ViewRecord
                         ->viewData([
                             'distanceInfo' => $this->getBranchDistanceInfo($branch)
                         ])
-                        ->columnSpan(2),
+                        ->columnSpan(1),
+                    
+                    // Request column (clickable to copy appointment details)
+                    \Filament\Forms\Components\View::make('request_' . $branch->id)
+                        ->view('filament.forms.components.request-appointment')
+                        ->viewData([
+                            'branch' => $branch,
+                            'record' => $this->record,
+                            'appointmentText' => $this->formatAppointmentRequestText($branch)
+                        ])
+                        ->columnSpan(1),
                 ])
                 ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
         }
@@ -2590,6 +2604,83 @@ class ViewFile extends ViewRecord
             'priority' => 'high',
             'status' => 'pending'
         ]);
+    }
+
+    /**
+     * Format appointment request text for clipboard
+     */
+    protected function formatAppointmentRequestText($branch): string
+    {
+        // Address
+        $address = $branch->address ?? 'N/A';
+        
+        // Distance - extract from distance calculation
+        $distanceText = 'N/A';
+        try {
+            $distanceData = $this->calculateBranchDistanceForSorting($branch);
+            if (isset($distanceData['display'])) {
+                // Extract text from HTML if needed, or use a simple format
+                // The user wants format like "20Mins by car"
+                if ($distanceData['sort_value'] < 999999) {
+                    $minutes = round($distanceData['sort_value'], 0);
+                    $distanceText = "{$minutes}Mins by car";
+                }
+            }
+        } catch (\Exception $e) {
+            $distanceText = 'N/A';
+        }
+        
+        // Branch name
+        $branchName = $branch->branch_name ?? 'N/A';
+        
+        // Date & Time
+        $dateTime = 'N/A';
+        if ($this->record) {
+            $dateParts = [];
+            if ($this->record->service_date) {
+                $dateParts[] = \Carbon\Carbon::parse($this->record->service_date)->format('d/m/Y');
+            }
+            if ($this->record->service_time) {
+                $timeParts = explode(':', $this->record->service_time);
+                if (count($timeParts) >= 2) {
+                    $dateParts[] = $timeParts[0] . ':' . $timeParts[1];
+                }
+            }
+            $dateTime = !empty($dateParts) ? implode(' at ', $dateParts) : 'N/A';
+        }
+        
+        // Cost
+        $cost = 'N/A';
+        if ($this->record && $this->record->service_type_id) {
+            $service = $branch->services()
+                ->where('service_type_id', $this->record->service_type_id)
+                ->first();
+            if ($service) {
+                $minCost = $service->pivot->min_cost;
+                $maxCost = $service->pivot->max_cost;
+                
+                if ($minCost && $maxCost) {
+                    if ($minCost == $maxCost) {
+                        $cost = number_format($minCost, 0) . '€';
+                    } else {
+                        $cost = number_format($minCost, 0) . '€ - ' . number_format($maxCost, 0) . '€';
+                    }
+                } elseif ($minCost) {
+                    $cost = number_format($minCost, 0) . '€';
+                } elseif ($maxCost) {
+                    $cost = number_format($maxCost, 0) . '€';
+                }
+            }
+        }
+        
+        // Format the text
+        $text = "Address: {$address}\n";
+        $text .= "Distance: {$distanceText}\n";
+        $text .= "Name: {$branchName}\n";
+        $text .= "Date & Time: {$dateTime}\n";
+        $text .= "Cost: {$cost} + 50€ file fee";
+        
+        return $text;
     }
 
     /**
