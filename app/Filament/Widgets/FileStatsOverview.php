@@ -103,7 +103,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 $dateRange['current']['end']
             ])->count();
             
-        $cancelledFiles = File::where('status', 'Cancelled')
+        $cancelledFiles = File::whereIn('status', ['Cancelled', 'Void'])
             ->whereBetween('created_at', [
                 $dateRange['current']['start'],
                 $dateRange['current']['end']
@@ -121,7 +121,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 $dateRange['previous']['end']
             ])->count();
             
-        $previousCancelledFiles = File::where('status', 'Cancelled')
+        $previousCancelledFiles = File::whereIn('status', ['Cancelled', 'Void'])
             ->whereBetween('created_at', [
                 $dateRange['previous']['start'],
                 $dateRange['previous']['end']
