@@ -36,8 +36,13 @@ class BranchServicesRelationManager extends RelationManager
                             ->required()
                             ->disabled(fn ($record) => $record !== null) // Disable when editing
                             ->rules([
-                                function () {
-                                    return function (string $attribute, $value, \Closure $fail) {
+                                function ($get, $record) {
+                                    return function (string $attribute, $value, \Closure $fail) use ($record) {
+                                        // Skip validation if we're editing the same record
+                                        if ($record && $record->id == $value) {
+                                            return;
+                                        }
+                                        
                                         $ownerRecord = $this->getOwnerRecord();
                                         $exists = $ownerRecord->services()->where('service_types.id', $value)->exists();
                                         
@@ -60,7 +65,7 @@ class BranchServicesRelationManager extends RelationManager
                                             ->nullable(),
 
                                         TextInput::make('max_cost')
-                                            ->label('Maximum Cost')
+                                            ->label('Selling Cost')
                                             ->numeric()
                                             ->minValue(0)
                                             ->step(0.01)
@@ -87,7 +92,7 @@ class BranchServicesRelationManager extends RelationManager
                     ->sortable(),
 
                 TextColumn::make('pivot.max_cost')
-                    ->label('Maximum Cost')
+                    ->label('Selling Cost')
                     ->money('USD')
                     ->sortable(),
             ])
