@@ -2340,7 +2340,7 @@ class ViewFile extends ViewRecord
                         ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(1),
                     
-                    // Cost column
+                    // Cost column (only show appointment cost, not selling cost)
                     \Filament\Forms\Components\Placeholder::make("cost_{$branch->id}")
                         ->label('')
                         ->content(function () use ($branch) {
@@ -2350,18 +2350,10 @@ class ViewFile extends ViewRecord
                                     ->first();
                                 if ($service) {
                                     $minCost = $service->pivot->min_cost;
-                                    $maxCost = $service->pivot->max_cost;
                                     
-                                    if ($minCost && $maxCost) {
-                                        if ($minCost == $maxCost) {
-                                            return '€' . number_format($minCost, 2);
-                                        } else {
-                                            return '€' . number_format($minCost, 2) . ' - €' . number_format($maxCost, 2);
-                                        }
-                                    } elseif ($minCost) {
+                                    // Only show min_cost (appointment cost), not max_cost (selling cost)
+                                    if ($minCost) {
                                         return '€' . number_format($minCost, 2);
-                                    } elseif ($maxCost) {
-                                        return '€' . number_format($maxCost, 2);
                                     }
                                 }
                             }

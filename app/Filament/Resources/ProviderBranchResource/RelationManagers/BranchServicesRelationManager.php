@@ -125,19 +125,22 @@ class BranchServicesRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->mutateFormDataUsing(function (array $data, $record): array {
+                    ->fillForm(function ($record) {
                         // Load pivot data when editing
                         if ($record) {
                             $ownerRecord = $this->getOwnerRecord();
                             $pivotData = $ownerRecord->services()->where('service_types.id', $record->id)->first()?->pivot;
                             
                             if ($pivotData) {
-                                $data['min_cost'] = $pivotData->min_cost;
-                                $data['max_cost'] = $pivotData->max_cost;
+                                return [
+                                    'service_type_id' => $record->id,
+                                    'min_cost' => $pivotData->min_cost,
+                                    'max_cost' => $pivotData->max_cost,
+                                ];
                             }
                         }
                         
-                        return $data;
+                        return [];
                     })
                     ->using(function (array $data, \Illuminate\Database\Eloquent\Model $record): \Illuminate\Database\Eloquent\Model {
                         $ownerRecord = $this->getOwnerRecord();
@@ -150,7 +153,13 @@ class BranchServicesRelationManager extends RelationManager
                         ]);
                         
                         return $record;
-                    }),
+                    })
+                    ->successNotification(
+                        \Filament\Notifications\Notification::make()
+                            ->success()
+                            ->title('Service updated')
+                            ->body('The service costs have been updated successfully.')
+                    ),
                 Tables\Actions\DeleteAction::make()
                     ->using(function (\Illuminate\Database\Eloquent\Model $record): void {
                         $ownerRecord = $this->getOwnerRecord();
