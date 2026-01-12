@@ -308,7 +308,7 @@ class FileResource extends Resource
                     ->searchable()
                     ->preload()
                     ->query(function (Builder $query, $state) {
-                        if ($state) {
+                        if (!empty($state) && $state !== null) {
                             return $query->whereHas('patient', function ($q) use ($state) {
                                 $q->where('client_id', $state);
                             });
@@ -326,12 +326,12 @@ class FileResource extends Resource
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
-                                $data['case_date_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                !empty($data['case_date_from']),
+                                fn (Builder $query): Builder => $query->whereDate('created_at', '>=', $data['case_date_from']),
                             )
                             ->when(
-                                $data['case_date_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                !empty($data['case_date_until']),
+                                fn (Builder $query): Builder => $query->whereDate('created_at', '<=', $data['case_date_until']),
                             );
                     }),
                 SelectFilter::make('status')
