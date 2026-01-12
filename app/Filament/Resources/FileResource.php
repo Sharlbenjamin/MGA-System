@@ -302,18 +302,19 @@ class FileResource extends Resource
                         }
                         return null;
                     }),
-                SelectFilter::make('client_id')
+                Filter::make('client_id')
                     ->label('Client')
-                    ->options(Client::where('status', 'Active')->pluck('company_name', 'id'))
-                    ->searchable()
-                    ->preload()
-                    ->query(function (Builder $query, $state): Builder {
-                        // Handle both array format and direct value format
-                        $clientId = is_array($state) ? ($state['value'] ?? null) : $state;
-                        
-                        if ($clientId && $clientId !== '' && $clientId !== null && $clientId !== []) {
-                            return $query->whereHas('patient', function ($q) use ($clientId) {
-                                $q->where('client_id', $clientId);
+                    ->form([
+                        Forms\Components\Select::make('client_id')
+                            ->label('Client')
+                            ->options(Client::where('status', 'Active')->pluck('company_name', 'id'))
+                            ->searchable()
+                            ->preload(),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!empty($data['client_id'])) {
+                            return $query->whereHas('patient', function ($q) use ($data) {
+                                $q->where('client_id', $data['client_id']);
                             });
                         }
                         return $query;
