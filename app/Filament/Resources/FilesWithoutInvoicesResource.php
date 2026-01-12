@@ -24,7 +24,7 @@ class FilesWithoutInvoicesResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::where('status', 'Assisted')
+        return static::getModel()::whereIn('status', ['Assisted', 'Waiting MR'])
             ->whereDoesntHave('invoices')
             ->count();
     }
@@ -64,7 +64,7 @@ class FilesWithoutInvoicesResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'Assisted')
+            ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', ['Assisted', 'Waiting MR'])
                 ->whereDoesntHave('invoices')
                 ->with(['bills', 'providerBranch.provider']))
             ->columns([
