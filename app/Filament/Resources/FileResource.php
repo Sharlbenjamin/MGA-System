@@ -307,10 +307,13 @@ class FileResource extends Resource
                     ->options(Client::where('status', 'Active')->pluck('company_name', 'id'))
                     ->searchable()
                     ->preload()
-                    ->query(function (Builder $query, $state) {
-                        if (!empty($state) && $state !== null) {
-                            return $query->whereHas('patient', function ($q) use ($state) {
-                                $q->where('client_id', $state);
+                    ->query(function (Builder $query, $state): Builder {
+                        // Handle both array format and direct value format
+                        $clientId = is_array($state) ? ($state['value'] ?? null) : $state;
+                        
+                        if ($clientId && $clientId !== '' && $clientId !== null && $clientId !== []) {
+                            return $query->whereHas('patient', function ($q) use ($clientId) {
+                                $q->where('client_id', $clientId);
                             });
                         }
                         return $query;
