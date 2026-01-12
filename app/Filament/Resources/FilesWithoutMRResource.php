@@ -69,6 +69,11 @@ class FilesWithoutMRResource extends Resource
                 ->whereDoesntHave('medicalReports')
                 ->with(['patient', 'providerBranch', 'serviceType']))
             ->columns([
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Case Date')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('mga_reference')
                     ->label('MGA Reference')
                     ->searchable()
@@ -110,10 +115,6 @@ class FilesWithoutMRResource extends Resource
                         'Void' => 'danger',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('provider_branch_id')
