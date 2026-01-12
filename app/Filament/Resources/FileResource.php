@@ -302,6 +302,38 @@ class FileResource extends Resource
                         }
                         return null;
                     }),
+                SelectFilter::make('client_id')
+                    ->label('Client')
+                    ->options(Client::where('status', 'Active')->pluck('company_name', 'id'))
+                    ->searchable()
+                    ->preload()
+                    ->query(function (Builder $query, $state) {
+                        if ($state) {
+                            return $query->whereHas('patient', function ($q) use ($state) {
+                                $q->where('client_id', $state);
+                            });
+                        }
+                        return $query;
+                    }),
+                Filter::make('case_date')
+                    ->label('Case Date')
+                    ->form([
+                        Forms\Components\DatePicker::make('case_date_from')
+                            ->label('From'),
+                        Forms\Components\DatePicker::make('case_date_until')
+                            ->label('Until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['case_date_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['case_date_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    }),
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([
