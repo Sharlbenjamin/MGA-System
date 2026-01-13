@@ -127,6 +127,7 @@ class FileResource extends Resource
                 'country',
                 'city',
                 'serviceType',
+                'comments',
                 'providerBranch.provider',
                 'gops',
                 'bills'
@@ -208,7 +209,9 @@ class FileResource extends Resource
                         }
                     })
                     ->limit(50)
-                    ->placeholder('No comments'),
+                    ->placeholder('No comments')
+                    ->weight('bold')
+                    ->extraAttributes(['class' => 'text-xs']),
                 
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')
