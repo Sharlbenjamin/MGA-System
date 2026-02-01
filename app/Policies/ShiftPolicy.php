@@ -2,17 +2,17 @@
 
 namespace App\Policies;
 
-use App\Models\Employee;
+use App\Models\Shift;
 use App\Models\User;
 
-class EmployeePolicy
+class ShiftPolicy
 {
     public function viewAny(User $user): bool
     {
         return $user->roles?->contains('name', 'admin') ?? false;
     }
 
-    public function view(User $user, Employee $employee): bool
+    public function view(User $user, Shift $shift): bool
     {
         return $user->roles?->contains('name', 'admin') ?? false;
     }
@@ -22,12 +22,12 @@ class EmployeePolicy
         return $user->roles?->contains('name', 'admin') ?? false;
     }
 
-    public function update(User $user, Employee $employee): bool
+    public function update(User $user, Shift $shift): bool
     {
         return $user->roles?->contains('name', 'admin') ?? false;
     }
 
-    public function delete(User $user, Employee $employee): bool
+    public function delete(User $user, Shift $shift): bool
     {
         return $user->roles?->contains('name', 'admin') ?? false;
     }

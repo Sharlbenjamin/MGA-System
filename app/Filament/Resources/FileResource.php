@@ -211,10 +211,10 @@ class FileResource extends Resource
                             return null;
                         }
                     })
-                    ->limit(50)
+                    ->wrap()
                     ->placeholder('No comments')
                     ->weight('bold')
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->extraAttributes(['class' => 'text-xs max-w-[12rem]']),
                 
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')

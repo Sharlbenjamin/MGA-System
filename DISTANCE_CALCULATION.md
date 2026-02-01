@@ -6,7 +6,7 @@ This feature calculates the travel time by car between:
 - **X**: The address in the File model
 - **Y**: The address of the Operation Contact of the Provider Branch of the File
 
-The distance is calculated on-the-fly using Google Maps Distance Matrix API and displayed in the Request appointments table.
+The distance is calculated on-the-fly using **Google Geocoding API** (to resolve addresses to coordinates) and **Google Distance Matrix API** (to get driving distance/duration). Using coordinates instead of raw address strings improves accuracy by avoiding ambiguous address resolution.
 
 ## Configuration
 
@@ -18,9 +18,21 @@ Add your Google Maps API key to your `.env` file:
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 ```
 
-### 2. Enable Distance Matrix API
+### 2. Optional: Region for accurate geocoding
 
-Make sure the Distance Matrix API is enabled in your Google Cloud Console for the API key.
+To avoid addresses being resolved in the wrong country, set a region (e.g. Ireland):
+
+```env
+GOOGLE_MAPS_REGION=ie
+```
+
+If unset, the default is `ie`. Use [ISO 3166-1](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) two-letter country/region codes.
+
+### 3. Enable Google APIs
+
+In Google Cloud Console, enable for your API key:
+- **Geocoding API** (used to convert addresses to coordinates)
+- **Distance Matrix API**
 
 ## Implementation Details
 
@@ -36,7 +48,8 @@ Make sure the Distance Matrix API is enabled in your Google Cloud Console for th
 
 #### `DistanceCalculationService`
 
-- `calculateDistance($originAddress, $destinationAddress, $mode = 'driving')` - Calculate distance between two addresses
+- `geocodeAddress($address)` - Resolve an address to lat/lng (used internally for accuracy)
+- `calculateDistance($originAddress, $destinationAddress, $mode = 'driving')` - Calculate distance between two addresses (geocodes first when possible for better accuracy)
 - `calculateFileToBranchDistance($file)` - Calculate distance from File to Provider Branch Operation Contact
 - `getFormattedDistance($distanceData)` - Format distance data for display
 
@@ -103,9 +116,19 @@ Enable debug logging to see detailed API responses:
 Log::info('Distance calculation response', $response->json());
 ```
 
+## Accuracy
+
+To improve accuracy, the service:
+
+1. **Geocodes both addresses** using the Geocoding API so each address is resolved to exact coordinates.
+2. **Calls Distance Matrix with coordinates** (`origins=lat,lng&destinations=lat,lng`) instead of raw address strings, so Google uses the intended locations rather than guessing (e.g. "Main Street" in the correct country).
+3. **Uses an optional region** (`GOOGLE_MAPS_REGION`) to bias geocoding (e.g. Ireland) so short or ambiguous addresses resolve correctly.
+
+If geocoding fails for either address, the service falls back to passing address strings to the Distance Matrix API (previous behaviour).
+
 ## Future Enhancements
 
 - Add caching for distance calculations
 - Support for different travel modes (walking, transit)
 - Batch distance calculations for multiple appointments
-- Distance-based appointment sorting/filtering 
+- Distance-based appointment sorting/filtering

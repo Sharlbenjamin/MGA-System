@@ -29,6 +29,9 @@ class ShiftCalendar extends Page implements HasForms
     public ?array $assignFormData = [];
     public bool $showAssignModal = false;
 
+    public ?array $bulkAssignFormData = [];
+    public bool $showBulkAssignModal = false;
+
     public function mount(): void
     {
         $this->currentDate = Carbon::now()->format('Y-m-d');
@@ -50,6 +53,26 @@ class ShiftCalendar extends Page implements HasForms
     {
         $this->showAssignModal = false;
         $this->assignFormData = [];
+    }
+
+    public function openBulkAssignModal(): void
+    {
+        $this->bulkAssignFormData = [
+            'employee_id' => null,
+            'shift_id' => null,
+            'location_type' => 'on_site',
+            'start_date' => $this->currentDate,
+            'end_date' => Carbon::parse($this->currentDate)->endOfMonth()->format('Y-m-d'),
+            'skip_existing' => true,
+            'notes' => null,
+        ];
+        $this->showBulkAssignModal = true;
+    }
+
+    public function closeBulkAssignModal(): void
+    {
+        $this->showBulkAssignModal = false;
+        $this->bulkAssignFormData = [];
     }
 
     public function getEmployeeOptions(): array
@@ -110,6 +133,69 @@ class ShiftCalendar extends Page implements HasForms
         $this->closeAssignModal();
     }
 
+    public function saveBulkAssignment(): void
+    {
+        $data = $this->bulkAssignFormData;
+        $employeeId = (int) ($data['employee_id'] ?? 0);
+        $shiftId = (int) ($data['shift_id'] ?? 0);
+        $startDate = $data['start_date'] ?? null;
+        $endDate = $data['end_date'] ?? null;
+
+        if (! $employeeId || ! $shiftId || ! $startDate || ! $endDate) {
+            Notification::make()->title('Please fill all required fields.')->danger()->send();
+
+            return;
+        }
+
+        $start = Carbon::parse($startDate);
+        $end = Carbon::parse($endDate);
+
+        if ($end->lt($start)) {
+            Notification::make()->title('End date must be on or after start date.')->danger()->send();
+
+            return;
+        }
+
+        $locationType = $data['location_type'] ?? 'on_site';
+        $notes = $data['notes'] ?? null;
+        $skipExisting = filter_var($data['skip_existing'] ?? true, FILTER_VALIDATE_BOOLEAN);
+
+        $created = 0;
+        $skipped = 0;
+        $cursor = $start->copy();
+
+        while ($cursor->lte($end)) {
+            $dateStr = $cursor->format('Y-m-d');
+            $exists = ShiftSchedule::query()
+                ->where('employee_id', $employeeId)
+                ->where('scheduled_date', $dateStr)
+                ->exists();
+
+            if ($exists && $skipExisting) {
+                $skipped++;
+            } elseif (! $exists) {
+                ShiftSchedule::create([
+                    'employee_id' => $employeeId,
+                    'shift_id' => $shiftId,
+                    'scheduled_date' => $dateStr,
+                    'location_type' => $locationType,
+                    'notes' => $notes,
+                ]);
+                $created++;
+            }
+            $cursor->addDay();
+        }
+
+        $message = $created > 0
+            ? "Assigned {$created} shift(s) successfully."
+            : 'No shifts assigned.';
+        if ($skipped > 0) {
+            $message .= " Skipped {$skipped} day(s) (already had a shift).";
+        }
+        Notification::make()->title($message)->success()->send();
+        $this->closeBulkAssignModal();
+    }
+
     protected function getFormStatePath(): ?string
     {
         return null;
@@ -137,6 +223,10 @@ class ShiftCalendar extends Page implements HasForms
                 ->label('Assign shift')
                 ->icon('heroicon-o-plus')
                 ->action(fn () => $this->openAssignModal()),
+            Action::make('bulkAssign')
+                ->label('Bulk assign')
+                ->icon('heroicon-o-calendar-days')
+                ->action(fn () => $this->openBulkAssignModal()),
         ];
     }
 

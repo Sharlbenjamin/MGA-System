@@ -46,6 +46,7 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'),
         'maps_api_key' => env('GOOGLE_MAPS_API_KEY'),
+        'maps_region' => env('GOOGLE_MAPS_REGION', 'ie'), // e.g. 'ie' for Ireland - biases geocoding for accurate distance
     ],
 
     'stripe' => [

@@ -123,9 +123,6 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->navigationGroups([
                 NavigationGroup::make()
-                    ->label('HR')
-                    ->collapsible(),
-                NavigationGroup::make()
                     ->label('CRM')
                     ->collapsible(),
                 NavigationGroup::make()
@@ -139,6 +136,9 @@ class AdminPanelProvider extends PanelProvider
                     ->collapsible(),
                 NavigationGroup::make()
                     ->label('Finance')
+                    ->collapsible(),
+                NavigationGroup::make()
+                    ->label('HR')
                     ->collapsible(),
                 NavigationGroup::make()
                     ->label('System')

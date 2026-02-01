@@ -30,7 +30,10 @@ class CommentsRelationManager extends RelationManager
         return $table
             ->columns([
                 TextColumn::make('user.name')->label('User'),
-                TextColumn::make('content')->label('Comment')->limit(50),
+                TextColumn::make('content')
+                    ->label('Comment')
+                    ->wrap()
+                    ->extraAttributes(['class' => 'max-w-[12rem]']),
                 TextColumn::make('created_at')->label('Date')->dateTime(),
             ])
             ->headerActions([

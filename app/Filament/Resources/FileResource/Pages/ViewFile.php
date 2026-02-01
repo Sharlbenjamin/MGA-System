@@ -840,7 +840,7 @@ class ViewFile extends ViewRecord
                                         ->live()
                                         ->afterStateUpdated(function ($state, $set, $get) {
                                             $cityFilter = $get('city_filter');
-                                            $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
+                                            $branches = $this->getDisplayedProviderBranchesForRequest($cityFilter);
                                             $branchIds = $branches->pluck('id')->toArray();
                                             
                                             if ($state) {
@@ -1915,6 +1915,33 @@ class ViewFile extends ViewRecord
         return $descriptions;
     }
 
+    /** Maximum number of provider branches to show in the Request Appointment modal */
+    protected static int $requestAppointmentBranchesLimit = 8;
+
+    /**
+     * Get the displayed (sorted, limited) provider branches for the Request Appointment modal.
+     */
+    protected function getDisplayedProviderBranchesForRequest($cityFilter = null, int $limit = null): \Illuminate\Support\Collection
+    {
+        $limit = $limit ?? static::$requestAppointmentBranchesLimit;
+        $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
+        $branchesWithSortData = $branches->map(function ($branch) {
+            $distanceData = $this->calculateBranchDistanceForSorting($branch);
+            $serviceTypeId = $this->record->service_type_id ?? 999;
+            $statusSort = $branch->status === 'Active' ? 1 : 2;
+            $branch->sort_distance = $distanceData['sort_value'];
+            $branch->distance_display = $distanceData['display'];
+            $branch->sort_service_type = $serviceTypeId;
+            $branch->sort_status = $statusSort;
+            return $branch;
+        });
+        return $branchesWithSortData->sortBy([
+            ['sort_distance', 'asc'],
+            ['sort_service_type', 'asc'],
+            ['sort_status', 'asc'],
+        ])->values()->take($limit);
+    }
+
     /**
      * Get eligible provider branches for a file
      * Filters by city, service type, and active status
@@ -2259,32 +2286,7 @@ class ViewFile extends ViewRecord
             $cityFilter = null;
         }
         
-        $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
-        
-        // Calculate distances and attach sorting data to branches
-        $branchesWithSortData = $branches->map(function ($branch) {
-            $distanceData = $this->calculateBranchDistanceForSorting($branch);
-            
-            // Get service type for sorting (use the file's service type)
-            $serviceTypeId = $this->record->service_type_id ?? 999;
-            
-            // Get status for sorting (Active = 1, Hold = 2)
-            $statusSort = $branch->status === 'Active' ? 1 : 2;
-            
-            $branch->sort_distance = $distanceData['sort_value'];
-            $branch->distance_display = $distanceData['display'];
-            $branch->sort_service_type = $serviceTypeId;
-            $branch->sort_status = $statusSort;
-            
-            return $branch;
-        });
-        
-        // Sort by: distance (asc), then service type, then status (Active first)
-        $sortedBranches = $branchesWithSortData->sortBy([
-            ['sort_distance', 'asc'],      // Distance first (closest first)
-            ['sort_service_type', 'asc'],   // Then by service type
-            ['sort_status', 'asc'],         // Then by status (Active = 1 comes first)
-        ])->values();
+        $sortedBranches = $this->getDisplayedProviderBranchesForRequest($cityFilter);
         
         $rows = [];
         
@@ -2306,10 +2308,10 @@ class ViewFile extends ViewRecord
                             }
                             $set('selected_branches', array_values($selectedBranches));
                             
-                            // Update "Select All" checkbox state
+                            // Update "Select All" checkbox state (only for displayed branches)
                             $cityFilter = $get('city_filter');
-                            $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
-                            $totalBranches = $branches->count();
+                            $displayedBranches = $this->getDisplayedProviderBranchesForRequest($cityFilter);
+                            $totalBranches = $displayedBranches->count();
                             $selectedCount = count($selectedBranches);
                             
                             if ($selectedCount === 0) {

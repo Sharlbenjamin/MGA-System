@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->foreignId('shift_id')->constrained('shifts')->cascadeOnDelete();
             $table->date('scheduled_date');
-            $table->string('location_type')->default('on_site')->comment('on_site, remote, hybrid');
+            $table->string('location_type')->default('on_site')->comment('on_site, remote, hybrid, coffeeshop, official_face_to_face');
             $table->text('notes')->nullable();
             $table->timestamps();
 

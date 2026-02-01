@@ -12,6 +12,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeeResource extends Resource
 {
@@ -22,6 +23,11 @@ class EmployeeResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $modelLabel = 'Employee';
     protected static ?string $pluralModelLabel = 'Employees';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::check() && Auth::user()?->roles?->contains('name', 'admin');
+    }
 
     public static function form(Form $form): Form
     {

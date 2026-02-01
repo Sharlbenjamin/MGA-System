@@ -9,31 +9,31 @@ class JobTitlePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view JobTitle');
+        return $user->roles?->contains('name', 'admin') ?? false;
     }
 
     public function view(User $user, JobTitle $jobTitle): bool
     {
-        return $user->hasPermissionTo('view JobTitle');
+        return $user->roles?->contains('name', 'admin') ?? false;
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create JobTitle');
+        return $user->roles?->contains('name', 'admin') ?? false;
     }
 
     public function update(User $user, JobTitle $jobTitle): bool
     {
-        return $user->hasPermissionTo('edit JobTitle');
+        return $user->roles?->contains('name', 'admin') ?? false;
     }
 
     public function delete(User $user, JobTitle $jobTitle): bool
     {
-        return $user->hasPermissionTo('delete JobTitle');
+        return $user->roles?->contains('name', 'admin') ?? false;
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->hasPermissionTo('delete JobTitle');
+        return $user->roles?->contains('name', 'admin') ?? false;
     }
 }

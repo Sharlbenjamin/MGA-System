@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class ShiftResource extends Resource
 {
@@ -19,6 +20,11 @@ class ShiftResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-clock';
     protected static ?string $modelLabel = 'Shift';
     protected static ?string $pluralModelLabel = 'Shifts';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::check() && Auth::user()?->roles?->contains('name', 'admin');
+    }
 
     public static function form(Form $form): Form
     {

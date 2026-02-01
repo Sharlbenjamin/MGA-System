@@ -72,9 +72,11 @@ class FileRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->withCount(['tasks as undone_tasks_count' => function ($query) {
-                $query->where('is_done', false);
-            }]))
+            ->modifyQueryUsing(fn ($query) => $query
+                ->withCount(['tasks as undone_tasks_count' => function ($query) {
+                    $query->where('is_done', false);
+                }])
+                ->with(['medicalReports', 'bills', 'invoices']))
             ->columns([
                 Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('client_reference')->sortable()->searchable(),
@@ -90,6 +92,31 @@ class FileRelationManager extends RelationManager
                     'Cancelled' => 'danger',
                     'Void' => 'gray',
                 }),
+                // MR, Bill, Invoices status columns (no amounts)
+                Tables\Columns\TextColumn::make('mr_status')
+                    ->label('MR')
+                    ->getStateUsing(function (File $record) {
+                        $statuses = $record->medicalReports->pluck('status')->filter()->unique()->values();
+                        return $statuses->isEmpty() ? '—' : $statuses->implode(', ');
+                    })
+                    ->badge()
+                    ->color(fn ($state) => $state === '—' ? 'gray' : 'primary'),
+                Tables\Columns\TextColumn::make('bill_status')
+                    ->label('Bill')
+                    ->getStateUsing(function (File $record) {
+                        $statuses = $record->bills->pluck('status')->filter()->unique()->values();
+                        return $statuses->isEmpty() ? '—' : $statuses->implode(', ');
+                    })
+                    ->badge()
+                    ->color(fn ($state) => $state === '—' ? 'gray' : 'info'),
+                Tables\Columns\TextColumn::make('invoices_status')
+                    ->label('Invoices')
+                    ->getStateUsing(function (File $record) {
+                        $statuses = $record->invoices->pluck('status')->filter()->unique()->values();
+                        return $statuses->isEmpty() ? '—' : $statuses->implode(', ');
+                    })
+                    ->badge()
+                    ->color(fn ($state) => $state === '—' ? 'gray' : 'success'),
                 // Relationship columns
                 Tables\Columns\TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('city.name')->label('City')->sortable()->searchable(),

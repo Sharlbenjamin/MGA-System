@@ -50,6 +50,9 @@
                 <x-filament::button wire:click="openAssignModal()" icon="heroicon-o-plus" size="sm">
                     Assign shift
                 </x-filament::button>
+                <x-filament::button wire:click="openBulkAssignModal()" icon="heroicon-o-calendar-days" size="sm" color="gray">
+                    Bulk assign
+                </x-filament::button>
             </div>
         </div>
 
@@ -177,6 +180,87 @@
                     </x-filament::button>
                     <x-filament::button type="submit">
                         Assign
+                    </x-filament::button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Bulk assign shift modal --}}
+    <div
+        x-data="{ open: @entangle('showBulkAssignModal') }"
+        x-show="open"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4 dark:bg-gray-950/80"
+        style="display: none;"
+        @click.self="$wire.closeBulkAssignModal()"
+    >
+        <div
+            class="w-full max-w-md rounded-xl bg-white shadow-2xl dark:bg-gray-900 dark:ring-1 dark:ring-white/10"
+            @click.stop
+        >
+            <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Bulk assign shift</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Assign the same shift to one employee for every day in a date range.</p>
+            </div>
+            <form wire:submit="saveBulkAssignment" class="p-6 space-y-4">
+                <div>
+                    <label for="bulk-employee_id" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Employee</label>
+                    <select id="bulk-employee_id" wire:model="bulkAssignFormData.employee_id" required
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                        <option value="">Select employee</option>
+                        @foreach($this->getEmployeeOptions() as $id => $name)
+                            <option value="{{ $id }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="bulk-shift_id" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Shift</label>
+                    <select id="bulk-shift_id" wire:model="bulkAssignFormData.shift_id" required
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                        <option value="">Select shift</option>
+                        @foreach($this->getShiftOptions() as $id => $name)
+                            <option value="{{ $id }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="bulk-location_type" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Location</label>
+                    <select id="bulk-location_type" wire:model="bulkAssignFormData.location_type"
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                        @foreach($this->getLocationTypeOptions() as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="bulk-start_date" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Start date</label>
+                        <input type="date" id="bulk-start_date" wire:model="bulkAssignFormData.start_date" required
+                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                    </div>
+                    <div>
+                        <label for="bulk-end_date" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">End date</label>
+                        <input type="date" id="bulk-end_date" wire:model="bulkAssignFormData.end_date" required
+                            class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="bulk-skip_existing" wire:model="bulkAssignFormData.skip_existing"
+                        class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700">
+                    <label for="bulk-skip_existing" class="text-sm text-gray-700 dark:text-gray-300">Skip days when employee already has a shift</label>
+                </div>
+                <div>
+                    <label for="bulk-notes" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Notes (optional)</label>
+                    <textarea id="bulk-notes" wire:model="bulkAssignFormData.notes" rows="2"
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm"></textarea>
+                </div>
+                <div class="mt-6 flex justify-end gap-2">
+                    <x-filament::button type="button" color="gray" wire:click="closeBulkAssignModal">
+                        Cancel
+                    </x-filament::button>
+                    <x-filament::button type="submit">
+                        Bulk assign
                     </x-filament::button>
                 </div>
             </form>

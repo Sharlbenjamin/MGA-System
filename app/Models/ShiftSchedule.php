@@ -41,6 +41,8 @@ class ShiftSchedule extends Model
             'on_site' => 'On site',
             'remote' => 'Remote',
             'hybrid' => 'Hybrid',
+            'coffeeshop' => 'Coffeeshop',
+            'official_face_to_face' => 'Official face to face meeting',
         ];
     }
 }
