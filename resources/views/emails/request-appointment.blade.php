@@ -33,18 +33,26 @@
             font-weight: bold;
         }
         .notes-section {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f0f7ff;
-            border-left: 4px solid #007cba;
+            margin: 15px 0 20px 0;
+            padding: 16px;
+            background-color: #fef2f2;
+            border: 2px solid #dc2626;
             border-radius: 4px;
         }
+        .notes-section .notes-heading {
+            color: #b91c1c;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin: 0 0 10px 0;
+        }
         .notes-section ul {
-            margin: 10px 0 0 0;
-            padding-left: 20px;
+            margin: 0;
+            padding-left: 22px;
         }
         .notes-section li {
-            margin: 6px 0;
+            margin: 8px 0;
+            font-weight: bold;
+            color: #333;
         }
     </style>
 </head>
@@ -59,6 +67,14 @@
         </p>
         
         <p>We have a patient that needs a {{ $file->serviceType->name }} appointment. Find the details below:</p>
+
+        <div class="notes-section">
+            <p class="notes-heading">⚠ Important — Please read:</p>
+            <ul>
+                <li>The medical report (MR) and the invoice must be provided after the appointment.</li>
+                <li>We only cover the initial consultation and the issuance of prescriptions; any additional procedures should be scheduled as a follow-up visit.</li>
+            </ul>
+        </div>
         
         <div class="appointment-details">
             <div class="detail-line"><strong>MGA Reference:</strong> {{ $file->mga_reference }}</div>
@@ -97,14 +113,6 @@
 
         <div class="important-note">
             <p><strong>Important:</strong> Please note that we will only cover the cost of the {{ $file->serviceType->name }} service mentioned above. If you need to perform any additional procedures or tests beyond this service, please contact us first for approval before proceeding. If the patient insisted on proceeding you will have to inform them that they may have to pay as it may or may not be covered by the insurance.</p>
-        </div>
-
-        <div class="notes-section">
-            <p><strong>Notes:</strong></p>
-            <ul>
-                <li>The medical report (MR) and the invoice must be provided after the appointment.</li>
-                <li>We only cover the initial consultation and the issuance of prescriptions; any additional procedures should be scheduled as a follow-up visit.</li>
-            </ul>
         </div>
 
         <p>If the requested appointment is not availble, please let us know.</p>
