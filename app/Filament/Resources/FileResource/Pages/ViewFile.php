@@ -2049,6 +2049,10 @@ class ViewFile extends ViewRecord
      */
     protected function getBranchDistanceInfo($branch): string
     {
+        if (! (bool) config('services.google.distance_enabled', true)) {
+            return '<span class="text-gray-500 text-sm">N/A</span>';
+        }
+
         if (!$this->record || !$this->record->address) {
             return '<span class="text-gray-400 text-sm">No file address</span>';
         }
