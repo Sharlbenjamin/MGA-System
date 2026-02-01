@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Filament\Models\Contracts\FilamentUser;
 use Illuminate\Notifications\Notifiable;
 use Filament\Notifications\Notification;
@@ -74,6 +75,11 @@ class User extends Authenticatable implements FilamentUser
     public function signature()
     {
         return $this->hasOne(UserSignature::class);
+    }
+
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class);
     }
 
 

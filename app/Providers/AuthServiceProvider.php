@@ -21,6 +21,8 @@ use App\Models\MedicalReport;
 use App\Models\Gop;
 use App\Models\Prescription;
 use App\Models\Drug;
+use App\Models\Employee;
+use App\Models\JobTitle;
 use App\Policies\ClientPolicy;
 use App\Policies\CityPolicy;
 use App\Policies\CountryPolicy;
@@ -38,6 +40,8 @@ use App\Policies\MedicalReportPolicy;
 use App\Policies\GopPolicy;
 use App\Policies\PrescriptionPolicy;
 use App\Policies\DrugPolicy;
+use App\Policies\EmployeePolicy;
+use App\Policies\JobTitlePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -64,6 +68,8 @@ class AuthServiceProvider extends ServiceProvider
         Gop::class => GopPolicy::class,
         Prescription::class => PrescriptionPolicy::class,
         Drug::class => DrugPolicy::class,
+        Employee::class => EmployeePolicy::class,
+        JobTitle::class => JobTitlePolicy::class,
     ];
 
     /**

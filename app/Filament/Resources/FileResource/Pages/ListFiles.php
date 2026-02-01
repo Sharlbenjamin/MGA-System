@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\FileResource\Pages;
 
 use App\Filament\Resources\FileResource;
+use App\Filament\Widgets\FilesCaseStatusWidget;
 use App\Models\Client;
 use App\Models\ServiceType;
 use App\Services\OcrService;
@@ -131,6 +132,13 @@ class ListFiles extends ListRecords
                     }
                 })
                 ->modalWidth('4xl'),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            FilesCaseStatusWidget::class,
         ];
     }
     

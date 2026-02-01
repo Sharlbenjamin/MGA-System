@@ -50,7 +50,7 @@ class FilesCaseStatusWidget extends BaseWidget
                 ->color('warning'),
 
             Stat::make('Handling', $handlingRefundWithActionCount)
-                ->description('Handling & refund cases with comment needs action')
+                ->description('Needs Action')
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color('danger'),
 

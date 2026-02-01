@@ -34,6 +34,8 @@ class PermissionSeeder extends Seeder
             'BillItem',
             'Transaction',
             'PriceList',
+            'Employee',
+            'JobTitle',
         ];
 
         $actions = ['view', 'create', 'edit', 'delete'];
