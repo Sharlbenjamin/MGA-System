@@ -214,7 +214,8 @@ class FileResource extends Resource
                     ->wrap()
                     ->placeholder('No comments')
                     ->weight('bold')
-                    ->extraAttributes(['class' => 'text-xs max-w-[12rem]']),
+                    ->extraAttributes(['class' => 'text-xs'])
+                    ->extraCellAttributes(['style' => 'width: 180px; max-width: 180px; min-width: 180px;']),
                 
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')
