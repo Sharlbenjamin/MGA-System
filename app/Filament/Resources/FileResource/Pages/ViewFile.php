@@ -891,7 +891,7 @@ class ViewFile extends ViewRecord
                                         ->content('')
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_distance')
-                                        ->label('Distance')
+                                        ->label('Distance (N/A)')
                                         ->content('')
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_request')
