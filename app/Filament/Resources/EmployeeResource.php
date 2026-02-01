@@ -3,6 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\EmployeeResource\Pages;
+use App\Filament\Resources\EmployeeResource\RelationManagers\SalaryRelationManager;
+use App\Filament\Resources\EmployeeResource\RelationManagers\ShiftScheduleRelationManager;
 use App\Models\Employee;
 use App\Models\JobTitle;
 use Filament\Forms;
@@ -137,7 +139,10 @@ class EmployeeResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            ShiftScheduleRelationManager::class,
+            SalaryRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

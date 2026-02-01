@@ -156,6 +156,27 @@ class File extends Model
         return $this->hasMany(Task::class);
     }
 
+    public function fileAssignments(): HasMany
+    {
+        return $this->hasMany(FileAssignment::class);
+    }
+
+    /** Current active primary assignment (for eager loading). */
+    public function currentAssignment()
+    {
+        return $this->hasOne(FileAssignment::class)
+            ->whereNull('unassigned_at')
+            ->where('is_primary', true)
+            ->latestOfMany('assigned_at');
+    }
+
+    /** Current active assignee (user). Null if unassigned. */
+    public function assignedUser()
+    {
+        $assignment = $this->fileAssignments()->active()->primary()->latest('assigned_at')->first();
+        return $assignment ? $assignment->user : null;
+    }
+
     public function fileBranches()
     {
         $serviceTypeId = $this->service_type_id;
@@ -302,6 +323,7 @@ class File extends Model
             $file->comments()->delete();
             $file->appointments()->delete();
             $file->tasks()->delete();
+            $file->fileAssignments()->delete();
         });
 
         static::created(function ($file) {

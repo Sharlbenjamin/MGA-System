@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\FileResource\Pages;
 
 use App\Filament\Resources\FileResource;
+use App\Services\CaseAssignmentService;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use App\Models\Patient;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 
 class CreateFile extends CreateRecord
 {
@@ -105,5 +107,13 @@ class CreateFile extends CreateRecord
         }
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $user = Auth::user();
+        if ($user && $this->record) {
+            app(CaseAssignmentService::class)->assign($this->record, $user, $user);
+        }
     }
 }

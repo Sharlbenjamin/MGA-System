@@ -12,6 +12,7 @@ use App\Filament\Resources\FileResource\RelationManagers\AppointmentsRelationMan
 use App\Filament\Resources\FileResource\RelationManagers\TaskRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\BillRelationManager;
+use App\Filament\Resources\FileResource\RelationManagers\AssignmentsRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\InvoiceRelationManager;
 use App\Models\Client;
 use App\Models\Country;
@@ -130,7 +131,8 @@ class FileResource extends Resource
                 'comments',
                 'providerBranch.provider',
                 'gops',
-                'bills'
+                'bills',
+                'currentAssignment.user',
             ]))
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -139,6 +141,7 @@ class FileResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Case Date')
                     ->date('d/m/Y')
+                    ->description(fn ($record) => $record->currentAssignment?->user?->name ?? 'Unassigned')
                     ->sortable()
                     ->searchable(),
                     
@@ -382,6 +385,7 @@ class FileResource extends Resource
     public static function getRelations(): array
     {
         return [
+            AssignmentsRelationManager::class,
             GopRelationManager::class,
             BillRelationManager::class,
             MedicalReportRelationManager::class,

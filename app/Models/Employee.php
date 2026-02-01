@@ -65,6 +65,16 @@ class Employee extends Model
         return $this->belongsTo(BankAccount::class, 'bank_account_id');
     }
 
+    public function shiftSchedules(): HasMany
+    {
+        return $this->hasMany(ShiftSchedule::class);
+    }
+
+    public function salaries(): HasMany
+    {
+        return $this->hasMany(Salary::class);
+    }
+
     protected static function booted(): void
     {
         static::saving(function (Employee $employee) {
