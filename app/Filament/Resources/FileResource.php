@@ -214,8 +214,8 @@ class FileResource extends Resource
                     ->wrap()
                     ->placeholder('No comments')
                     ->weight('bold')
-                    ->extraAttributes(['class' => 'text-xs'])
-                    ->extraCellAttributes(['style' => 'width: 180px; max-width: 180px; min-width: 180px;']),
+                    ->extraAttributes(['class' => 'text-xs block max-w-full break-words'])
+                    ->extraCellAttributes(['style' => 'width: 180px; max-width: 180px; min-width: 180px; overflow-wrap: break-word; word-break: break-word;']),
                 
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')
