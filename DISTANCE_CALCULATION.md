@@ -34,6 +34,16 @@ In Google Cloud Console, enable for your API key:
 - **Geocoding API** (used to convert addresses to coordinates)
 - **Distance Matrix API**
 
+### 4. Disable Distance APIs
+
+To turn off all Distance/Geocoding API calls (no requests sent, distance columns show "N/A"):
+
+```env
+DISTANCE_API_ENABLED=false
+```
+
+If unset, the default is `true`.
+
 ## Implementation Details
 
 ### Files Modified/Created

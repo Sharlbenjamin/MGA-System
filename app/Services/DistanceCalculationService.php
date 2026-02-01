@@ -18,10 +18,14 @@ class DistanceCalculationService
     /** @var string|null Region/country code (e.g. 'ie') to bias geocoding and avoid wrong-country results */
     protected $region;
 
+    /** @var bool Whether Distance/Geocoding API calls are enabled */
+    protected $enabled;
+
     public function __construct()
     {
         $this->apiKey = config('services.google.maps_api_key');
         $this->region = config('services.google.maps_region');
+        $this->enabled = (bool) config('services.google.distance_enabled', true);
     }
 
     /**
@@ -38,6 +42,10 @@ class DistanceCalculationService
      */
     public function geocodeAddress(string $address): ?array
     {
+        if (! $this->enabled) {
+            return null;
+        }
+
         $address = $this->normalizeAddress($address);
         if ($address === '') {
             return null;
@@ -107,6 +115,10 @@ class DistanceCalculationService
      */
     public function calculateDistance($originAddress, $destinationAddress, $mode = 'driving')
     {
+        if (! $this->enabled) {
+            return null;
+        }
+
         $originAddress = $this->normalizeAddress($originAddress ?? '');
         $destinationAddress = $this->normalizeAddress($destinationAddress ?? '');
 
@@ -216,6 +228,10 @@ class DistanceCalculationService
      */
     public function calculateFileToBranchDistance($file)
     {
+        if (! $this->enabled) {
+            return null;
+        }
+
         if (!$file->address) {
             \Log::warning('Distance calculation failed: File address is empty', ['file_id' => $file->id]);
             return null;
