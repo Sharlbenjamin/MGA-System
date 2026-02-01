@@ -47,7 +47,9 @@
                 </button>
             </div>
             <div class="flex items-center gap-2">
-                {{ $this->getHeaderActions() }}
+                <x-filament::button wire:click="openAssignModal()" icon="heroicon-o-plus" size="sm">
+                    Assign shift
+                </x-filament::button>
             </div>
         </div>
 
