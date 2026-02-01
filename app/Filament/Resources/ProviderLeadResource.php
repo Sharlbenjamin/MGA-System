@@ -312,6 +312,7 @@ class ProviderLeadResource extends Resource
         )
             ->columns([
                 TextColumn::make('name')->label('Lead Name')->sortable()->searchable(),
+                TextColumn::make('email')->label('Lead Email')->sortable()->searchable(),
                 TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
                 TextColumn::make('city.name')->label('City')->sortable()->searchable(),
                 TextColumn::make('service_types')

@@ -131,8 +131,46 @@
             <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Assign shift</h3>
             </div>
-            <form wire:submit="saveAssignment" class="p-6">
-                {{ $this->assignForm }}
+            <form wire:submit="saveAssignment" class="p-6 space-y-4">
+                <div>
+                    <label for="assign-scheduled_date" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Date</label>
+                    <input type="date" id="assign-scheduled_date" wire:model="assignFormData.scheduled_date" required
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                </div>
+                <div>
+                    <label for="assign-employee_id" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Employee</label>
+                    <select id="assign-employee_id" wire:model="assignFormData.employee_id" required
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                        <option value="">Select employee</option>
+                        @foreach($this->getEmployeeOptions() as $id => $name)
+                            <option value="{{ $id }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="assign-shift_id" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Shift</label>
+                    <select id="assign-shift_id" wire:model="assignFormData.shift_id" required
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                        <option value="">Select shift</option>
+                        @foreach($this->getShiftOptions() as $id => $name)
+                            <option value="{{ $id }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="assign-location_type" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Location</label>
+                    <select id="assign-location_type" wire:model="assignFormData.location_type"
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm">
+                        @foreach($this->getLocationTypeOptions() as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="assign-notes" class="filament-forms-field-wrapper-label block text-sm font-medium text-gray-950 dark:text-white mb-1">Notes</label>
+                    <textarea id="assign-notes" wire:model="assignFormData.notes" rows="2"
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm"></textarea>
+                </div>
                 <div class="mt-6 flex justify-end gap-2">
                     <x-filament::button type="button" color="gray" wire:click="closeAssignModal">
                         Cancel

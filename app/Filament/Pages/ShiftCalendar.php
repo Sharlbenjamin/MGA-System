@@ -7,10 +7,8 @@ use App\Models\Shift;
 use App\Models\ShiftSchedule;
 use Carbon\Carbon;
 use Filament\Actions\Action;
-use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
@@ -54,32 +52,26 @@ class ShiftCalendar extends Page implements HasForms
         $this->assignFormData = [];
     }
 
-    public function assignForm(Form $form): Form
+    public function getEmployeeOptions(): array
     {
-        return $form
-            ->schema([
-                Forms\Components\DatePicker::make('scheduled_date')
-                    ->label('Date')
-                    ->required()
-                    ->native(false),
-                Forms\Components\Select::make('employee_id')
-                    ->label('Employee')
-                    ->options(Employee::query()->where('status', 'active')->orderBy('name')->pluck('name', 'id'))
-                    ->required()
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Select::make('shift_id')
-                    ->label('Shift')
-                    ->options(Shift::query()->orderBy('name')->pluck('name', 'id'))
-                    ->required()
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Select::make('location_type')
-                    ->options(ShiftSchedule::locationTypes())
-                    ->default('on_site'),
-                Forms\Components\Textarea::make('notes')->rows(2),
-            ])
-            ->statePath('assignFormData');
+        return Employee::query()
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    public function getShiftOptions(): array
+    {
+        return Shift::query()
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    public function getLocationTypeOptions(): array
+    {
+        return ShiftSchedule::locationTypes();
     }
 
     public function saveAssignment(): void
