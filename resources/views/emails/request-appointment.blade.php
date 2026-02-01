@@ -32,6 +32,20 @@
             border-radius: 4px;
             font-weight: bold;
         }
+        .notes-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f7ff;
+            border-left: 4px solid #007cba;
+            border-radius: 4px;
+        }
+        .notes-section ul {
+            margin: 10px 0 0 0;
+            padding-left: 20px;
+        }
+        .notes-section li {
+            margin: 6px 0;
+        }
     </style>
 </head>
 <body>
@@ -83,6 +97,14 @@
 
         <div class="important-note">
             <p><strong>Important:</strong> Please note that we will only cover the cost of the {{ $file->serviceType->name }} service mentioned above. If you need to perform any additional procedures or tests beyond this service, please contact us first for approval before proceeding. If the patient insisted on proceeding you will have to inform them that they may have to pay as it may or may not be covered by the insurance.</p>
+        </div>
+
+        <div class="notes-section">
+            <p><strong>Notes:</strong></p>
+            <ul>
+                <li>The medical report (MR) and the invoice must be provided after the appointment.</li>
+                <li>We only cover the initial consultation and the issuance of prescriptions; any additional procedures should be scheduled as a follow-up visit.</li>
+            </ul>
         </div>
 
         <p>If the requested appointment is not availble, please let us know.</p>
