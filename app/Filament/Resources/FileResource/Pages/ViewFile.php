@@ -891,7 +891,7 @@ class ViewFile extends ViewRecord
                                         ->content('')
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_distance')
-                                        ->label('Distance (N/A)')
+                                        ->label('Distance')
                                         ->content('')
                                         ->columnSpan(1),
                                     \Filament\Forms\Components\Placeholder::make('header_request')
@@ -2411,12 +2411,11 @@ class ViewFile extends ViewRecord
                         ])
                         ->columnSpan(1),
                     
-                    // Distance column (automatically calculated)
-                    \Filament\Forms\Components\View::make('distance_' . $branch->id)
-                        ->view('filament.forms.components.distance-info')
-                        ->viewData([
-                            'distanceInfo' => $this->getBranchDistanceInfo($branch)
-                        ])
+                    // Distance column (disabled - plain N/A only)
+                    \Filament\Forms\Components\Placeholder::make('distance')
+                        ->label('')
+                        ->content('N/A')
+                        ->extraAttributes(['class' => 'text-sm leading-tight'])
                         ->columnSpan(1),
                     
                     // Request column (clickable to copy appointment details)
