@@ -1,18 +1,26 @@
 @php
+    use App\Helpers\FileCompactViewHelper;
+
     $summaryText = '';
     $compactTasks = [];
-    if (is_array($state)) {
-        $record = $state['record'] ?? null;
-        $summaryText = $state['summaryText'] ?? '';
-        $compactTasks = $state['compactTasks'] ?? [];
-    } elseif ($state instanceof \Closure) {
-        $record = isset($record) ? $record : null;
-    } elseif (is_object($state)) {
-        $record = $state;
-    } else {
-        $record = isset($record) ? $record : null;
+    $record = null;
+
+    $stateOrEntry = isset($getState) && is_callable($getState) ? $getState() : ($state ?? $compact_content ?? null);
+
+    if (is_array($stateOrEntry) && isset($stateOrEntry['record'])) {
+        $record = $stateOrEntry['record'];
+        $summaryText = $stateOrEntry['summaryText'] ?? '';
+        $compactTasks = $stateOrEntry['compactTasks'] ?? [];
+    } elseif (isset($record) && is_object($record) && !($record instanceof \Closure) && method_exists($record, 'getKey')) {
+        $summaryText = FileCompactViewHelper::formatCaseInfo($record);
+        $compactTasks = FileCompactViewHelper::getCompactTasks($record);
+    } elseif (is_object($stateOrEntry) && !($stateOrEntry instanceof \Closure) && method_exists($stateOrEntry, 'getKey')) {
+        $record = $stateOrEntry;
+        $summaryText = FileCompactViewHelper::formatCaseInfo($record);
+        $compactTasks = FileCompactViewHelper::getCompactTasks($record);
     }
-    if (!$record || $record instanceof \Closure) {
+
+    if (!$record || !is_object($record) || $record instanceof \Closure || !method_exists($record, 'getKey')) {
         echo '<p class="text-gray-500">No file data.</p>';
         return;
     }
