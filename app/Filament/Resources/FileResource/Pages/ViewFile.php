@@ -68,7 +68,8 @@ class ViewFile extends ViewRecord
         $overviewSchema = [
             ViewEntry::make('compact_content')
                 ->getStateUsing(fn ($record) => $record)
-                ->view('filament.pages.files.view-file-compact'),
+                ->view('filament.pages.files.view-file-compact')
+                ->columnSpanFull(),
         ];
 
         return $infolist
