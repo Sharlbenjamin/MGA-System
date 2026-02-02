@@ -57,7 +57,8 @@ class SalaryRelationManager extends RelationManager
                 Tables\Columns\IconColumn::make('is_locked')
                     ->boolean(),
             ])
-            ->defaultSort(['year' => 'desc', 'month' => 'desc'])
+            ->defaultSort('year', 'desc')
+            ->modifyQueryUsing(fn ($query) => $query->orderBy('year', 'desc')->orderBy('month', 'desc'))
             ->filters([])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
