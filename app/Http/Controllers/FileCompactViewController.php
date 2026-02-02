@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Helpers\FileCompactViewHelper;
 use App\Models\File;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 class FileCompactViewController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Show the compact view for a file (standalone page).
      */
