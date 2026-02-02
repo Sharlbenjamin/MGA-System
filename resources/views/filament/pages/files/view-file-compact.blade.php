@@ -161,24 +161,29 @@
         <div class="min-w-0 sm:col-start-2 sm:row-start-3 sm:col-span-2 sm:min-w-0 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
             <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Tasks</h3>
             <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
-            <div class="space-y-2">
-                {{-- Header row for columns --}}
-                <div class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-600 dark:border-white/10 dark:bg-gray-500/10 dark:text-gray-400 sm:grid-cols-4">
-                    <div>Task</div>
-                    <div>Status</div>
-                    <div>Assigned</div>
-                    <div class="text-right sm:text-left">Action</div>
-                </div>
-                @foreach($compactTasks as $t)
-                    <div class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-white/5 sm:grid-cols-4 sm:items-center">
-                        <div class="min-w-0 text-sm font-medium">{{ $t['name'] }}</div>
-                        <div><span class="inline-block"><x-filament::badge :color="$t['status'] === 'Done' ? 'success' : 'warning'">{{ $t['status'] }}</x-filament::badge></span></div>
-                        <div class="min-w-0 text-sm text-gray-600 dark:text-gray-400">{{ $t['assignee'] }}</div>
-                        <div>
-                            <x-filament::button size="xs" wire:click='openEditTaskModal({{ (int) ($t["id"] ?? 0) }}, {{ json_encode($t["name"]) }})' color="gray">Edit Task</x-filament::button>
-                        </div>
-                    </div>
-                @endforeach
+            <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-white/10">
+                <table class="w-full min-w-[32rem] border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 bg-gray-100 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:border-white/10 dark:bg-gray-500/10 dark:text-gray-400">
+                            <th class="px-3 py-2">Task</th>
+                            <th class="px-3 py-2">Status</th>
+                            <th class="px-3 py-2">Assigned</th>
+                            <th class="px-3 py-2 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($compactTasks as $t)
+                            <tr class="border-b border-gray-200 bg-white last:border-b-0 dark:border-white/10 dark:bg-white/5">
+                                <td class="px-3 py-2 font-medium text-gray-900 dark:text-white">{{ $t['name'] }}</td>
+                                <td class="px-3 py-2"><x-filament::badge :color="$t['status'] === 'Done' ? 'success' : 'warning'">{{ $t['status'] }}</x-filament::badge></td>
+                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['assignee'] }}</td>
+                                <td class="px-3 py-2 text-right">
+                                    <x-filament::button size="xs" wire:click='openEditTaskModal({{ (int) ($t["id"] ?? 0) }}, {{ json_encode($t["name"]) }})' color="gray">Edit Task</x-filament::button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
