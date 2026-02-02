@@ -60,6 +60,17 @@ class ViewFile extends ViewRecord
 {
     protected static string $resource = FileResource::class;
 
+    /** @var array<string, string> Listeners for compact view (e.g. Edit Task button). */
+    protected $listeners = ['open-edit-task' => 'openEditTaskModalFromEvent'];
+
+    public function openEditTaskModalFromEvent(array $payload): void
+    {
+        $this->openEditTaskModal(
+            (int) ($payload['taskId'] ?? 0),
+            (string) ($payload['taskTitle'] ?? '')
+        );
+    }
+
     public function getTitle(): string
     {
         return $this->record->mga_reference . ' · ' . ($this->record->status ?? '');
@@ -951,10 +962,11 @@ class ViewFile extends ViewRecord
                 'description' => $task->description ?? '',
             ]);
         } else {
+            $defaultUserId = $this->record?->assignedUser()?->id ?? '';
             $this->mountAction('editTask', [
                 'task_id' => '',
                 'title' => $taskTitle,
-                'user_id' => '',
+                'user_id' => $defaultUserId,
                 'is_done' => 0,
                 'description' => '',
             ]);

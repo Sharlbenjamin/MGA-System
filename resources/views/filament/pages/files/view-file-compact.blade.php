@@ -178,7 +178,10 @@
                                 <td class="px-3 py-2"><x-filament::badge :color="$t['status'] === 'Done' ? 'success' : 'warning'">{{ $t['status'] }}</x-filament::badge></td>
                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['assignee'] }}</td>
                                 <td class="px-3 py-2 text-right">
-                                    <x-filament::button size="xs" wire:click='openEditTaskModal({{ (int) ($t["id"] ?? 0) }}, {{ json_encode($t["name"]) }})' color="gray">Edit Task</x-filament::button>
+                                    <button type="button"
+                                        wire:click='$dispatch("open-edit-task", {{ json_encode(["taskId" => (int) ($t["id"] ?? 0), "taskTitle" => $t["name"] ?? ""]) }})'
+                                        class="fi-btn relative grid-flow-col items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-gray-950/10 hover:bg-gray-50 dark:bg-white/5 dark:text-gray-300 dark:ring-white/10 dark:hover:bg-white/10 inline-flex"
+                                    >Edit Task</button>
                                 </td>
                             </tr>
                         @endforeach
