@@ -34,6 +34,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
+use Illuminate\Support\HtmlString;
 use App\Models\DraftMail;
 use Filament\Forms\Components\RichEditor;
 use App\Models\Task;
@@ -804,6 +805,24 @@ class ViewFile extends ViewRecord
                 ->slideOver()
                 ->modalHeading('Add a Comment')
                 ->form([
+                    \Filament\Forms\Components\Placeholder::make('previous_comments')
+                        ->label('Previous comments')
+                        ->content(function (): HtmlString {
+                            $comments = $this->record->comments()->with('user')->latest()->take(20)->get();
+                            if ($comments->isEmpty()) {
+                                return new HtmlString('<p class="text-sm text-gray-500 dark:text-gray-400">No comments yet.</p>');
+                            }
+                            $html = '<div class="space-y-3 max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-gray-500/5 p-3">';
+                            foreach ($comments as $c) {
+                                $name = e($c->user?->name ?? 'Unknown');
+                                $date = $c->created_at->format('d/m/Y H:i');
+                                $content = nl2br(e($c->content));
+                                $html .= "<div class=\"text-sm border-b border-gray-200 dark:border-white/10 pb-2 last:border-0 last:pb-0\"><span class=\"font-medium text-gray-700 dark:text-gray-300\">{$name}</span> <span class=\"text-gray-500 dark:text-gray-400 text-xs\">{$date}</span><div class=\"mt-1 text-gray-600 dark:text-gray-400\">{$content}</div></div>";
+                            }
+                            $html .= '</div>';
+                            return new HtmlString($html);
+                        })
+                        ->columnSpanFull(),
                     Textarea::make('content')
                         ->label('Comment')
                         ->required(),

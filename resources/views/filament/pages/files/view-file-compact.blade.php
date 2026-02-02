@@ -46,16 +46,16 @@
             default => 'heroicon-o-wrench',
         };
     }
-    $iconClass = 'h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500'; // applied to icon wrapper span
+    $iconClass = 'h-4 w-4 shrink-0 text-gray-600 dark:text-gray-400'; // applied to icon wrapper span
 @endphp
 <div class="fi-section w-full max-w-none min-w-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
-    {{-- 3 columns: Patient+Client | Case Details | Medical Summary --}}
-    <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 md:gap-6">
-        {{-- Column 1: Patient + Client --}}
-        <div class="min-w-0 sm:min-w-[200px]">
-            <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+    {{-- Grid: Patient+Client (rowspan 2) | Case Details (rowspan 2) | Medical Summary row1, Provider Details row2 (colspan 1) --}}
+    <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 sm:grid-rows-2 md:gap-6">
+        {{-- Col 1, rowspan 2: Patient + Client --}}
+        <div class="min-w-0 sm:min-w-[200px] sm:row-span-2">
+            <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
                 <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Patient & Client</h3>
-                <hr class="mb-3 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
+                <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
                     @if($patient && $patient->name)
                         <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-user', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Patient:</dt><dd class="min-w-0 font-semibold text-gray-950 dark:text-white">{{ $patient->name }}</dd></div>
@@ -82,11 +82,11 @@
                 </dl>
             </div>
         </div>
-        {{-- Column 2: Case Details --}}
-        <div class="min-w-0 sm:min-w-[200px]">
-            <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+        {{-- Col 2, rowspan 2: Case Details --}}
+        <div class="min-w-0 sm:min-w-[200px] sm:row-span-2">
+            <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
                 <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Case Details</h3>
-                <hr class="mb-3 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
+                <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
                     @if($record->serviceType)
                         <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg($serviceIcon, 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Service:</dt><dd class="min-w-0">{{ $record->serviceType->name }}</dd></div>
@@ -109,11 +109,11 @@
                 </dl>
             </div>
         </div>
-        {{-- Column 3: Medical Summary --}}
+        {{-- Col 3, row 1: Medical Summary --}}
         <div class="min-w-0 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
                 <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Medical Summary</h3>
-                <hr class="mb-3 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
+                <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
                     @if($record->address)
                         <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($record->address, 80) }}</dd></div>
@@ -130,62 +130,58 @@
                 </dl>
             </div>
         </div>
-    </div>
-
-    {{-- Provider Details --}}
-    <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
-        <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Provider Details</h3>
-        <hr class="mb-3 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
-        @if($record->providerBranch && $record->providerBranch->provider)
-            @php $pb = $record->providerBranch; $prov = $pb->provider; @endphp
-            <dl class="space-y-2 text-sm">
-                <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-office-2', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Provider:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $prov->name }}<a href="{{ route('filament.admin.resources.providers.edit', $prov->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Provider @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
-                <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-storefront', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Branch:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $pb->branch_name }}<a href="{{ route('filament.admin.resources.provider-branches.edit', $pb->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Branch @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
-                @if($pb->address ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($pb->address, 60) }}</dd></div>@endif
-                @if($pb->city ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">City:</dt><dd class="min-w-0">{{ $pb->city?->name ?? '—' }}</dd></div>@endif
-                @if($prov->phone ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-phone', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Phone:</dt><dd class="min-w-0">{{ $prov->phone }}</dd></div>@endif
-            </dl>
-        @else
-            <p class="text-sm text-gray-500 dark:text-gray-400">No provider assigned</p>
-        @endif
-    </div>
-
-    {{-- Summary section: normal box with 2 columns --}}
-    <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
-        <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Summary</h3>
-        <hr class="mb-3 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-                <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Case Summary</h4>
-                <ul class="list-inside list-disc space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                    @foreach(array_filter(explode("\n", $summaryText)) as $line)
-                        <li>{{ $line }}</li>
-                    @endforeach
-                </ul>
-                <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm text-gray-700 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-gray-300">
-                    <p class="font-semibold text-amber-800 dark:text-amber-200">Please Note:</p>
-                    <ol class="mt-1 list-inside list-decimal space-y-1">
-                        <li>We only cover the initial consultation and the issuance of the prescription.</li>
-                        <li>Please send us the Medical report and the invoice after the appointment.</li>
-                    </ol>
-                </div>
+        {{-- Col 3, row 2: Provider Details (colspan 1) --}}
+        <div class="min-w-0 sm:min-w-[200px] col-span-1">
+            <div class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
+                <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Provider Details</h3>
+                <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
+                @if($record->providerBranch && $record->providerBranch->provider)
+                    @php $pb = $record->providerBranch; $prov = $pb->provider; @endphp
+                    <dl class="space-y-2 text-sm">
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-office-2', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Provider:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $prov->name }}<a href="{{ route('filament.admin.resources.providers.edit', $prov->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Provider @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-storefront', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Branch:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $pb->branch_name }}<a href="{{ route('filament.admin.resources.provider-branches.edit', $pb->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Branch @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
+                        @if($pb->address ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($pb->address, 60) }}</dd></div>@endif
+                        @if($pb->city ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">City:</dt><dd class="min-w-0">{{ $pb->city?->name ?? '—' }}</dd></div>@endif
+                        @if($prov->phone ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-phone', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Phone:</dt><dd class="min-w-0">{{ $prov->phone }}</dd></div>@endif
+                    </dl>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-gray-400">No provider assigned</p>
+                @endif
             </div>
-            <div class="border-t border-gray-200 pt-4 mt-4 dark:border-white/10 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4 sm:mt-0 sm:ml-4">
-                <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Tasks</h4>
-                <div class="space-y-2">
-                    @foreach($compactTasks as $t)
-                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-white/5">
-                            <span class="text-sm font-medium">{{ $t['name'] }}</span>
-                            <div class="flex items-center gap-2">
-                                <span class="inline-block"><x-filament::badge :color="$t['status'] === 'Done' ? 'success' : 'warning'">{{ $t['status'] }}</x-filament::badge></span>
-                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t['assignee'] }}</span>
-                                @if(!empty($t['id']))
-                                    <x-filament::button size="xs" wire:click="openEditTaskModal({{ (int) $t['id'] }})" color="gray">Edit Task</x-filament::button>
-                                @endif
-                            </div>
+        </div>
+    </div>
+
+    {{-- Summary and Tasks: two separate boxes, col-span-1 each --}}
+    <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {{-- Box 1: Case Summary --}}
+        <div class="col-span-1 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+            <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Summary</h3>
+            <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
+            <ul class="list-inside list-disc space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                @foreach(array_filter(explode("\n", $summaryText)) as $line)
+                    <li>{{ $line }}</li>
+                @endforeach
+                <li>Please Note: We only cover the initial consultation and the issuance of the prescription.</li>
+                <li>Please send us the Medical report and the invoice after the appointment.</li>
+            </ul>
+        </div>
+        {{-- Box 2: Tasks --}}
+        <div class="col-span-1 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+            <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Tasks</h3>
+            <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
+            <div class="space-y-2">
+                @foreach($compactTasks as $t)
+                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                        <span class="text-sm font-medium">{{ $t['name'] }}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-block"><x-filament::badge :color="$t['status'] === 'Done' ? 'success' : 'warning'">{{ $t['status'] }}</x-filament::badge></span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t['assignee'] }}</span>
+                            @if(!empty($t['id']))
+                                <x-filament::button size="xs" wire:click="openEditTaskModal({{ (int) $t['id'] }})" color="gray">Edit Task</x-filament::button>
+                            @endif
                         </div>
-                    @endforeach
-                </div>
+                    </div>
+                @endforeach
             </div>
         </div>
     </div>
