@@ -63,8 +63,8 @@ class ViewFile extends ViewRecord
     /** @var array<string, string> Listeners for compact view (e.g. Edit Task button). */
     protected $listeners = ['open-edit-task' => 'openEditTaskModalFromEvent'];
 
-    /** @param array{taskId?: int, taskTitle?: string} $payload */
-    public function openEditTaskModalFromEvent($payload): void
+    /** @param array{taskId?: int, taskTitle?: string}|null $payload */
+    public function openEditTaskModalFromEvent($payload = []): void
     {
         $payload = is_array($payload) ? $payload : [];
         $this->openEditTaskModal(
