@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\FileCompactViewHelper;
 use App\Models\File;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -12,28 +11,12 @@ class FileCompactViewController extends Controller
     use AuthorizesRequests;
 
     /**
-     * Show the compact view for a file (standalone page).
+     * Redirect to Filament file view (compact view is shown there; no app layout / Vite).
      */
     public function show(Request $request, File $file)
     {
         $this->authorize('view', $file);
 
-        $file->load([
-            'patient.client',
-            'serviceType',
-            'country',
-            'city',
-            'providerBranch.provider',
-            'providerBranch.city',
-        ]);
-
-        $summaryText = FileCompactViewHelper::formatCaseInfo($file);
-        $compactTasks = FileCompactViewHelper::getCompactTasks($file);
-
-        return view('filament.pages.files.file-compact-standalone', [
-            'record' => $file,
-            'summaryText' => $summaryText,
-            'compactTasks' => $compactTasks,
-        ]);
+        return redirect()->route('filament.admin.resources.files.view', ['record' => $file]);
     }
 }
