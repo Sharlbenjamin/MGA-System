@@ -851,9 +851,74 @@ class ViewFile extends ViewRecord
                 ->icon('heroicon-m-ellipsis-vertical')
                 ->label('Actions')
                 ->tooltip('Actions'),
+            Action::make('editTask')
+                ->label('Edit Task')
+                ->hidden()
+                ->modalHeading('Edit Task')
+                ->modalWidth('md')
+                ->form([
+                    \Filament\Forms\Components\Hidden::make('task_id'),
+                    TextInput::make('title')
+                        ->label('Task')
+                        ->required(),
+                    Select::make('user_id')
+                        ->label('Assigned employee')
+                        ->options(\App\Models\User::query()->orderBy('name')->pluck('name', 'id'))
+                        ->searchable()
+                        ->required(),
+                    Select::make('is_done')
+                        ->label('Status')
+                        ->options([
+                            0 => 'Pending',
+                            1 => 'Done',
+                        ])
+                        ->required(),
+                    \Filament\Forms\Components\Placeholder::make('linked_case')
+                        ->label('Linked case')
+                        ->content(fn ($get) => $this->record?->mga_reference ?? '—'),
+                    Textarea::make('description')
+                        ->label('Task comment')
+                        ->rows(4)
+                        ->columnSpanFull(),
+                ])
+                ->action(function (array $data): void {
+                    $taskId = $data['task_id'] ?? null;
+                    if (!$taskId) {
+                        Notification::make()->danger()->title('Task not found')->send();
+                        return;
+                    }
+                    $task = Task::find($taskId);
+                    if (!$task) {
+                        Notification::make()->danger()->title('Task not found')->send();
+                        return;
+                    }
+                    $task->update([
+                        'title' => $data['title'],
+                        'user_id' => $data['user_id'],
+                        'is_done' => (bool) $data['is_done'],
+                        'description' => $data['description'] ?? null,
+                    ]);
+                    Notification::make()->success()->title('Task updated')->send();
+                }),
         ];
     }
 
+
+    public function openEditTaskModal(int $taskId): void
+    {
+        $task = Task::find($taskId);
+        if (!$task) {
+            Notification::make()->danger()->title('Task not found')->send();
+            return;
+        }
+        $this->mountAction('editTask', [
+            'task_id' => $task->id,
+            'title' => $task->title,
+            'user_id' => $task->user_id,
+            'is_done' => $task->is_done ? 1 : 0,
+            'description' => $task->description ?? '',
+        ]);
+    }
 
     public function mount($record): void
     {

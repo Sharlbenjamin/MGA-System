@@ -39,7 +39,7 @@ class FileCompactViewHelper
         return "Patient Name: {$patientName}\nDOB: {$dob}\nMGA Reference: {$mgaReference}\nSymptoms: {$symptoms}\nRequest: {$request}\nPhone: {$phone}\nAddress: {$address}";
     }
 
-    /** @return array<int, array{name: string, status: string, assignee: string}> */
+    /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string}> */
     public static function getCompactTasks(File $record): array
     {
         $titles = [
@@ -55,9 +55,14 @@ class FileCompactViewHelper
         foreach ($titles as $title) {
             $task = $fileTasks->get($title) ?? $fileTasks->first(fn (Task $t) => stripos($t->title, $title) !== false || stripos($title, $t->title) !== false);
             $result[] = [
+                'id' => $task?->id,
                 'name' => $title,
                 'status' => $task ? ($task->is_done ? 'Done' : 'Pending') : 'Pending',
                 'assignee' => $task && $task->user ? $task->user->name : '—',
+                'user_id' => $task?->user_id,
+                'is_done' => $task ? (bool) $task->is_done : false,
+                'description' => $task?->description,
+                'linked_case' => $record->mga_reference ?? '—',
             ];
         }
         return $result;
