@@ -808,14 +808,10 @@ class ViewFile extends ViewRecord
                 ->label(fn () => $this->useCompactView ? 'Old View' : 'Compact View')
                 ->icon('heroicon-o-arrows-right-left')
                 ->color('gray')
-                ->action(function () {
-                    $next = $this->useCompactView ? 'classic' : 'compact';
-                    Session::put('file_view_mode', $next);
-                    $url = route('filament.admin.resources.files.view', [
-                        'record' => $this->record,
-                    ]) . '?view=' . $next;
-                    $this->redirect($url, navigate: false);
-                }),
+                ->url(fn () => route('files.view-mode', [
+                    'file' => $this->record->getKey(),
+                    'mode' => $this->useCompactView ? 'classic' : 'compact',
+                ])),
             Action::make('requestAppointment')
                 ->label('Request Appointment')
                 ->icon('heroicon-o-globe-alt')

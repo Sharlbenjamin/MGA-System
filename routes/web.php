@@ -20,6 +20,7 @@ use App\Models\City;
 use Google\Client as Google_Client;
 use Google\Service\Calendar;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -76,6 +77,15 @@ Route::middleware([FilamentAuthenticate::class])->group(function () {
     Route::get('/taxes/export', [TaxesExportController::class, 'export'])->name('taxes.export');
     Route::get('/taxes/export/zip', [TaxesExportController::class, 'exportZip'])->name('taxes.export.zip');
     Route::get('/files/export/zip', [FileDocumentExportController::class, 'exportZip'])->name('files.export.zip');
+
+    // File view mode toggle: set session and redirect to Filament file view (full page load)
+    Route::get('/files/{file}/view-mode/{mode}', function ($file, $mode) {
+        if (!in_array($mode, ['compact', 'classic'], true)) {
+            abort(404);
+        }
+        Session::put('file_view_mode', $mode);
+        return redirect()->route('filament.admin.resources.files.view', ['record' => $file]);
+    })->name('files.view-mode')->where('mode', 'compact|classic');
 });
 
 // API Routes for AJAX functionality
