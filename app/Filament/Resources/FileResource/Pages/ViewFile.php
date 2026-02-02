@@ -804,14 +804,12 @@ class ViewFile extends ViewRecord
     protected function getHeaderActions(): array
     {
         $actions = [
-            Action::make('toggleView')
-                ->label(fn () => $this->useCompactView ? 'Old View' : 'Compact View')
-                ->icon('heroicon-o-arrows-right-left')
+            Action::make('compactView')
+                ->label('Compact View')
+                ->icon('heroicon-o-squares-2x2')
                 ->color('gray')
-                ->url(fn () => route('files.view-mode', [
-                    'file' => $this->record->getKey(),
-                    'mode' => $this->useCompactView ? 'classic' : 'compact',
-                ])),
+                ->url(fn () => route('files.compact', ['file' => $this->record->getKey()]))
+                ->openUrlInNewTab(false),
             Action::make('requestAppointment')
                 ->label('Request Appointment')
                 ->icon('heroicon-o-globe-alt')
