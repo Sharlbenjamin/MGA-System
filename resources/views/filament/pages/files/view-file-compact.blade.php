@@ -37,11 +37,11 @@
         default => 'warning',
     };
 @endphp
-<div class="fi-section w-full min-w-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
+<div class="fi-section w-full max-w-none min-w-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
     {{-- 3 columns: Patient+Client | Case Details | Medical Summary --}}
-    <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
+    <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 md:gap-6">
         {{-- Column 1: Patient + Client --}}
-        <div class="min-w-0">
+        <div class="min-w-0 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
                 <h3 class="fi-section-header-heading mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Patient & Client</h3>
                 <dl class="space-y-2 text-sm">
@@ -68,7 +68,7 @@
             </div>
         </div>
         {{-- Column 2: Case Details --}}
-        <div class="min-w-0">
+        <div class="min-w-0 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
                 <h3 class="fi-section-header-heading mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Case Details</h3>
                 <dl class="space-y-2 text-sm">
@@ -94,7 +94,7 @@
             </div>
         </div>
         {{-- Column 3: Medical Summary --}}
-        <div class="min-w-0">
+        <div class="min-w-0 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
                 <h3 class="fi-section-header-heading mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Medical Summary</h3>
                 <dl class="space-y-2 text-sm">

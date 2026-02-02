@@ -11,6 +11,7 @@ use Filament\Infolists\Infolist;
 use App\Filament\Resources\FileResource;
 use Filament\Infolists\Components\Card;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -69,7 +70,8 @@ class ViewFile extends ViewRecord
             ViewEntry::make('compact_content')
                 ->getStateUsing(fn ($record) => $record)
                 ->view('filament.pages.files.view-file-compact')
-                ->columnSpanFull(),
+                ->columnSpanFull()
+                ->extraAttributes(['class' => '!max-w-none w-full']),
         ];
 
         return $infolist
@@ -844,7 +846,12 @@ class ViewFile extends ViewRecord
                 ->url(fn ($record) => route('filament.admin.resources.files.edit', $record))
                 ->openUrlInNewTab(false)
         ];
-        return $actions;
+        return [
+            ActionGroup::make($actions)
+                ->icon('heroicon-m-ellipsis-vertical')
+                ->label('Actions')
+                ->tooltip('Actions'),
+        ];
     }
 
 
