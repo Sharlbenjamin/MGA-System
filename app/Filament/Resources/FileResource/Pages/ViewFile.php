@@ -52,27 +52,32 @@ use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Actions\DeleteAction;
 use Illuminate\Support\Facades\Storage;
 use App\Services\DocumentPathResolver;
+use Filament\Infolists\Components\ViewEntry;
 
 class ViewFile extends ViewRecord
 {
     protected static string $resource = FileResource::class;
 
+    /** @var bool Whether to show the compact view (session + query). */
+    public bool $useCompactView = false;
+
     public function getTitle(): string
     {
-        return $this->record->mga_reference;
+        return $this->record->mga_reference . ' · ' . ($this->record->status ?? '');
     }
 
     public function infolist(Infolist $infolist): Infolist
     {
-        return $infolist
-            ->columns(1)
-            ->schema([
-                Tabs::make('FileTabs')
-                    ->columnSpanFull()
-                    ->tabs([
-                        Tab::make('Overview')
-                            ->schema([
-                                InfolistSection::make()
+        $overviewSchema = $this->useCompactView
+            ? [ViewEntry::make('compact_content')->state(function ($record) {
+                return [
+                    'record' => $record,
+                    'summaryText' => $this->formatCaseInfo($record),
+                    'compactTasks' => $this->getCompactTasksForView($record),
+                ];
+            })->view('filament.pages.files.view-file-compact')]
+            : [
+                InfolistSection::make()
                                     ->columns(3)
                                     ->schema([
                         // Column 1: Patient & Client Info (Condensed)
@@ -395,7 +400,16 @@ class ViewFile extends ViewRecord
                                                 ),
                                         ]),
                                 ]),
-                            ]),
+                            ];
+
+        return $infolist
+            ->columns(1)
+            ->schema([
+                Tabs::make('FileTabs')
+                    ->columnSpanFull()
+                    ->tabs([
+                        Tab::make('Overview')
+                            ->schema($overviewSchema),
                         Tab::make('Documents')
                             ->schema($this->getDocumentsTabContent()),
                     ]),
@@ -789,7 +803,20 @@ class ViewFile extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [
+        $actions = [
+            Action::make('toggleView')
+                ->label(fn () => $this->useCompactView ? 'Old View' : 'Compact View')
+                ->icon('heroicon-o-arrows-right-left')
+                ->color('gray')
+                ->action(function () {
+                    $next = $this->useCompactView ? 'classic' : 'compact';
+                    Session::put('file_view_mode', $next);
+                    $this->useCompactView = ($next === 'compact');
+                    $this->redirect(route('filament.admin.resources.files.view', [
+                        'record' => $this->record,
+                        'view' => $next,
+                    ]), navigate: true);
+                }),
             Action::make('requestAppointment')
                 ->label('Request Appointment')
                 ->icon('heroicon-o-globe-alt')
@@ -1111,12 +1138,56 @@ class ViewFile extends ViewRecord
                             ->send();
                     }
                 }),
+            Action::make('addComment')
+                ->label('Add Comment')
+                ->icon('heroicon-o-chat-bubble-left')
+                ->color('gray')
+                ->slideOver()
+                ->modalHeading('Add a Comment')
+                ->form([
+                    Textarea::make('content')
+                        ->label('Comment')
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $this->record->comments()->create([
+                        'content' => $data['content'],
+                        'user_id' => Auth::id(),
+                    ]);
+                    Notification::make()->success()->title('Comment added')->send();
+                }),
+            Action::make('assignEmployee')
+                ->label('Assign Employee')
+                ->icon('heroicon-o-user-plus')
+                ->color('gray')
+                ->modalHeading('Assign to employee')
+                ->form([
+                    Select::make('user_id')
+                        ->label('Employee / User')
+                        ->options(\App\Models\User::query()->orderBy('name')->pluck('name', 'id'))
+                        ->searchable()
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $user = \App\Models\User::find($data['user_id']);
+                    if (!$user) {
+                        Notification::make()->danger()->title('User not found')->send();
+                        return;
+                    }
+                    app(\App\Services\CaseAssignmentService::class)->assign(
+                        $this->record,
+                        $user,
+                        auth()->user()
+                    );
+                    Notification::make()->success()->title('Case assigned')->body("Assigned to {$user->name}.")->send();
+                }),
             Action::make('Update File')
                 ->label('Update File')
                 ->icon('heroicon-o-pencil')
                 ->url(fn ($record) => route('filament.admin.resources.files.edit', $record))
                 ->openUrlInNewTab(false)
         ];
+        return $actions;
     }
 
 
@@ -1125,6 +1196,13 @@ class ViewFile extends ViewRecord
         parent::mount($record);
 
         $this->alertMessage = Session::get('contact_alert');
+
+        // View mode: query overrides session, default classic
+        $viewParam = request()->query('view');
+        if ($viewParam === 'compact' || $viewParam === 'classic') {
+            Session::put('file_view_mode', $viewParam);
+        }
+        $this->useCompactView = Session::get('file_view_mode', 'classic') === 'compact';
     }
 
     public $alertMessage;
@@ -1133,6 +1211,12 @@ class ViewFile extends ViewRecord
     {
         $this->alertMessage = null;
         Session::forget('contact_alert');
+    }
+
+    /** Used by compact view "Copy for email/WhatsApp" button. */
+    public function copySummaryToClipboard(): void
+    {
+        $this->copyToClipboard($this->formatCaseInfo($this->record), 'Case Summary');
     }
 
     public function copyToClipboard($text, $label): void
@@ -1270,6 +1354,35 @@ class ViewFile extends ViewRecord
                 }
             })();
         ");
+    }
+
+    /**
+     * Get the 6 compact-view tasks (Create GOP In, Upload GOP In, Create MR, Upload MR, Create Bill, Upload Bill).
+     * Returns [ ['name' => string, 'status' => string, 'assignee' => string], ... ].
+     */
+    public function getCompactTasksForView($record): array
+    {
+        $titles = [
+            'Create GOP In',
+            'Upload GOP In',
+            'Create MR',
+            'Upload MR',
+            'Create Bill',
+            'Upload Bill',
+        ];
+        $fileTasks = $record->tasks()->where('department', 'Operation')->get()->keyBy(function (Task $t) {
+            return $t->title;
+        });
+        $result = [];
+        foreach ($titles as $title) {
+            $task = $fileTasks->get($title) ?? $fileTasks->first(fn (Task $t) => stripos($t->title, $title) !== false || stripos($title, $t->title) !== false);
+            $result[] = [
+                'name' => $title,
+                'status' => $task ? ($task->is_done ? 'Done' : 'Pending') : 'Pending',
+                'assignee' => $task && $task->user ? $task->user->name : '—',
+            ];
+        }
+        return $result;
     }
 
     public function formatCaseInfo($record): string

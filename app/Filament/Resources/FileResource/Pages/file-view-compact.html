@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>File View – Compact</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --border:#e7e9f0;
+      --muted:#6b7280;
+      --text:#111827;
+      --shadow: 0 10px 25px rgba(17,24,39,.06);
+      --radius:14px;
+      --gap:16px;
+      --primary:#2563eb;
+      --pill:#f3f4f6;
+      --pillText:#111827;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .container{max-width:1280px;margin:0 auto;padding:18px 18px 28px}
+    .topbar{
+      position:sticky;top:0;z-index:10;
+      background:rgba(246,247,251,.85);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--border);
+    }
+    .topbar-inner{max-width:1280px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:12px}
+    .title{
+      display:flex;align-items:center;gap:12px;min-width:280px;
+    }
+    .ref{font-size:28px;font-weight:800;letter-spacing:.3px}
+    .badge{
+      background:#fde68a;
+      color:#111827;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:13px;
+      border:1px solid #fcd34d;
+    }
+    .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .btn{
+      border:1px solid var(--border);
+      background:var(--card);
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:600;
+      font-size:14px;
+      display:inline-flex;align-items:center;gap:8px;
+      box-shadow:0 2px 0 rgba(17,24,39,.02);
+      cursor:pointer;
+    }
+    .btn.primary{background:var(--primary);border-color:var(--primary);color:white}
+    .btn.icon{padding:10px 11px}
+    .btn small{font-weight:700;color:var(--muted)}
+    .grid{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:var(--gap);
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card-h{
+      padding:14px 16px;
+      border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+      font-weight:800;
+    }
+    .card-b{padding:12px 16px}
+    .kv{
+      display:grid;
+      grid-template-columns: 120px 1fr;
+      gap:8px 12px;
+      font-size:14px;
+      line-height:1.35;
+    }
+    .k{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .v{font-weight:650}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--pill);
+      border:1px solid var(--border);
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:12px;
+      color:var(--pillText);
+      white-space:nowrap;
+    }
+    .split-row{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns: 2fr 1fr;
+      gap:var(--gap);
+    }
+    .split-vert{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:0;
+      min-height:220px;
+    }
+    .split-vert > .pane{
+      padding:12px 16px;
+    }
+    .split-vert > .pane + .pane{
+      border-left:1px solid var(--border);
+    }
+    .pane-title{
+      font-size:13px;
+      font-weight:900;
+      margin:2px 0 10px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    ul.bullets{margin:0;padding-left:18px;color:var(--text)}
+    ul.bullets li{margin:6px 0;color:#111827}
+    .toolbar{
+      margin-top:12px;
+      display:flex;
+      gap:8px;
+      border-top:1px solid var(--border);
+      padding-top:12px;
+      flex-wrap:wrap;
+    }
+    .link{
+      color:var(--primary);
+      font-weight:800;
+      text-decoration:none;
+    }
+    .tasks{
+      display:flex;flex-direction:column;gap:10px;margin-top:8px;
+    }
+    .task{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 10px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fbfbfe;
+    }
+    .task-name{font-weight:800;font-size:13px;flex:1}
+    .task-meta{display:flex;align-items:center;gap:8px;white-space:nowrap}
+    .status{
+      font-size:12px;font-weight:900;
+      padding:6px 10px;border-radius:999px;border:1px solid var(--border);
+      background:#fff;
+    }
+    .status.pending{background:#fff7ed;border-color:#fed7aa}
+    .status.done{background:#ecfdf5;border-color:#a7f3d0}
+    .assignee{
+      font-size:12px;font-weight:900;color:#374151;
+      padding:6px 10px;border-radius:999px;background:#f3f4f6;border:1px solid var(--border);
+    }
+
+    /* Provider details card */
+    .provider-links{margin-top:10px;display:flex;gap:14px;flex-wrap:wrap}
+    .provider-links a{font-weight:900}
+
+    /* Floating quick actions */
+    .fab{
+      position:fixed;right:22px;bottom:22px;z-index:30;
+      width:54px;height:54px;border-radius:999px;
+      background:var(--primary);color:#fff;border:0;
+      font-size:28px;font-weight:900;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 18px 40px rgba(37,99,235,.28);
+      cursor:pointer;
+    }
+    .fab-menu{
+      position:fixed;right:22px;bottom:84px;z-index:30;
+      width:260px;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .fab-item{
+      display:flex;align-items:center;gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+      font-weight:900;
+      cursor:pointer;
+    }
+    .fab-item:last-child{border-bottom:0}
+    .fab-ic{
+      width:28px;height:28px;border-radius:10px;
+      background:#eef2ff;border:1px solid #e0e7ff;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:900;color:#1e40af;
+    }
+
+    /* Responsive */
+    @media (max-width: 1020px){
+      .grid{grid-template-columns:1fr}
+      .split-row{grid-template-columns:1fr}
+      .split-vert{grid-template-columns:1fr}
+      .split-vert > .pane + .pane{border-left:0;border-top:1px solid var(--border)}
+      .title{min-width:auto}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky header -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="title">
+        <div class="ref">MG158HE</div>
+        <div class="badge">New</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn icon" title="Toggle Old/New View">⇄</button>
+        <button class="btn" title="Invoices & Bills">🧾 <span>Invoices & Bills</span></button>
+        <button class="btn" title="Ready Replies">💬 <span>Ready Replies</span></button>
+        <button class="btn" title="Update File">✏️ <span>Update File</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- 3-column top grid -->
+    <div class="grid">
+
+      <!-- Patient + Client -->
+      <div class="card">
+        <div class="card-h">Patient & Client</div>
+        <div class="card-b">
+          <div class="kv">
+            <div class="k">Patient</div><div class="v">Luis Tomas Monteiro Moreira (F)</div>
+            <div class="k">DOB</div><div class="v">04/11/1957</div>
+            <div class="k">Phone</div><div class="v">—</div>
+            <div class="k">Email</div><div class="v">—</div>
+
+            <div class="k" style="margin-top:8px;">Client</div><div class="v" style="margin-top:8px;">Hero MGA Services LTD</div>
+            <div class="k">Client Ref</div><div class="v">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Case details -->
+      <div class="card">
+        <div class="card-h">Case Details</div>
+        <div class="card-b">
+          <div class="kv">
+            <div class="k">Service</div><div class="v">Dental Clinic</div>
+            <div class="k">Country</div><div class="v">France</div>
+            <div class="k">City</div><div class="v">Paris</div>
+            <div class="k">Service Date</div><div class="v">—</div>
+            <div class="k">Service Time</div><div class="v">—</div>
+
+            <div class="k">Status</div><div class="v"><span class="pill">New</span></div>
+            <div class="k">Invoice</div><div class="v"><span class="pill">No Invoice</span></div>
+            <div class="k">Bill</div><div class="v"><span class="pill">No Bill</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Medical summary -->
+      <div class="card">
+        <div class="card-h">Medical Summary</div>
+        <div class="card-b">
+          <div class="kv">
+            <div class="k">Address</div><div class="v">14 Rue du Pileu, 91300 Massy, France</div>
+            <div class="k">Symptoms</div><div class="v">Dental crown loose, causing discomfort</div>
+            <div class="k">Diagnosis</div><div class="v">—</div>
+            <div class="k">Drive</div><div class="v"><a class="link" href="#" onclick="return false;">Open folder</a></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Second row: Summary (split vertically) + Provider details -->
+    <div class="split-row">
+
+      <!-- Summary split: left = summary bullets, right = tasks -->
+      <div class="card">
+        <div class="card-h">
+          <span>Summary</span>
+          <span style="color:var(--muted);font-size:12px;font-weight:900;">Collapsed by default in Filament</span>
+        </div>
+
+        <div class="split-vert">
+          <div class="pane">
+            <div class="pane-title">
+              <span>Case Summary</span>
+              <a class="link" href="#" onclick="return false;">Copy</a>
+            </div>
+            <ul class="bullets">
+              <li>Dental clinic request — Paris</li>
+              <li>Crown loose, patient discomfort</li>
+              <li>No provider assigned yet</li>
+              <li>No invoice / bill</li>
+            </ul>
+            <div class="toolbar">
+              <button class="btn">✏️ Edit summary</button>
+              <button class="btn">📋 Copy for email / WhatsApp</button>
+            </div>
+          </div>
+
+          <div class="pane">
+            <div class="pane-title">
+              <span>Tasks</span>
+              <span style="color:var(--muted);font-size:12px;font-weight:900;">Status • Assignee</span>
+            </div>
+
+            <div class="tasks">
+              <div class="task">
+                <div class="task-name">Create GOP In</div>
+                <div class="task-meta">
+                  <span class="status pending">Pending</span>
+                  <span class="assignee">Samantha</span>
+                </div>
+              </div>
+              <div class="task">
+                <div class="task-name">Upload GOP In</div>
+                <div class="task-meta">
+                  <span class="status pending">Pending</span>
+                  <span class="assignee">Samantha</span>
+                </div>
+              </div>
+              <div class="task">
+                <div class="task-name">Create MR</div>
+                <div class="task-meta">
+                  <span class="status pending">Pending</span>
+                  <span class="assignee">Jason</span>
+                </div>
+              </div>
+              <div class="task">
+                <div class="task-name">Upload MR</div>
+                <div class="task-meta">
+                  <span class="status done">Done</span>
+                  <span class="assignee">Jason</span>
+                </div>
+              </div>
+              <div class="task">
+                <div class="task-name">Create Bill</div>
+                <div class="task-meta">
+                  <span class="status pending">Pending</span>
+                  <span class="assignee">—</span>
+                </div>
+              </div>
+              <div class="task">
+                <div class="task-name">Upload Bill</div>
+                <div class="task-meta">
+                  <span class="status pending">Pending</span>
+                  <span class="assignee">—</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Provider details -->
+      <div class="card">
+        <div class="card-h">Provider Details</div>
+        <div class="card-b">
+          <div class="kv">
+            <div class="k">Provider</div><div class="v">Dr. Jean Dupont</div>
+            <div class="k">Branch</div><div class="v">La Defense Branch</div>
+            <div class="k">Type</div><div class="v">Doctor</div>
+            <div class="k">Address</div><div class="v">21 Avenue de l'Arche</div>
+            <div class="k">City</div><div class="v">Paris</div>
+            <div class="k">Email</div><div class="v">—</div>
+            <div class="k">Phone</div><div class="v">—</div>
+          </div>
+
+          <div class="provider-links">
+            <a class="link" href="#" onclick="return false;">Open Provider</a>
+            <a class="link" href="#" onclick="return false;">Open Branch</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Floating quick actions (New list) -->
+  <div class="fab-menu" aria-label="Quick actions">
+    <div class="fab-item"><span class="fab-ic">📅</span> Request Appointment</div>
+    <div class="fab-item"><span class="fab-ic">📝</span> Extract Consent</div>
+    <div class="fab-item"><span class="fab-ic">💬</span> Add Comment</div>
+    <div class="fab-item"><span class="fab-ic">🏥</span> Assign Provider</div>
+    <div class="fab-item"><span class="fab-ic">👤</span> Assign Employee</div>
+  </div>
+  <button class="fab" title="Quick actions">+</button>
+
+</body>
+</html>
