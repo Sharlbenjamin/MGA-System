@@ -49,10 +49,10 @@
     $iconClass = 'h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400'; // applied to icon wrapper span
 @endphp
 <div class="fi-section w-full max-w-none min-w-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
-    {{-- Grid: Patient+Client (rowspan 2) | Case Details (rowspan 2) | Provider Details row1 | Medical Summary row1 --}}
-    <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-4 sm:grid-rows-2 md:gap-6">
-        {{-- Col 1, rowspan 2: Patient + Client --}}
-        <div class="min-w-0 sm:min-w-[200px] sm:row-span-2">
+    {{-- Explicit grid: Row1 [Patient+Client rowspan2 | Case Details rowspan2 | Medical Summary]; Row2 [ | | Provider]; Row3 [Summary | Tasks] --}}
+    <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 sm:grid-rows-[auto_auto_auto] md:gap-6">
+        {{-- Row 1-2, Col 1: Patient + Client (colspan 1, rowspan 2) --}}
+        <div class="min-w-0 sm:col-start-1 sm:row-start-1 sm:row-span-2 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
                 <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Patient & Client</h3>
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
@@ -82,8 +82,8 @@
                 </dl>
             </div>
         </div>
-        {{-- Col 2, rowspan 2: Case Details --}}
-        <div class="min-w-0 sm:min-w-[200px] sm:row-span-2">
+        {{-- Row 1-2, Col 2: Case Details (colspan 1, rowspan 2) --}}
+        <div class="min-w-0 sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
                 <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Case Details</h3>
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
@@ -109,27 +109,8 @@
                 </dl>
             </div>
         </div>
-        {{-- Col 3, row 1: Provider Details --}}
-        <div class="min-w-0 sm:min-w-[200px] col-span-1">
-            <div class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
-                <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Provider Details</h3>
-                <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
-                @if($record->providerBranch && $record->providerBranch->provider)
-                    @php $pb = $record->providerBranch; $prov = $pb->provider; @endphp
-                    <dl class="space-y-2 text-sm">
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-office-2', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Provider:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $prov->name }}<a href="{{ route('filament.admin.resources.providers.edit', $prov->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Provider @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-storefront', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Branch:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $pb->branch_name }}<a href="{{ route('filament.admin.resources.provider-branches.edit', $pb->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Branch @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
-                        @if($pb->address ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($pb->address, 60) }}</dd></div>@endif
-                        @if($pb->city ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">City:</dt><dd class="min-w-0">{{ $pb->city?->name ?? '—' }}</dd></div>@endif
-                        @if($prov->phone ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-phone', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Phone:</dt><dd class="min-w-0">{{ $prov->phone }}</dd></div>@endif
-                    </dl>
-                @else
-                    <p class="text-sm text-gray-500 dark:text-gray-400">No provider assigned</p>
-                @endif
-            </div>
-        </div>
-        {{-- Col 4, row 1: Medical Summary --}}
-        <div class="min-w-0 sm:min-w-[200px]">
+        {{-- Row 1, Col 3: Medical Summary (colspan 1, rowspan 1) --}}
+        <div class="min-w-0 sm:col-start-3 sm:row-start-1 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
                 <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Medical Summary</h3>
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
@@ -149,8 +130,27 @@
                 </dl>
             </div>
         </div>
-        {{-- Row 2, col 3: Summary (col-span 1) --}}
-        <div class="min-w-0 sm:min-w-[200px] col-span-1 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+        {{-- Row 2, Col 3: Provider Details (colspan 1) --}}
+        <div class="min-w-0 sm:col-start-3 sm:row-start-2 sm:min-w-[200px]">
+            <div class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
+                <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Provider Details</h3>
+                <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
+                @if($record->providerBranch && $record->providerBranch->provider)
+                    @php $pb = $record->providerBranch; $prov = $pb->provider; @endphp
+                    <dl class="space-y-2 text-sm">
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-office-2', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Provider:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $prov->name }}<a href="{{ route('filament.admin.resources.providers.edit', $prov->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Provider @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-storefront', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Branch:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $pb->branch_name }}<a href="{{ route('filament.admin.resources.provider-branches.edit', $pb->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Branch @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
+                        @if($pb->address ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($pb->address, 60) }}</dd></div>@endif
+                        @if($pb->city ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">City:</dt><dd class="min-w-0">{{ $pb->city?->name ?? '—' }}</dd></div>@endif
+                        @if($prov->phone ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-phone', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Phone:</dt><dd class="min-w-0">{{ $prov->phone }}</dd></div>@endif
+                    </dl>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-gray-400">No provider assigned</p>
+                @endif
+            </div>
+        </div>
+        {{-- Row 3, Col 1: Summary (colspan 1) --}}
+        <div class="min-w-0 sm:col-start-1 sm:row-start-3 sm:min-w-[200px] rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
             <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Summary</h3>
             <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
             <ul class="list-inside list-disc space-y-1 text-sm text-gray-600 dark:text-gray-400">
@@ -161,8 +161,8 @@
                 <li>Please send us the Medical report and the invoice after the appointment.</li>
             </ul>
         </div>
-        {{-- Row 2, col 4: Tasks (col-span 1) --}}
-        <div class="min-w-0 sm:min-w-[200px] col-span-1 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+        {{-- Row 3, Col 2: Tasks (colspan 1) --}}
+        <div class="min-w-0 sm:col-start-2 sm:row-start-3 sm:min-w-[200px] rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
             <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Tasks</h3>
             <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
             <div class="space-y-2">
