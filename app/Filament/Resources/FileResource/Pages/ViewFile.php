@@ -876,7 +876,8 @@ class ViewFile extends ViewRecord
                 ->modalHeading('Edit Task')
                 ->modalWidth('md')
                 ->form([
-                    \Filament\Forms\Components\Hidden::make('task_id'),
+                    \Filament\Forms\Components\Hidden::make('task_id')
+                        ->default(null),
                     TextInput::make('title')
                         ->label('Task')
                         ->required(),
@@ -902,41 +903,62 @@ class ViewFile extends ViewRecord
                 ])
                 ->action(function (array $data): void {
                     $taskId = $data['task_id'] ?? null;
-                    if (!$taskId) {
-                        Notification::make()->danger()->title('Task not found')->send();
-                        return;
+                    $taskId = $taskId === '' || $taskId === null ? null : (int) $taskId;
+                    if ($taskId) {
+                        $task = Task::find($taskId);
+                        if (!$task) {
+                            Notification::make()->danger()->title('Task not found')->send();
+                            return;
+                        }
+                        $task->update([
+                            'title' => $data['title'],
+                            'user_id' => $data['user_id'],
+                            'is_done' => (bool) $data['is_done'],
+                            'description' => $data['description'] ?? null,
+                        ]);
+                        Notification::make()->success()->title('Task updated')->send();
+                    } else {
+                        Task::create([
+                            'file_id' => $this->record->id,
+                            'title' => $data['title'],
+                            'user_id' => $data['user_id'],
+                            'is_done' => (bool) $data['is_done'],
+                            'description' => $data['description'] ?? null,
+                            'department' => 'Operation',
+                        ]);
+                        Notification::make()->success()->title('Task created')->send();
                     }
-                    $task = Task::find($taskId);
-                    if (!$task) {
-                        Notification::make()->danger()->title('Task not found')->send();
-                        return;
-                    }
-                    $task->update([
-                        'title' => $data['title'],
-                        'user_id' => $data['user_id'],
-                        'is_done' => (bool) $data['is_done'],
-                        'description' => $data['description'] ?? null,
-                    ]);
-                    Notification::make()->success()->title('Task updated')->send();
                 }),
         ];
     }
 
 
-    public function openEditTaskModal(int $taskId): void
+    /** @param int|null $taskId Task ID or 0 for new task. @param string $taskTitle Slot title (e.g. "Create GOP In") when creating. */
+    public function openEditTaskModal($taskId = 0, string $taskTitle = ''): void
     {
-        $task = Task::find($taskId);
-        if (!$task) {
-            Notification::make()->danger()->title('Task not found')->send();
-            return;
+        $taskId = $taskId ? (int) $taskId : null;
+        if ($taskId) {
+            $task = Task::find($taskId);
+            if (!$task) {
+                Notification::make()->danger()->title('Task not found')->send();
+                return;
+            }
+            $this->mountAction('editTask', [
+                'task_id' => $task->id,
+                'title' => $task->title,
+                'user_id' => $task->user_id,
+                'is_done' => $task->is_done ? 1 : 0,
+                'description' => $task->description ?? '',
+            ]);
+        } else {
+            $this->mountAction('editTask', [
+                'task_id' => '',
+                'title' => $taskTitle,
+                'user_id' => '',
+                'is_done' => 0,
+                'description' => '',
+            ]);
         }
-        $this->mountAction('editTask', [
-            'task_id' => $task->id,
-            'title' => $task->title,
-            'user_id' => $task->user_id,
-            'is_done' => $task->is_done ? 1 : 0,
-            'description' => $task->description ?? '',
-        ]);
     }
 
     public function mount($record): void
