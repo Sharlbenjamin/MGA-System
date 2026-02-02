@@ -126,7 +126,7 @@ class FileCompactViewHelper
         return "Patient Name: {$patientName}\nDOB: {$dob}\nMGA Reference: {$mgaReference}\nSymptoms: {$symptoms}\nRequest: {$request}\nPhone: {$phone}\nAddress: {$address}";
     }
 
-    /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string}> */
+    /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string, date_assigned: string|null}> */
     public static function getCompactTasks(File $record): array
     {
         $titles = [
@@ -162,6 +162,10 @@ class FileCompactViewHelper
             $assignee = ($task && $task->user) ? $task->user->name : $defaultUserName;
             $userId = $task?->user_id ?? $defaultUserId;
 
+            $dateAssigned = $task?->created_at
+                ? $task->created_at->format('d/m/Y')
+                : null;
+
             $result[] = [
                 'id' => $task?->id,
                 'name' => $title,
@@ -171,6 +175,7 @@ class FileCompactViewHelper
                 'is_done' => $effectiveDone,
                 'description' => $task?->description,
                 'linked_case' => $record->mga_reference ?? '—',
+                'date_assigned' => $dateAssigned,
             ];
         }
         return $result;
