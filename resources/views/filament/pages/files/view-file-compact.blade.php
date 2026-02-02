@@ -1,7 +1,21 @@
 @php
-    $record = is_array($state) ? ($state['record'] ?? $state) : $state;
-    $summaryText = is_array($state) ? ($state['summaryText'] ?? '') : '';
-    $compactTasks = is_array($state) ? ($state['compactTasks'] ?? []) : [];
+    $summaryText = '';
+    $compactTasks = [];
+    if (is_array($state)) {
+        $record = $state['record'] ?? null;
+        $summaryText = $state['summaryText'] ?? '';
+        $compactTasks = $state['compactTasks'] ?? [];
+    } elseif ($state instanceof \Closure) {
+        $record = isset($record) ? $record : null;
+    } elseif (is_object($state)) {
+        $record = $state;
+    } else {
+        $record = isset($record) ? $record : null;
+    }
+    if (!$record || $record instanceof \Closure) {
+        echo '<p class="text-gray-500">No file data.</p>';
+        return;
+    }
     $patient = $record->patient;
     $clientName = $patient?->client?->company_name ?? '—';
     $latestInvoice = $record->invoices()->latest()->first();

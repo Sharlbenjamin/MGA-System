@@ -66,7 +66,7 @@ class ViewFile extends ViewRecord
     public function infolist(Infolist $infolist): Infolist
     {
         $overviewSchema = [
-            ViewEntry::make('compact_content')->state(function ($record) {
+            ViewEntry::make('compact_content')->getStateUsing(function ($record) {
                 return [
                     'record' => $record,
                     'summaryText' => $this->formatCaseInfo($record),
