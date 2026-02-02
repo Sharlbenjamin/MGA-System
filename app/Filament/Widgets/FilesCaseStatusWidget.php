@@ -5,7 +5,6 @@ namespace App\Filament\Widgets;
 use App\Models\File;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Database\Eloquent\Builder;
 
 class FilesCaseStatusWidget extends BaseWidget
 {
@@ -25,12 +24,9 @@ class FilesCaseStatusWidget extends BaseWidget
             ->where('status', 'Hold')
             ->count();
 
-        // Handling & Refund cases with comment needs action
-        $handlingRefundWithActionCount = (clone $baseQuery())
-            ->whereIn('status', ['Handling', 'Refund'])
-            ->whereHas('comments', function (Builder $query) {
-                $query->whereRaw('LOWER(content) LIKE ?', ['%needs action%']);
-            })
+        // Handling cases count (all cases with status Handling, no invoices)
+        $handlingCasesCount = (clone $baseQuery())
+            ->where('status', 'Handling')
             ->count();
 
         // Available cases count
@@ -49,9 +45,9 @@ class FilesCaseStatusWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-pause-circle')
                 ->color('warning'),
 
-            Stat::make('Handling', $handlingRefundWithActionCount)
-                ->description('Needs Action')
-                ->descriptionIcon('heroicon-m-exclamation-triangle')
+            Stat::make('Handling', $handlingCasesCount)
+                ->description('Cases in handling (no invoice yet)')
+                ->descriptionIcon('heroicon-m-cog-6-tooth')
                 ->color('danger'),
 
             Stat::make('Available Cases', $availableCasesCount)
