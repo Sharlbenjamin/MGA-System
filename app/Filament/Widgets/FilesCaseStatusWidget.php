@@ -46,8 +46,8 @@ class FilesCaseStatusWidget extends BaseWidget
                 ->color('warning'),
 
             Stat::make('Handling', $handlingCasesCount)
-                ->description('Cases in handling (no invoice yet)')
-                ->descriptionIcon('heroicon-m-cog-6-tooth')
+                ->description('Needs Action')
+                ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color('danger'),
 
             Stat::make('Available Cases', $availableCasesCount)
