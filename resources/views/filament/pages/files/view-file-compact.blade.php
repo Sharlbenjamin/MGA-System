@@ -43,26 +43,29 @@
         {{-- Column 1: Patient + Client --}}
         <div class="min-w-0 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
-                <h3 class="fi-section-header-heading mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Patient & Client</h3>
+                <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Patient & Client</h3>
                 <dl class="space-y-2 text-sm">
                     @if($patient && $patient->name)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Patient</dt><dd class="font-semibold text-gray-950 dark:text-white">{{ $patient->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Patient:</dt><dd class="min-w-0 font-semibold text-gray-950 dark:text-white">{{ $patient->name }}</dd></div>
                     @endif
                     @if($patient && $patient->dob)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">DOB</dt><dd>{{ \Carbon\Carbon::parse($patient->dob)->format('d/m/Y') }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">DOB:</dt><dd class="min-w-0">{{ \Carbon\Carbon::parse($patient->dob)->format('d/m/Y') }}</dd></div>
                     @endif
                     @if($patient && $patient->gender)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Gender</dt><dd>{{ $patient->gender }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Gender:</dt><dd class="min-w-0">{{ $patient->gender }}</dd></div>
                     @endif
                     @if($record->phone)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Phone</dt><dd>{{ $record->phone }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Phone:</dt><dd class="min-w-0">{{ $record->phone }}</dd></div>
                     @endif
                     @if($record->email)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Email</dt><dd>{{ $record->email }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Email:</dt><dd class="min-w-0">{{ $record->email }}</dd></div>
                     @endif
-                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">Client</dt><dd class="font-semibold">{{ $clientName }}</dd></div>
+                </dl>
+                <hr class="my-3 border-gray-200 dark:border-white/10" />
+                <dl class="space-y-2 text-sm">
+                    <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Client:</dt><dd class="min-w-0 font-semibold">{{ $clientName }}</dd></div>
                     @if($record->client_reference)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Client Ref</dt><dd>{{ $record->client_reference }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Client Ref:</dt><dd class="min-w-0">{{ $record->client_reference }}</dd></div>
                     @endif
                 </dl>
             </div>
@@ -70,101 +73,63 @@
         {{-- Column 2: Case Details --}}
         <div class="min-w-0 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
-                <h3 class="fi-section-header-heading mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Case Details</h3>
+                <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Case Details</h3>
                 <dl class="space-y-2 text-sm">
                     @if($record->serviceType)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Service</dt><dd>{{ $record->serviceType->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Service:</dt><dd class="min-w-0">{{ $record->serviceType->name }}</dd></div>
                     @endif
                     @if($record->country)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Country</dt><dd>{{ $record->country->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Country:</dt><dd class="min-w-0">{{ $record->country->name }}</dd></div>
                     @endif
                     @if($record->city)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">City</dt><dd>{{ $record->city->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">City:</dt><dd class="min-w-0">{{ $record->city->name }}</dd></div>
                     @endif
                     @if($record->service_date)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Service Date</dt><dd>{{ $record->service_date->format('d/m/Y') }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Service Date:</dt><dd class="min-w-0">{{ $record->service_date->format('d/m/Y') }}</dd></div>
                     @endif
                     @if($record->service_time)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Service Time</dt><dd>{{ \Carbon\Carbon::parse($record->service_time)->format('h:i A') }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Service Time:</dt><dd class="min-w-0">{{ \Carbon\Carbon::parse($record->service_time)->format('h:i A') }}</dd></div>
                     @endif
-                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">Status</dt><dd><x-filament::badge :color="$statusColor">{{ $record->status }}</x-filament::badge></dd></div>
-                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">Invoice</dt><dd><x-filament::badge :color="$invoiceStatus === 'Paid' ? 'success' : ($invoiceStatus === 'No Invoice' ? 'gray' : 'warning')">{{ $invoiceStatus }}</x-filament::badge></dd></div>
-                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">Bill</dt><dd><x-filament::badge :color="$billStatus === 'Paid' ? 'success' : ($billStatus === 'No Bill' ? 'gray' : 'warning')">{{ $billStatus }}</x-filament::badge></dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Status:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$statusColor">{{ $record->status }}</x-filament::badge></dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Invoice:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$invoiceStatus === 'Paid' ? 'success' : ($invoiceStatus === 'No Invoice' ? 'gray' : 'warning')">{{ $invoiceStatus }}</x-filament::badge></dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Bill:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$billStatus === 'Paid' ? 'success' : ($billStatus === 'No Bill' ? 'gray' : 'warning')">{{ $billStatus }}</x-filament::badge></dd></div>
                 </dl>
             </div>
         </div>
         {{-- Column 3: Medical Summary --}}
         <div class="min-w-0 sm:min-w-[200px]">
             <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
-                <h3 class="fi-section-header-heading mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Medical Summary</h3>
+                <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Medical Summary</h3>
                 <dl class="space-y-2 text-sm">
                     @if($record->address)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Address</dt><dd class="break-words">{{ $truncate($record->address, 80) }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($record->address, 80) }}</dd></div>
                     @endif
                     @if($record->symptoms)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Symptoms</dt><dd class="break-words">{{ $truncate($record->symptoms, 80) }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Symptoms:</dt><dd class="min-w-0 break-words">{{ $truncate($record->symptoms, 80) }}</dd></div>
                     @endif
                     @if($record->diagnosis)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Diagnosis</dt><dd class="break-words">{{ $record->diagnosis }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Diagnosis:</dt><dd class="min-w-0 break-words">{{ $record->diagnosis }}</dd></div>
                     @endif
                     @if($record->google_drive_link)
-                        <div><dt class="font-medium text-gray-500 dark:text-gray-400">Drive</dt><dd><a href="{{ str_starts_with($record->google_drive_link, 'http') ? $record->google_drive_link : 'https://' . $record->google_drive_link }}" target="_blank" rel="noopener" class="text-primary-600 hover:underline dark:text-primary-400">Open folder</a></dd></div>
+                        <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Drive:</dt><dd class="min-w-0"><a href="{{ str_starts_with($record->google_drive_link, 'http') ? $record->google_drive_link : 'https://' . $record->google_drive_link }}" target="_blank" rel="noopener" class="text-primary-600 hover:underline dark:text-primary-400">Open folder</a></dd></div>
                     @endif
                 </dl>
             </div>
         </div>
     </div>
 
-    {{-- Summary section (collapsible, collapsed by default) --}}
-    <div class="mt-6" x-data="{ open: false }">
-        <button type="button" @click="open = !open" class="fi-section-header-heading flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50/50 px-4 py-3 text-left text-sm font-semibold uppercase tracking-wider text-gray-500 dark:border-white/10 dark:bg-gray-500/5 dark:text-gray-400">
-            <span>Summary</span>
-            <svg class="h-5 w-5 transition-transform" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-        </button>
-        <div x-show="open" x-transition class="rounded-b-lg border border-t-0 border-gray-200 bg-white dark:border-white/10 dark:bg-white/5">
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-12">
-                <div class="p-4 md:col-span-6">
-                    <h4 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Case Summary</h4>
-                    <ul class="list-inside list-disc space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                        @foreach(array_filter(explode("\n", $summaryText)) as $line)
-                            <li>{{ $line }}</li>
-                        @endforeach
-                    </ul>
-                    <div class="mt-3 flex flex-wrap gap-2">
-                        <a href="{{ route('filament.admin.resources.files.edit', $record) }}" class="inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-gray-950/10 transition hover:bg-gray-50 dark:ring-white/20 dark:hover:bg-white/5 fi-btn">Edit summary</a>
-                        <x-filament::button size="sm" tag="button" wire:click="copySummaryToClipboard" color="gray">Copy for email / WhatsApp</x-filament::button>
-                    </div>
-                </div>
-                <div class="border-t border-gray-200 p-4 dark:border-white/10 md:col-span-6 md:border-t-0 md:border-l">
-                    <h4 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">Tasks</h4>
-                    <div class="space-y-2">
-                        @foreach($compactTasks as $t)
-                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 dark:border-white/10 dark:bg-gray-500/5">
-                                <span class="text-sm font-medium">{{ $t['name'] }}</span>
-                                <div class="flex items-center gap-2">
-                                    <x-filament::badge :color="$t['status'] === 'Done' ? 'success' : 'warning'">{{ $t['status'] }}</x-filament::badge>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t['assignee'] }}</span>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- Provider Details --}}
     <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
-        <h3 class="fi-section-header-heading mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Provider Details</h3>
+        <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Provider Details</h3>
         @if($record->providerBranch && $record->providerBranch->provider)
             @php $pb = $record->providerBranch; $prov = $pb->provider; @endphp
-            <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <div><dt class="font-medium text-gray-500 dark:text-gray-400">Provider</dt><dd>{{ $prov->name }}</dd></div>
-                <div><dt class="font-medium text-gray-500 dark:text-gray-400">Branch</dt><dd>{{ $pb->branch_name }}</dd></div>
-                @if($pb->address ?? null)<div><dt class="font-medium text-gray-500 dark:text-gray-400">Address</dt><dd class="break-words">{{ $truncate($pb->address, 60) }}</dd></div>@endif
-                @if($pb->city ?? null)<div><dt class="font-medium text-gray-500 dark:text-gray-400">City</dt><dd>{{ $pb->city?->name ?? '—' }}</dd></div>@endif
-                @if($prov->email ?? null)<div><dt class="font-medium text-gray-500 dark:text-gray-400">Email</dt><dd>{{ $prov->email }}</dd></div>@endif
-                @if($prov->phone ?? null)<div><dt class="font-medium text-gray-500 dark:text-gray-400">Phone</dt><dd>{{ $prov->phone }}</dd></div>@endif
+            <dl class="space-y-2 text-sm">
+                <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Provider:</dt><dd class="min-w-0">{{ $prov->name }}</dd></div>
+                <div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Branch:</dt><dd class="min-w-0">{{ $pb->branch_name }}</dd></div>
+                @if($pb->address ?? null)<div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($pb->address, 60) }}</dd></div>@endif
+                @if($pb->city ?? null)<div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">City:</dt><dd class="min-w-0">{{ $pb->city?->name ?? '—' }}</dd></div>@endif
+                @if($prov->email ?? null)<div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Email:</dt><dd class="min-w-0">{{ $prov->email }}</dd></div>@endif
+                @if($prov->phone ?? null)<div class="flex flex-nowrap gap-x-2"><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Phone:</dt><dd class="min-w-0">{{ $prov->phone }}</dd></div>@endif
             </dl>
             <div class="mt-3 flex flex-wrap gap-3">
                 <a href="{{ route('filament.admin.resources.providers.edit', $prov->id) }}" class="text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Open Provider</a>
@@ -173,6 +138,35 @@
         @else
             <p class="text-sm text-gray-500 dark:text-gray-400">No provider assigned</p>
         @endif
+    </div>
+
+    {{-- Summary section: normal box with 2 columns --}}
+    <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+        <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Summary</h3>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+                <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Case Summary</h4>
+                <ul class="list-inside list-disc space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                    @foreach(array_filter(explode("\n", $summaryText)) as $line)
+                        <li>{{ $line }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="border-t border-gray-200 pt-4 dark:border-white/10 sm:border-t-0 sm:border-l sm:pl-4 sm:pt-0">
+                <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Tasks</h4>
+                <div class="space-y-2">
+                    @foreach($compactTasks as $t)
+                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                            <span class="text-sm font-medium">{{ $t['name'] }}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="inline-block"><x-filament::badge :color="$t['status'] === 'Done' ? 'success' : 'warning'">{{ $t['status'] }}</x-filament::badge></span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $t['assignee'] }}</span>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- Quick Actions (floating) --}}
