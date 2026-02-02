@@ -60,19 +60,6 @@ class ViewFile extends ViewRecord
 {
     protected static string $resource = FileResource::class;
 
-    /** @var array<string, string> Listeners for compact view (e.g. Edit Task button). */
-    protected $listeners = ['open-edit-task' => 'openEditTaskModalFromEvent'];
-
-    /** @param array{taskId?: int, taskTitle?: string}|null $payload */
-    public function openEditTaskModalFromEvent($payload = []): void
-    {
-        $payload = is_array($payload) ? $payload : [];
-        $this->openEditTaskModal(
-            (int) ($payload['taskId'] ?? 0),
-            (string) ($payload['taskTitle'] ?? '')
-        );
-    }
-
     public function getTitle(): string
     {
         return $this->record->mga_reference . ' · ' . ($this->record->status ?? '');
@@ -876,104 +863,68 @@ class ViewFile extends ViewRecord
                 ->label('Update File')
                 ->icon('heroicon-o-pencil')
                 ->url(fn ($record) => route('filament.admin.resources.files.edit', $record))
-                ->openUrlInNewTab(false)
+                ->openUrlInNewTab(false),
+            Action::make('assignTasks')
+                ->label('Assign tasks')
+                ->icon('heroicon-o-user-plus')
+                ->color('gray')
+                ->modalHeading('Assign task to user')
+                ->modalDescription('Choose a task for this case and assign it to a user.')
+                ->modalWidth('md')
+                ->form([
+                    Select::make('task_title')
+                        ->label('Task')
+                        ->options([
+                            'Create GOP In' => 'Create GOP In',
+                            'Upload GOP In' => 'Upload GOP In',
+                            'Create MR' => 'Create MR',
+                            'Upload MR' => 'Upload MR',
+                            'Create Bill' => 'Create Bill',
+                            'Upload Bill' => 'Upload Bill',
+                        ])
+                        ->required()
+                        ->searchable(),
+                    Select::make('user_id')
+                        ->label('Assign to user')
+                        ->options(\App\Models\User::query()->orderBy('name')->pluck('name', 'id'))
+                        ->searchable()
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $title = (string) ($data['task_title'] ?? '');
+                    $userId = (int) ($data['user_id'] ?? 0);
+                    if (!$title || !$userId) {
+                        Notification::make()->danger()->title('Task and user are required')->send();
+                        return;
+                    }
+                    $task = $this->record->tasks()
+                        ->where('department', 'Operation')
+                        ->where('title', $title)
+                        ->first();
+                    if ($task) {
+                        $task->update(['user_id' => $userId]);
+                        Notification::make()->success()->title('Task assigned')->body("{$title} assigned to user.")->send();
+                    } else {
+                        Task::create([
+                            'file_id' => $this->record->id,
+                            'title' => $title,
+                            'user_id' => $userId,
+                            'is_done' => false,
+                            'description' => null,
+                            'department' => 'Operation',
+                        ]);
+                        Notification::make()->success()->title('Task created and assigned')->body("{$title} created and assigned to user.")->send();
+                    }
+                }),
         ];
         return [
             ActionGroup::make($actions)
                 ->icon('heroicon-m-ellipsis-vertical')
                 ->label('Actions')
                 ->tooltip('Actions'),
-            Action::make('editTask')
-                ->label('Edit Task')
-                ->hidden()
-                ->modalHeading('Edit Task')
-                ->modalWidth('md')
-                ->form([
-                    \Filament\Forms\Components\Hidden::make('task_id')
-                        ->default(null),
-                    TextInput::make('title')
-                        ->label('Task')
-                        ->required(),
-                    Select::make('user_id')
-                        ->label('Assigned employee')
-                        ->options(\App\Models\User::query()->orderBy('name')->pluck('name', 'id'))
-                        ->searchable()
-                        ->required(),
-                    Select::make('is_done')
-                        ->label('Status')
-                        ->options([
-                            0 => 'Pending',
-                            1 => 'Done',
-                        ])
-                        ->required(),
-                    \Filament\Forms\Components\Placeholder::make('linked_case')
-                        ->label('Linked case')
-                        ->content(fn ($get) => $this->record?->mga_reference ?? '—'),
-                    Textarea::make('description')
-                        ->label('Task comment')
-                        ->rows(4)
-                        ->columnSpanFull(),
-                ])
-                ->action(function (array $data): void {
-                    $taskId = $data['task_id'] ?? null;
-                    $taskId = $taskId === '' || $taskId === null ? null : (int) $taskId;
-                    if ($taskId) {
-                        $task = Task::find($taskId);
-                        if (!$task) {
-                            Notification::make()->danger()->title('Task not found')->send();
-                            return;
-                        }
-                        $task->update([
-                            'title' => $data['title'],
-                            'user_id' => $data['user_id'],
-                            'is_done' => (bool) $data['is_done'],
-                            'description' => $data['description'] ?? null,
-                        ]);
-                        Notification::make()->success()->title('Task updated')->send();
-                    } else {
-                        Task::create([
-                            'file_id' => $this->record->id,
-                            'title' => $data['title'],
-                            'user_id' => $data['user_id'],
-                            'is_done' => (bool) $data['is_done'],
-                            'description' => $data['description'] ?? null,
-                            'department' => 'Operation',
-                        ]);
-                        Notification::make()->success()->title('Task created')->send();
-                    }
-                }),
         ];
     }
 
-
-    /** @param int|null $taskId Task ID or 0 for new task. @param string $taskTitle Slot title (e.g. "Create GOP In") when creating. */
-    public function openEditTaskModal($taskId = 0, string $taskTitle = ''): void
-    {
-        $taskId = $taskId ? (int) $taskId : null;
-        if ($taskId) {
-            $task = Task::find($taskId);
-            if (!$task) {
-                Notification::make()->danger()->title('Task not found')->send();
-                return;
-            }
-            $this->mountAction('editTask', [
-                'task_id' => $task->id,
-                'title' => $task->title,
-                'user_id' => $task->user_id,
-                'is_done' => $task->is_done ? 1 : 0,
-                'description' => $task->description ?? '',
-            ]);
-        } else {
-            $defaultUserId = $this->record?->assignedUser()?->id ?? '';
-            $this->mountAction('editTask', [
-                'task_id' => '',
-                'title' => $taskTitle,
-                'user_id' => $defaultUserId,
-                'is_done' => 0,
-                'description' => '',
-            ]);
-        }
-    }
 
     public function mount($record): void
     {

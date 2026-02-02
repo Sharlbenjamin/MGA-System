@@ -169,7 +169,6 @@
                             <th class="px-3 py-2">Status</th>
                             <th class="px-3 py-2">Assigned</th>
                             <th class="px-3 py-2">Date assigned</th>
-                            <th class="px-3 py-2 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -181,12 +180,6 @@
                                 </td>
                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['assignee'] }}</td>
                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['date_assigned'] ?? '—' }}</td>
-                                <td class="px-3 py-2 text-right">
-                                    <button type="button"
-                                        wire:click='$dispatch("open-edit-task", {{ json_encode(["taskId" => (int) ($t["id"] ?? 0), "taskTitle" => $t["name"] ?? ""]) }}).self()'
-                                        class="fi-btn relative grid-flow-col items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-gray-700 shadow-sm ring-1 ring-gray-950/10 hover:bg-gray-50 dark:bg-white/5 dark:text-gray-300 dark:ring-white/10 dark:hover:bg-white/10 inline-flex"
-                                    >Edit Task</button>
-                                </td>
                             </tr>
                         @endforeach
                     </tbody>
