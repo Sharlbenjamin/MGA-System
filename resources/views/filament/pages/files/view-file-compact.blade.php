@@ -109,9 +109,9 @@
                 </dl>
             </div>
         </div>
-        {{-- Row 1, Col 3: Medical Summary (colspan 1, rowspan 1) --}}
-        <div class="min-w-0 sm:col-start-3 sm:row-start-1 sm:min-w-[200px]">
-            <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+        {{-- Row 1-2, Col 3: Medical Summary + Provider Details (one box, rowspan 2) --}}
+        <div class="min-w-0 sm:col-start-3 sm:row-start-1 sm:row-span-2 sm:min-w-[200px]">
+            <div class="fi-section-content rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
                 <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Medical Summary</h3>
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
@@ -128,11 +128,7 @@
                         <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-folder-open', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Drive:</dt><dd class="min-w-0"><a href="{{ str_starts_with($record->google_drive_link, 'http') ? $record->google_drive_link : 'https://' . $record->google_drive_link }}" target="_blank" rel="noopener" class="text-primary-600 hover:underline dark:text-primary-400">Open folder</a></dd></div>
                     @endif
                 </dl>
-            </div>
-        </div>
-        {{-- Row 2, Col 3: Provider Details (colspan 1) --}}
-        <div class="min-w-0 sm:col-start-3 sm:row-start-2 sm:min-w-[200px]">
-            <div class="rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5 h-full">
+                <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Provider Details</h3>
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 @if($record->providerBranch && $record->providerBranch->provider)
@@ -161,8 +157,8 @@
                 <li>Please send us the Medical report and the invoice after the appointment.</li>
             </ul>
         </div>
-        {{-- Row 3, Col 2: Tasks (colspan 1) --}}
-        <div class="min-w-0 sm:col-start-2 sm:row-start-3 sm:min-w-[200px] rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
+        {{-- Row 3, Col 2-3: Tasks (colspan 2) --}}
+        <div class="min-w-0 sm:col-start-2 sm:row-start-3 sm:col-span-2 sm:min-w-0 rounded-lg border border-gray-200 bg-gray-50/50 p-4 dark:border-white/10 dark:bg-gray-500/5">
             <h3 class="mb-3 text-base font-semibold text-gray-900 dark:text-white">Tasks</h3>
             <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
             <div class="space-y-2">
