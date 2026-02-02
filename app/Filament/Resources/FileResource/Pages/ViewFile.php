@@ -811,11 +811,10 @@ class ViewFile extends ViewRecord
                 ->action(function () {
                     $next = $this->useCompactView ? 'classic' : 'compact';
                     Session::put('file_view_mode', $next);
-                    $this->useCompactView = ($next === 'compact');
-                    $this->redirect(route('filament.admin.resources.files.view', [
+                    $url = route('filament.admin.resources.files.view', [
                         'record' => $this->record,
-                        'view' => $next,
-                    ]), navigate: true);
+                    ]) . '?view=' . $next;
+                    $this->redirect($url, navigate: false);
                 }),
             Action::make('requestAppointment')
                 ->label('Request Appointment')
