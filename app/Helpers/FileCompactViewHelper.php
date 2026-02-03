@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Models\File;
 use App\Models\Task;
+use Illuminate\Support\Facades\URL;
 
 class FileCompactViewHelper
 {
@@ -94,6 +95,44 @@ class FileCompactViewHelper
         };
     }
 
+    /**
+     * Get signed URL to view the uploaded document for a task (only when document is uploaded locally).
+     * Returns null if no local document (e.g. only Google link) or task type has no document.
+     */
+    public static function getViewUrlForTask(File $record, string $title): ?string
+    {
+        $expiryMinutes = 60;
+        if ($title === 'Create GOP In' || $title === 'Upload GOP In') {
+            $gop = $record->gops()
+                ->where('type', 'In')
+                ->whereNotNull('document_path')->where('document_path', '!=', '')
+                ->latest()
+                ->first();
+            return $gop?->getDocumentSignedUrl($expiryMinutes);
+        }
+        if ($title === 'Create MR' || $title === 'Upload MR') {
+            $mr = $record->medicalReports()
+                ->whereNotNull('document_path')->where('document_path', '!=', '')
+                ->latest()
+                ->first();
+            return $mr?->getDocumentSignedUrl($expiryMinutes);
+        }
+        if ($title === 'Create Bill' || $title === 'Upload Bill') {
+            $bill = $record->bills()
+                ->whereNotNull('bill_document_path')->where('bill_document_path', '!=', '')
+                ->latest()
+                ->first();
+            if (!$bill) {
+                return null;
+            }
+            return URL::temporarySignedRoute('docs.serve', now()->addMinutes($expiryMinutes), [
+                'type' => 'bill',
+                'id' => $bill->id,
+            ]);
+        }
+        return null;
+    }
+
     public static function formatCaseInfo(File $record): string
     {
         $isEmpty = fn ($value) => $value === null || $value === '' || (is_string($value) && trim($value) === '');
@@ -126,7 +165,7 @@ class FileCompactViewHelper
         return "Patient Name: {$patientName}\nDOB: {$dob}\nMGA Reference: {$mgaReference}\nSymptoms: {$symptoms}\nRequest: {$request}\nPhone: {$phone}\nAddress: {$address}";
     }
 
-    /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string, date_assigned: string|null}> */
+    /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string, date_assigned: string|null, view_url: string|null}> */
     public static function getCompactTasks(File $record): array
     {
         $titles = [
@@ -166,6 +205,8 @@ class FileCompactViewHelper
                 ? $task->created_at->format('d/m/Y')
                 : null;
 
+            $viewUrl = self::getViewUrlForTask($record, $title);
+
             $result[] = [
                 'id' => $task?->id,
                 'name' => $title,
@@ -176,6 +217,7 @@ class FileCompactViewHelper
                 'description' => $task?->description,
                 'linked_case' => $record->mga_reference ?? '—',
                 'date_assigned' => $dateAssigned,
+                'view_url' => $viewUrl,
             ];
         }
         return $result;

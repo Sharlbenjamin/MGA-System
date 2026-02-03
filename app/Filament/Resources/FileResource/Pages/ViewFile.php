@@ -44,8 +44,6 @@ use App\Models\FileFee;
 use App\Filament\Resources\BranchAvailabilityResource;
 
 use Filament\Support\Colors\Color;
-use Filament\Infolists\Components\Tabs;
-use Filament\Infolists\Components\Tabs\Tab;
 use Filament\Infolists\Components\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Table;
@@ -77,16 +75,7 @@ class ViewFile extends ViewRecord
 
         return $infolist
             ->columns(1)
-            ->schema([
-                Tabs::make('FileTabs')
-                    ->columnSpanFull()
-                    ->tabs([
-                        Tab::make('Overview')
-                            ->schema($overviewSchema),
-                        Tab::make('Documents')
-                            ->schema($this->getDocumentsTabContent()),
-                    ]),
-            ]);
+            ->schema($overviewSchema);
     }
 
     protected function getDocumentsTabContent(): array

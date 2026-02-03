@@ -194,6 +194,7 @@
                             <th class="px-3 py-2">Status</th>
                             <th class="px-3 py-2">Assigned</th>
                             <th class="px-3 py-2">Date assigned</th>
+                            <th class="px-3 py-2 text-right">View</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -205,6 +206,15 @@
                                 </td>
                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['assignee'] }}</td>
                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['date_assigned'] ?? '—' }}</td>
+                                <td class="px-3 py-2 text-right">
+                                    @if(!empty($t['view_url']))
+                                        <a href="{{ $t['view_url'] }}" target="_blank" rel="noopener" class="fi-btn relative inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-500/10">
+                                            View
+                                        </a>
+                                    @else
+                                        <span class="text-gray-400 dark:text-gray-500 text-xs">—</span>
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
