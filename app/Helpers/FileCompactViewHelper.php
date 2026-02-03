@@ -254,24 +254,34 @@ class FileCompactViewHelper
     }
 
     /**
-     * Find or create a task for a linked record (GOP In, Medical Report, Bill).
+     * Find existing task for a linked record (GOP In, Medical Report, Bill).
      */
-    private static function findOrCreateTaskForRecord(File $file, string $title, object $linkedRecord, int|null $defaultUserId): Task
+    private static function findTaskForRecord(File $file, object $linkedRecord): ?Task
     {
         $taskableType = $linkedRecord::class;
         $taskableId = $linkedRecord->id;
-
-        $task = $file->tasks()
+        return $file->tasks()
             ->where('department', 'Operation')
             ->where('taskable_type', $taskableType)
             ->where('taskable_id', $taskableId)
             ->with('user')
             ->first();
+    }
 
+    /**
+     * Find or create a task for a linked record. Only creates when $defaultUserId is set (tasks.user_id is NOT NULL in DB).
+     */
+    private static function findOrCreateTaskForRecord(File $file, string $title, object $linkedRecord, int|null $defaultUserId): ?Task
+    {
+        $task = self::findTaskForRecord($file, $linkedRecord);
         if ($task) {
             return $task;
         }
-
+        if ($defaultUserId === null) {
+            return null;
+        }
+        $taskableType = $linkedRecord::class;
+        $taskableId = $linkedRecord->id;
         $task = Task::create([
             'file_id' => $file->id,
             'title' => $title,
@@ -283,6 +293,27 @@ class FileCompactViewHelper
         ]);
         $task->load('user');
         return $task;
+    }
+
+    /**
+     * Build a task row from a record when no task exists (e.g. old case with no assigned user - cannot create task with null user_id).
+     */
+    private static function rowFromRecordOnly(File $record, object $linkedRecord, string $name): array
+    {
+        $effectiveDone = self::isRecordDoneForView($linkedRecord);
+        return [
+            'id' => null,
+            'name' => $name,
+            'status' => 'Unassigned',
+            'assignee' => '—',
+            'user_id' => null,
+            'is_done' => $effectiveDone,
+            'description' => null,
+            'linked_case' => $record->mga_reference ?? '—',
+            'date_assigned' => null,
+            'view_url' => self::getViewUrlForRecord($linkedRecord),
+            'details' => self::getDetailsForRecord($linkedRecord),
+        ];
     }
 
     /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string, date_assigned: string|null, view_url: string|null, details: string}> */
@@ -298,6 +329,10 @@ class FileCompactViewHelper
         $gopsIn = $record->gops()->where('type', 'In')->orderBy('id')->get();
         foreach ($gopsIn as $gop) {
             $task = self::findOrCreateTaskForRecord($record, 'GOP In', $gop, $defaultUserId);
+            if ($task === null) {
+                $result[] = self::rowFromRecordOnly($record, $gop, 'GOP In');
+                continue;
+            }
             $isDoneFromRecord = self::isRecordDoneForView($gop);
             $isDone = (bool) $task->is_done;
             $effectiveDone = $isDone || $isDoneFromRecord;
@@ -336,6 +371,10 @@ class FileCompactViewHelper
         $medicalReports = $record->medicalReports()->orderBy('id')->get();
         foreach ($medicalReports as $mr) {
             $task = self::findOrCreateTaskForRecord($record, 'Medical Report', $mr, $defaultUserId);
+            if ($task === null) {
+                $result[] = self::rowFromRecordOnly($record, $mr, 'Medical Report');
+                continue;
+            }
             $isDoneFromRecord = self::isRecordDoneForView($mr);
             $isDone = (bool) $task->is_done;
             $effectiveDone = $isDone || $isDoneFromRecord;
@@ -374,6 +413,10 @@ class FileCompactViewHelper
         $bills = $record->bills()->orderBy('id')->get();
         foreach ($bills as $bill) {
             $task = self::findOrCreateTaskForRecord($record, 'Provider Bill', $bill, $defaultUserId);
+            if ($task === null) {
+                $result[] = self::rowFromRecordOnly($record, $bill, 'Provider Bill');
+                continue;
+            }
             $isDoneFromRecord = self::isRecordDoneForView($bill);
             $isDone = (bool) $task->is_done;
             $effectiveDone = $isDone || $isDoneFromRecord;
