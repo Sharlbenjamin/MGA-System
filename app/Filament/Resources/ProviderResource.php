@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProviderResource\RelationManagers\BillRelationManager;
 use App\Filament\Resources\ProviderResource\RelationManagers\BankAccountRelationManager;
+use App\Filament\RelationManagers\ActivityLogRelationManager;
 use App\Filament\Resources\ProviderResource\Pages;
 use App\Filament\Resources\ProviderResource\RelationManagers\ProviderBranchRelationManager;
 use App\Filament\Resources\ProviderResource\RelationManagers\ProviderLeadRelationManager;
@@ -136,6 +137,7 @@ public static function table(Tables\Table $table): Tables\Table
             ProviderBranchRelationManager::class,
             BankAccountRelationManager::class,
             BillRelationManager::class,
+            ActivityLogRelationManager::class,
         ];
     }
 

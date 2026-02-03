@@ -15,6 +15,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\TextColumn;
 use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
+use App\Filament\RelationManagers\ActivityLogRelationManager;
 use Filament\Tables\Filters\SelectFilter;
 use App\Models\Contact;
 use Illuminate\Database\Eloquent\Builder;
@@ -130,6 +131,7 @@ class ClientResource extends Resource
             ContactRelationManager::class,
             BankAccountRelationManager::class,
             InvoiceRelationManager::class,
+            ActivityLogRelationManager::class,
         ];
     }
 

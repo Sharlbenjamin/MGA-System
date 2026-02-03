@@ -21,10 +21,12 @@ use App\Services\GoogleMeetService;
 use App\Services\GoogleDriveFolderService;
 use App\Services\DistanceCalculationService;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Traits\LogsActivity;
 
 class File extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = ['status','mga_reference','patient_id','client_reference','country_id','city_id','service_type_id','provider_branch_id','service_date','service_time','address','symptoms','diagnosis','contact_patient', 'google_drive_link', 'email', 'phone'];
 
@@ -63,6 +65,11 @@ class File extends Model
     public function providerBranch(): BelongsTo
     {
         return $this->belongsTo(ProviderBranch::class);
+    }
+
+    public function activityLogs(): MorphMany
+    {
+        return $this->morphMany(ActivityLog::class, 'subject')->latest();
     }
 
     public function getBranchServicesForServiceType()
@@ -425,6 +432,14 @@ class File extends Model
     {
         $patientName = $this->patient ? $this->patient->name : 'Unknown Patient';
         return $this->mga_reference . ' - ' . $patientName;
+    }
+
+    /**
+     * Reference used in activity log (case reference).
+     */
+    public function getActivityReference(): ?string
+    {
+        return $this->mga_reference ?? ('File #' . $this->getKey());
     }
 
     public function getInvoiceAmountAttribute()

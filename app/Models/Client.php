@@ -12,10 +12,11 @@ use Illuminate\Support\Facades\Log;
 use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Traits\LogsActivity;
 
 class Client extends Model
 {
-    use HasFactory, HasContacts, NotifiableEntity;
+    use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
     protected $fillable = ['company_name','type','status','initials','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','signed_contract_draft',];
 
@@ -26,6 +27,19 @@ class Client extends Model
     public function getNameAttribute()
     {
         return $this->company_name;
+    }
+
+    /**
+     * Reference used in activity log.
+     */
+    public function getActivityReference(): ?string
+    {
+        return $this->company_name ?? ('Client #' . $this->getKey());
+    }
+
+    public function activityLogs(): MorphMany
+    {
+        return $this->morphMany(ActivityLog::class, 'subject')->latest();
     }
 
     public function bankAccounts(): HasMany

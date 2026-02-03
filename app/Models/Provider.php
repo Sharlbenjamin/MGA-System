@@ -6,18 +6,31 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
-
+use App\Traits\LogsActivity;
 
 class Provider extends Model
 {
-    use HasFactory;
-    use HasRelationships;
+    use HasFactory, HasRelationships, LogsActivity;
     protected $fillable = ['country_id','status','type','name','payment_due','payment_method','comment','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','signed_contract_draft',];
 
     protected $casts = [
         'id' => 'integer',
     ];
+
+    /**
+     * Reference used in activity log.
+     */
+    public function getActivityReference(): ?string
+    {
+        return $this->name ?? ('Provider #' . $this->getKey());
+    }
+
+    public function activityLogs(): MorphMany
+    {
+        return $this->morphMany(ActivityLog::class, 'subject')->latest();
+    }
 
     public function country()
     {

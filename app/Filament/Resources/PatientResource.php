@@ -6,6 +6,7 @@ use App\Filament\Resources\PatientResource\Pages;
 use App\Filament\Resources\PatientResource\RelationManagers\FileRelationManager;
 use App\Filament\Resources\PatientResource\RelationManagers\InvoiceRelationManager;
 use App\Filament\Resources\PatientResource\RelationManagers\BillRelationManager;
+use App\Filament\RelationManagers\ActivityLogRelationManager;
 use App\Models\Contact;
 use App\Models\Patient;
 use Filament\Forms;
@@ -267,6 +268,7 @@ class PatientResource extends Resource
         return [
             FileRelationManager::class,
             InvoiceRelationManager::class,
+            ActivityLogRelationManager::class,
         ];
     }
 

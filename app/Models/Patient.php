@@ -10,10 +10,12 @@ use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Traits\LogsActivity;
 
 class Patient extends Model
 {
-    use HasFactory, HasContacts, NotifiableEntity;
+    use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
     protected $fillable = ['name','client_id','dob','gender','country_id','gop_contact_id','operation_contact_id','financial_contact_id',];
 
@@ -31,6 +33,19 @@ class Patient extends Model
     public function getFilesCountAttribute()
     {
         return $this->files()->count();
+    }
+
+    /**
+     * Reference used in activity log.
+     */
+    public function getActivityReference(): ?string
+    {
+        return $this->name ?? ('Patient #' . $this->getKey());
+    }
+
+    public function activityLogs(): MorphMany
+    {
+        return $this->morphMany(ActivityLog::class, 'subject')->latest();
     }
 
     public function client(): BelongsTo
