@@ -328,7 +328,8 @@ class FileCompactViewHelper
             ];
         }
         if ($gopsIn->isEmpty()) {
-            $result[] = self::placeholderTaskRow($record, 'GOP In', '—', null);
+            $orphan = self::findOrphanTaskForTitle($record, 'GOP In');
+            $result[] = $orphan ? self::rowFromOrphanTask($record, $orphan, 'GOP In', $defaultUserId) : self::placeholderTaskRow($record, 'GOP In', '—', null);
         }
 
         // One task per Medical Report
@@ -365,7 +366,8 @@ class FileCompactViewHelper
             ];
         }
         if ($medicalReports->isEmpty()) {
-            $result[] = self::placeholderTaskRow($record, 'Medical Report', '—', null);
+            $orphan = self::findOrphanTaskForTitle($record, 'Medical Report');
+            $result[] = $orphan ? self::rowFromOrphanTask($record, $orphan, 'Medical Report', $defaultUserId) : self::placeholderTaskRow($record, 'Medical Report', '—', null);
         }
 
         // One task per Bill
@@ -402,10 +404,50 @@ class FileCompactViewHelper
             ];
         }
         if ($bills->isEmpty()) {
-            $result[] = self::placeholderTaskRow($record, 'Provider Bill', '—', null);
+            $orphan = self::findOrphanTaskForTitle($record, 'Provider Bill');
+            $result[] = $orphan ? self::rowFromOrphanTask($record, $orphan, 'Provider Bill', $defaultUserId) : self::placeholderTaskRow($record, 'Provider Bill', '—', null);
         }
 
         return $result;
+    }
+
+    /**
+     * Find a standalone (orphan) task for this file and title (no linked record yet).
+     */
+    private static function findOrphanTaskForTitle(File $record, string $title): ?Task
+    {
+        return $record->tasks()
+            ->where('department', 'Operation')
+            ->where(function ($q) use ($title) {
+                $q->where('title', $title)->orWhere('title', 'like', '%' . $title . '%');
+            })
+            ->whereNull('taskable_type')
+            ->with('user')
+            ->first();
+    }
+
+    /**
+     * Build a task row from a standalone (orphan) task (no linked record).
+     */
+    private static function rowFromOrphanTask(File $record, Task $task, string $name, ?int $defaultUserId): array
+    {
+        $defaultUserName = $record->assignedUser()?->name ?? '—';
+        $effectiveDone = (bool) $task->is_done;
+        $statusLabel = !$task->user_id ? 'Unassigned' : ($effectiveDone ? 'Done' : 'Pending');
+        $assignee = ($statusLabel === 'Unassigned') ? '—' : ($task->user?->name ?? $defaultUserName);
+        return [
+            'id' => $task->id,
+            'name' => $name,
+            'status' => $statusLabel,
+            'assignee' => $assignee,
+            'user_id' => $task->user_id ?? $defaultUserId,
+            'is_done' => $effectiveDone,
+            'description' => $task->description,
+            'linked_case' => $record->mga_reference ?? '—',
+            'date_assigned' => $task->created_at?->format('d/m/Y'),
+            'view_url' => null,
+            'details' => 'Pending',
+        ];
     }
 
     /**

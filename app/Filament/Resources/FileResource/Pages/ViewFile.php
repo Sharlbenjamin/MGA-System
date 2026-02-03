@@ -941,7 +941,18 @@ class ViewFile extends ViewRecord
                         $this->sendTaskAssignedDatabaseNotification($task);
                         Notification::make()->success()->title('Task created and assigned')->body("{$title} created and assigned to user.")->send();
                     } else {
-                        Notification::make()->warning()->title('No task to assign')->body("No {$title} record without a task for this case. Add a " . strtolower($title) . " first, or all existing tasks are already assigned.")->send();
+                        // No linked record yet - create a standalone task so the assignee can create the record when ready
+                        $task = Task::create([
+                            'file_id' => $this->record->id,
+                            'title' => $title,
+                            'department' => 'Operation',
+                            'taskable_type' => null,
+                            'taskable_id' => null,
+                            'user_id' => $userId,
+                            'is_done' => false,
+                        ]);
+                        $this->sendTaskAssignedDatabaseNotification($task);
+                        Notification::make()->success()->title('Task created and assigned')->body("{$title} task created and assigned. The assignee can create the " . strtolower($title) . " when ready.")->send();
                     }
                 }),
         ];
