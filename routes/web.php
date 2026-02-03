@@ -12,6 +12,7 @@ use App\Http\Controllers\GopController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\TaxesExportController;
+use App\Http\Controllers\HRMonthlyReportExportController;
 use App\Http\Controllers\FileCompactViewController;
 use App\Http\Controllers\FileDocumentExportController;
 use App\Http\Controllers\DocumentController;
@@ -77,6 +78,7 @@ Route::middleware([FilamentAuthenticate::class])->group(function () {
     Route::get('/taxes/export', [TaxesExportController::class, 'export'])->name('taxes.export');
     Route::get('/taxes/export/zip', [TaxesExportController::class, 'exportZip'])->name('taxes.export.zip');
     Route::get('/files/export/zip', [FileDocumentExportController::class, 'exportZip'])->name('files.export.zip');
+    Route::get('/hr/monthly-report/export', [HRMonthlyReportExportController::class, 'export'])->name('hr.monthly-report.export');
 
     // Compact view: standalone page for file (no Filament, full page)
     Route::get('/file-compact/{file}', [FileCompactViewController::class, 'show'])->name('files.compact');

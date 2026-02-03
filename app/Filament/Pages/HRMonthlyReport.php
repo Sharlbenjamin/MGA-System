@@ -8,6 +8,8 @@ use App\Models\Salary;
 use App\Models\ShiftSchedule;
 use App\Models\Task;
 use Carbon\Carbon;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
@@ -55,6 +57,109 @@ class HRMonthlyReport extends Page
         return Auth::check() && Auth::user()?->roles?->contains('name', 'admin');
     }
 
+    /**
+     * Months that have at least one salary record (created report months).
+     *
+     * @return array<int, array{year: int, month: int}>
+     */
+    public function getCreatedMonths(): array
+    {
+        $pairs = Salary::query()
+            ->select('year', 'month')
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->get();
+
+        return $pairs->map(fn ($row) => ['year' => (int) $row->year, 'month' => (int) $row->month])->values()->all();
+    }
+
+    /**
+     * Next calendar month that has no salary records yet.
+     *
+     * @return array{year: int, month: int}|null
+     */
+    public function getNextMonthToCreate(): ?array
+    {
+        $created = $this->getCreatedMonths();
+        $now = Carbon::now();
+        $cursor = $now->copy()->startOfMonth();
+
+        if (empty($created)) {
+            return ['year' => $cursor->year, 'month' => $cursor->month];
+        }
+
+        $latest = Carbon::createFromDate($created[0]['year'], $created[0]['month'], 1);
+        $next = $latest->copy()->addMonth();
+
+        return ['year' => $next->year, 'month' => (int) $next->month];
+    }
+
+    public function addNewMonth(): void
+    {
+        $next = $this->getNextMonthToCreate();
+        if (! $next) {
+            Notification::make()->title('No new month to create')->warning()->send();
+            return;
+        }
+
+        $employees = Employee::query()
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get();
+
+        $created = 0;
+        foreach ($employees as $employee) {
+            $exists = Salary::query()
+                ->where('employee_id', $employee->id)
+                ->where('year', $next['year'])
+                ->where('month', $next['month'])
+                ->exists();
+            if ($exists) {
+                continue;
+            }
+            $base = (float) ($employee->basic_salary ?? 0);
+            Salary::query()->create([
+                'employee_id' => $employee->id,
+                'year' => $next['year'],
+                'month' => $next['month'],
+                'base_salary' => $base,
+                'adjustments' => 0,
+                'deductions' => 0,
+                'net_salary' => $base,
+            ]);
+            $created++;
+        }
+
+        $this->year = $next['year'];
+        $this->month = $next['month'];
+
+        $label = Carbon::createFromDate($next['year'], $next['month'], 1)->format('F Y');
+        Notification::make()
+            ->title("Month {$label} created")
+            ->body("Salary rows created for {$created} employee(s).")
+            ->success()
+            ->send();
+    }
+
+    public function selectMonth(int $year, int $month): void
+    {
+        $this->year = $year;
+        $this->month = $month;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        $next = $this->getNextMonthToCreate();
+        return [
+            Action::make('addNewMonth')
+                ->label('Add new month')
+                ->icon('heroicon-o-plus-circle')
+                ->visible($next !== null)
+                ->action(fn () => $this->addNewMonth()),
+        ];
+    }
+
     public function getMonthLabel(): string
     {
         return Carbon::createFromDate($this->year, $this->month, 1)->format('F Y');
@@ -80,7 +185,9 @@ class HRMonthlyReport extends Page
         foreach ($employees as $employee) {
             $salaryRecord = $salaryByEmployee->get($employee->id);
             $netSalary = $salaryRecord ? (float) $salaryRecord->net_salary : 0;
-            $bonus = 0; // No bonuses table yet
+            $baseSalary = $salaryRecord ? (float) $salaryRecord->base_salary : (float) ($employee->basic_salary ?? 0);
+            $bonus = $salaryRecord ? (float) $salaryRecord->adjustments : 0;
+            $deductions = $salaryRecord ? (float) $salaryRecord->deductions : 0;
 
             $daysScheduled = ShiftSchedule::query()
                 ->where('employee_id', $employee->id)
@@ -106,9 +213,12 @@ class HRMonthlyReport extends Page
 
             $rows[] = [
                 'employee' => $employee,
+                'employee_id' => $employee->id,
                 'employee_name' => $employee->name,
+                'base_salary' => $baseSalary,
                 'net_salary' => $netSalary,
                 'bonus' => $bonus,
+                'deductions' => $deductions,
                 'days_scheduled' => $daysScheduled,
                 'hours' => null, // No attendances table yet
                 'cases' => $casesCount,
@@ -117,5 +227,45 @@ class HRMonthlyReport extends Page
         }
 
         return $rows;
+    }
+
+    /**
+     * Update bonus and/or deductions for one employee's salary row and recalculate net salary.
+     * Net salary = base_salary + adjustments (bonus) - deductions.
+     */
+    public function updateSalaryRow(int $employeeId, float $bonus, float $deductions): void
+    {
+        $employee = Employee::query()->where('id', $employeeId)->where('status', 'active')->firstOrFail();
+        $baseSalary = (float) ($employee->basic_salary ?? 0);
+
+        $salary = Salary::query()
+            ->where('employee_id', $employeeId)
+            ->where('year', $this->year)
+            ->where('month', $this->month)
+            ->first();
+
+        if ($salary) {
+            $salary->base_salary = $salary->base_salary ?: $baseSalary;
+            $salary->adjustments = $bonus;
+            $salary->deductions = $deductions;
+            $salary->net_salary = $salary->base_salary + $bonus - $deductions;
+            $salary->save();
+        } else {
+            Salary::query()->create([
+                'employee_id' => $employeeId,
+                'year' => $this->year,
+                'month' => $this->month,
+                'base_salary' => $baseSalary,
+                'adjustments' => $bonus,
+                'deductions' => $deductions,
+                'net_salary' => $baseSalary + $bonus - $deductions,
+            ]);
+        }
+
+        Notification::make()
+            ->title('Saved')
+            ->success()
+            ->duration(2000)
+            ->send();
     }
 }

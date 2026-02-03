@@ -1,5 +1,46 @@
 <x-filament-panels::page>
     <div class="space-y-6">
+        {{-- Actions: Add new month, Export --}}
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            @if($this->getNextMonthToCreate())
+                <x-filament::button wire:click="addNewMonth" icon="heroicon-o-plus-circle" size="md">
+                    Add new month
+                </x-filament::button>
+            @endif
+            <a href="{{ route('hr.monthly-report.export', ['year' => $year, 'month' => $month]) }}"
+               target="_blank"
+               class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                @svg('heroicon-o-arrow-down-tray', 'h-5 w-5')
+                Export this month (CSV)
+            </a>
+        </div>
+
+        {{-- Month tabs (navigate between created months) --}}
+        @php
+            $createdMonths = $this->getCreatedMonths();
+        @endphp
+        @if(count($createdMonths) > 0)
+            <div class="rounded-xl bg-white p-2 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="flex flex-wrap gap-1">
+                    @foreach($createdMonths as $m)
+                        @php
+                            $label = \Carbon\Carbon::createFromDate($m['year'], $m['month'], 1)->format('M Y');
+                            $isActive = $year === $m['year'] && $month === $m['month'];
+                        @endphp
+                        <button
+                            type="button"
+                            wire:click="selectMonth({{ $m['year'] }}, {{ $m['month'] }})"
+                            class="rounded-lg px-3 py-2 text-sm font-medium transition {{ $isActive
+                                ? 'bg-primary-600 text-white dark:bg-primary-500'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}"
+                        >
+                            {{ $label }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         {{-- Month/Year selector --}}
         <div class="flex flex-wrap items-center gap-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="flex items-center gap-2">
@@ -30,25 +71,55 @@
                     <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Employee</th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Salary</th>
+                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Basic salary</th>
                             <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Bonus</th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Days</th>
+                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Deductions</th>
+                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Net salary</th>
+                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Shifts done</th>
                             <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Hours</th>
                             <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Cases</th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tasks</th>
+                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tasks done</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700 dark:bg-gray-900">
                         @forelse($this->getReportRows() as $row)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                x-data="{
+                                    bonus: {{ json_encode((float) $row['bonus']) }},
+                                    deductions: {{ json_encode((float) $row['deductions']) }},
+                                    save(employeeId) {
+                                        $wire.updateSalaryRow(employeeId, Number(this.bonus) || 0, Number(this.deductions) || 0);
+                                    }
+                                }"
+                            >
                                 <td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {{ $row['employee_name'] }}
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
-                                    {{ $row['net_salary'] > 0 ? number_format($row['net_salary'], 2) : '—' }}
+                                    {{ $row['base_salary'] > 0 ? number_format($row['base_salary'], 2) : '—' }}
                                 </td>
-                                <td class="whitespace-nowrap px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
-                                    {{ $row['bonus'] > 0 ? number_format($row['bonus'], 2) : '—' }}
+                                <td class="whitespace-nowrap px-4 py-2 text-sm text-right">
+                                    <input type="number"
+                                        step="0.01"
+                                        min="0"
+                                        x-model.number="bonus"
+                                        @blur="save({{ $row['employee_id'] }})"
+                                        class="w-24 rounded-lg border-gray-300 text-right text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        placeholder="0"
+                                    >
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-2 text-sm text-right">
+                                    <input type="number"
+                                        step="0.01"
+                                        min="0"
+                                        x-model.number="deductions"
+                                        @blur="save({{ $row['employee_id'] }})"
+                                        class="w-24 rounded-lg border-gray-300 text-right text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        placeholder="0"
+                                    >
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-3 text-sm text-right font-medium text-gray-900 dark:text-gray-100">
+                                    {{ $row['net_salary'] != 0 ? number_format($row['net_salary'], 2) : '—' }}
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-3 text-sm text-right text-gray-700 dark:text-gray-300">
                                     {{ $row['days_scheduled'] }}
@@ -65,7 +136,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                                <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                                     No active employees for this period.
                                 </td>
                             </tr>
