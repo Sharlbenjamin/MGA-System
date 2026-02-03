@@ -14,6 +14,8 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
+use Filament\Notifications\Actions\Action as NotificationAction;
+use Illuminate\Support\Facades\URL;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
@@ -894,6 +896,7 @@ class ViewFile extends ViewRecord
                         ->first();
                     if ($task) {
                         $task->update(['user_id' => $userId]);
+                        $this->sendTaskAssignedDatabaseNotification($task);
                         Notification::make()->success()->title('Task assigned')->body("{$title} assigned to user.")->send();
                         return;
                     }
@@ -905,6 +908,7 @@ class ViewFile extends ViewRecord
                         ->first();
                     if ($task) {
                         $task->update(['user_id' => $userId]);
+                        $this->sendTaskAssignedDatabaseNotification($task);
                         Notification::make()->success()->title('Task assigned')->body("{$title} assigned to user.")->send();
                         return;
                     }
@@ -926,7 +930,7 @@ class ViewFile extends ViewRecord
                         }
                     }
                     if ($linked) {
-                        Task::create([
+                        $task = Task::create([
                             'file_id' => $this->record->id,
                             'title' => $title,
                             'department' => 'Operation',
@@ -935,6 +939,7 @@ class ViewFile extends ViewRecord
                             'user_id' => $userId,
                             'is_done' => false,
                         ]);
+                        $this->sendTaskAssignedDatabaseNotification($task);
                         Notification::make()->success()->title('Task created and assigned')->body("{$title} created and assigned to user.")->send();
                     } else {
                         Notification::make()->warning()->title('No task to assign')->body("No {$title} record without a task for this case. Add a " . strtolower($title) . " first, or all existing tasks are already assigned.")->send();
@@ -1526,6 +1531,48 @@ class ViewFile extends ViewRecord
     }
 
 
+
+    /**
+     * Send a persistent database notification to the task assignee with Done / Not done buttons.
+     */
+    private function sendTaskAssignedDatabaseNotification(Task $task): void
+    {
+        $assignee = $task->user;
+        if (! $assignee) {
+            return;
+        }
+
+        $fileRef = $this->record->mga_reference ?? 'File #' . $this->record->id;
+        $doneUrl = URL::temporarySignedRoute(
+            'filament.admin.task-notification.done',
+            now()->addDays(30),
+            ['task' => $task->id]
+        );
+        $notDoneUrl = URL::temporarySignedRoute(
+            'filament.admin.task-notification.not-done',
+            now()->addDays(30),
+            ['task' => $task->id]
+        );
+
+        Notification::make()
+            ->title('Task assigned: ' . $task->title)
+            ->body("Case: {$fileRef}. " . ($task->description ?: 'No description.'))
+            ->warning()
+            ->viewData(['task_id' => $task->id])
+            ->actions([
+                NotificationAction::make('done')
+                    ->label('Done')
+                    ->button()
+                    ->color('success')
+                    ->url($doneUrl),
+                NotificationAction::make('not_done')
+                    ->label('Not done')
+                    ->button()
+                    ->color('gray')
+                    ->url($notDoneUrl),
+            ])
+            ->sendToDatabase($assignee);
+    }
 
     /**
      * Notify user when phone contact is required for manual follow-up
