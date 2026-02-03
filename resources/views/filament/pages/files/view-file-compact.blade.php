@@ -46,7 +46,8 @@
             default => 'heroicon-o-wrench',
         };
     }
-    $iconClass = 'h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400'; // applied to icon wrapper span
+    $iconClass = 'h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400';
+    $labelClass = 'shrink-0 font-semibold text-blue-900 dark:text-blue-300'; // infolist titles (Patient:, DOB:, etc.)
 @endphp
 <div class="fi-section w-full max-w-none min-w-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
     {{-- Explicit grid: Row1 [Patient+Client rowspan2 | Case Details rowspan2 | Medical Summary]; Row2 [ | | Provider]; Row3 [Summary | Tasks] --}}
@@ -58,26 +59,26 @@
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
                     @if($patient && $patient->name)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-user', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Patient:</dt><dd class="min-w-0 font-semibold text-gray-950 dark:text-white">{{ $patient->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-user', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Patient:</dt><dd class="min-w-0 font-semibold text-gray-950 dark:text-white">{{ $patient->name }}</dd></div>
                     @endif
                     @if($patient && $patient->dob)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-calendar-days', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">DOB:</dt><dd class="min-w-0">{{ \Carbon\Carbon::parse($patient->dob)->format('d/m/Y') }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-calendar-days', 'h-4 w-4')</span><dt class="{{ $labelClass }}">DOB:</dt><dd class="min-w-0">{{ \Carbon\Carbon::parse($patient->dob)->format('d/m/Y') }}</dd></div>
                     @endif
                     @if($patient && $patient->gender)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-identification', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Gender:</dt><dd class="min-w-0">{{ $patient->gender }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-identification', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Gender:</dt><dd class="min-w-0">{{ $patient->gender }}</dd></div>
                     @endif
                     @if($record->phone)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-phone', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Phone:</dt><dd class="min-w-0">{{ $record->phone }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-phone', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Phone:</dt><dd class="min-w-0">{{ $record->phone }}</dd></div>
                     @endif
                     @if($record->email)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-envelope', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Email:</dt><dd class="min-w-0">{{ $record->email }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-envelope', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Email:</dt><dd class="min-w-0">{{ $record->email }}</dd></div>
                     @endif
                 </dl>
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
-                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-office-2', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Client:</dt><dd class="min-w-0 font-semibold">{{ $clientName }}</dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-office-2', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Client:</dt><dd class="min-w-0 font-semibold">{{ $clientName }}</dd></div>
                     @if($record->client_reference)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-hashtag', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Client Ref:</dt><dd class="min-w-0">{{ $record->client_reference }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-hashtag', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Client Ref:</dt><dd class="min-w-0">{{ $record->client_reference }}</dd></div>
                     @endif
                 </dl>
             </div>
@@ -89,23 +90,23 @@
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
                     @if($record->serviceType)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg($serviceIcon, 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Service:</dt><dd class="min-w-0">{{ $record->serviceType->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg($serviceIcon, 'h-4 w-4')</span><dt class="{{ $labelClass }}">Service:</dt><dd class="min-w-0">{{ $record->serviceType->name }}</dd></div>
                     @endif
                     @if($record->country)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-globe-alt', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Country:</dt><dd class="min-w-0">{{ $record->country->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-globe-alt', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Country:</dt><dd class="min-w-0">{{ $record->country->name }}</dd></div>
                     @endif
                     @if($record->city)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">City:</dt><dd class="min-w-0">{{ $record->city->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="{{ $labelClass }}">City:</dt><dd class="min-w-0">{{ $record->city->name }}</dd></div>
                     @endif
                     @if($record->service_date)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-calendar', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Service Date:</dt><dd class="min-w-0">{{ $record->service_date->format('d/m/Y') }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-calendar', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Service Date:</dt><dd class="min-w-0">{{ $record->service_date->format('d/m/Y') }}</dd></div>
                     @endif
                     @if($record->service_time)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-clock', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Service Time:</dt><dd class="min-w-0">{{ \Carbon\Carbon::parse($record->service_time)->format('h:i A') }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-clock', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Service Time:</dt><dd class="min-w-0">{{ \Carbon\Carbon::parse($record->service_time)->format('h:i A') }}</dd></div>
                     @endif
-                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-flag', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Status:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$statusColor">{{ $record->status }}</x-filament::badge></dd></div>
-                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-banknotes', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Invoice:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$invoiceStatus === 'Paid' ? 'success' : ($invoiceStatus === 'No Invoice' ? 'gray' : 'warning')">{{ $invoiceStatus }}</x-filament::badge></dd></div>
-                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-document-text', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Bill:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$billStatus === 'Paid' ? 'success' : ($billStatus === 'No Bill' ? 'gray' : 'warning')">{{ $billStatus }}</x-filament::badge></dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-flag', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Status:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$statusColor">{{ $record->status }}</x-filament::badge></dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-banknotes', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Invoice:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$invoiceStatus === 'Paid' ? 'success' : ($invoiceStatus === 'No Invoice' ? 'gray' : 'warning')">{{ $invoiceStatus }}</x-filament::badge></dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-document-text', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Bill:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$billStatus === 'Paid' ? 'success' : ($billStatus === 'No Bill' ? 'gray' : 'warning')">{{ $billStatus }}</x-filament::badge></dd></div>
                 </dl>
             </div>
         </div>
@@ -116,16 +117,16 @@
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
                     @if($record->address)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($record->address, 80) }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($record->address, 80) }}</dd></div>
                     @endif
                     @if($record->symptoms)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-heart', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Symptoms:</dt><dd class="min-w-0 break-words">{{ $truncate($record->symptoms, 80) }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-heart', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Symptoms:</dt><dd class="min-w-0 break-words">{{ $truncate($record->symptoms, 80) }}</dd></div>
                     @endif
                     @if($record->diagnosis)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-clipboard-document-list', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Diagnosis:</dt><dd class="min-w-0 break-words">{{ $record->diagnosis }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-clipboard-document-list', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Diagnosis:</dt><dd class="min-w-0 break-words">{{ $record->diagnosis }}</dd></div>
                     @endif
                     @if($record->google_drive_link)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-folder-open', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Drive:</dt><dd class="min-w-0"><a href="{{ str_starts_with($record->google_drive_link, 'http') ? $record->google_drive_link : 'https://' . $record->google_drive_link }}" target="_blank" rel="noopener" class="text-primary-600 hover:underline dark:text-primary-400">Open folder</a></dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-folder-open', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Drive:</dt><dd class="min-w-0"><a href="{{ str_starts_with($record->google_drive_link, 'http') ? $record->google_drive_link : 'https://' . $record->google_drive_link }}" target="_blank" rel="noopener" class="text-primary-600 hover:underline dark:text-primary-400">Open folder</a></dd></div>
                     @endif
                 </dl>
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
@@ -134,11 +135,11 @@
                 @if($record->providerBranch && $record->providerBranch->provider)
                     @php $pb = $record->providerBranch; $prov = $pb->provider; @endphp
                     <dl class="space-y-2 text-sm">
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-office-2', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Provider:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $prov->name }}<a href="{{ route('filament.admin.resources.providers.edit', $prov->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Provider @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-storefront', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Branch:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $pb->branch_name }}<a href="{{ route('filament.admin.resources.provider-branches.edit', $pb->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Branch @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
-                        @if($pb->address ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($pb->address, 60) }}</dd></div>@endif
-                        @if($pb->city ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">City:</dt><dd class="min-w-0">{{ $pb->city?->name ?? '—' }}</dd></div>@endif
-                        @if($prov->phone ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-phone', 'h-4 w-4')</span><dt class="shrink-0 font-medium text-gray-500 dark:text-gray-400">Phone:</dt><dd class="min-w-0">{{ $prov->phone }}</dd></div>@endif
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-office-2', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Provider:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $prov->name }}<a href="{{ route('filament.admin.resources.providers.edit', $prov->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Provider @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-building-storefront', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Branch:</dt><dd class="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">{{ $pb->branch_name }}<a href="{{ route('filament.admin.resources.provider-branches.edit', $pb->id) }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:underline dark:text-primary-400">Edit Branch @svg('heroicon-o-arrow-top-right-on-square', 'h-3.5 w-3.5')</a></dd></div>
+                        @if($pb->address ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map-pin', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Address:</dt><dd class="min-w-0 break-words">{{ $truncate($pb->address, 60) }}</dd></div>@endif
+                        @if($pb->city ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-map', 'h-4 w-4')</span><dt class="{{ $labelClass }}">City:</dt><dd class="min-w-0">{{ $pb->city?->name ?? '—' }}</dd></div>@endif
+                        @if($prov->phone ?? null)<div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-phone', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Phone:</dt><dd class="min-w-0">{{ $prov->phone }}</dd></div>@endif
                     </dl>
                 @else
                     <p class="text-sm text-gray-500 dark:text-gray-400">No provider assigned</p>
