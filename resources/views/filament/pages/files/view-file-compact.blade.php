@@ -49,31 +49,6 @@
     $iconClass = 'h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400'; // applied to icon wrapper span
 @endphp
 <div class="fi-section w-full max-w-none min-w-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
-    {{-- Quick Actions: inline at top right (not fixed), fully visible --}}
-    <div class="relative mb-4 flex flex-wrap items-center justify-end gap-2 border-b border-gray-200 pb-4 dark:border-white/10" x-data="{ open: false }">
-        <div x-show="open" x-transition class="absolute top-full right-0 z-20 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-gray-950/5 dark:border-white/10 dark:bg-gray-900 dark:ring-white/10" x-cloak>
-            <div class="p-1">
-                <button type="button" wire:click="mountAction('requestAppointment')" class="fi-btn relative grid-flow-col items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/5 w-full text-left flex items-center gap-2">
-                    @svg('heroicon-o-calendar', 'h-5 w-5') Request Appointment
-                </button>
-                <button type="button" wire:click="mountAction('extractConsent')" class="fi-btn relative grid-flow-col items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/5 w-full text-left flex items-center gap-2">
-                    @svg('heroicon-o-document-text', 'h-5 w-5') Extract Consent
-                </button>
-                <button type="button" wire:click="mountAction('addComment')" class="fi-btn relative grid-flow-col items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/5 w-full text-left flex items-center gap-2">
-                    @svg('heroicon-o-chat-bubble-left', 'h-5 w-5') Add Comment
-                </button>
-                <a href="{{ route('filament.admin.resources.files.edit', $record) }}" class="fi-btn relative grid-flow-col items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/5 w-full text-left flex items-center gap-2">
-                    @svg('heroicon-o-building-office-2', 'h-5 w-5') Assign Provider
-                </a>
-                <button type="button" wire:click="mountAction('assignEmployee')" class="fi-btn relative grid-flow-col items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/5 w-full text-left flex items-center gap-2">
-                    @svg('heroicon-o-user-plus', 'h-5 w-5') Assign Employee
-                </button>
-            </div>
-        </div>
-        <button type="button" @click="open = !open" class="fi-btn relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white shadow-md hover:bg-primary-500 dark:bg-primary-500 dark:hover:bg-primary-400" title="Quick actions">
-            @svg('heroicon-o-plus', 'h-6 w-6')
-        </button>
-    </div>
     {{-- Explicit grid: Row1 [Patient+Client rowspan2 | Case Details rowspan2 | Medical Summary]; Row2 [ | | Provider]; Row3 [Summary | Tasks] --}}
     <div class="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 sm:grid-rows-[auto_auto_auto] md:gap-6">
         {{-- Row 1-2, Col 1: Patient + Client (colspan 1, rowspan 2) --}}
