@@ -139,7 +139,7 @@ class FileCompactViewHelper
     public static function getDetailsForRecord(object $record): string
     {
         if ($record instanceof Gop) {
-            return $record->amount !== null && $record->amount !== '' ? (string) number_format((float) $record->amount, 2) : 'Pending';
+            return $record->amount !== null && $record->amount !== '' ? '€ ' . number_format((float) $record->amount, 2) : 'Pending';
         }
         if ($record instanceof MedicalReport) {
             $diagnosis = trim((string) ($record->diagnosis ?? ''));
@@ -149,7 +149,7 @@ class FileCompactViewHelper
             return strlen($diagnosis) > 80 ? substr($diagnosis, 0, 80) . '…' : $diagnosis;
         }
         if ($record instanceof Bill) {
-            return $record->total_amount !== null && $record->total_amount !== '' ? (string) number_format((float) $record->total_amount, 2) : 'Pending';
+            return $record->total_amount !== null && $record->total_amount !== '' ? '€ ' . number_format((float) $record->total_amount, 2) : 'Pending';
         }
         return 'Pending';
     }
@@ -327,6 +327,9 @@ class FileCompactViewHelper
                 'details' => self::getDetailsForRecord($gop),
             ];
         }
+        if ($gopsIn->isEmpty()) {
+            $result[] = self::placeholderTaskRow($record, 'GOP In', '—', null);
+        }
 
         // One task per Medical Report
         $medicalReports = $record->medicalReports()->orderBy('id')->get();
@@ -360,6 +363,9 @@ class FileCompactViewHelper
                 'view_url' => self::getViewUrlForRecord($mr),
                 'details' => self::getDetailsForRecord($mr),
             ];
+        }
+        if ($medicalReports->isEmpty()) {
+            $result[] = self::placeholderTaskRow($record, 'Medical Report', '—', null);
         }
 
         // One task per Bill
@@ -395,7 +401,30 @@ class FileCompactViewHelper
                 'details' => self::getDetailsForRecord($bill),
             ];
         }
+        if ($bills->isEmpty()) {
+            $result[] = self::placeholderTaskRow($record, 'Provider Bill', '—', null);
+        }
 
         return $result;
+    }
+
+    /**
+     * Build a placeholder task row when there is no linked record (GOP In, MR, or Bill).
+     */
+    private static function placeholderTaskRow(File $record, string $name, string $assignee, ?int $userId): array
+    {
+        return [
+            'id' => null,
+            'name' => $name,
+            'status' => 'Unassigned',
+            'assignee' => $assignee,
+            'user_id' => $userId,
+            'is_done' => false,
+            'description' => null,
+            'linked_case' => $record->mga_reference ?? '—',
+            'date_assigned' => null,
+            'view_url' => null,
+            'details' => 'Pending',
+        ];
     }
 }

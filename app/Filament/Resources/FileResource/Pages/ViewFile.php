@@ -806,7 +806,8 @@ class ViewFile extends ViewRecord
                                 $name = e($c->user?->name ?? 'Unknown');
                                 $date = $c->created_at->format('d/m/Y H:i');
                                 $content = nl2br(e($c->content));
-                                $html .= "<div class=\"text-sm border-b border-gray-200 dark:border-white/10 pb-3 mb-3 last:border-0 last:pb-0 last:mb-0\"><span class=\"font-medium text-gray-700 dark:text-gray-300\">{$name}</span> <span class=\"text-gray-500 dark:text-gray-400 text-xs\">{$date}</span><div class=\"mt-1 text-gray-600 dark:text-gray-400\">{$content}</div></div>";
+                                // Extra vertical spacing between comment dividers
+                                $html .= "<div class=\"text-sm border-b border-gray-200 dark:border-white/10 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0\"><span class=\"font-medium text-gray-700 dark:text-gray-300\">{$name}</span> <span class=\"text-gray-500 dark:text-gray-400 text-xs\">{$date}</span><div class=\"mt-1 text-gray-600 dark:text-gray-400\">{$content}</div></div>";
                             }
                             $html .= '</div>';
                             return new HtmlString($html);
