@@ -167,6 +167,7 @@
                         <tr class="border-b border-gray-200 bg-gray-100 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:border-white/10 dark:bg-gray-500/10 dark:text-gray-400">
                             <th class="px-3 py-2">Task</th>
                             <th class="px-3 py-2">Status</th>
+                            <th class="px-3 py-2">Details</th>
                             <th class="px-3 py-2">Assigned</th>
                             <th class="px-3 py-2">Date assigned</th>
                             <th class="px-3 py-2 text-right">View</th>
@@ -177,8 +178,17 @@
                             <tr class="border-b border-gray-200 bg-white last:border-b-0 dark:border-white/10 dark:bg-white/5">
                                 <td class="px-3 py-2 font-medium text-gray-900 dark:text-white">{{ $t['name'] }}</td>
                                 <td class="px-3 py-2 align-middle">
-                                    <span class="inline-block w-fit"><x-filament::badge :color="$t['status'] === 'Done' ? 'success' : 'warning'">{{ $t['status'] }}</x-filament::badge></span>
+                                    @php
+                                        $statusColor = match($t['status'] ?? '') {
+                                            'Done' => 'success',
+                                            'Pending' => 'warning',
+                                            'Unassigned' => 'gray',
+                                            default => 'gray',
+                                        };
+                                    @endphp
+                                    <span class="inline-block w-fit"><x-filament::badge :color="$statusColor">{{ $t['status'] }}</x-filament::badge></span>
                                 </td>
+                                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['details'] ?? 'Pending' }}</td>
                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['assignee'] }}</td>
                                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ $t['date_assigned'] ?? '—' }}</td>
                                 <td class="px-3 py-2 text-right">

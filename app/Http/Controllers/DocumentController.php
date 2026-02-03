@@ -60,8 +60,14 @@ class DocumentController extends Controller
                 'user_agent' => $request->userAgent()
             ]);
 
-            // Return file response
-            return Storage::disk('public')->response($documentPath);
+            $fullPath = Storage::disk('public')->path($documentPath);
+            $mimeType = Storage::disk('public')->mimeType($documentPath) ?: 'application/octet-stream';
+            $filename = basename($documentPath);
+
+            return response()->file($fullPath, [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline; filename="' . addslashes($filename) . '"',
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Error serving document', [

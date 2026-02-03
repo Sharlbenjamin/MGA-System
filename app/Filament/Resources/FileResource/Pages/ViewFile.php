@@ -864,12 +864,9 @@ class ViewFile extends ViewRecord
                     Select::make('task_title')
                         ->label('Task')
                         ->options([
-                            'Create GOP In' => 'Create GOP In',
-                            'Upload GOP In' => 'Upload GOP In',
-                            'Create MR' => 'Create MR',
-                            'Upload MR' => 'Upload MR',
-                            'Create Bill' => 'Create Bill',
-                            'Upload Bill' => 'Upload Bill',
+                            'GOP In' => 'GOP In',
+                            'Medical Report' => 'Medical Report',
+                            'Provider Bill' => 'Provider Bill',
                         ])
                         ->required()
                         ->searchable(),
@@ -888,7 +885,10 @@ class ViewFile extends ViewRecord
                     }
                     $task = $this->record->tasks()
                         ->where('department', 'Operation')
-                        ->where('title', $title)
+                        ->where(function ($q) use ($title) {
+                            $q->where('title', $title)
+                                ->orWhere('title', 'like', '%' . $title . '%');
+                        })
                         ->first();
                     if ($task) {
                         $task->update(['user_id' => $userId]);

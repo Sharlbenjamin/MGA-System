@@ -81,28 +81,25 @@ class FileCompactViewHelper
 
     /**
      * Resolve effective is_done for a compact task: from DB task or from file data.
+     * Used for: GOP In, Medical Report, Provider Bill (3 tasks).
      */
     public static function isTaskDoneFromFile(File $record, string $title): bool
     {
         return match (true) {
-            $title === 'Create GOP In' => self::fileHasGopInReceived($record),
-            $title === 'Upload GOP In' => self::fileHasGopInUploaded($record),
-            $title === 'Create MR' => self::fileHasMedicalReport($record),
-            $title === 'Upload MR' => self::fileHasMedicalReportUploaded($record),
-            $title === 'Create Bill' => self::fileHasBill($record),
-            $title === 'Upload Bill' => self::fileHasBillUploaded($record),
+            $title === 'GOP In' => self::fileHasGopInUploaded($record),
+            $title === 'Medical Report' => self::fileHasMedicalReportUploaded($record),
+            $title === 'Provider Bill' => self::fileHasBillUploaded($record),
             default => false,
         };
     }
 
     /**
      * Get signed URL to view the uploaded document for a task (only when document is uploaded locally).
-     * Returns null if no local document (e.g. only Google link) or task type has no document.
      */
     public static function getViewUrlForTask(File $record, string $title): ?string
     {
         $expiryMinutes = 60;
-        if ($title === 'Create GOP In' || $title === 'Upload GOP In') {
+        if ($title === 'GOP In') {
             $gop = $record->gops()
                 ->where('type', 'In')
                 ->whereNotNull('document_path')->where('document_path', '!=', '')
@@ -110,14 +107,14 @@ class FileCompactViewHelper
                 ->first();
             return $gop?->getDocumentSignedUrl($expiryMinutes);
         }
-        if ($title === 'Create MR' || $title === 'Upload MR') {
+        if ($title === 'Medical Report') {
             $mr = $record->medicalReports()
                 ->whereNotNull('document_path')->where('document_path', '!=', '')
                 ->latest()
                 ->first();
             return $mr?->getDocumentSignedUrl($expiryMinutes);
         }
-        if ($title === 'Create Bill' || $title === 'Upload Bill') {
+        if ($title === 'Provider Bill') {
             $bill = $record->bills()
                 ->whereNotNull('bill_document_path')->where('bill_document_path', '!=', '')
                 ->latest()
@@ -131,6 +128,36 @@ class FileCompactViewHelper
             ]);
         }
         return null;
+    }
+
+    /**
+     * Get details string for a task: amount (GOP/Bill), diagnosis (MR), or "Pending" if no item.
+     */
+    public static function getDetailsForTask(File $record, string $title): string
+    {
+        if ($title === 'GOP In') {
+            $gop = $record->gops()->where('type', 'In')->latest()->first();
+            if (!$gop) {
+                return 'Pending';
+            }
+            return $gop->amount !== null && $gop->amount !== '' ? (string) number_format((float) $gop->amount, 2) : 'Pending';
+        }
+        if ($title === 'Medical Report') {
+            $mr = $record->medicalReports()->latest()->first();
+            if (!$mr || empty(trim((string) ($mr->diagnosis ?? '')))) {
+                return 'Pending';
+            }
+            $diagnosis = trim((string) $mr->diagnosis);
+            return strlen($diagnosis) > 80 ? substr($diagnosis, 0, 80) . '…' : $diagnosis;
+        }
+        if ($title === 'Provider Bill') {
+            $bill = $record->bills()->latest()->first();
+            if (!$bill) {
+                return 'Pending';
+            }
+            return $bill->total_amount !== null && $bill->total_amount !== '' ? (string) number_format((float) $bill->total_amount, 2) : 'Pending';
+        }
+        return 'Pending';
     }
 
     public static function formatCaseInfo(File $record): string
@@ -165,17 +192,10 @@ class FileCompactViewHelper
         return "Patient Name: {$patientName}\nDOB: {$dob}\nMGA Reference: {$mgaReference}\nSymptoms: {$symptoms}\nRequest: {$request}\nPhone: {$phone}\nAddress: {$address}";
     }
 
-    /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string, date_assigned: string|null, view_url: string|null}> */
+    /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string, date_assigned: string|null, view_url: string|null, details: string}> */
     public static function getCompactTasks(File $record): array
     {
-        $titles = [
-            'Create GOP In',
-            'Upload GOP In',
-            'Create MR',
-            'Upload MR',
-            'Create Bill',
-            'Upload Bill',
-        ];
+        $titles = ['GOP In', 'Medical Report', 'Provider Bill'];
         $fileTasks = $record->tasks()->where('department', 'Operation')->with('user')->get()->keyBy(fn (Task $t) => $t->title);
         $defaultUser = $record->assignedUser();
         $defaultUserId = $defaultUser?->id;
@@ -198,7 +218,17 @@ class FileCompactViewHelper
                 }
             }
 
-            $assignee = ($task && $task->user) ? $task->user->name : $defaultUserName;
+            $hasTaskRecord = $task !== null;
+            $taskIsAssigned = $task && $task->user_id;
+            if (!$hasTaskRecord || !$taskIsAssigned) {
+                $statusLabel = 'Unassigned';
+            } elseif ($effectiveDone) {
+                $statusLabel = 'Done';
+            } else {
+                $statusLabel = 'Pending';
+            }
+
+            $assignee = ($statusLabel === 'Unassigned') ? '—' : (($task && $task->user) ? $task->user->name : $defaultUserName);
             $userId = $task?->user_id ?? $defaultUserId;
 
             $dateAssigned = $task?->created_at
@@ -206,11 +236,12 @@ class FileCompactViewHelper
                 : null;
 
             $viewUrl = self::getViewUrlForTask($record, $title);
+            $details = self::getDetailsForTask($record, $title);
 
             $result[] = [
                 'id' => $task?->id,
                 'name' => $title,
-                'status' => $effectiveDone ? 'Done' : 'Pending',
+                'status' => $statusLabel,
                 'assignee' => $assignee,
                 'user_id' => $userId,
                 'is_done' => $effectiveDone,
@@ -218,6 +249,7 @@ class FileCompactViewHelper
                 'linked_case' => $record->mga_reference ?? '—',
                 'date_assigned' => $dateAssigned,
                 'view_url' => $viewUrl,
+                'details' => $details,
             ];
         }
         return $result;
