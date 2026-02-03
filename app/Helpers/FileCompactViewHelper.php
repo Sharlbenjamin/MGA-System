@@ -2,7 +2,10 @@
 
 namespace App\Helpers;
 
+use App\Models\Bill;
 use App\Models\File;
+use App\Models\Gop;
+use App\Models\MedicalReport;
 use App\Models\Task;
 use Illuminate\Support\Facades\URL;
 
@@ -131,31 +134,89 @@ class FileCompactViewHelper
     }
 
     /**
-     * Get details string for a task: amount (GOP/Bill), diagnosis (MR), or "Pending" if no item.
+     * Get details string for a linked record: amount (GOP/Bill), diagnosis (MR), or "Pending".
+     */
+    public static function getDetailsForRecord(object $record): string
+    {
+        if ($record instanceof Gop) {
+            return $record->amount !== null && $record->amount !== '' ? (string) number_format((float) $record->amount, 2) : 'Pending';
+        }
+        if ($record instanceof MedicalReport) {
+            $diagnosis = trim((string) ($record->diagnosis ?? ''));
+            if ($diagnosis === '') {
+                return 'Pending';
+            }
+            return strlen($diagnosis) > 80 ? substr($diagnosis, 0, 80) . '…' : $diagnosis;
+        }
+        if ($record instanceof Bill) {
+            return $record->total_amount !== null && $record->total_amount !== '' ? (string) number_format((float) $record->total_amount, 2) : 'Pending';
+        }
+        return 'Pending';
+    }
+
+    /**
+     * Get view URL for a linked record (signed URL when document is uploaded locally).
+     */
+    public static function getViewUrlForRecord(object $record): ?string
+    {
+        $expiryMinutes = 60;
+        if ($record instanceof Gop) {
+            if (empty($record->document_path)) {
+                return null;
+            }
+            return $record->getDocumentSignedUrl($expiryMinutes);
+        }
+        if ($record instanceof MedicalReport) {
+            if (empty($record->document_path)) {
+                return null;
+            }
+            return $record->getDocumentSignedUrl($expiryMinutes);
+        }
+        if ($record instanceof Bill) {
+            if (empty($record->bill_document_path)) {
+                return null;
+            }
+            return URL::temporarySignedRoute('docs.serve', now()->addMinutes($expiryMinutes), [
+                'type' => 'bill',
+                'id' => $record->id,
+            ]);
+        }
+        return null;
+    }
+
+    /**
+     * Check if linked record has document uploaded (is done for view).
+     */
+    public static function isRecordDoneForView(object $record): bool
+    {
+        if ($record instanceof Gop) {
+            return !empty($record->document_path) || !empty($record->gop_google_drive_link);
+        }
+        if ($record instanceof MedicalReport) {
+            return !empty($record->document_path);
+        }
+        if ($record instanceof Bill) {
+            return !empty($record->bill_document_path) || !empty($record->bill_google_link);
+        }
+        return false;
+    }
+
+    /**
+     * Get details string for a task by title (legacy: used when no linked record).
      */
     public static function getDetailsForTask(File $record, string $title): string
     {
         if ($title === 'GOP In') {
             $gop = $record->gops()->where('type', 'In')->latest()->first();
-            if (!$gop) {
-                return 'Pending';
-            }
-            return $gop->amount !== null && $gop->amount !== '' ? (string) number_format((float) $gop->amount, 2) : 'Pending';
+            return $gop ? self::getDetailsForRecord($gop) : 'Pending';
         }
         if ($title === 'Medical Report') {
             $mr = $record->medicalReports()->latest()->first();
-            if (!$mr || empty(trim((string) ($mr->diagnosis ?? '')))) {
-                return 'Pending';
-            }
-            $diagnosis = trim((string) $mr->diagnosis);
-            return strlen($diagnosis) > 80 ? substr($diagnosis, 0, 80) . '…' : $diagnosis;
+            return $mr ? self::getDetailsForRecord($mr) : 'Pending';
         }
         if ($title === 'Provider Bill') {
             $bill = $record->bills()->latest()->first();
-            if (!$bill) {
-                return 'Pending';
-            }
-            return $bill->total_amount !== null && $bill->total_amount !== '' ? (string) number_format((float) $bill->total_amount, 2) : 'Pending';
+            return $bill ? self::getDetailsForRecord($bill) : 'Pending';
         }
         return 'Pending';
     }
@@ -192,66 +253,149 @@ class FileCompactViewHelper
         return "Patient Name: {$patientName}\nDOB: {$dob}\nMGA Reference: {$mgaReference}\nSymptoms: {$symptoms}\nRequest: {$request}\nPhone: {$phone}\nAddress: {$address}";
     }
 
+    /**
+     * Find or create a task for a linked record (GOP In, Medical Report, Bill).
+     */
+    private static function findOrCreateTaskForRecord(File $file, string $title, object $linkedRecord, int|null $defaultUserId): Task
+    {
+        $taskableType = $linkedRecord::class;
+        $taskableId = $linkedRecord->id;
+
+        $task = $file->tasks()
+            ->where('department', 'Operation')
+            ->where('taskable_type', $taskableType)
+            ->where('taskable_id', $taskableId)
+            ->with('user')
+            ->first();
+
+        if ($task) {
+            return $task;
+        }
+
+        $task = Task::create([
+            'file_id' => $file->id,
+            'title' => $title,
+            'department' => 'Operation',
+            'taskable_type' => $taskableType,
+            'taskable_id' => $taskableId,
+            'user_id' => $defaultUserId,
+            'is_done' => false,
+        ]);
+        $task->load('user');
+        return $task;
+    }
+
     /** @return array<int, array{id: int|null, name: string, status: string, assignee: string, user_id: int|null, is_done: bool, description: string|null, linked_case: string, date_assigned: string|null, view_url: string|null, details: string}> */
     public static function getCompactTasks(File $record): array
     {
-        $titles = ['GOP In', 'Medical Report', 'Provider Bill'];
-        $fileTasks = $record->tasks()->where('department', 'Operation')->with('user')->get()->keyBy(fn (Task $t) => $t->title);
         $defaultUser = $record->assignedUser();
         $defaultUserId = $defaultUser?->id;
         $defaultUserName = $defaultUser?->name ?? '—';
 
         $result = [];
-        foreach ($titles as $title) {
-            $task = $fileTasks->get($title) ?? $fileTasks->first(fn (Task $t) => stripos($t->title, $title) !== false || stripos($title, $t->title) !== false);
-            $isDoneFromFile = self::isTaskDoneFromFile($record, $title);
-            $isDone = $task ? (bool) $task->is_done : false;
-            $effectiveDone = $isDone || $isDoneFromFile;
 
-            if ($task) {
-                if ($isDoneFromFile && !$task->is_done) {
-                    $task->update(['is_done' => true]);
-                }
-                if ($defaultUserId && !$task->user_id) {
-                    $task->update(['user_id' => $defaultUserId]);
-                    $task->load('user');
-                }
+        // One task per GOP In
+        $gopsIn = $record->gops()->where('type', 'In')->orderBy('id')->get();
+        foreach ($gopsIn as $gop) {
+            $task = self::findOrCreateTaskForRecord($record, 'GOP In', $gop, $defaultUserId);
+            $isDoneFromRecord = self::isRecordDoneForView($gop);
+            $isDone = (bool) $task->is_done;
+            $effectiveDone = $isDone || $isDoneFromRecord;
+
+            if ($isDoneFromRecord && !$task->is_done) {
+                $task->update(['is_done' => true]);
+            }
+            if ($defaultUserId && !$task->user_id) {
+                $task->update(['user_id' => $defaultUserId]);
+                $task->load('user');
             }
 
-            $hasTaskRecord = $task !== null;
-            $taskIsAssigned = $task && $task->user_id;
-            if (!$hasTaskRecord || !$taskIsAssigned) {
-                $statusLabel = 'Unassigned';
-            } elseif ($effectiveDone) {
-                $statusLabel = 'Done';
-            } else {
-                $statusLabel = 'Pending';
-            }
-
-            $assignee = ($statusLabel === 'Unassigned') ? '—' : (($task && $task->user) ? $task->user->name : $defaultUserName);
-            $userId = $task?->user_id ?? $defaultUserId;
-
-            $dateAssigned = $task?->created_at
-                ? $task->created_at->format('d/m/Y')
-                : null;
-
-            $viewUrl = self::getViewUrlForTask($record, $title);
-            $details = self::getDetailsForTask($record, $title);
+            $statusLabel = !$task->user_id ? 'Unassigned' : ($effectiveDone ? 'Done' : 'Pending');
+            $assignee = ($statusLabel === 'Unassigned') ? '—' : ($task->user?->name ?? $defaultUserName);
 
             $result[] = [
-                'id' => $task?->id,
-                'name' => $title,
+                'id' => $task->id,
+                'name' => 'GOP In',
                 'status' => $statusLabel,
                 'assignee' => $assignee,
-                'user_id' => $userId,
+                'user_id' => $task->user_id ?? $defaultUserId,
                 'is_done' => $effectiveDone,
-                'description' => $task?->description,
+                'description' => $task->description,
                 'linked_case' => $record->mga_reference ?? '—',
-                'date_assigned' => $dateAssigned,
-                'view_url' => $viewUrl,
-                'details' => $details,
+                'date_assigned' => $task->created_at?->format('d/m/Y'),
+                'view_url' => self::getViewUrlForRecord($gop),
+                'details' => self::getDetailsForRecord($gop),
             ];
         }
+
+        // One task per Medical Report
+        $medicalReports = $record->medicalReports()->orderBy('id')->get();
+        foreach ($medicalReports as $mr) {
+            $task = self::findOrCreateTaskForRecord($record, 'Medical Report', $mr, $defaultUserId);
+            $isDoneFromRecord = self::isRecordDoneForView($mr);
+            $isDone = (bool) $task->is_done;
+            $effectiveDone = $isDone || $isDoneFromRecord;
+
+            if ($isDoneFromRecord && !$task->is_done) {
+                $task->update(['is_done' => true]);
+            }
+            if ($defaultUserId && !$task->user_id) {
+                $task->update(['user_id' => $defaultUserId]);
+                $task->load('user');
+            }
+
+            $statusLabel = !$task->user_id ? 'Unassigned' : ($effectiveDone ? 'Done' : 'Pending');
+            $assignee = ($statusLabel === 'Unassigned') ? '—' : ($task->user?->name ?? $defaultUserName);
+
+            $result[] = [
+                'id' => $task->id,
+                'name' => 'Medical Report',
+                'status' => $statusLabel,
+                'assignee' => $assignee,
+                'user_id' => $task->user_id ?? $defaultUserId,
+                'is_done' => $effectiveDone,
+                'description' => $task->description,
+                'linked_case' => $record->mga_reference ?? '—',
+                'date_assigned' => $task->created_at?->format('d/m/Y'),
+                'view_url' => self::getViewUrlForRecord($mr),
+                'details' => self::getDetailsForRecord($mr),
+            ];
+        }
+
+        // One task per Bill
+        $bills = $record->bills()->orderBy('id')->get();
+        foreach ($bills as $bill) {
+            $task = self::findOrCreateTaskForRecord($record, 'Provider Bill', $bill, $defaultUserId);
+            $isDoneFromRecord = self::isRecordDoneForView($bill);
+            $isDone = (bool) $task->is_done;
+            $effectiveDone = $isDone || $isDoneFromRecord;
+
+            if ($isDoneFromRecord && !$task->is_done) {
+                $task->update(['is_done' => true]);
+            }
+            if ($defaultUserId && !$task->user_id) {
+                $task->update(['user_id' => $defaultUserId]);
+                $task->load('user');
+            }
+
+            $statusLabel = !$task->user_id ? 'Unassigned' : ($effectiveDone ? 'Done' : 'Pending');
+            $assignee = ($statusLabel === 'Unassigned') ? '—' : ($task->user?->name ?? $defaultUserName);
+
+            $result[] = [
+                'id' => $task->id,
+                'name' => 'Provider Bill',
+                'status' => $statusLabel,
+                'assignee' => $assignee,
+                'user_id' => $task->user_id ?? $defaultUserId,
+                'is_done' => $effectiveDone,
+                'description' => $task->description,
+                'linked_case' => $record->mga_reference ?? '—',
+                'date_assigned' => $task->created_at?->format('d/m/Y'),
+                'view_url' => self::getViewUrlForRecord($bill),
+                'details' => self::getDetailsForRecord($bill),
+            ];
+        }
+
         return $result;
     }
 }

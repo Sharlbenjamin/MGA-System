@@ -806,7 +806,7 @@ class ViewFile extends ViewRecord
                                 $name = e($c->user?->name ?? 'Unknown');
                                 $date = $c->created_at->format('d/m/Y H:i');
                                 $content = nl2br(e($c->content));
-                                $html .= "<div class=\"text-sm border-b border-gray-200 dark:border-white/10 pb-2 last:border-0 last:pb-0\"><span class=\"font-medium text-gray-700 dark:text-gray-300\">{$name}</span> <span class=\"text-gray-500 dark:text-gray-400 text-xs\">{$date}</span><div class=\"mt-1 text-gray-600 dark:text-gray-400\">{$content}</div></div>";
+                                $html .= "<div class=\"text-sm border-b border-gray-200 dark:border-white/10 pb-3 mb-3 last:border-0 last:pb-0 last:mb-0\"><span class=\"font-medium text-gray-700 dark:text-gray-300\">{$name}</span> <span class=\"text-gray-500 dark:text-gray-400 text-xs\">{$date}</span><div class=\"mt-1 text-gray-600 dark:text-gray-400\">{$content}</div></div>";
                             }
                             $html .= '</div>';
                             return new HtmlString($html);
@@ -889,20 +889,54 @@ class ViewFile extends ViewRecord
                             $q->where('title', $title)
                                 ->orWhere('title', 'like', '%' . $title . '%');
                         })
+                        ->whereNull('user_id')
                         ->first();
                     if ($task) {
                         $task->update(['user_id' => $userId]);
                         Notification::make()->success()->title('Task assigned')->body("{$title} assigned to user.")->send();
-                    } else {
+                        return;
+                    }
+                    $task = $this->record->tasks()
+                        ->where('department', 'Operation')
+                        ->where(function ($q) use ($title) {
+                            $q->where('title', $title)->orWhere('title', 'like', '%' . $title . '%');
+                        })
+                        ->first();
+                    if ($task) {
+                        $task->update(['user_id' => $userId]);
+                        Notification::make()->success()->title('Task assigned')->body("{$title} assigned to user.")->send();
+                        return;
+                    }
+                    $linked = null;
+                    if ($title === 'GOP In') {
+                        $gop = $this->record->gops()->where('type', 'In')->orderBy('id')->first();
+                        if ($gop && !$this->record->tasks()->where('department', 'Operation')->where('taskable_type', \App\Models\Gop::class)->where('taskable_id', $gop->id)->exists()) {
+                            $linked = $gop;
+                        }
+                    } elseif ($title === 'Medical Report') {
+                        $mr = $this->record->medicalReports()->orderBy('id')->first();
+                        if ($mr && !$this->record->tasks()->where('department', 'Operation')->where('taskable_type', \App\Models\MedicalReport::class)->where('taskable_id', $mr->id)->exists()) {
+                            $linked = $mr;
+                        }
+                    } elseif ($title === 'Provider Bill') {
+                        $bill = $this->record->bills()->orderBy('id')->first();
+                        if ($bill && !$this->record->tasks()->where('department', 'Operation')->where('taskable_type', \App\Models\Bill::class)->where('taskable_id', $bill->id)->exists()) {
+                            $linked = $bill;
+                        }
+                    }
+                    if ($linked) {
                         Task::create([
                             'file_id' => $this->record->id,
                             'title' => $title,
+                            'department' => 'Operation',
+                            'taskable_type' => $linked::class,
+                            'taskable_id' => $linked->id,
                             'user_id' => $userId,
                             'is_done' => false,
-                            'description' => null,
-                            'department' => 'Operation',
                         ]);
                         Notification::make()->success()->title('Task created and assigned')->body("{$title} created and assigned to user.")->send();
+                    } else {
+                        Notification::make()->warning()->title('No task to assign')->body("No {$title} record without a task for this case. Add a " . strtolower($title) . " first, or all existing tasks are already assigned.")->send();
                     }
                 }),
         ];
