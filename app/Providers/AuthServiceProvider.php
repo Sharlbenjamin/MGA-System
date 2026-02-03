@@ -23,6 +23,7 @@ use App\Models\Prescription;
 use App\Models\Drug;
 use App\Models\Employee;
 use App\Models\JobTitle;
+use App\Models\Task;
 use App\Policies\ClientPolicy;
 use App\Policies\CityPolicy;
 use App\Policies\CountryPolicy;
@@ -42,6 +43,7 @@ use App\Policies\PrescriptionPolicy;
 use App\Policies\DrugPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\JobTitlePolicy;
+use App\Policies\TaskPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -70,6 +72,7 @@ class AuthServiceProvider extends ServiceProvider
         Drug::class => DrugPolicy::class,
         Employee::class => EmployeePolicy::class,
         JobTitle::class => JobTitlePolicy::class,
+        Task::class => TaskPolicy::class,
     ];
 
     /**

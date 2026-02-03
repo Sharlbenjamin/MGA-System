@@ -22,6 +22,9 @@ class TaskRelationManager extends RelationManager
 
     protected static ?string $title = 'Tasks';
 
+    /** Tasks must not be deleted; they are only marked done. */
+    protected static bool $canDelete = false;
+
     public function form(Forms\Form $form): Forms\Form
     {
         return $form
