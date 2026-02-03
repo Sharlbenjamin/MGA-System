@@ -18,7 +18,6 @@ use App\Http\Controllers\FileDocumentExportController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProviderLeadController;
 use App\Http\Controllers\LeadController;
-use App\Http\Controllers\TaskNotificationController;
 use App\Models\City;
 use Google\Client as Google_Client;
 use Google\Service\Calendar;
@@ -72,14 +71,6 @@ Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, Dispatch
     // Filament registers its own routes automatically.
     
 
-});
-
-// Task notification actions (signed URLs so only assignee can confirm done/not done)
-Route::middleware([FilamentAuthenticate::class, 'signed'])->group(function () {
-    Route::get('/task-notification/{task}/done', [TaskNotificationController::class, 'done'])
-        ->name('filament.admin.task-notification.done');
-    Route::get('/task-notification/{task}/not-done', [TaskNotificationController::class, 'notDone'])
-        ->name('filament.admin.task-notification.not-done');
 });
 
 // Export Routes (only require Filament authentication, not site password)

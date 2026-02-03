@@ -12,6 +12,8 @@ use App\Models\Client;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\Patient;
+use App\Models\Task;
+use App\Observers\TaskObserver;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -41,5 +43,7 @@ class AppServiceProvider extends ServiceProvider
             'Branch' => ProviderBranch::class,
             'Patient' => Patient::class,
         ]);
+
+        Task::observe(TaskObserver::class);
     }
 }

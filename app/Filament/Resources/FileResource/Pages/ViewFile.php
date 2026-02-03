@@ -15,7 +15,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Notifications\Actions\Action as NotificationAction;
-use Illuminate\Support\Facades\URL;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Actions\Action as InfolistAction;
 
@@ -1533,7 +1532,8 @@ class ViewFile extends ViewRecord
 
 
     /**
-     * Send a persistent database notification to the task assignee with Done / Not done buttons.
+     * Send a persistent database notification to the task assignee.
+     * The notification stays until the task is marked done (handled by TaskObserver).
      */
     private function sendTaskAssignedDatabaseNotification(Task $task): void
     {
@@ -1543,16 +1543,7 @@ class ViewFile extends ViewRecord
         }
 
         $fileRef = $this->record->mga_reference ?? 'File #' . $this->record->id;
-        $doneUrl = URL::temporarySignedRoute(
-            'filament.admin.task-notification.done',
-            now()->addDays(30),
-            ['task' => $task->id]
-        );
-        $notDoneUrl = URL::temporarySignedRoute(
-            'filament.admin.task-notification.not-done',
-            now()->addDays(30),
-            ['task' => $task->id]
-        );
+        $fileViewUrl = FileResource::getUrl('view', ['record' => $this->record->id]);
 
         Notification::make()
             ->title('Task assigned: ' . $task->title)
@@ -1560,16 +1551,9 @@ class ViewFile extends ViewRecord
             ->warning()
             ->viewData(['task_id' => $task->id])
             ->actions([
-                NotificationAction::make('done')
-                    ->label('Done')
-                    ->button()
-                    ->color('success')
-                    ->url($doneUrl),
-                NotificationAction::make('not_done')
-                    ->label('Not done')
-                    ->button()
-                    ->color('gray')
-                    ->url($notDoneUrl),
+                NotificationAction::make('view_file')
+                    ->label('View case')
+                    ->url($fileViewUrl),
             ])
             ->sendToDatabase($assignee);
     }
