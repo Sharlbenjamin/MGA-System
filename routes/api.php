@@ -6,6 +6,13 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\PatientController;
 
+// GET /api/login – hint (login requires POST)
+Route::get('/login', function () {
+    return response()->json([
+        'message' => 'Use POST with JSON body: email, password, device_name (optional)',
+    ], 405);
+});
+
 // POST /api/login – authenticate and issue Sanctum token
 Route::post('/login', function (Request $request) {
     $validator = Validator::make($request->all(), [
