@@ -15,7 +15,7 @@
         "google/apiclient": "^2.18",
         "illuminate/notifications": "*",
         "laravel/framework": "^11.31",
-        "laravel/sanctum": "^4.0",
+        "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.9",
         "livewire/livewire": "^3.0",
         "maatwebsite/excel": "^3.1",
