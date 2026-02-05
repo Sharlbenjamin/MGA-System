@@ -60,41 +60,52 @@ Route::prefix('patients')->group(function () {
     Route::post('/check-duplicate', [PatientController::class, 'checkDuplicate']);
 });
 
-// File view, relation managers, client leads, provider leads (Bearer token required)
+// Authenticated API: files, leads, provider-leads, providers (pagination, filters, CRUD, actions)
 Route::middleware('auth:sanctum')->group(function () {
-    // File view + relation managers
-    Route::get('/files/{id}', [App\Http\Controllers\Api\FileApiController::class, 'show'])
-        ->whereNumber('id');
-    Route::get('/files/{fileId}/gops', [App\Http\Controllers\Api\FileApiController::class, 'gops'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/bills', [App\Http\Controllers\Api\FileApiController::class, 'bills'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/medical-reports', [App\Http\Controllers\Api\FileApiController::class, 'medicalReports'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/prescriptions', [App\Http\Controllers\Api\FileApiController::class, 'prescriptions'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/comments', [App\Http\Controllers\Api\FileApiController::class, 'comments'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/appointments', [App\Http\Controllers\Api\FileApiController::class, 'appointments'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/tasks', [App\Http\Controllers\Api\FileApiController::class, 'tasks'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/assignments', [App\Http\Controllers\Api\FileApiController::class, 'assignments'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/invoices', [App\Http\Controllers\Api\FileApiController::class, 'invoices'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/bank-accounts', [App\Http\Controllers\Api\FileApiController::class, 'bankAccounts'])
-        ->whereNumber('fileId');
-    Route::get('/files/{fileId}/activity-logs', [App\Http\Controllers\Api\FileApiController::class, 'activityLogs'])
-        ->whereNumber('fileId');
+    $file = App\Http\Controllers\Api\FileApiController::class;
+    $lead = App\Http\Controllers\Api\LeadApiController::class;
+    $providerLead = App\Http\Controllers\Api\ProviderLeadApiController::class;
+    $provider = App\Http\Controllers\Api\ProviderApiController::class;
+
+    // Files (list, CRUD, actions, relation managers)
+    Route::get('/files', [$file, 'index']);
+    Route::post('/files', [$file, 'store']);
+    Route::get('/files/{id}', [$file, 'show'])->whereNumber('id');
+    Route::patch('/files/{id}', [$file, 'update'])->whereNumber('id');
+    Route::delete('/files/{id}', [$file, 'destroy'])->whereNumber('id');
+    Route::post('/files/{id}/assign', [$file, 'assign'])->whereNumber('id');
+    Route::post('/files/{id}/request-appointment', [$file, 'requestAppointment'])->whereNumber('id');
+    Route::get('/files/{fileId}/gops', [$file, 'gops'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/bills', [$file, 'bills'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/medical-reports', [$file, 'medicalReports'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/prescriptions', [$file, 'prescriptions'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/comments', [$file, 'comments'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/appointments', [$file, 'appointments'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/tasks', [$file, 'tasks'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/assignments', [$file, 'assignments'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/invoices', [$file, 'invoices'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/bank-accounts', [$file, 'bankAccounts'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/activity-logs', [$file, 'activityLogs'])->whereNumber('fileId');
 
     // Client leads
-    Route::get('/leads', [App\Http\Controllers\Api\LeadApiController::class, 'index']);
-    Route::get('/leads/{id}', [App\Http\Controllers\Api\LeadApiController::class, 'show'])
-        ->whereNumber('id');
+    Route::get('/leads', [$lead, 'index']);
+    Route::post('/leads', [$lead, 'store']);
+    Route::get('/leads/{id}', [$lead, 'show'])->whereNumber('id');
+    Route::patch('/leads/{id}', [$lead, 'update'])->whereNumber('id');
+    Route::delete('/leads/{id}', [$lead, 'destroy'])->whereNumber('id');
 
     // Provider leads
-    Route::get('/provider-leads', [App\Http\Controllers\Api\ProviderLeadApiController::class, 'index']);
-    Route::get('/provider-leads/{id}', [App\Http\Controllers\Api\ProviderLeadApiController::class, 'show'])
-        ->whereNumber('id');
+    Route::get('/provider-leads', [$providerLead, 'index']);
+    Route::post('/provider-leads', [$providerLead, 'store']);
+    Route::get('/provider-leads/{id}', [$providerLead, 'show'])->whereNumber('id');
+    Route::patch('/provider-leads/{id}', [$providerLead, 'update'])->whereNumber('id');
+    Route::delete('/provider-leads/{id}', [$providerLead, 'destroy'])->whereNumber('id');
+    Route::post('/provider-leads/{id}/convert', [$providerLead, 'convert'])->whereNumber('id');
+
+    // Providers
+    Route::get('/providers', [$provider, 'index']);
+    Route::post('/providers', [$provider, 'store']);
+    Route::get('/providers/{id}', [$provider, 'show'])->whereNumber('id');
+    Route::patch('/providers/{id}', [$provider, 'update'])->whereNumber('id');
+    Route::delete('/providers/{id}', [$provider, 'destroy'])->whereNumber('id');
 });

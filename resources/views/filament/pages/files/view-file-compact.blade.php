@@ -59,7 +59,7 @@
                 <hr class="my-4 mx-2 border-gray-200 dark:border-white/10 sm:mx-4" />
                 <dl class="space-y-2 text-sm">
                     @if($patient && $patient->name)
-                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-user', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Patient:</dt><dd class="min-w-0 font-semibold text-gray-950 dark:text-white">{{ $patient->name }}</dd></div>
+                        <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-user', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Patient:</dt><dd class="min-w-0 font-semibold text-gray-950 dark:text-white"><a href="{{ \App\Filament\Resources\PatientResource::getUrl('edit', ['record' => $patient]) }}" class="text-primary-600 hover:underline dark:text-primary-400">{{ $patient->name }}</a></dd></div>
                     @endif
                     @if($patient && $patient->dob)
                         <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-calendar-days', 'h-4 w-4')</span><dt class="{{ $labelClass }}">DOB:</dt><dd class="min-w-0">{{ \Carbon\Carbon::parse($patient->dob)->format('d/m/Y') }}</dd></div>
