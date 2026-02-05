@@ -9,11 +9,12 @@ use Illuminate\Http\JsonResponse;
 class ProviderLeadApiController extends Controller
 {
     /**
-     * List provider leads (with provider, city, service types).
+     * List provider leads (with provider, city).
+     * Note: service_types is a string column on provider_leads; pivot provider_lead_service_type may not exist on all envs.
      */
     public function index(): JsonResponse
     {
-        $leads = ProviderLead::with(['provider', 'city', 'serviceTypes'])
+        $leads = ProviderLead::with(['provider', 'city'])
             ->orderBy('id', 'desc')
             ->get();
         return response()->json($leads);
@@ -24,7 +25,7 @@ class ProviderLeadApiController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $lead = ProviderLead::with(['provider', 'city', 'serviceTypes'])->find($id);
+        $lead = ProviderLead::with(['provider', 'city'])->find($id);
         if (!$lead) {
             return response()->json(['message' => 'Provider lead not found'], 404);
         }
