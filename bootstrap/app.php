@@ -17,7 +17,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // Prevent 500 when unauthenticated: do not redirect API/JSON to route('login') (which does not exist)
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+            return route('filament.admin.auth.login');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Ensure ALL /api/* responses are JSON (no HTML error pages for mobile clients)
