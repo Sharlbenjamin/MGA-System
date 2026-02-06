@@ -405,6 +405,7 @@ class FileResource extends Resource
             'create' => FileResource\Pages\CreateFile::route('/create'),
             'edit' => FileResource\Pages\EditFile::route('/{record}/edit'),
             'view' => FileResource\Pages\ViewFile::route('/{record}/show'),
+            'request-appointment' => FileResource\Pages\RequestAppointment::route('/{record}/request-appointment'),
         ];
     }
 
