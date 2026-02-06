@@ -1,8 +1,8 @@
 <x-filament-panels::page
-    :class="[
+    @class([
         'fi-resource-request-appointment-page',
         'fi-resource-record-' . $record->getKey(),
-    ]"
+    ])
 >
     <x-filament-panels::form
         id="form"
