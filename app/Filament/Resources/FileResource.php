@@ -38,6 +38,10 @@ use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Grouping\Group;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use App\Models\Comment;
+use App\Models\Gop;
 
 class FileResource extends Resource
 {
@@ -50,7 +54,9 @@ class FileResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereIn('status', ['New', 'Handling', 'Available', 'Confirmed', 'Hold'])->count();
+        return Cache::remember('filament.files.navigation_badge', 60, fn () =>
+            (string) static::getModel()::whereIn('status', ['New', 'Handling', 'Available', 'Confirmed', 'Hold'])->count()
+        );
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -124,18 +130,34 @@ class FileResource extends Resource
             Group::make('country.name')->collapsible()->label('Country'),
             Group::make('serviceType.name')->collapsible()->label('Service Type'),
         ])
-            ->modifyQueryUsing(fn ($query) => $query->with([
-                'patient.client',
-                'country',
-                'city',
-                'serviceType',
-                'comments',
-                'providerBranch.provider',
-                'gops',
-                'bills',
-                'currentAssignment.user',
-            ]))
+            ->modifyQueryUsing(function (Builder $query) {
+                $fileTable = (new File())->getTable();
+                $query->with([
+                    'patient.client',
+                    'country',
+                    'city',
+                    'serviceType',
+                    'providerBranch.provider',
+                    'bills:id,file_id,total_amount,status,bill_document_path,bill_google_link',
+                    'currentAssignment.user',
+                ])
+                    ->addSelect([
+                        'last_comment' => Comment::select('content')
+                            ->whereColumn('comments.file_id', $fileTable . '.id')
+                            ->orderByDesc('created_at')
+                            ->limit(1),
+                        'first_gop_in_amount' => Gop::select('amount')
+                            ->whereColumn('gops.file_id', $fileTable . '.id')
+                            ->where('type', 'In')
+                            ->orderBy('id')
+                            ->limit(1),
+                        'first_gop_in_has_doc' => DB::raw("COALESCE((SELECT CASE WHEN g2.document_path IS NOT NULL AND g2.document_path != '' THEN 1 ELSE 0 END FROM gops g2 WHERE g2.file_id = {$fileTable}.id AND g2.type = 'In' ORDER BY g2.id ASC LIMIT 1), 0)"),
+                    ]);
+                return $query;
+            })
             ->defaultSort('created_at', 'desc')
+            ->defaultPaginationPageOption(10)
+            ->paginated([10, 25, 50])
             ->columns([
                 // Enhanced columns
                      
@@ -204,14 +226,6 @@ class FileResource extends Resource
                 
                 Tables\Columns\TextColumn::make('last_comment')
                     ->label('Last Comment')
-                    ->getStateUsing(function ($record) {
-                        try {
-                            $lastComment = $record->comments()->latest()->first();
-                            return $lastComment ? $lastComment->content : null;
-                        } catch (\Exception $e) {
-                            return null;
-                        }
-                    })
                     ->wrap()
                     ->placeholder('No comments')
                     ->weight('bold')
@@ -221,31 +235,13 @@ class FileResource extends Resource
                 Tables\Columns\TextColumn::make('first_gop_in_amount')
                     ->label('GOP')
                     ->badge()
-                    ->color(function ($state, $record) {
-                        $firstGopIn = $record->gops()->where('type', 'In')->first();
-                        if (!$firstGopIn) {
-                            return 'danger'; // No GOP exists
-                        }
-                        // Green if attached (has document_path), red if not attached
-                        return !empty($firstGopIn->document_path) ? 'success' : 'danger';
-                    })
-                    ->formatStateUsing(function ($state, $record) {
-                        $firstGopIn = $record->gops()->where('type', 'In')->first();
-                        return $firstGopIn ? '€' . number_format($firstGopIn->amount, 2) : '€0.00';
-                    })
-                    ->getStateUsing(function ($record) {
-                        $firstGopIn = $record->gops()->where('type', 'In')->first();
-                        return $firstGopIn ? $firstGopIn->amount : 0;
-                    }),
+                    ->color(fn ($state, $record) => (int) ($record->first_gop_in_has_doc ?? 0) === 1 ? 'success' : 'danger')
+                    ->formatStateUsing(fn ($state, $record) => $record->first_gop_in_amount !== null ? '€' . number_format((float) $record->first_gop_in_amount, 2) : '€0.00')
+                    ->getStateUsing(fn ($record) => $record->first_gop_in_amount ?? 0),
                 
                 Tables\Columns\TextColumn::make('bills_details')
                     ->label('Bills')
                     ->state(function (File $record) {
-                        // Ensure bills are loaded
-                        if (!$record->relationLoaded('bills')) {
-                            $record->load('bills');
-                        }
-                        
                         $bills = $record->bills;
                         
                         if ($bills->isEmpty()) {
