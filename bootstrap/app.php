@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -24,9 +25,13 @@ return Application::configure(basePath: dirname(__DIR__))
             if (!$request->is('api/*') && !$request->expectsJson()) {
                 return null;
             }
-            // Let Laravel return its own JSON for validation/auth
+            // Let Laravel return its own JSON for validation
             if ($e instanceof ValidationException) {
                 return null;
+            }
+            // Policy/auth must return 403 JSON, not 500
+            if ($e instanceof AuthorizationException) {
+                return response()->json(['message' => $e->getMessage() ?: 'Forbidden'], 403);
             }
             $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
             $message = $e instanceof HttpException ? $e->getMessage() : 'Server Error';

@@ -47,12 +47,74 @@ class ProviderApiController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $provider = Provider::with('country')->find($id);
+        $provider = Provider::with(['country', 'branches', 'bankAccounts'])->find($id);
         if (!$provider) {
             return response()->json(['message' => 'Provider not found'], 404);
         }
         $this->authorize('view', $provider);
         return response()->json($provider);
+    }
+
+    public function providerLeads(int $id): JsonResponse
+    {
+        $provider = Provider::find($id);
+        if (!$provider) {
+            return response()->json(['message' => 'Provider not found'], 404);
+        }
+        $this->authorize('view', $provider);
+        return response()->json($provider->leads()->orderBy('id', 'desc')->get());
+    }
+
+    public function branches(int $id): JsonResponse
+    {
+        $provider = Provider::find($id);
+        if (!$provider) {
+            return response()->json(['message' => 'Provider not found'], 404);
+        }
+        $this->authorize('view', $provider);
+        return response()->json($provider->branches()->with(['city'])->get());
+    }
+
+    /** Branches with their services (pivot: min_cost, max_cost). */
+    public function branchServices(int $id): JsonResponse
+    {
+        $provider = Provider::find($id);
+        if (!$provider) {
+            return response()->json(['message' => 'Provider not found'], 404);
+        }
+        $this->authorize('view', $provider);
+        $branches = $provider->branches()->with(['services' => fn ($q) => $q->withPivot(['min_cost', 'max_cost'])])->get();
+        return response()->json($branches);
+    }
+
+    public function bills(int $id): JsonResponse
+    {
+        $provider = Provider::find($id);
+        if (!$provider) {
+            return response()->json(['message' => 'Provider not found'], 404);
+        }
+        $this->authorize('view', $provider);
+        return response()->json($provider->bills()->get());
+    }
+
+    public function files(int $id): JsonResponse
+    {
+        $provider = Provider::find($id);
+        if (!$provider) {
+            return response()->json(['message' => 'Provider not found'], 404);
+        }
+        $this->authorize('view', $provider);
+        return response()->json($provider->files()->with(['patient', 'serviceType'])->get());
+    }
+
+    public function bankAccounts(int $id): JsonResponse
+    {
+        $provider = Provider::find($id);
+        if (!$provider) {
+            return response()->json(['message' => 'Provider not found'], 404);
+        }
+        $this->authorize('view', $provider);
+        return response()->json($provider->bankAccounts()->get());
     }
 
     public function store(StoreProviderRequest $request): JsonResponse

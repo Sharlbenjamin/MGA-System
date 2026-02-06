@@ -66,12 +66,13 @@ Route::middleware('auth:sanctum')->group(function () {
     $lead = App\Http\Controllers\Api\LeadApiController::class;
     $providerLead = App\Http\Controllers\Api\ProviderLeadApiController::class;
     $provider = App\Http\Controllers\Api\ProviderApiController::class;
+    $client = App\Http\Controllers\Api\ClientApiController::class;
 
     // Files (list, CRUD, actions, relation managers)
     Route::get('/files', [$file, 'index']);
     Route::post('/files', [$file, 'store']);
     Route::get('/files/{id}', [$file, 'show'])->whereNumber('id');
-    Route::patch('/files/{id}', [$file, 'update'])->whereNumber('id');
+    Route::match(['patch', 'put'], '/files/{id}', [$file, 'update'])->whereNumber('id');
     Route::delete('/files/{id}', [$file, 'destroy'])->whereNumber('id');
     Route::post('/files/{id}/assign', [$file, 'assign'])->whereNumber('id');
     Route::post('/files/{id}/request-appointment', [$file, 'requestAppointment'])->whereNumber('id');
@@ -91,21 +92,35 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/leads', [$lead, 'index']);
     Route::post('/leads', [$lead, 'store']);
     Route::get('/leads/{id}', [$lead, 'show'])->whereNumber('id');
-    Route::patch('/leads/{id}', [$lead, 'update'])->whereNumber('id');
+    Route::match(['patch', 'put'], '/leads/{id}', [$lead, 'update'])->whereNumber('id');
     Route::delete('/leads/{id}', [$lead, 'destroy'])->whereNumber('id');
 
     // Provider leads
     Route::get('/provider-leads', [$providerLead, 'index']);
     Route::post('/provider-leads', [$providerLead, 'store']);
     Route::get('/provider-leads/{id}', [$providerLead, 'show'])->whereNumber('id');
-    Route::patch('/provider-leads/{id}', [$providerLead, 'update'])->whereNumber('id');
+    Route::match(['patch', 'put'], '/provider-leads/{id}', [$providerLead, 'update'])->whereNumber('id');
     Route::delete('/provider-leads/{id}', [$providerLead, 'destroy'])->whereNumber('id');
     Route::post('/provider-leads/{id}/convert', [$providerLead, 'convert'])->whereNumber('id');
 
-    // Providers
+    // Providers + relation managers
     Route::get('/providers', [$provider, 'index']);
     Route::post('/providers', [$provider, 'store']);
     Route::get('/providers/{id}', [$provider, 'show'])->whereNumber('id');
-    Route::patch('/providers/{id}', [$provider, 'update'])->whereNumber('id');
+    Route::match(['patch', 'put'], '/providers/{id}', [$provider, 'update'])->whereNumber('id');
     Route::delete('/providers/{id}', [$provider, 'destroy'])->whereNumber('id');
+    Route::get('/providers/{id}/provider-leads', [$provider, 'providerLeads'])->whereNumber('id');
+    Route::get('/providers/{id}/branches', [$provider, 'branches'])->whereNumber('id');
+    Route::get('/providers/{id}/branch-services', [$provider, 'branchServices'])->whereNumber('id');
+    Route::get('/providers/{id}/bills', [$provider, 'bills'])->whereNumber('id');
+    Route::get('/providers/{id}/files', [$provider, 'files'])->whereNumber('id');
+    Route::get('/providers/{id}/bank-accounts', [$provider, 'bankAccounts'])->whereNumber('id');
+
+    // Clients + relation managers
+    Route::get('/clients', [$client, 'index']);
+    Route::get('/clients/{id}', [$client, 'show'])->whereNumber('id');
+    Route::get('/clients/{id}/files', [$client, 'files'])->whereNumber('id');
+    Route::get('/clients/{id}/invoices', [$client, 'invoices'])->whereNumber('id');
+    Route::get('/clients/{id}/transactions', [$client, 'transactions'])->whereNumber('id');
+    Route::get('/clients/{id}/leads', [$client, 'leads'])->whereNumber('id');
 });
