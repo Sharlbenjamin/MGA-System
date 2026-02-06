@@ -16,6 +16,10 @@ use Filament\Notifications\Notification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (file) for generate action, default sort and pagination 10.
+ * No explicit select: actions perform save(); unloaded columns would be overwritten on save.
+ */
 class InvoiceRelationManager extends RelationManager
 {
     protected static string $relationship = 'invoices';

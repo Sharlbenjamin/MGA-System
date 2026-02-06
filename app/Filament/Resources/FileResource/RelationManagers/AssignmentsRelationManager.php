@@ -13,6 +13,10 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Optimized: eager loading (user, assignedBy), User Select searchable+preload(false)+getSearchResultsUsing, pagination 10.
+ * Explicit select to limit columns (id, file_id, user_id, assigned_by_id, assigned_at, unassigned_at, is_primary).
+ */
 class AssignmentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'fileAssignments';
@@ -29,7 +33,7 @@ class AssignmentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user', 'assignedBy']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user', 'assignedBy'])->select(['id', 'file_id', 'user_id', 'assigned_by_id', 'assigned_at', 'unassigned_at', 'is_primary']))
             ->defaultPaginationPageOption(10)
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')->label('Assigned to')->sortable(),

@@ -21,9 +21,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (file.patient.client, file.providerBranch.provider) for client column and export/upload, pagination 10.
+ * No explicit select: edit/upload actions use full record and save().
+ */
 class MedicalReportRelationManager extends RelationManager
 {
-    protected static string $relationship = 'medicalReports'; // Uses the method in File model
+    protected static string $relationship = 'medicalReports';
     protected static ?string $title = 'Medical Reports ';
 
     protected static bool $canCreate = true;

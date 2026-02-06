@@ -16,9 +16,14 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Prescription;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (file.patient) for Export action, pagination 10.
+ * Create form serial default uses owner prescriptions count (one query when modal opens); no per-row counts.
+ * No explicit select: edit/actions use full record.
+ */
 class PrescriptionRelationManager extends RelationManager
 {
-    protected static string $relationship = 'prescriptions'; // Make sure your File model defines prescriptions() relationship
+    protected static string $relationship = 'prescriptions';
     protected static ?string $title = 'Prescriptions';
 
     // Enable creation, editing, and deletion

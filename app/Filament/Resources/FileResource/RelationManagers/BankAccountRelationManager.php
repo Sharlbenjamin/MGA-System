@@ -10,6 +10,10 @@ use Filament\Tables\Table;
 use App\Models\Country;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (country) for filter, country Select preload(false), pagination 10.
+ * No explicit select: create/edit forms need full record for save.
+ */
 class BankAccountRelationManager extends RelationManager
 {
     protected static string $relationship = 'bankAccounts';

@@ -9,17 +9,16 @@ Optimizations were applied to all File RelationManagers to fix slow TTFB (~13s) 
 ## 1. What Changed Per RelationManager
 
 ### AppointmentsRelationManager
-- **Why it was slow:** Columns use `providerBranch.branch_name`, and the Distance column uses `$record->file` and `$record->file->address`, causing N+1.
-- **Changes:** `modifyQueryUsing` to eager load `['providerBranch', 'file']`. Set `defaultPaginationPageOption(10)`.
-- **Forms:** Create modal still uses `fileBranches()` for provider branch options (runs only when modal opens); left as-is to avoid changing behavior.
+- **Why it was slow:** Columns use `providerBranch.branch_name`, and the Distance column uses `$record->file` and `$record->file->address`, causing N+1. Create modal loaded all fileBranches() on open.
+- **Changes:** Eager load `['providerBranch', 'file']`. Explicit `select(['id', 'file_id', 'provider_branch_id', 'service_date', 'service_time', 'status'])`. Create modal provider branch Select: `searchable()->preload(false)` with `getSearchResultsUsing` (same filter as fileBranches: service_type, city, province, status=Active) and `getOptionLabelUsing` so options load on search only. Form Select `relationship('providerBranch', 'branch_name')->preload(false)`. Pagination 10.
 
 ### CommentsRelationManager
 - **Why it was slow:** Column `user.name` triggered one query per row.
-- **Changes:** `modifyQueryUsing` to eager load `['user']`. `defaultPaginationPageOption(10)`.
+- **Changes:** Eager load `['user']`. Explicit `select(['id', 'file_id', 'user_id', 'content', 'created_at'])`. Pagination 10.
 
 ### TaskRelationManager
 - **Why it was slow:** Columns `user.name` and `doneBy.name` caused N+1; form Select loaded all users.
-- **Changes:** Table query now uses `Task::with(['user', 'doneBy'])->where(...)`. User Select uses `searchable()->preload(false)` with `getSearchResultsUsing` / `getOptionLabelUsing` so users are loaded on search only. `defaultPaginationPageOption(10)`.
+- **Changes:** Eager load `['user', 'doneBy']`. Explicit `select(['id', 'file_id', 'user_id', 'title', 'description', 'due_date', 'is_done', 'done_by', 'department'])`. User Select `searchable()->preload(false)`. Pagination 10.
 
 ### BillRelationManager
 - **Why it was slow:** Column `file.patient.client.company_name` and actions using `$record->file->patient` caused deep N+1.
@@ -46,8 +45,8 @@ Optimizations were applied to all File RelationManagers to fix slow TTFB (~13s) 
 - **Changes:** `modifyQueryUsing` to eager load `['client']`. No pagination change (single row).
 
 ### AssignmentsRelationManager
-- **Why it was slow:** Columns `user.name` and `assignedBy.name` caused N+1; Assign form used `User::query()->orderBy('name')->pluck('name', 'id')` loading all users on mount.
-- **Changes:** `modifyQueryUsing` to eager load `['user', 'assignedBy']`. User Select replaced with `searchable()->preload(false)` and `getSearchResultsUsing(fn (string $search) => User::query()->where('name', 'like', '%'.$search.'%')->orderBy('name')->limit(50)->pluck('name', 'id'))` and `getOptionLabelUsing(fn ($value) => User::find($value)?->name ?? '')`. `defaultPaginationPageOption(10)`.
+- **Why it was slow:** Columns `user.name` and `assignedBy.name` caused N+1; Assign form used `User::pluck()` loading all users on mount.
+- **Changes:** Eager load `['user', 'assignedBy']`. Explicit `select(['id', 'file_id', 'user_id', 'assigned_by_id', 'assigned_at', 'unassigned_at', 'is_primary'])`. User Select `searchable()->preload(false)` + `getSearchResultsUsing` / `getOptionLabelUsing`. Pagination 10.
 
 ### BankAccountRelationManager
 - **Why it was slow:** Country filter uses `relationship('country', 'name')`; form Select preloaded all countries.
@@ -55,7 +54,7 @@ Optimizations were applied to all File RelationManagers to fix slow TTFB (~13s) 
 
 ### ActivityLogRelationManager
 - **Why it was slow:** Column `user.name` caused N+1.
-- **Changes:** `modifyQueryUsing` to eager load `['user']`. Already had `paginated([10, 25, 50])` (default 10); no change.
+- **Changes:** Eager load `['user']`. Explicit `select(['id', 'user_id', 'action', 'changes', 'created_at', 'subject_type', 'subject_id', 'subject_reference'])`. Already had `paginated([10, 25, 50])` (default 10).
 
 ---
 
@@ -79,20 +78,21 @@ After deployment or local testing:
 - [ ] **Pagination:** Tables default to 10 rows per page where we set it; changing to 25/50/etc. still works.
 - [ ] **Assignments “Assign to employee”:** Modal opens; searching users returns results; selecting and submitting assigns correctly.
 - [ ] **Task create/edit:** User dropdown is searchable and loads options on search; form still validates and saves.
+- [ ] **Appointments “New Appointment”:** Provider branch dropdown loads options on search (same filtered list as before); create works.
 
 ---
 
-## 4. Optional Index Migrations
+## 4. Optional Index Improvements (not required for functionality)
 
-Only add if you observe slow queries (e.g. in PERF_LOG or DB slow query log) and have verified the table sizes justify them.
+These indexes are **not required** for the optimizations above to work. Add only if you still see slow queries (e.g. PERF_LOG or DB slow-query log) and table sizes justify them.
 
-- **files:** `patient_id`, `service_type_id`, `provider_branch_id`, `status` are often used in filters/joins. If list or view queries are still slow, consider composite indexes such as `(patient_id)`, `(status)`, or `(provider_branch_id, service_date)` depending on actual query patterns.
-- **appointments:** `(file_id, service_date)` or `(provider_branch_id, file_id)` if appointment listing per file or per branch is slow.
-- **bills / invoices / gops:** `(file_id)` if not already indexed (usually is as FK). Add only if EXPLAIN shows full table scans.
+- **files:** `(patient_id)`, `(status)`, or `(provider_branch_id, service_date)` for list/view filters and joins.
+- **appointments:** `(file_id, service_date)` or `(provider_branch_id, file_id)` for listing per file or per branch.
+- **bills / invoices / gops:** `(file_id)` if not already present as FK and EXPLAIN shows full table scans.
 - **activity_logs:** `(subject_type, subject_id)` for the morph relation used by the Activity log RelationManager.
 - **file_assignments:** `(file_id, unassigned_at)` if filtering active assignments is slow.
 
-Run migrations only after measuring; avoid adding indexes that are redundant with existing ones.
+Run migrations only after measuring; avoid adding indexes that duplicate existing ones.
 
 ---
 

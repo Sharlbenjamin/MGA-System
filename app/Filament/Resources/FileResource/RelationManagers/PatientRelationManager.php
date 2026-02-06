@@ -15,9 +15,13 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (client) for client.company_name column.
+ * Single-row relation (BelongsTo); no pagination. Forms unchanged.
+ */
 class PatientRelationManager extends RelationManager
 {
-    protected static string $relationship = 'patient'; // Make sure this matches your File model relationship name
+    protected static string $relationship = 'patient';
     protected static ?string $title = 'Patient';
 
     // Enable create, edit and delete operations

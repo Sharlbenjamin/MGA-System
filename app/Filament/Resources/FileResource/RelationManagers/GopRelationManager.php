@@ -20,9 +20,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (file.patient.client) for client column and generate/upload actions, pagination 10.
+ * No explicit select: actions perform save(); unloaded columns would be overwritten.
+ */
 class GopRelationManager extends RelationManager
 {
-    protected static string $relationship = 'gops'; // Make sure this matches your File model relationship name
+    protected static string $relationship = 'gops';
     protected static ?string $title = 'GOP';
 
     // Enable create, edit and delete operations

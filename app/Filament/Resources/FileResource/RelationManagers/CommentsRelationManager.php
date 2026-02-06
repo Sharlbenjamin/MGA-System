@@ -13,9 +13,12 @@ use Filament\Forms\Components\Hidden;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (user), explicit select (id, file_id, user_id, content, created_at), pagination 10.
+ */
 class CommentsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'comments'; // This should match the method name in the File model
+    protected static string $relationship = 'comments';
 
     public function form(\Filament\Forms\Form $form): \Filament\Forms\Form
     {
@@ -29,7 +32,7 @@ class CommentsRelationManager extends RelationManager
     public function table(\Filament\Tables\Table $table): \Filament\Tables\Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user'])->select(['id', 'file_id', 'user_id', 'content', 'created_at']))
             ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('user.name')->label('User'),

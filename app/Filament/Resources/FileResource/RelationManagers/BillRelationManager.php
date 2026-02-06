@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Log;
 use App\Services\UploadBillToGoogleDrive;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (file.patient.client) for client column and upload action, pagination 10.
+ * No explicit select: actions perform save() and must not overwrite unloaded columns.
+ */
 class BillRelationManager extends RelationManager
 {
     protected static string $relationship = 'bills';

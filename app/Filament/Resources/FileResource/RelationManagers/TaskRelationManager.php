@@ -17,6 +17,7 @@ use Filament\Tables\Columns\ToggleColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
+/** Optimized: eager loading (user, doneBy), explicit select, user Select searchable+preload(false), pagination 10. */
 class TaskRelationManager extends RelationManager
 {
     protected static string $relationship = 'tasks';
@@ -59,6 +60,7 @@ class TaskRelationManager extends RelationManager
         return $table
             ->query(
                 Task::with(['user', 'doneBy'])
+                    ->select(['id', 'file_id', 'user_id', 'title', 'description', 'due_date', 'is_done', 'done_by', 'department'])
                     ->where('department', 'Operation')
                     ->where('file_id', $this->ownerRecord->id)
             )

@@ -17,8 +17,14 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Columns\TextColumn;
 use App\Services\DistanceCalculationService;
+use App\Models\ProviderBranch;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (providerBranch, file), explicit select, pagination 10.
+ * Create modal provider branch select uses searchable + preload(false) with getSearchResultsUsing
+ * (same filtered branches as fileBranches()) to avoid loading all branches on mount.
+ */
 class AppointmentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'Appointments';
@@ -27,7 +33,7 @@ class AppointmentsRelationManager extends RelationManager
     {
         return $form->schema([
             Hidden::make('file_id')->default(fn() => $this->ownerRecord->getKey()),
-            Select::make('provider_branch_id')->relationship('providerBranch', 'name')->searchable()->required(),
+            Select::make('provider_branch_id')->relationship('providerBranch', 'branch_name')->searchable()->preload(false)->required(),
 
             DatePicker::make('service_date')->required(),
             TimePicker::make('service_time')->nullable(),
@@ -47,7 +53,11 @@ class AppointmentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['providerBranch', 'file']))
+            ->modifyQueryUsing(function (Builder $query) {
+                $query->with(['providerBranch', 'file'])
+                    ->select(['id', 'file_id', 'provider_branch_id', 'service_date', 'service_time', 'status']);
+                return $query;
+            })
             ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('providerBranch.branch_name')->label('Provider Branch'),
@@ -74,9 +84,28 @@ class AppointmentsRelationManager extends RelationManager
                         Hidden::make('file_id')
                             ->default(fn() => $this->ownerRecord->getKey()),
 
-                        Select::make('provider_branch_id')->label('Provider Branch')->searchable()->preload()->required()
-                        ->options(fn ($get) => \App\Models\File::find($get('file_id'))?->fileBranches()
-                        ->pluck('branch_name', 'id') ?? []),
+                        Select::make('provider_branch_id')
+                            ->label('Provider Branch')
+                            ->searchable()
+                            ->preload(false)
+                            ->getSearchResultsUsing(function (string $search) {
+                                $file = $this->ownerRecord;
+                                $q = ProviderBranch::query()
+                                    ->where('status', 'Active')
+                                    ->orderBy('priority', 'asc');
+                                if ($file->service_type_id) {
+                                    $q->whereHas('services', fn ($sq) => $sq->where('service_type_id', $file->service_type_id));
+                                }
+                                if ($file->city_id) {
+                                    $q->where('city_id', $file->city_id)->where('province_id', $file->city?->province_id);
+                                }
+                                if ($search !== '') {
+                                    $q->where('branch_name', 'like', '%' . $search . '%');
+                                }
+                                return $q->limit(50)->pluck('branch_name', 'id');
+                            })
+                            ->getOptionLabelUsing(fn ($value) => ProviderBranch::find($value)?->branch_name ?? '')
+                            ->required(),
 
                         DatePicker::make('service_date')->required(),
                         TimePicker::make('service_time')->nullable(),

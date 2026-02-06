@@ -8,6 +8,10 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Optimized: eager loading (user), explicit select (id, user_id, action, changes, created_at, subject_*), pagination 10/25/50.
+ * Read-only view; no per-row counts.
+ */
 class ActivityLogRelationManager extends RelationManager
 {
     protected static string $relationship = 'activityLogs';
@@ -19,7 +23,7 @@ class ActivityLogRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user'])->select(['id', 'user_id', 'action', 'changes', 'created_at', 'subject_type', 'subject_id', 'subject_reference']))
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Date & time')
