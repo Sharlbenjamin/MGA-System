@@ -112,6 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/providers/{id}/provider-leads', [$provider, 'providerLeads'])->whereNumber('id');
     Route::get('/providers/{id}/branches', [$provider, 'branches'])->whereNumber('id');
     Route::get('/providers/{id}/branch-services', [$provider, 'branchServices'])->whereNumber('id');
+    Route::get('/providers/{id}/service-costs', [$provider, 'branchServices'])->whereNumber('id'); // same data as branch-services
     Route::get('/providers/{id}/bills', [$provider, 'bills'])->whereNumber('id');
     Route::get('/providers/{id}/files', [$provider, 'files'])->whereNumber('id');
     Route::get('/providers/{id}/bank-accounts', [$provider, 'bankAccounts'])->whereNumber('id');
