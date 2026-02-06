@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ActivityLogRelationManager extends RelationManager
 {
@@ -18,6 +19,7 @@ class ActivityLogRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user']))
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Date & time')

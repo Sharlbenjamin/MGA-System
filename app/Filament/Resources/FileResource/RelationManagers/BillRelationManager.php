@@ -22,6 +22,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Services\UploadBillToGoogleDrive;
+use Illuminate\Database\Eloquent\Builder;
 
 class BillRelationManager extends RelationManager
 {
@@ -32,6 +33,8 @@ class BillRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client']))
+            ->defaultPaginationPageOption(10)
             ->columns([
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('file.patient.client.company_name')

@@ -18,6 +18,7 @@ use Filament\Notifications\Notification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Builder;
 
 class GopRelationManager extends RelationManager
 {
@@ -32,6 +33,8 @@ class GopRelationManager extends RelationManager
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client']))
+            ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('type'),
                 TextColumn::make('file.patient.client.company_name')

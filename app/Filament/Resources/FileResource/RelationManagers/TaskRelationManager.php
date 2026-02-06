@@ -14,6 +14,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ToggleColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class TaskRelationManager extends RelationManager
@@ -31,6 +32,8 @@ class TaskRelationManager extends RelationManager
             ->schema([
                 Select::make('user_id')
                     ->relationship('user', 'name')
+                    ->searchable()
+                    ->preload(false)
                     ->required(),
 
                 TextInput::make('title')
@@ -53,10 +56,13 @@ class TaskRelationManager extends RelationManager
 
     public function table(Tables\Table $table): Tables\Table
     {
-        return $table->query(
-            Task::where('department', 'Operation')
-                ->where('file_id', $this->ownerRecord->id)
-        )
+        return $table
+            ->query(
+                Task::with(['user', 'doneBy'])
+                    ->where('department', 'Operation')
+                    ->where('file_id', $this->ownerRecord->id)
+            )
+            ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('title')->sortable()->searchable(),
                 TextColumn::make('description')->sortable()->searchable(),

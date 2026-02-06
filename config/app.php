@@ -124,4 +124,13 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Performance logging (File view)
+    |--------------------------------------------------------------------------
+    | When PERF_LOG=true, log request duration and query count for the File
+    | show/view route, and log any query that takes > 200ms.
+    */
+    'perf_log' => env('PERF_LOG', false),
+
 ];

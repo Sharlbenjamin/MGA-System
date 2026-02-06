@@ -8,6 +8,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 use App\Models\Country;
+use Illuminate\Database\Eloquent\Builder;
 
 class BankAccountRelationManager extends RelationManager
 {
@@ -23,7 +24,7 @@ class BankAccountRelationManager extends RelationManager
             ->schema([
                 Forms\Components\Hidden::make('type')->default('File'),
                 Forms\Components\TextInput::make('beneficiary_name')->maxLength(255)->required(),
-                Forms\Components\Select::make('country_id')->relationship('country', 'name')->searchable()->live()->afterStateUpdated(fn ($state, callable $set) => $set('iban', '')),
+                Forms\Components\Select::make('country_id')->relationship('country', 'name')->searchable()->preload(false)->live()->afterStateUpdated(fn ($state, callable $set) => $set('iban', '')),
                 Forms\Components\TextInput::make('iban')->placeholder(fn (Forms\Get $get): string => Country::find($get('country_id'))?->iso ?? '')->maxLength(255)->required(),
                 Forms\Components\TextInput::make('swift')->label('SWIFT')->maxLength(255),
                 Forms\Components\TextInput::make('bank_name')->maxLength(255),
@@ -35,6 +36,8 @@ class BankAccountRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['country']))
+            ->defaultPaginationPageOption(10)
             ->columns([
                 Tables\Columns\TextColumn::make('beneficiary_name')->searchable(),
                 Tables\Columns\TextColumn::make('iban')->label('IBAN')->searchable(),

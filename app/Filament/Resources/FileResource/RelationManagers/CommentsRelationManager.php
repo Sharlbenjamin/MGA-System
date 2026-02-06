@@ -11,6 +11,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\EditAction;
 use Filament\Forms\Components\Hidden;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class CommentsRelationManager extends RelationManager
 {
@@ -28,6 +29,8 @@ class CommentsRelationManager extends RelationManager
     public function table(\Filament\Tables\Table $table): \Filament\Tables\Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user']))
+            ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('user.name')->label('User'),
                 TextColumn::make('content')

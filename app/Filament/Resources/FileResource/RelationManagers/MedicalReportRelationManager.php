@@ -19,6 +19,7 @@ use Filament\Tables\Actions;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Builder;
 
 class MedicalReportRelationManager extends RelationManager
 {
@@ -32,6 +33,8 @@ class MedicalReportRelationManager extends RelationManager
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client', 'file.providerBranch.provider']))
+            ->defaultPaginationPageOption(10)
             ->columns([
                 Tables\Columns\TextColumn::make('file.patient.client.company_name')
                     ->label('Client')

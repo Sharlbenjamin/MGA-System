@@ -13,6 +13,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 
 class PatientRelationManager extends RelationManager
 {
@@ -27,6 +28,7 @@ class PatientRelationManager extends RelationManager
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['client']))
             ->columns([
                 TextColumn::make('name'),
                 TextColumn::make('client.company_name'),

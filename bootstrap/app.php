@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
             return route('filament.admin.auth.login');
         });
+        $middleware->append(\App\Http\Middleware\FileViewPerfLoggingMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Ensure ALL /api/* responses are JSON (no HTML error pages for mobile clients)

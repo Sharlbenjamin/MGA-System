@@ -17,6 +17,7 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Columns\TextColumn;
 use App\Services\DistanceCalculationService;
+use Illuminate\Database\Eloquent\Builder;
 
 class AppointmentsRelationManager extends RelationManager
 {
@@ -46,6 +47,8 @@ class AppointmentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['providerBranch', 'file']))
+            ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('providerBranch.branch_name')->label('Provider Branch'),
                 TextColumn::make('service_date')->label('Service Date')->date(),

@@ -10,6 +10,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class AssignmentsRelationManager extends RelationManager
@@ -28,6 +29,8 @@ class AssignmentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['user', 'assignedBy']))
+            ->defaultPaginationPageOption(10)
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')->label('Assigned to')->sortable(),
                 Tables\Columns\TextColumn::make('assignedBy.name')->label('Assigned by')->sortable(),
@@ -43,8 +46,10 @@ class AssignmentsRelationManager extends RelationManager
                     ->form([
                         Forms\Components\Select::make('user_id')
                             ->label('Employee / User')
-                            ->options(User::query()->orderBy('name')->pluck('name', 'id'))
                             ->searchable()
+                            ->preload(false)
+                            ->getSearchResultsUsing(fn (string $search) => User::query()->where('name', 'like', '%' . $search . '%')->orderBy('name')->limit(50)->pluck('name', 'id'))
+                            ->getOptionLabelUsing(fn ($value) => User::find($value)?->name ?? '')
                             ->required(),
                     ])
                     ->action(function (array $data): void {

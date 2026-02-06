@@ -14,6 +14,7 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Prescription;
+use Illuminate\Database\Eloquent\Builder;
 
 class PrescriptionRelationManager extends RelationManager
 {
@@ -28,6 +29,8 @@ class PrescriptionRelationManager extends RelationManager
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient']))
+            ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('name'),
                 TextColumn::make('serial'),
