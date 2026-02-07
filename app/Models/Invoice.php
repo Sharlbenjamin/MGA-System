@@ -10,9 +10,11 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToOneThrough;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Traits\LogsActivity;
 
 class Invoice extends Model
 {
+    use LogsActivity;
     protected $fillable = [
         'name',
         'file_id',
@@ -104,7 +106,11 @@ class Invoice extends Model
 
     // relations      relations      relations       relations        relations        relations
 
-
+    public function getActivityReference(): ?string
+    {
+        $ref = $this->file?->mga_reference ?? $this->patient?->name ?? 'Invoice #' . $this->id;
+        return "{$this->name} ({$ref})";
+    }
 
     public function patient(): BelongsTo
     {

@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use App\Traits\LogsActivity;
 
 class Bill extends Model
 {
+    use LogsActivity;
     protected $fillable = [
         'name',
         'file_id',
@@ -45,6 +47,12 @@ class Bill extends Model
     }
 
     // relations      relations      relations       relations        relations        relations
+
+    public function getActivityReference(): ?string
+    {
+        $ref = $this->file?->mga_reference ?? 'File #' . $this->file_id;
+        return "{$this->name} ({$ref})";
+    }
 
     public function file()
     {

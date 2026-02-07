@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -13,7 +14,7 @@ use App\Traits\LogsActivity;
 class Provider extends Model
 {
     use HasFactory, HasRelationships, LogsActivity;
-    protected $fillable = ['country_id','status','type','name','payment_due','payment_method','comment','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','signed_contract_draft',];
+    protected $fillable = ['country_id','status','type','name','payment_due','payment_method','comment','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','signed_contract_draft','assigned_user_id',];
 
     protected $casts = [
         'id' => 'integer',
@@ -35,6 +36,12 @@ class Provider extends Model
     public function country()
     {
         return $this->belongsTo(Country::class, 'country_id');
+    }
+
+    /** Employee assigned to this provider (used for Potential status; no task is created). */
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
     public function branches()

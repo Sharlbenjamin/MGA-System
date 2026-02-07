@@ -11,6 +11,7 @@ use App\Filament\Resources\ProviderResource\RelationManagers\ProviderLeadRelatio
 use App\Models\Provider;
 use App\Models\Country;
 use App\Models\City;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -22,6 +23,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Resources\Resource;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\Checkbox;
 use App\Models\Contact;
 use Illuminate\Database\Eloquent\Builder;
 class ProviderResource extends Resource
@@ -43,7 +46,14 @@ class ProviderResource extends Resource
                 'Hold' => 'Hold',
                 'Potential' => 'Potential',
                 'Black List' => 'Black List',
-            ])->required(),
+            ])->required()->live(),
+            Select::make('assigned_user_id')
+                ->label('Assigned to (employee)')
+                ->helperText('For Potential providers only. No task is created.')
+                ->options(User::query()->orderBy('name')->pluck('name', 'id'))
+                ->searchable()
+                ->nullable()
+                ->visible(fn (Forms\Get $get): bool => $get('status') === 'Potential'),
             Select::make('type')->label('Provider Type')->options([
                 'Doctor' => 'Doctor',
                 'Hospital' => 'Hospital',
@@ -95,7 +105,8 @@ public static function table(Tables\Table $table): Tables\Table
                     'red' => 'Black List',
                 ])
                 ->sortable(),
-                TextColumn::make('filesCount')->label('Files')->sortable()->counts('files'),
+            TextColumn::make('assignedUser.name')->label('Assigned to')->sortable()->placeholder('—'),
+            TextColumn::make('filesCount')->label('Files')->sortable()->counts('files'),
                 TextColumn::make('filesCancelledCount')->label('Canceled')->sortable(),
                 TextColumn::make('filesAssistedCount')->label('Assisted')->sortable(),
                 TextColumn::make('billsTotalNumber')->label('Bills')->sortable(),
@@ -115,7 +126,18 @@ public static function table(Tables\Table $table): Tables\Table
                         'Potential' => 'Potential',
                         'Black List' => 'Black List',
                     ])->label('Filter by Status')->attribute('status'),
-            //country filter
+            Filter::make('my_providers')
+                ->label('My providers')
+                ->form([
+                    Checkbox::make('value')->label('Only providers assigned to me'),
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    if (! empty($data['value'])) {
+                        return $query->where('assigned_user_id', auth()->id());
+                    }
+                    return $query;
+                })
+                ->indicateUsing(fn (array $data): array => ! empty($data['value']) ? ['My providers' => 'Yes'] : []),
             SelectFilter::make('country_id')->multiple()
                     ->options(Country::pluck('name', 'id'))->label('Filter by Country')->attribute('country_id'),
         ])

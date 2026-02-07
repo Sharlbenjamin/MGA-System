@@ -16,10 +16,11 @@ use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\Schema;
+use App\Traits\LogsActivity;
 
 class ProviderBranch extends Model
 {
-    use HasFactory, HasContacts, NotifiableEntity;
+    use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
     protected $fillable = [
         'provider_id', 'branch_name', 'email', 'phone', 'address', 'website', 'city_id', 'province_id', 'status',
@@ -35,6 +36,12 @@ class ProviderBranch extends Model
         'provider_id' => 'integer',
         'cities' => 'array',
     ];
+
+    public function getActivityReference(): ?string
+    {
+        $provider = $this->provider?->name ?? 'Provider #' . $this->provider_id;
+        return "{$this->branch_name} ({$provider})";
+    }
 
     public function provider(): BelongsTo
     {

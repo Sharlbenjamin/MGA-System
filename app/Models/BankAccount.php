@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\LogsActivity;
 
 class BankAccount extends Model
 {
+    use LogsActivity;
     protected $fillable = [
         'type',
         'client_id',
@@ -25,6 +27,12 @@ class BankAccount extends Model
     ];
     protected $casts = ['balance' => 'decimal:2'];
 
+    public function getActivityReference(): ?string
+    {
+        $owner = $this->owner_name ?? 'Unknown';
+        return "Bank Account #{$this->id} ({$owner})";
+    }
+
     public function getOwnerNameAttribute(): string
     {
         if ($this->type === 'Internal') {
@@ -39,7 +47,7 @@ class BankAccount extends Model
         ];
 
         $relation = $relations[$this->type] ?? null;
-        return $relation ? ($this->$relation?->name ?? '') : '';
+        return $relation ? ($this->$relation?->name ?? $this->$relation?->company_name ?? $this->$relation?->mga_reference ?? '') : '';
     }
 
     // Relations   Relations    Relations    Relations    Relations    Relations   Relations  Relations

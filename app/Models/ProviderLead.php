@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Mail;
+use App\Traits\LogsActivity;
 
 class ProviderLead extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -43,6 +44,12 @@ class ProviderLead extends Model
         'provider_id' => 'integer',
         'last_contact_date' => 'date',
     ];
+
+    public function getActivityReference(): ?string
+    {
+        $provider = $this->provider?->name ?? 'Provider #' . $this->provider_id;
+        return "Lead: " . ($this->name ?? $this->email ?? "#{$this->id}") . " ({$provider})";
+    }
 
     public function provider()
     {

@@ -7,12 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use App\Traits\LogsActivity;
 
 class Appointment extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = ['file_id', 'provider_branch_id', 'service_date', 'service_time', 'status'];
+
+    public function getActivityReference(): ?string
+    {
+        $ref = $this->file?->mga_reference ?? 'File #' . $this->file_id;
+        return "Appointment #{$this->id} ({$ref})";
+    }
 
     public function file(): BelongsTo
     {

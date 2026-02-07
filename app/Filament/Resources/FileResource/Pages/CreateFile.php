@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\FileResource\Pages;
 
 use App\Filament\Resources\FileResource;
+use App\Models\File;
+use App\Models\Task;
 use App\Services\CaseAssignmentService;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use App\Models\Patient;
 use Filament\Notifications\Notification;
+use Filament\Notifications\Actions\Action as NotificationAction;
 use Illuminate\Support\Facades\Auth;
 
 class CreateFile extends CreateRecord
@@ -115,5 +118,59 @@ class CreateFile extends CreateRecord
         if ($user && $this->record) {
             app(CaseAssignmentService::class)->assign($this->record, $user, $user);
         }
+
+        $this->createDefaultTasksForNewFile();
+    }
+
+    /**
+     * Create the 3 basic operation tasks (GOP In, Medical Report, Provider Bill)
+     * and assign them to the user who created the file.
+     */
+    private function createDefaultTasksForNewFile(): void
+    {
+        if (! $this->record instanceof File || ! Auth::id()) {
+            return;
+        }
+
+        $titles = ['GOP In', 'Medical Report', 'Provider Bill'];
+
+        foreach ($titles as $title) {
+            $task = Task::create([
+                'file_id' => $this->record->id,
+                'title' => $title,
+                'department' => 'Operation',
+                'user_id' => Auth::id(),
+                'is_done' => false,
+            ]);
+            $task->load('user');
+            $this->sendTaskAssignedDatabaseNotification($task);
+        }
+    }
+
+    /**
+     * Send a persistent database notification to the task assignee.
+     * The notification stays until the task is marked done (handled by TaskObserver).
+     */
+    private function sendTaskAssignedDatabaseNotification(Task $task): void
+    {
+        $assignee = $task->user;
+        if (! $assignee) {
+            return;
+        }
+
+        $fileRef = $this->record->mga_reference ?? 'File #' . $this->record->id;
+        $fileViewUrl = FileResource::getUrl('view', ['record' => $this->record->id]);
+
+        Notification::make()
+            ->title('Task assigned: ' . $task->title)
+            ->body("Case: {$fileRef}. " . ($task->description ?: 'No description.'))
+            ->warning()
+            ->viewData(['task_id' => $task->id])
+            ->actions([
+                NotificationAction::make('view_file')
+                    ->label('View case')
+                    ->url($fileViewUrl),
+            ])
+            ->sendToDatabase($assignee);
     }
 }

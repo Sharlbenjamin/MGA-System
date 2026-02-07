@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\LogsActivity;
 
 class MedicalReport extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -35,6 +36,12 @@ class MedicalReport extends Model
      *
      * @var array
      */
+    public function getActivityReference(): ?string
+    {
+        $ref = $this->file?->mga_reference ?? 'File #' . $this->file_id;
+        return "MR #{$this->id} ({$ref})";
+    }
+
     protected $casts = [
         'id' => 'integer',
         'date' => 'date',

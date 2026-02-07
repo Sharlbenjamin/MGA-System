@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\LogsActivity;
 
 class Prescription extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -33,6 +34,12 @@ class Prescription extends Model
         'id' => 'integer',
         'file_id' => 'integer',
     ];
+
+    public function getActivityReference(): ?string
+    {
+        $ref = $this->file?->mga_reference ?? 'File #' . $this->file_id;
+        return "Rx {$this->serial} ({$ref})";
+    }
 
     public function file(): BelongsTo
     {

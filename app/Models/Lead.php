@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Carbon;
+use App\Traits\LogsActivity;
 
 class Lead extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -40,6 +41,12 @@ class Lead extends Model
         'client_id' => 'integer',
         'last_contact_date' => 'date',
     ];
+
+    public function getActivityReference(): ?string
+    {
+        $client = $this->client?->company_name ?? 'Client #' . $this->client_id;
+        return "Lead: " . ($this->first_name ?? $this->email ?? "#{$this->id}") . " ({$client})";
+    }
 
     public function client(): BelongsTo
     {

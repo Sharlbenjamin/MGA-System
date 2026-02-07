@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\LogsActivity;
 
 class FileAssignment extends Model
 {
+    use LogsActivity;
     protected $fillable = [
         'file_id',
         'user_id',
@@ -23,6 +25,13 @@ class FileAssignment extends Model
             'unassigned_at' => 'datetime',
             'is_primary' => 'boolean',
         ];
+    }
+
+    public function getActivityReference(): ?string
+    {
+        $ref = $this->file?->mga_reference ?? 'File #' . $this->file_id;
+        $user = $this->user?->name ?? 'User #' . $this->user_id;
+        return "Assignment ({$ref}) → {$user}";
     }
 
     public function file(): BelongsTo

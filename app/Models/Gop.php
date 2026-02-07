@@ -9,13 +9,20 @@ use App\Mail\GopMailable;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use App\Traits\LogsActivity;
 
 class Gop extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = ['file_id','type','amount','status','date','gop_google_drive_link','document_path'];
     protected $casts = ['id' => 'integer','file_id' => 'integer','amount' => 'float','date' => 'date','status' => 'string',];
+
+    public function getActivityReference(): ?string
+    {
+        $ref = $this->file?->mga_reference ?? 'File #' . $this->file_id;
+        return "GOP {$this->type} #{$this->id} ({$ref})";
+    }
 
     public function file(): BelongsTo
     {
