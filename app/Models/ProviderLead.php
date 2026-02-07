@@ -25,6 +25,7 @@ class ProviderLead extends Model
         'service_types',
         'type',
         'provider_id',
+        'assigned_user_id',
         'name',
         'email',
         'phone',
@@ -42,6 +43,7 @@ class ProviderLead extends Model
     protected $casts = [
         'id' => 'integer',
         'provider_id' => 'integer',
+        'assigned_user_id' => 'integer',
         'last_contact_date' => 'date',
     ];
 
@@ -59,6 +61,11 @@ class ProviderLead extends Model
     public function city()
     {
         return $this->belongsTo(City::class, 'city_id');
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
     public function serviceTypes()

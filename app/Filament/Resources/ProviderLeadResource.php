@@ -291,6 +291,12 @@ class ProviderLeadResource extends Resource
                             ])
                             ->required(),
 
+                        Select::make('assigned_user_id')
+                            ->label('Assigned User')
+                            ->relationship('assignedUser', 'name')
+                            ->searchable()
+                            ->preload(),
+
                         DatePicker::make('last_contact_date')
                             ->label('Last Contact Date'),
 
@@ -306,14 +312,20 @@ class ProviderLeadResource extends Resource
         $ActionStatuses = ['Pending information', 'Step one', 'Reminder', 'Discount', 'Step two', 'Presentation', 'Contract', 'Fake Case', 'Cancel Case'];
         return $table
         ->query(
-            ProviderLead::query()->whereHas('provider', function ($query) {
-                $query->where('status', 'Potential');
-            })
+            ProviderLead::query()
+                ->with(['provider', 'assignedUser'])
+                ->whereHas('provider', function ($query) {
+                    $query->where('status', 'Potential');
+                })
         )
             ->columns([
                 TextColumn::make('name')->label('Lead Name')->sortable()->searchable(),
                 TextColumn::make('email')->label('Lead Email')->sortable()->searchable(),
-                TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
+                TextColumn::make('provider.name')
+                    ->label('Provider')
+                    ->sortable()
+                    ->searchable()
+                    ->description(fn (ProviderLead $record) => $record->assignedUser?->name),
                 TextColumn::make('city.name')->label('City')->sortable()->searchable(),
                 TextColumn::make('service_types')
                     ->label('Service Types')
