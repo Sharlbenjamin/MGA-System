@@ -159,12 +159,25 @@
                                 @php
                                     $typeClass = $selectedCaseThread->category === 'client' ? 'client' : ($selectedCaseThread->category === 'provider' ? 'provider' : 'neutral');
                                     if ($message->direction === 'outgoing') { $typeClass = 'neutral'; }
+                                    $fromEmail = strtolower((string) ($message->from_email ?? ''));
+                                    $senderLabel = 'Contact';
+                                    if (
+                                        $message->direction === 'outgoing' ||
+                                        str_contains($fromEmail, 'mga.operation@medguarda.com') ||
+                                        str_contains($fromEmail, 'medguarda.com')
+                                    ) {
+                                        $senderLabel = 'MGA';
+                                    } elseif ($selectedCaseThread->category === 'provider') {
+                                        $senderLabel = 'Provider';
+                                    } elseif ($selectedCaseThread->category === 'client') {
+                                        $senderLabel = 'Client';
+                                    }
+                                    $senderBadgeClass = $senderLabel === 'Provider' ? 'provider' : ($senderLabel === 'Client' ? 'client' : 'neutral');
                                 @endphp
                                 <article class="msg {{ $typeClass }} {{ $message->is_unread ? 'unread' : '' }}">
                                     <div class="meta">
                                         <span>{{ optional($message->sent_at)->format('d M Y H:i') ?? '—' }}</span>
-                                        <span class="badge {{ $typeClass }}">{{ strtoupper($message->direction) }}</span>
-                                        <span>{{ $message->from_email }}</span>
+                                        <span class="badge {{ $senderBadgeClass }}">FROM {{ strtoupper($senderLabel) }}</span>
                                     </div>
                                     <div class="msg-body">{{ $message->display_body ?: '(No body)' }}</div>
                                     @if($message->attachments->isNotEmpty())
@@ -261,12 +274,25 @@
                                 @php
                                     $typeClass = $selectedOpsThread->category === 'client' ? 'client' : ($selectedOpsThread->category === 'provider' ? 'provider' : 'neutral');
                                     if ($message->direction === 'outgoing') { $typeClass = 'neutral'; }
+                                    $fromEmail = strtolower((string) ($message->from_email ?? ''));
+                                    $senderLabel = 'Contact';
+                                    if (
+                                        $message->direction === 'outgoing' ||
+                                        str_contains($fromEmail, 'mga.operation@medguarda.com') ||
+                                        str_contains($fromEmail, 'medguarda.com')
+                                    ) {
+                                        $senderLabel = 'MGA';
+                                    } elseif ($selectedOpsThread->category === 'provider') {
+                                        $senderLabel = 'Provider';
+                                    } elseif ($selectedOpsThread->category === 'client') {
+                                        $senderLabel = 'Client';
+                                    }
+                                    $senderBadgeClass = $senderLabel === 'Provider' ? 'provider' : ($senderLabel === 'Client' ? 'client' : 'neutral');
                                 @endphp
                                 <article class="msg {{ $typeClass }} {{ $message->is_unread ? 'unread' : '' }}">
                                     <div class="meta">
                                         <span>{{ optional($message->sent_at)->format('d M Y H:i') ?? '—' }}</span>
-                                        <span class="badge {{ $typeClass }}">{{ strtoupper($message->direction) }}</span>
-                                        <span>{{ $message->from_email }}</span>
+                                        <span class="badge {{ $senderBadgeClass }}">FROM {{ strtoupper($senderLabel) }}</span>
                                     </div>
                                     <div class="msg-body">{{ $message->display_body ?: '(No body)' }}</div>
                                     @if($message->attachments->isNotEmpty())
