@@ -1,128 +1,9 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                MGA System · Communications
-            </h2>
-            <a href="{{ route('filament.admin.resources.files.view', ['record' => $file]) }}"
-               class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-                ← Back to File
-            </a>
-        </div>
-    </x-slot>
-
-    <div class="py-6">
-        <div class="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-8">
-            <main class="wire-frame">
-                <section class="dashboard" aria-label="MGA System Wireframe">
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h1 class="panel-title">Operations Inbox</h1>
-                        </div>
-
-                        <div class="tabs">
-                            <div class="tab active">General</div>
-                            <div class="tab">Open Cases</div>
-                            <div class="tab">Unlinked</div>
-                            <div class="tab">Providers</div>
-                        </div>
-
-                        <div class="left-body">
-                            <section class="subcard">
-                                <div class="subcard-title">Threads</div>
-                                <ul class="thread-list">
-                                    <li class="thread-item active">[Case {{ $file->id }}] HERO -> New Case</li>
-                                    <li class="thread-item">[Case {{ $file->id }}] You -> Re: Info</li>
-                                    <li class="thread-item">[Unlinked] Provider X -> Prices</li>
-                                    <li class="thread-item">[General] Inquiry -> Partnership</li>
-                                </ul>
-                            </section>
-
-                            <section class="subcard">
-                                <div class="subcard-title">Thread Viewer</div>
-                                <div class="viewer">
-                                    <div class="subject">Subject: Case #{{ $file->id }} - Additional Info Required</div>
-                                    <div class="timeline">
-                                        <div class="msg meta"><strong>09:08</strong> HERO: We have opened a new case and attached initial details.</div>
-                                        <div class="msg"><strong>09:15</strong> MGA Ops: Received. We are reviewing provider options now.</div>
-                                        <div class="msg"><strong>09:24</strong> HERO: Please confirm if all required fields are complete.</div>
-                                    </div>
-                                    <div class="actions">
-                                        <button class="btn">Reply</button>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
-                    </article>
-
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h2 class="panel-title">
-                                File: Case #{{ $file->id }} - Communications
-                                @if($file->mga_reference)
-                                    <span class="case-ref">({{ $file->mga_reference }})</span>
-                                @endif
-                            </h2>
-                        </div>
-
-                        <div class="right-body">
-                            <div class="right-tabs">
-                                <div class="right-tab active">Client Thread</div>
-                                <div class="right-tab">Provider Threads</div>
-                            </div>
-
-                            <section class="thread-area">
-                                <div class="subcard-title subcard-inline-title">Client Thread</div>
-                                <div class="timeline">
-                                    <div class="msg"><strong>09:02</strong> Client: Please arrange consultation for Case #{{ $file->id }}.</div>
-                                    <div class="msg meta"><strong>09:11</strong> MGA Team: Noted. We are contacting providers.</div>
-                                    <div class="msg"><strong>09:19</strong> Client: Thank you, please keep us updated.</div>
-                                </div>
-                                <div class="actions">
-                                    <button class="btn">Reply</button>
-                                </div>
-                            </section>
-
-                            <section class="thread-area">
-                                <div class="subcard-title subcard-inline-title">Provider Threads</div>
-                                <div class="provider-switcher">
-                                    <div class="provider-btn active">Clinic A</div>
-                                    <div class="provider-btn">Dr. Smith</div>
-                                    <div class="provider-btn">Hospital X</div>
-                                </div>
-                                <div class="timeline timeline-compact">
-                                    <div class="msg"><strong>10:02</strong> Clinic A: Earliest available slot is Thursday at 14:30.</div>
-                                    <div class="msg meta"><strong>10:10</strong> MGA Team: Please share consultation price and required documents.</div>
-                                </div>
-                            </section>
-
-                            <section class="bottom-linking">
-                                <div class="bottom-header">Linking &amp; Suggestions</div>
-                                <div class="bottom-grid">
-                                    <div class="suggest-card">
-                                        <div class="suggest-text">Suggested Thread: Matches Case ID</div>
-                                        <div class="stack">
-                                            <button class="btn">Confirm</button>
-                                            <button class="btn">Adjust</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="suggest-card">
-                                        <div class="suggest-text">Missing Fields:</div>
-                                        <ul class="fields">
-                                            <li class="field-row"><span>DOB: 01/10/1992</span><button class="apply">Apply</button></li>
-                                            <li class="field-row"><span>Address: 123 Main St</span><button class="apply">Apply</button></li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </section>
-                        </div>
-                    </article>
-                </section>
-            </main>
-        </div>
-    </div>
-
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MGA System - Communications Wireframe</title>
     <style>
         :root {
             --wf-bg: #f4f4f5;
@@ -138,9 +19,50 @@
             --wf-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--wf-bg);
+            color: var(--wf-text);
+            min-width: 1360px;
+        }
+
+        .topbar {
+            background: #fff;
+            border-bottom: 1px solid var(--wf-line);
+            padding: 14px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .topbar-title {
+            font-size: 19px;
+            font-weight: 700;
+        }
+
+        .topbar a {
+            border: 1px solid var(--wf-line-dark);
+            background: #fff;
+            color: #111;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-weight: 600;
+            font-size: 12px;
+            text-decoration: none;
+        }
+
+        .page {
+            padding: 24px;
+        }
+
         .wire-frame {
             width: 100%;
-            min-width: 1200px;
         }
 
         .dashboard {
@@ -152,7 +74,7 @@
             display: grid;
             grid-template-columns: 1.05fr 1fr;
             gap: 18px;
-            min-height: calc(100vh - 220px);
+            min-height: calc(100vh - 140px);
         }
 
         .panel {
@@ -178,13 +100,6 @@
             font-weight: 700;
             letter-spacing: 0.2px;
             color: var(--wf-text);
-        }
-
-        .case-ref {
-            font-size: 13px;
-            color: var(--wf-muted);
-            font-weight: 600;
-            margin-left: 6px;
         }
 
         .tabs {
@@ -473,4 +388,115 @@
             color: #111;
         }
     </style>
-</x-app-layout>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-title">MGA System · Communications</div>
+        <a href="javascript:history.back()">Back</a>
+    </div>
+    <div class="page">
+        <main class="wire-frame">
+            <section class="dashboard" aria-label="MGA System Wireframe">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h1 class="panel-title">Operations Inbox</h1>
+                        </div>
+
+                        <div class="tabs">
+                            <div class="tab active">General</div>
+                            <div class="tab">Open Cases</div>
+                            <div class="tab">Unlinked</div>
+                            <div class="tab">Providers</div>
+                        </div>
+
+                        <div class="left-body">
+                            <section class="subcard">
+                                <div class="subcard-title">Threads</div>
+                                <ul class="thread-list">
+                                    <li class="thread-item active">[Case 12345] HERO -> New Case</li>
+                                    <li class="thread-item">[Case 12345] You -> Re: Info</li>
+                                    <li class="thread-item">[Unlinked] Provider X -> Prices</li>
+                                    <li class="thread-item">[General] Inquiry -> Partnership</li>
+                                </ul>
+                            </section>
+
+                            <section class="subcard">
+                                <div class="subcard-title">Thread Viewer</div>
+                                <div class="viewer">
+                                    <div class="subject">Subject: Case #12345 - Additional Info Required</div>
+                                    <div class="timeline">
+                                        <div class="msg meta"><strong>09:08</strong> HERO: We have opened a new case and attached initial details.</div>
+                                        <div class="msg"><strong>09:15</strong> MGA Ops: Received. We are reviewing provider options now.</div>
+                                        <div class="msg"><strong>09:24</strong> HERO: Please confirm if all required fields are complete.</div>
+                                    </div>
+                                    <div class="actions">
+                                        <button class="btn">Reply</button>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </article>
+
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">File: Case #12345 - Communications</h2>
+                        </div>
+
+                        <div class="right-body">
+                            <div class="right-tabs">
+                                <div class="right-tab active">Client Thread</div>
+                                <div class="right-tab">Provider Threads</div>
+                            </div>
+
+                            <section class="thread-area">
+                                <div class="subcard-title subcard-inline-title">Client Thread</div>
+                                <div class="timeline">
+                                    <div class="msg"><strong>09:02</strong> Client: Please arrange consultation for Case #12345.</div>
+                                    <div class="msg meta"><strong>09:11</strong> MGA Team: Noted. We are contacting providers.</div>
+                                    <div class="msg"><strong>09:19</strong> Client: Thank you, please keep us updated.</div>
+                                </div>
+                                <div class="actions">
+                                    <button class="btn">Reply</button>
+                                </div>
+                            </section>
+
+                            <section class="thread-area">
+                                <div class="subcard-title subcard-inline-title">Provider Threads</div>
+                                <div class="provider-switcher">
+                                    <div class="provider-btn active">Clinic A</div>
+                                    <div class="provider-btn">Dr. Smith</div>
+                                    <div class="provider-btn">Hospital X</div>
+                                </div>
+                                <div class="timeline timeline-compact">
+                                    <div class="msg"><strong>10:02</strong> Clinic A: Earliest available slot is Thursday at 14:30.</div>
+                                    <div class="msg meta"><strong>10:10</strong> MGA Team: Please share consultation price and required documents.</div>
+                                </div>
+                            </section>
+
+                            <section class="bottom-linking">
+                                <div class="bottom-header">Linking &amp; Suggestions</div>
+                                <div class="bottom-grid">
+                                    <div class="suggest-card">
+                                        <div class="suggest-text">Suggested Thread: Matches Case ID</div>
+                                        <div class="stack">
+                                            <button class="btn">Confirm</button>
+                                            <button class="btn">Adjust</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="suggest-card">
+                                        <div class="suggest-text">Missing Fields:</div>
+                                        <ul class="fields">
+                                            <li class="field-row"><span>DOB: 01/10/1992</span><button class="apply">Apply</button></li>
+                                            <li class="field-row"><span>Address: 123 Main St</span><button class="apply">Apply</button></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </article>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
