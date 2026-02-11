@@ -60,6 +60,7 @@ class ClientResource extends Resource
             Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
                 TextInput::make('phone')->label('Phone')->tel()->nullable(),
                 TextInput::make('email')->label('Email')->email()->nullable(),
+                TextInput::make('operation_email')->label('Operation Email')->email()->nullable(),
                 FileUpload::make('signed_contract_draft')
                     ->label('Signed Contract Draft (PDF)')
                     ->acceptedFileTypes(['application/pdf'])
@@ -81,6 +82,7 @@ class ClientResource extends Resource
         return $table->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('company_name')->sortable()->searchable(),
+                TextColumn::make('operation_email')->label('Operation Email')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                 ->badge()->color(fn (string $state): string => match ($state) {
                         'Searching' => 'danger',
@@ -158,6 +160,7 @@ class ClientResource extends Resource
             'Files' => $record->filesCount ?? $record->files()->count(),
             'Phone' => $record->phone ?? 'Unknown',
             'Email' => $record->email ?? 'Unknown',
+            'Operation Email' => $record->operation_email ?? 'Unknown',
         ];
     }
 

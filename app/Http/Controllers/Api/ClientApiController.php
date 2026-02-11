@@ -19,7 +19,8 @@ class ClientApiController extends Controller
         if ($request->filled('search')) {
             $term = $request->input('search');
             $query->where('company_name', 'like', "%{$term}%")
-                ->orWhere('email', 'like', "%{$term}%");
+                ->orWhere('email', 'like', "%{$term}%")
+                ->orWhere('operation_email', 'like', "%{$term}%");
         }
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));

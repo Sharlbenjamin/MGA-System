@@ -29,6 +29,7 @@ class ClientOverview extends ViewRecord implements HasTable
         return $infolist
             ->schema([
                 TextEntry::make('company_name')->label('Company Name')->weight('bold')->color('success'),
+                TextEntry::make('operation_email')->label('Operation Email'),
                 // Operation Data
                 TextEntry::make('filesCount')->label('Total Files')->color('info'),
                 TextEntry::make('filesCancelledCount')->label('Total Cancelled Files')->color('info'),
