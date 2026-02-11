@@ -126,7 +126,7 @@
                                         <span class="time">{{ optional($thread->last_message_at)->format('d M H:i') ?? '—' }}</span>
                                     </div>
                                     <div class="subject">{{ $thread->subject ?: '(No subject)' }}</div>
-                                    <div class="preview">{{ \Illuminate\Support\Str::limit(optional($latest)->display_body ?: 'No message body', 72) }}</div>
+                                    <div class="preview">{{ \Illuminate\Support\Str::limit((string) (optional($latest)->body_text ?: 'No message body'), 72) }}</div>
                                 </a>
                             </li>
                         @empty
@@ -240,7 +240,7 @@
                                     </div>
                                     <div class="subject">{{ $thread->subject ?: '(No subject)' }}</div>
                                     <div class="preview">
-                                        {{ \Illuminate\Support\Str::limit(optional($latest)->display_body ?: 'No message body', 70) }}
+                                        {{ \Illuminate\Support\Str::limit((string) (optional($latest)->body_text ?: 'No message body'), 70) }}
                                         @if($thread->file) · {{ $thread->file->mga_reference ?: ('Case #' . $thread->file->id) }} @endif
                                     </div>
                                 </a>

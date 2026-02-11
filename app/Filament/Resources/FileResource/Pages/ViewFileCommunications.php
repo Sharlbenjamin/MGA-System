@@ -5,6 +5,7 @@ namespace App\Filament\Resources\FileResource\Pages;
 use App\Filament\Resources\FileResource;
 use App\Models\CommunicationThread;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Support\Collection;
 
 class ViewFileCommunications extends ViewRecord
 {
@@ -16,64 +17,88 @@ class ViewFileCommunications extends ViewRecord
 
     protected function getViewData(): array
     {
-        $allCaseThreads = CommunicationThread::query()
-            ->with('latestMessage')
-            ->where('linked_file_id', $this->record->id)
-            ->orderByDesc('last_message_at')
-            ->get();
-
-        $clientThreads = $allCaseThreads->where('category', 'client')->values();
-        $providerThreads = $allCaseThreads->where('category', 'provider')->values();
-
         $activeView = request()->query('view', 'case');
         if (!in_array($activeView, ['case', 'ops'], true)) {
             $activeView = 'case';
         }
 
-        $caseTab = request()->query('case_tab', 'client');
-        $casePool = $caseTab === 'provider' ? $providerThreads : $clientThreads;
-        if ($casePool->isEmpty()) {
-            $casePool = $allCaseThreads;
-        }
-
+        $allCaseThreads = collect();
+        $clientThreads = collect();
+        $providerThreads = collect();
         $selectedCaseThread = null;
-        if ($casePool->isNotEmpty()) {
-            $selectedCaseThread = $casePool->firstWhere('id', (int) request()->query('thread_id')) ?? $casePool->first();
-            $selectedCaseThread?->load([
-                'messages' => fn ($q) => $q
-                    ->with('attachments')
-                    ->orderByDesc('sent_at')
-                    ->limit(25),
-            ]);
-            if ($selectedCaseThread) {
-                $selectedCaseThread->setRelation(
-                    'messages',
-                    $selectedCaseThread->messages->sortBy('sent_at')->values()
-                );
+
+        $caseTab = request()->query('case_tab', 'client');
+
+        if ($activeView === 'case') {
+            $allCaseThreads = CommunicationThread::query()
+                ->with('latestMessage')
+                ->where('linked_file_id', $this->record->id)
+                ->orderByDesc('last_message_at')
+                ->get();
+
+            $clientThreads = $allCaseThreads->where('category', 'client')->values();
+            $providerThreads = $allCaseThreads->where('category', 'provider')->values();
+
+            $casePool = $caseTab === 'provider' ? $providerThreads : $clientThreads;
+            if ($casePool->isEmpty()) {
+                $casePool = $allCaseThreads;
+            }
+
+            if ($casePool->isNotEmpty()) {
+                $selectedCaseThread = $casePool->firstWhere('id', (int) request()->query('thread_id')) ?? $casePool->first();
+                $selectedCaseThread?->load([
+                    'messages' => fn ($q) => $q
+                        ->with('attachments')
+                        ->orderByDesc('sent_at')
+                        ->limit(25),
+                ]);
+                if ($selectedCaseThread) {
+                    $selectedCaseThread->setRelation(
+                        'messages',
+                        $selectedCaseThread->messages->sortBy('sent_at')->values()
+                    );
+                }
             }
         }
 
-        $opsThreads = CommunicationThread::query()
-            ->with(['file:id,mga_reference,status', 'latestMessage'])
-            ->orderByDesc('last_message_at')
-            ->limit(120)
-            ->get();
-
+        $opsThreads = collect();
         $selectedOpsThread = null;
-        if ($opsThreads->isNotEmpty()) {
-            $selectedOpsThread = $opsThreads->firstWhere('id', (int) request()->query('inbox_thread_id')) ?? $opsThreads->first();
-            $selectedOpsThread?->load([
-                'messages' => fn ($q) => $q
-                    ->with('attachments')
-                    ->orderByDesc('sent_at')
-                    ->limit(25),
-            ]);
-            if ($selectedOpsThread) {
-                $selectedOpsThread->setRelation(
-                    'messages',
-                    $selectedOpsThread->messages->sortBy('sent_at')->values()
-                );
+
+        if ($activeView === 'ops') {
+            $opsThreads = CommunicationThread::query()
+                ->with(['file:id,mga_reference,status', 'latestMessage'])
+                ->orderByDesc('last_message_at')
+                ->limit(60)
+                ->get();
+
+            if ($opsThreads->isNotEmpty()) {
+                $selectedOpsThread = $opsThreads->firstWhere('id', (int) request()->query('inbox_thread_id')) ?? $opsThreads->first();
+                $selectedOpsThread?->load([
+                    'messages' => fn ($q) => $q
+                        ->with('attachments')
+                        ->orderByDesc('sent_at')
+                        ->limit(25),
+                ]);
+                if ($selectedOpsThread) {
+                    $selectedOpsThread->setRelation(
+                        'messages',
+                        $selectedOpsThread->messages->sortBy('sent_at')->values()
+                    );
+                }
             }
+        }
+
+        if (!$allCaseThreads instanceof Collection) {
+            $allCaseThreads = collect($allCaseThreads);
+        }
+        if (!$clientThreads instanceof Collection) {
+            $clientThreads = collect($clientThreads);
+        }
+        if (!$providerThreads instanceof Collection) {
+            $providerThreads = collect($providerThreads);
+        }
+        if (!$opsThreads instanceof Collection) {
+            $opsThreads = collect($opsThreads);
         }
 
         return [

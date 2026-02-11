@@ -61,6 +61,10 @@ class CommunicationMessage extends Model
             return '';
         }
 
+        if ($this->looksEncrypted($text)) {
+            return '[Encrypted email content - cannot display without decryption key]';
+        }
+
         if ($this->looksLikeRawMime($text)) {
             $text = $this->extractPlainTextFromRawMime($text);
         }
@@ -75,6 +79,14 @@ class CommunicationMessage extends Model
     {
         return stripos($text, 'Content-Type: multipart/') !== false
             || stripos($text, 'Content-Type: text/plain') !== false;
+    }
+
+    private function looksEncrypted(string $text): bool
+    {
+        return stripos($text, '-----BEGIN PGP MESSAGE-----') !== false
+            || stripos($text, 'content-type: application/pkcs7-mime') !== false
+            || stripos($text, 'smime.p7m') !== false
+            || stripos($text, 'content-type: application/pgp-encrypted') !== false;
     }
 
     private function extractPlainTextFromRawMime(string $raw): string

@@ -510,6 +510,13 @@ class GmailImapPollingService
         $bodyHtml = $htmlBodies ? trim(implode("\n\n", $htmlBodies)) : null;
         $bodyText = trim(implode("\n\n", $plainBodies));
 
+        if ($this->looksEncryptedPayload($rawBody)) {
+            return [
+                'text' => '[Encrypted email content - cannot display without decryption key]',
+                'html' => null,
+            ];
+        }
+
         if ($bodyText === '' && $bodyHtml) {
             $bodyText = $this->normalizeBodyText(strip_tags($bodyHtml));
         }
@@ -639,6 +646,14 @@ class GmailImapPollingService
         }
 
         return quoted_printable_decode($raw);
+    }
+
+    private function looksEncryptedPayload(string $raw): bool
+    {
+        return stripos($raw, '-----BEGIN PGP MESSAGE-----') !== false
+            || stripos($raw, 'content-type: application/pkcs7-mime') !== false
+            || stripos($raw, 'smime.p7m') !== false
+            || stripos($raw, 'content-type: application/pgp-encrypted') !== false;
     }
 
     /**
