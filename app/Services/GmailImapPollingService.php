@@ -24,14 +24,14 @@ class GmailImapPollingService
             throw new \RuntimeException('PHP IMAP extension is not installed.');
         }
 
-        $host = env('GMAIL_IMAP_HOST', 'imap.gmail.com');
-        $port = (int) env('GMAIL_IMAP_PORT', 993);
-        $flags = env('GMAIL_IMAP_FLAGS', '/imap/ssl');
-        $username = env('GMAIL_IMAP_USERNAME', $mailbox);
-        $password = env('GMAIL_IMAP_PASSWORD');
+        $host = env('MAIL_IMAP_HOST', env('GMAIL_IMAP_HOST', 'imap.gmail.com'));
+        $port = (int) env('MAIL_IMAP_PORT', env('GMAIL_IMAP_PORT', 993));
+        $flags = env('MAIL_IMAP_FLAGS', env('GMAIL_IMAP_FLAGS', '/imap/ssl'));
+        $username = env('MAIL_USERNAME', env('GMAIL_IMAP_USERNAME', $mailbox));
+        $password = env('MAIL_PASSWORD', env('GMAIL_IMAP_PASSWORD'));
 
         if (!$password) {
-            throw new \RuntimeException('Missing GMAIL_IMAP_PASSWORD env value.');
+            throw new \RuntimeException('Missing MAIL_PASSWORD env value.');
         }
 
         $mailboxPath = sprintf('{%s:%d%s}INBOX', $host, $port, $flags);

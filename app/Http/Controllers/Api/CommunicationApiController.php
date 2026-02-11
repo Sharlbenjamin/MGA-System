@@ -123,8 +123,11 @@ class CommunicationApiController extends Controller
         $cc = array_map('strtolower', $validated['cc'] ?? []);
         $body = (string) $validated['body'];
 
-        Mail::raw($body, function ($message) use ($toEmail, $cc, $subject) {
-            $message->from('mga.operation@medguarda.com', 'MGA Operation')
+        $fromAddress = config('mail.from.address', 'mga.operation@medguarda.com');
+        $fromName = config('mail.from.name', 'MGA Operation');
+
+        Mail::raw($body, function ($message) use ($toEmail, $cc, $subject, $fromAddress, $fromName) {
+            $message->from($fromAddress, $fromName)
                 ->to($toEmail)
                 ->subject($subject);
 
@@ -135,10 +138,10 @@ class CommunicationApiController extends Controller
 
         $outgoing = CommunicationMessage::create([
             'communication_thread_id' => $thread->id,
-            'mailbox' => 'mga.operation@medguarda.com',
+            'mailbox' => strtolower((string) $fromAddress),
             'direction' => 'outgoing',
-            'from_email' => 'mga.operation@medguarda.com',
-            'from_name' => 'MGA Operation',
+            'from_email' => strtolower((string) $fromAddress),
+            'from_name' => $fromName,
             'to_emails' => [$toEmail],
             'cc_emails' => $cc,
             'subject' => $subject,
@@ -151,7 +154,7 @@ class CommunicationApiController extends Controller
 
         $participants = array_values(array_unique(array_map('strtolower', array_filter(array_merge(
             $thread->participants ?? [],
-            ['mga.operation@medguarda.com', $toEmail],
+            [$fromAddress, $toEmail],
             $cc
         )))));
 
@@ -182,7 +185,7 @@ class CommunicationApiController extends Controller
         ]);
 
         $result = $service->poll(
-            $validated['mailbox'] ?? 'mga.operation@medguarda.com',
+            $validated['mailbox'] ?? (string) config('mail.from.address', 'mga.operation@medguarda.com'),
             (int) ($validated['limit'] ?? 100)
         );
 

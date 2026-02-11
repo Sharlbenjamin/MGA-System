@@ -14,7 +14,7 @@ class PollCommunicationsInbox extends Command
      * @var string
      */
     protected $signature = 'communications:poll
-                            {--mailbox=mga.operation@medguarda.com : Mailbox to poll}
+                            {--mailbox= : Mailbox to poll (defaults to MAIL_FROM_ADDRESS)}
                             {--limit=100 : Max new messages to process}';
 
     /**
@@ -29,7 +29,7 @@ class PollCommunicationsInbox extends Command
      */
     public function handle(GmailImapPollingService $service): int
     {
-        $mailbox = (string) $this->option('mailbox');
+        $mailbox = (string) ($this->option('mailbox') ?: config('mail.from.address', 'mga.operation@medguarda.com'));
         $limit = (int) $this->option('limit');
 
         try {
