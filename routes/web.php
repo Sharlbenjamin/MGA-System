@@ -83,6 +83,8 @@ Route::middleware([FilamentAuthenticate::class])->group(function () {
     // Compact view: standalone page for file (no Filament, full page)
     Route::get('/file-compact/{file}', [FileCompactViewController::class, 'show'])->name('files.compact');
     Route::get('/file-communications/{file}', [FileCompactViewController::class, 'communications'])->name('files.communications-wireframe');
+    Route::post('/file-communications/{file}/threads/{thread}/read', [FileCompactViewController::class, 'markRead'])->name('files.communications.mark-read');
+    Route::post('/file-communications/{file}/threads/{thread}/reply', [FileCompactViewController::class, 'sendReply'])->name('files.communications.reply');
 });
 
 // API Routes for AJAX functionality
