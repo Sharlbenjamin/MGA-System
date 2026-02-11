@@ -31,8 +31,6 @@ class RequestAppointment extends EditRecord
 
     protected static ?string $title = 'Request Appointment';
 
-    protected static int $requestAppointmentBranchesLimit = 8;
-
     public function mount(int|string $record): void
     {
         $this->record = $this->resolveRecord($record);
@@ -265,7 +263,6 @@ class RequestAppointment extends EditRecord
 
     protected function getDisplayedProviderBranchesForRequest($cityFilter = null, ?int $limit = null): \Illuminate\Support\Collection
     {
-        $limit = $limit ?? static::$requestAppointmentBranchesLimit;
         $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
         $branchesWithSortData = $branches->map(function ($branch) {
             $distanceData = $this->calculateBranchDistanceForSorting($branch);
@@ -275,11 +272,13 @@ class RequestAppointment extends EditRecord
             $branch->sort_status = $branch->status === 'Active' ? 1 : 2;
             return $branch;
         });
-        return $branchesWithSortData->sortBy([
+        $sortedBranches = $branchesWithSortData->sortBy([
             ['sort_distance', 'asc'],
             ['sort_service_type', 'asc'],
             ['sort_status', 'asc'],
-        ])->values()->take($limit);
+        ])->values();
+
+        return $limit ? $sortedBranches->take($limit) : $sortedBranches;
     }
 
     protected function getEligibleProviderBranches($record, $cityId = null)

@@ -1698,15 +1698,11 @@ class ViewFile extends ViewRecord
         return $descriptions;
     }
 
-    /** Maximum number of provider branches to show in the Request Appointment modal */
-    protected static int $requestAppointmentBranchesLimit = 8;
-
     /**
-     * Get the displayed (sorted, limited) provider branches for the Request Appointment modal.
+     * Get the displayed (sorted) provider branches for the Request Appointment modal.
      */
-    protected function getDisplayedProviderBranchesForRequest($cityFilter = null, int $limit = null): \Illuminate\Support\Collection
+    protected function getDisplayedProviderBranchesForRequest($cityFilter = null, ?int $limit = null): \Illuminate\Support\Collection
     {
-        $limit = $limit ?? static::$requestAppointmentBranchesLimit;
         $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
         $branchesWithSortData = $branches->map(function ($branch) {
             $distanceData = $this->calculateBranchDistanceForSorting($branch);
@@ -1718,11 +1714,13 @@ class ViewFile extends ViewRecord
             $branch->sort_status = $statusSort;
             return $branch;
         });
-        return $branchesWithSortData->sortBy([
+        $sortedBranches = $branchesWithSortData->sortBy([
             ['sort_distance', 'asc'],
             ['sort_service_type', 'asc'],
             ['sort_status', 'asc'],
-        ])->values()->take($limit);
+        ])->values();
+
+        return $limit ? $sortedBranches->take($limit) : $sortedBranches;
     }
 
     /**
