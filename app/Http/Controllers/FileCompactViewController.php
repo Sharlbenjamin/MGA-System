@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Filament\Resources\FileResource;
 use App\Models\CommunicationMessage;
 use App\Models\CommunicationThread;
 use App\Models\File;
@@ -30,47 +31,11 @@ class FileCompactViewController extends Controller
     {
         $this->authorize('view', $file);
 
-        $allCaseThreads = CommunicationThread::query()
-            ->where('linked_file_id', $file->id)
-            ->orderByDesc('last_message_at')
-            ->get();
+        $routeParams = ['record' => $file->id];
+        $queryParams = $request->only(['view', 'case_tab', 'thread_id', 'inbox_thread_id']);
+        $target = FileResource::getUrl('communications', $routeParams);
 
-        $clientThreads = $allCaseThreads->where('category', 'client')->values();
-        $providerThreads = $allCaseThreads->where('category', 'provider')->values();
-        $caseTab = $request->query('case_tab', 'client');
-        $casePool = $caseTab === 'provider' ? $providerThreads : $clientThreads;
-        if ($casePool->isEmpty()) {
-            $casePool = $allCaseThreads;
-        }
-
-        $selectedCaseThread = null;
-        if ($casePool->isNotEmpty()) {
-            $selectedCaseThread = $casePool->firstWhere('id', (int) $request->query('thread_id')) ?? $casePool->first();
-            $selectedCaseThread?->load(['messages' => fn ($q) => $q->with('attachments')->orderBy('sent_at')]);
-        }
-
-        $opsThreads = CommunicationThread::query()
-            ->with('file:id,mga_reference,status')
-            ->orderByDesc('last_message_at')
-            ->limit(300)
-            ->get();
-
-        $selectedOpsThread = null;
-        if ($opsThreads->isNotEmpty()) {
-            $selectedOpsThread = $opsThreads->firstWhere('id', (int) $request->query('inbox_thread_id')) ?? $opsThreads->first();
-            $selectedOpsThread?->load(['messages' => fn ($q) => $q->with('attachments')->orderBy('sent_at')]);
-        }
-
-        return view('filament.pages.files.communications-wireframe', [
-            'file' => $file,
-            'caseTab' => $caseTab,
-            'allCaseThreads' => $allCaseThreads,
-            'clientThreads' => $clientThreads,
-            'providerThreads' => $providerThreads,
-            'selectedCaseThread' => $selectedCaseThread,
-            'opsThreads' => $opsThreads,
-            'selectedOpsThread' => $selectedOpsThread,
-        ]);
+        return redirect()->to($queryParams ? ($target . '?' . http_build_query($queryParams)) : $target);
     }
 
     public function markRead(Request $request, File $file, CommunicationThread $thread)
@@ -90,11 +55,14 @@ class FileCompactViewController extends Controller
             ->where('is_unread', true)
             ->update(['is_unread' => false]);
 
-        return redirect()->route('files.communications-wireframe', [
-            'file' => $file->id,
+        $target = FileResource::getUrl('communications', ['record' => $file->id]);
+        $query = http_build_query([
+            'view' => $request->query('view', 'case'),
             'thread_id' => $thread->id,
             'case_tab' => $request->query('case_tab', 'client'),
         ]);
+
+        return redirect()->to($target . '?' . $query);
     }
 
     public function sendReply(Request $request, File $file, CommunicationThread $thread)
@@ -162,10 +130,13 @@ class FileCompactViewController extends Controller
             ->where('is_unread', true)
             ->update(['is_unread' => false]);
 
-        return redirect()->route('files.communications-wireframe', [
-            'file' => $file->id,
+        $target = FileResource::getUrl('communications', ['record' => $file->id]);
+        $query = http_build_query([
+            'view' => $request->query('view', 'case'),
             'thread_id' => $thread->id,
             'case_tab' => $request->query('case_tab', 'client'),
-        ])->with('status', 'Reply sent.');
+        ]);
+
+        return redirect()->to($target . '?' . $query)->with('status', 'Reply sent.');
     }
 }

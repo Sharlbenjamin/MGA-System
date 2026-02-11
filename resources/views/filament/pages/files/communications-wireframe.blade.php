@@ -1,9 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MGA System - Communications</title>
+<x-filament-panels::page>
     <style>
         :root { --bg:#f1f4f9; --surface:#fff; --soft:#f8fafc; --line:#dfe3ea; --text:#1f2937; --muted:#6b7280; --client:#22c55e; --provider:#8b5cf6; --neutral:#9ca3af; }
         * { box-sizing:border-box; }
@@ -54,6 +49,7 @@
         .toolbar { border-bottom:1px solid var(--line); padding:10px 14px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
         .body { padding:14px; overflow:auto; display:grid; gap:12px; }
         .msg { border:1px solid var(--line); border-left:4px solid var(--neutral); border-radius:12px; background:#fff; padding:10px 11px; font-size:13px; line-height:1.35; }
+        .msg-body { white-space:pre-wrap; }
         .msg.unread { box-shadow:inset 0 0 0 1px #bfdbfe; }
         .msg.client { border-left-color:var(--client); }
         .msg.provider { border-left-color:var(--provider); }
@@ -69,13 +65,11 @@
         .row { border:1px dashed var(--line); border-radius:8px; padding:7px 8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; }
         .alert { margin:8px 16px 0; padding:10px 12px; border:1px solid #86efac; background:#ecfdf3; color:#166534; border-radius:10px; font-size:13px; font-weight:600; }
     </style>
-</head>
-<body>
     <header class="appbar">
         <div class="brand"><span class="dot"></span>MGA System</div>
         <div class="search">Case: {{ $file->mga_reference ?? ('#' . $file->id) }} · {{ $allCaseThreads->count() }} linked thread(s)</div>
         <div class="top-actions">
-            <a class="btn" href="{{ route('files.communications-wireframe', ['file' => $file->id, 'case_tab' => $caseTab]) }}">Refresh</a>
+            <a class="btn" href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => $activeView, 'case_tab' => $caseTab, 'thread_id' => $selectedCaseThread?->id, 'inbox_thread_id' => $selectedOpsThread?->id]) }}">Refresh</a>
             <a class="btn" href="{{ route('filament.admin.resources.files.view', ['record' => $file->id]) }}">Back to File</a>
         </div>
     </header>
@@ -86,10 +80,13 @@
 
     <main class="wrapper">
         <div class="screen-toggle">
-            <a class="pill active" href="#case-view">Case-Level View</a>
-            <a class="pill" href="#ops-view">Operations Inbox View</a>
+            <a class="pill {{ $activeView === 'case' ? 'active' : '' }}"
+               href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'case', 'case_tab' => $caseTab, 'thread_id' => $selectedCaseThread?->id]) }}">Case-Level View</a>
+            <a class="pill {{ $activeView === 'ops' ? 'active' : '' }}"
+               href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'ops', 'case_tab' => $caseTab, 'inbox_thread_id' => $selectedOpsThread?->id]) }}">Operations Inbox View</a>
         </div>
 
+        @if($activeView === 'case')
         <section class="gmail-shell" id="case-view">
             <div class="layout">
                 <aside class="sidebar">
@@ -106,8 +103,8 @@
                     <div class="column-h">
                         <span>File: {{ $file->mga_reference ?? ('Case #' . $file->id) }} - Communications</span>
                         <div class="tabs">
-                            <a class="tab {{ $caseTab === 'client' ? 'active' : '' }}" href="{{ route('files.communications-wireframe', ['file' => $file->id, 'case_tab' => 'client']) }}">Client</a>
-                            <a class="tab {{ $caseTab === 'provider' ? 'active' : '' }}" href="{{ route('files.communications-wireframe', ['file' => $file->id, 'case_tab' => 'provider']) }}">Providers</a>
+                            <a class="tab {{ $caseTab === 'client' ? 'active' : '' }}" href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'case', 'case_tab' => 'client', 'thread_id' => $selectedCaseThread?->id]) }}">Client</a>
+                            <a class="tab {{ $caseTab === 'provider' ? 'active' : '' }}" href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'case', 'case_tab' => 'provider', 'thread_id' => $selectedCaseThread?->id]) }}">Providers</a>
                         </div>
                     </div>
                     <ul class="list">
@@ -123,13 +120,13 @@
                             @endphp
                             <li>
                                 <a class="item {{ !$thread->is_read ? 'unread' : '' }} {{ $active ? 'active' : '' }}"
-                                   href="{{ route('files.communications-wireframe', ['file' => $file->id, 'case_tab' => $caseTab, 'thread_id' => $thread->id]) }}">
+                                   href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'case', 'case_tab' => $caseTab, 'thread_id' => $thread->id]) }}">
                                     <div class="item-top">
                                         <span class="badge {{ $badgeClass }}">{{ ucfirst($thread->category) }}</span>
                                         <span class="time">{{ optional($thread->last_message_at)->format('d M H:i') ?? '—' }}</span>
                                     </div>
                                     <div class="subject">{{ $thread->subject ?: '(No subject)' }}</div>
-                                    <div class="preview">{{ \Illuminate\Support\Str::limit(optional($latest)->body_text ?: 'No message body', 72) }}</div>
+                                    <div class="preview">{{ \Illuminate\Support\Str::limit(optional($latest)->display_body ?: 'No message body', 72) }}</div>
                                 </a>
                             </li>
                         @empty
@@ -143,7 +140,7 @@
                         <div class="title">{{ $selectedCaseThread?->subject ?: 'No thread selected' }}</div>
                         <div style="display:flex; gap:8px;">
                             @if($selectedCaseThread)
-                                <form method="POST" action="{{ route('files.communications.mark-read', ['file' => $file->id, 'thread' => $selectedCaseThread->id, 'case_tab' => $caseTab]) }}">
+                                <form method="POST" action="{{ route('files.communications.mark-read', ['file' => $file->id, 'thread' => $selectedCaseThread->id, 'view' => 'case', 'case_tab' => $caseTab]) }}">
                                     @csrf
                                     <button class="btn" type="submit">Mark Read</button>
                                 </form>
@@ -169,7 +166,7 @@
                                         <span class="badge {{ $typeClass }}">{{ strtoupper($message->direction) }}</span>
                                         <span>{{ $message->from_email }}</span>
                                     </div>
-                                    <div>{{ $message->body_text ?: '(No body)' }}</div>
+                                    <div class="msg-body">{{ $message->display_body ?: '(No body)' }}</div>
                                     @if($message->attachments->isNotEmpty())
                                         <div class="attach">
                                             @foreach($message->attachments as $attachment)
@@ -187,7 +184,7 @@
                     </div>
                     <div class="toolbar">
                         @if($selectedCaseThread)
-                            <form method="POST" action="{{ route('files.communications.reply', ['file' => $file->id, 'thread' => $selectedCaseThread->id, 'case_tab' => $caseTab]) }}" style="display:grid; gap:8px; width:100%;">
+                            <form method="POST" action="{{ route('files.communications.reply', ['file' => $file->id, 'thread' => $selectedCaseThread->id, 'view' => 'case', 'case_tab' => $caseTab]) }}" style="display:grid; gap:8px; width:100%;">
                                 @csrf
                                 <input class="btn" style="text-align:left;" name="subject" placeholder="Subject (optional)" />
                                 <textarea class="btn" style="height:90px; border-radius:12px; font-weight:500;" name="body" placeholder="Write reply..." required>{{ old('body') }}</textarea>
@@ -202,9 +199,9 @@
                 </section>
             </div>
         </section>
+        @endif
 
-        <div style="height:12px;"></div>
-
+        @if($activeView === 'ops')
         <section class="gmail-shell" id="ops-view">
             <div class="layout">
                 <aside class="sidebar">
@@ -236,14 +233,14 @@
                             @endphp
                             <li>
                                 <a class="item {{ !$thread->is_read ? 'unread' : '' }} {{ $active ? 'active' : '' }}"
-                                   href="{{ route('files.communications-wireframe', ['file' => $file->id, 'inbox_thread_id' => $thread->id]) }}#ops-view">
+                                   href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'ops', 'case_tab' => $caseTab, 'inbox_thread_id' => $thread->id]) }}">
                                     <div class="item-top">
                                         <span class="badge {{ $badgeClass }}">{{ ucfirst($thread->category) }}</span>
                                         <span class="time">{{ optional($thread->last_message_at)->format('d M H:i') ?? '—' }}</span>
                                     </div>
                                     <div class="subject">{{ $thread->subject ?: '(No subject)' }}</div>
                                     <div class="preview">
-                                        {{ \Illuminate\Support\Str::limit(optional($latest)->body_text ?: 'No message body', 70) }}
+                                        {{ \Illuminate\Support\Str::limit(optional($latest)->display_body ?: 'No message body', 70) }}
                                         @if($thread->file) · {{ $thread->file->mga_reference ?: ('Case #' . $thread->file->id) }} @endif
                                     </div>
                                 </a>
@@ -271,7 +268,7 @@
                                         <span class="badge {{ $typeClass }}">{{ strtoupper($message->direction) }}</span>
                                         <span>{{ $message->from_email }}</span>
                                     </div>
-                                    <div>{{ $message->body_text ?: '(No body)' }}</div>
+                                    <div class="msg-body">{{ $message->display_body ?: '(No body)' }}</div>
                                     @if($message->attachments->isNotEmpty())
                                         <div class="attach">
                                             @foreach($message->attachments as $attachment)
@@ -306,6 +303,6 @@
                 </section>
             </div>
         </section>
+        @endif
     </main>
-</body>
-</html>
+</x-filament-panels::page>

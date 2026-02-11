@@ -609,7 +609,7 @@ class ViewFile extends ViewRecord
                 ->label('Threads')
                 ->icon('heroicon-o-chat-bubble-left-right')
                 ->color('gray')
-                ->url(fn ($record) => route('files.communications-wireframe', ['file' => $record]))
+                ->url(fn ($record) => \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $record]))
                 ->openUrlInNewTab(false),
             Action::make('viewFinancial')
                 ->label('Invocies & Bills')

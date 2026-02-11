@@ -68,13 +68,16 @@ class GmailImapPollingService
             }
 
             $messageId = $this->trimMessageId($overview->message_id ?? null);
-            $inReplyTo = $this->trimMessageId($overview->in_reply_to ?? null);
+            $inReplyToIds = $this->parseMessageIds((string) ($overview->in_reply_to ?? ''));
+            $inReplyTo = $inReplyToIds[0] ?? null;
             $subject = $this->decodeMimeHeader($overview->subject ?? '');
             $normalizedSubject = $this->normalizeSubject($subject);
             $from = $this->parseSingleAddress($overview->from ?? '');
             $to = $this->parseAddressList($overview->to ?? '');
             $cc = $this->parseAddressList($overview->cc ?? '');
             $date = !empty($overview->date) ? Carbon::parse($overview->date) : now();
+            $rawHeader = @imap_fetchheader($stream, (string) $uid, FT_UID | FT_PEEK) ?: '';
+            $referenceIds = $this->extractReferenceMessageIds($rawHeader, $inReplyToIds);
 
             $existing = CommunicationMessage::query()
                 ->where('mailbox', strtolower($mailbox))
@@ -85,12 +88,20 @@ class GmailImapPollingService
                 continue;
             }
 
+            $incomingParticipants = $this->mergeParticipants([], [
+                $from['email'] ?? null,
+                ...$to,
+                ...$cc,
+            ]);
+
             ['thread' => $thread, 'created' => $threadCreated] = $this->resolveThread(
                 $mailbox,
                 $subject,
                 $normalizedSubject,
                 $messageId,
-                $inReplyTo
+                $inReplyTo,
+                $referenceIds,
+                $incomingParticipants
             );
             if ($threadCreated) {
                 $createdThreads++;
@@ -102,7 +113,7 @@ class GmailImapPollingService
                 ...$cc,
             ]);
 
-            $rawBody = @imap_body($stream, (string) $uid, FT_UID | FT_PEEK) ?: '';
+            ['text' => $bodyText, 'html' => $bodyHtml] = $this->extractBodyContent($stream, $uid);
             $attachments = $this->extractAttachmentMetadata($stream, $uid);
 
             DB::transaction(function () use (
@@ -115,7 +126,8 @@ class GmailImapPollingService
                 $to,
                 $cc,
                 $subject,
-                $rawBody,
+                $bodyText,
+                $bodyHtml,
                 $date,
                 $participants,
                 $attachments
@@ -132,8 +144,8 @@ class GmailImapPollingService
                     'to_emails' => array_map('strtolower', $to),
                     'cc_emails' => array_map('strtolower', $cc),
                     'subject' => $subject,
-                    'body_text' => $rawBody,
-                    'body_html' => null,
+                    'body_text' => $bodyText,
+                    'body_html' => $bodyHtml,
                     'sent_at' => $date,
                     'is_unread' => true,
                     'has_attachments' => !empty($attachments),
@@ -193,7 +205,9 @@ class GmailImapPollingService
         string $subject,
         string $normalizedSubject,
         ?string $messageId,
-        ?string $inReplyTo
+        ?string $inReplyTo,
+        array $referenceIds = [],
+        array $participants = []
     ): array {
         if ($inReplyTo) {
             $replyToMessage = CommunicationMessage::query()->where('message_id', $inReplyTo)->first();
@@ -205,10 +219,25 @@ class GmailImapPollingService
             }
         }
 
+        if (!empty($referenceIds)) {
+            $referenceMessage = CommunicationMessage::query()
+                ->whereIn('message_id', $referenceIds)
+                ->orderByDesc('sent_at')
+                ->first();
+
+            if ($referenceMessage) {
+                return [
+                    'thread' => $referenceMessage->thread,
+                    'created' => false,
+                ];
+            }
+        }
+
         if ($messageId) {
+            $threadKeys = array_values(array_unique(array_filter([$messageId, ...$referenceIds])));
             $byMessageKey = CommunicationThread::query()
                 ->where('mailbox', strtolower($mailbox))
-                ->where('external_thread_key', $messageId)
+                ->whereIn('external_thread_key', $threadKeys)
                 ->first();
             if ($byMessageKey) {
                 return [
@@ -223,6 +252,24 @@ class GmailImapPollingService
             ->where('normalized_subject', $normalizedSubject)
             ->orderByDesc('last_message_at')
             ->first();
+
+        if (!$bySubject && !empty($participants)) {
+            $subjectCandidates = CommunicationThread::query()
+                ->where('mailbox', strtolower($mailbox))
+                ->where('normalized_subject', $normalizedSubject)
+                ->orderByDesc('last_message_at')
+                ->limit(20)
+                ->get();
+
+            $participantSet = array_flip(array_map('strtolower', $participants));
+            foreach ($subjectCandidates as $candidate) {
+                $candidateParticipants = array_map('strtolower', $candidate->participants ?? []);
+                if (!empty(array_intersect_key($participantSet, array_flip($candidateParticipants)))) {
+                    $bySubject = $candidate;
+                    break;
+                }
+            }
+        }
 
         if ($bySubject) {
             return [
@@ -301,7 +348,10 @@ class GmailImapPollingService
     private function normalizeSubject(string $subject): string
     {
         $s = strtolower(trim($subject));
-        $s = preg_replace('/^(re|fw|fwd)\s*:\s*/i', '', $s);
+        do {
+            $before = $s;
+            $s = preg_replace('/^\s*(re|fw|fwd)\s*(\[[0-9]+\])?\s*:\s*/i', '', $s) ?? $s;
+        } while ($s !== $before);
         return trim((string) $s);
     }
 
@@ -311,6 +361,49 @@ class GmailImapPollingService
             return null;
         }
         return trim(trim($messageId), '<>');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseMessageIds(string $value): array
+    {
+        $ids = [];
+
+        if (preg_match_all('/<([^>]+)>/', $value, $matches) && !empty($matches[1])) {
+            $ids = $matches[1];
+        } else {
+            $tokens = preg_split('/[\s,;]+/', trim($value)) ?: [];
+            foreach ($tokens as $token) {
+                $token = $this->trimMessageId($token);
+                if ($token) {
+                    $ids[] = $token;
+                }
+            }
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map(
+            fn ($id) => strtolower((string) $this->trimMessageId((string) $id)),
+            $ids
+        ))));
+
+        return $ids;
+    }
+
+    /**
+     * @param array<int, string> $inReplyToIds
+     * @return array<int, string>
+     */
+    private function extractReferenceMessageIds(string $rawHeader, array $inReplyToIds = []): array
+    {
+        $ids = $inReplyToIds;
+
+        if (preg_match('/^References:\s*(.+?)(?:\r?\n[^\s]|\z)/ims', $rawHeader, $matches)) {
+            $referencesRaw = preg_replace('/\r?\n[ \t]+/', ' ', (string) $matches[1]) ?? '';
+            $ids = array_merge($ids, $this->parseMessageIds($referencesRaw));
+        }
+
+        return array_values(array_unique(array_filter($ids)));
     }
 
     /**
@@ -338,6 +431,182 @@ class GmailImapPollingService
         }
 
         return 'general';
+    }
+
+    /**
+     * Extract best text/plain body and html fallback from MIME structure.
+     *
+     * @return array{text: string, html: ?string}
+     */
+    private function extractBodyContent($stream, int $uid): array
+    {
+        $structure = @imap_fetchstructure($stream, (string) $uid, FT_UID);
+        $rawBody = @imap_body($stream, (string) $uid, FT_UID | FT_PEEK) ?: '';
+
+        if (!$structure) {
+            return [
+                'text' => $this->normalizeBodyText($rawBody),
+                'html' => null,
+            ];
+        }
+
+        $plainBodies = [];
+        $htmlBodies = [];
+
+        $walker = function ($part, string $partNumber = '1') use (&$walker, &$plainBodies, &$htmlBodies, $stream, $uid): void {
+            if (!is_object($part)) {
+                return;
+            }
+
+            if ($this->isAttachmentPart($part)) {
+                return;
+            }
+
+            if (($part->type ?? null) === 1 && !empty($part->parts) && is_array($part->parts)) {
+                foreach ($part->parts as $idx => $subPart) {
+                    $walker($subPart, $partNumber . '.' . ($idx + 1));
+                }
+                return;
+            }
+
+            $body = @imap_fetchbody($stream, (string) $uid, $partNumber, FT_UID | FT_PEEK);
+            if ($body === false || $body === '') {
+                return;
+            }
+
+            $decoded = $this->decodePartBody($body, (int) ($part->encoding ?? 0));
+            $decoded = $this->decodeToUtf8($decoded, $this->extractCharset($part));
+            $decoded = $this->normalizeBodyText($decoded);
+
+            $type = strtoupper($this->mimeFromPart($part) ?? '');
+            if (str_starts_with($type, 'TEXT/PLAIN')) {
+                $plainBodies[] = $decoded;
+                return;
+            }
+
+            if (str_starts_with($type, 'TEXT/HTML')) {
+                $htmlBodies[] = $decoded;
+            }
+        };
+
+        if (($structure->type ?? null) === 1 && !empty($structure->parts) && is_array($structure->parts)) {
+            foreach ($structure->parts as $idx => $part) {
+                $walker($part, (string) ($idx + 1));
+            }
+        } else {
+            // Single-part message. `imap_body` is the part payload.
+            $decoded = $this->decodePartBody($rawBody, (int) ($structure->encoding ?? 0));
+            $decoded = $this->decodeToUtf8($decoded, $this->extractCharset($structure));
+            $decoded = $this->normalizeBodyText($decoded);
+            $type = strtoupper($this->mimeFromPart($structure) ?? '');
+
+            if (str_starts_with($type, 'TEXT/HTML')) {
+                $htmlBodies[] = $decoded;
+            } else {
+                $plainBodies[] = $decoded;
+            }
+        }
+
+        $bodyHtml = $htmlBodies ? trim(implode("\n\n", $htmlBodies)) : null;
+        $bodyText = trim(implode("\n\n", $plainBodies));
+
+        if ($bodyText === '' && $bodyHtml) {
+            $bodyText = $this->normalizeBodyText(strip_tags($bodyHtml));
+        }
+
+        if ($bodyText === '') {
+            $bodyText = $this->normalizeBodyText($this->extractTextFromRawMime($rawBody));
+        }
+
+        if ($bodyText === '') {
+            $bodyText = '(No body)';
+        }
+
+        return [
+            'text' => $bodyText,
+            'html' => $bodyHtml,
+        ];
+    }
+
+    private function isAttachmentPart(object $part): bool
+    {
+        $disposition = strtoupper((string) ($part->disposition ?? ''));
+        if (in_array($disposition, ['ATTACHMENT'], true)) {
+            return true;
+        }
+
+        if (!empty($part->ifdparameters) && !empty($part->dparameters)) {
+            foreach ($part->dparameters as $param) {
+                if (in_array(strtolower((string) ($param->attribute ?? '')), ['filename'], true)) {
+                    return true;
+                }
+            }
+        }
+
+        if (!empty($part->ifparameters) && !empty($part->parameters)) {
+            foreach ($part->parameters as $param) {
+                if (in_array(strtolower((string) ($param->attribute ?? '')), ['name'], true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function decodePartBody(string $body, int $encoding): string
+    {
+        return match ($encoding) {
+            3 => base64_decode($body, true) ?: '',
+            4 => quoted_printable_decode($body),
+            default => $body,
+        };
+    }
+
+    private function extractCharset(object $part): ?string
+    {
+        if (!empty($part->ifparameters) && !empty($part->parameters)) {
+            foreach ($part->parameters as $param) {
+                if (strtolower((string) ($param->attribute ?? '')) === 'charset') {
+                    return (string) $param->value;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function decodeToUtf8(string $body, ?string $charset): string
+    {
+        $charset = trim((string) $charset);
+        if ($charset === '') {
+            return $body;
+        }
+
+        if (strtoupper($charset) === 'UTF-8') {
+            return $body;
+        }
+
+        $converted = @iconv($charset, 'UTF-8//IGNORE', $body);
+        return $converted !== false ? $converted : $body;
+    }
+
+    private function normalizeBodyText(string $text): string
+    {
+        $text = str_replace("\r\n", "\n", $text);
+        $text = str_replace("\r", "\n", $text);
+        $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
+        return trim($text);
+    }
+
+    private function extractTextFromRawMime(string $raw): string
+    {
+        if (preg_match('/Content-Type:\s*text\/plain[^\n]*\n(?:[^\n]*\n)*?\n(.*?)(?:\n--[^\n]+|\z)/is', $raw, $matches)) {
+            $text = quoted_printable_decode($matches[1]);
+            return $this->normalizeBodyText($text);
+        }
+
+        return quoted_printable_decode($raw);
     }
 
     /**

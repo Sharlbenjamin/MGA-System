@@ -53,4 +53,27 @@ class CommunicationMessage extends Model
     {
         return $this->hasMany(CommunicationAttachment::class);
     }
+
+    public function getDisplayBodyAttribute(): string
+    {
+        $text = trim((string) ($this->body_text ?? ''));
+        if ($text === '') {
+            return '';
+        }
+
+        // Backward-compatible cleanup for previously stored raw MIME payloads.
+        if (stripos($text, 'Content-Type: multipart/') !== false) {
+            if (preg_match('/Content-Type:\s*text\/plain[^\n]*\n(?:[^\n]*\n)*?\n(.*?)(?:\n--[^\n]+|\z)/is', $text, $matches)) {
+                $text = quoted_printable_decode($matches[1]);
+            } else {
+                $text = quoted_printable_decode($text);
+            }
+        }
+
+        $text = str_replace("\r\n", "\n", $text);
+        $text = str_replace("\r", "\n", $text);
+        $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
+
+        return trim($text);
+    }
 }
