@@ -67,6 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     $providerLead = App\Http\Controllers\Api\ProviderLeadApiController::class;
     $provider = App\Http\Controllers\Api\ProviderApiController::class;
     $client = App\Http\Controllers\Api\ClientApiController::class;
+    $communication = App\Http\Controllers\Api\CommunicationApiController::class;
 
     // Files (list, CRUD, actions, relation managers)
     Route::get('/files', [$file, 'index']);
@@ -87,6 +88,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/files/{fileId}/invoices', [$file, 'invoices'])->whereNumber('fileId');
     Route::get('/files/{fileId}/bank-accounts', [$file, 'bankAccounts'])->whereNumber('fileId');
     Route::get('/files/{fileId}/activity-logs', [$file, 'activityLogs'])->whereNumber('fileId');
+    Route::get('/files/{fileId}/communications', [$communication, 'fileThreads'])->whereNumber('fileId');
+    Route::post('/files/{fileId}/communications/link', [$communication, 'linkForFile'])->whereNumber('fileId');
 
     // Client leads
     Route::get('/leads', [$lead, 'index']);
@@ -124,4 +127,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/clients/{id}/invoices', [$client, 'invoices'])->whereNumber('id');
     Route::get('/clients/{id}/transactions', [$client, 'transactions'])->whereNumber('id');
     Route::get('/clients/{id}/leads', [$client, 'leads'])->whereNumber('id');
+
+    // Communications (Gmail IMAP mirror + ops inbox)
+    Route::get('/communications/threads', [$communication, 'index']);
+    Route::get('/communications/threads/{threadId}', [$communication, 'show'])->whereNumber('threadId');
+    Route::post('/communications/threads/{threadId}/read', [$communication, 'markRead'])->whereNumber('threadId');
+    Route::post('/communications/threads/{threadId}/reply', [$communication, 'reply'])->whereNumber('threadId');
+    Route::post('/communications/threads/{threadId}/link-file', [$communication, 'linkThreadToFile'])->whereNumber('threadId');
+    Route::post('/communications/poll', [$communication, 'poll']);
 });
