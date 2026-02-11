@@ -19,4 +19,16 @@ class FileCompactViewController extends Controller
 
         return redirect()->route('filament.admin.resources.files.view', ['record' => $file]);
     }
+
+    /**
+     * Show standalone communications/threads wireframe for a file.
+     */
+    public function communications(Request $request, File $file)
+    {
+        $this->authorize('view', $file);
+
+        return view('filament.pages.files.communications-wireframe', [
+            'file' => $file,
+        ]);
+    }
 }

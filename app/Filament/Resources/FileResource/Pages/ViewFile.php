@@ -605,6 +605,12 @@ class ViewFile extends ViewRecord
                             $this->copyToClipboard($processedMessage, 'Ready Reply Message');
                         }),
                 ]),
+            Action::make('communicationsThreads')
+                ->label('Threads')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color('gray')
+                ->url(fn ($record) => route('files.communications-wireframe', ['file' => $record]))
+                ->openUrlInNewTab(false),
             Action::make('viewFinancial')
                 ->label('Invocies & Bills')
                 ->icon('heroicon-o-document-currency-euro')
