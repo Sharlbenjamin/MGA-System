@@ -61,19 +61,77 @@ class CommunicationMessage extends Model
             return '';
         }
 
-        // Backward-compatible cleanup for previously stored raw MIME payloads.
-        if (stripos($text, 'Content-Type: multipart/') !== false) {
-            if (preg_match('/Content-Type:\s*text\/plain[^\n]*\n(?:[^\n]*\n)*?\n(.*?)(?:\n--[^\n]+|\z)/is', $text, $matches)) {
-                $text = quoted_printable_decode($matches[1]);
-            } else {
-                $text = quoted_printable_decode($text);
-            }
+        if ($this->looksLikeRawMime($text)) {
+            $text = $this->extractPlainTextFromRawMime($text);
         }
 
+        $text = $this->normalizeText($text);
+        $text = $this->stripQuotedReplyTrail($text);
+
+        return trim($text) ?: '(No body)';
+    }
+
+    private function looksLikeRawMime(string $text): bool
+    {
+        return stripos($text, 'Content-Type: multipart/') !== false
+            || stripos($text, 'Content-Type: text/plain') !== false;
+    }
+
+    private function extractPlainTextFromRawMime(string $raw): string
+    {
+        $normalized = str_replace("\r\n", "\n", $raw);
+        $normalized = str_replace("\r", "\n", $normalized);
+
+        if (preg_match('/Content-Type:\s*text\/plain\b.*?\n\n(.*?)(?:\n--[^\n]+|\z)/is', $normalized, $matches)) {
+            $plain = quoted_printable_decode((string) $matches[1]);
+            return $this->normalizeText($plain);
+        }
+
+        if (preg_match('/Content-Type:\s*text\/html\b.*?\n\n(.*?)(?:\n--[^\n]+|\z)/is', $normalized, $matches)) {
+            $html = quoted_printable_decode((string) $matches[1]);
+            $html = strip_tags($html);
+            return $this->normalizeText($html);
+        }
+
+        return $this->normalizeText(quoted_printable_decode($normalized));
+    }
+
+    private function normalizeText(string $text): string
+    {
         $text = str_replace("\r\n", "\n", $text);
         $text = str_replace("\r", "\n", $text);
+        $text = preg_replace("/=\n/", '', $text) ?? $text; // quoted-printable soft break
         $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
 
         return trim($text);
+    }
+
+    private function stripQuotedReplyTrail(string $text): string
+    {
+        $patterns = [
+            '/\nOn .+ wrote:\n.*/is',
+            '/\nFrom:\s.+\nSent:\s.+\nTo:\s.+\nSubject:\s.+/is',
+            '/\n-{2,}\s*Original Message\s*-{2,}\n.*/is',
+            '/\nBegin forwarded message:\n.*/is',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $updated = preg_replace($pattern, '', $text);
+            if (is_string($updated) && $updated !== $text) {
+                $text = $updated;
+                break;
+            }
+        }
+
+        $lines = preg_split("/\n/", $text) ?: [];
+        $cleanLines = [];
+        foreach ($lines as $line) {
+            if (preg_match('/^\s*>+/', $line)) {
+                continue;
+            }
+            $cleanLines[] = $line;
+        }
+
+        return $this->normalizeText(implode("\n", $cleanLines));
     }
 }

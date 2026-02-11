@@ -114,7 +114,7 @@
                         @endphp
                         @forelse ($threadPool as $thread)
                             @php
-                                $latest = $thread->messages()->latest('sent_at')->first();
+                                $latest = $thread->latestMessage->first();
                                 $active = $selectedCaseThread && $selectedCaseThread->id === $thread->id;
                                 $badgeClass = $thread->category === 'client' ? 'client' : ($thread->category === 'provider' ? 'provider' : 'neutral');
                             @endphp
@@ -227,7 +227,7 @@
                     <ul class="list">
                         @forelse($opsThreads as $thread)
                             @php
-                                $latest = $thread->messages()->latest('sent_at')->first();
+                                $latest = $thread->latestMessage->first();
                                 $badgeClass = $thread->category === 'client' ? 'client' : ($thread->category === 'provider' ? 'provider' : 'neutral');
                                 $active = $selectedOpsThread && $selectedOpsThread->id === $thread->id;
                             @endphp

@@ -518,6 +518,8 @@ class GmailImapPollingService
             $bodyText = $this->normalizeBodyText($this->extractTextFromRawMime($rawBody));
         }
 
+        $bodyText = $this->stripQuotedReplyTrail($bodyText);
+
         if ($bodyText === '') {
             $bodyText = '(No body)';
         }
@@ -595,8 +597,38 @@ class GmailImapPollingService
     {
         $text = str_replace("\r\n", "\n", $text);
         $text = str_replace("\r", "\n", $text);
+        $text = preg_replace("/=\n/", '', $text) ?? $text;
         $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
         return trim($text);
+    }
+
+    private function stripQuotedReplyTrail(string $text): string
+    {
+        $patterns = [
+            '/\nOn .+ wrote:\n.*/is',
+            '/\nFrom:\s.+\nSent:\s.+\nTo:\s.+\nSubject:\s.+/is',
+            '/\n-{2,}\s*Original Message\s*-{2,}\n.*/is',
+            '/\nBegin forwarded message:\n.*/is',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $updated = preg_replace($pattern, '', $text);
+            if (is_string($updated) && $updated !== $text) {
+                $text = $updated;
+                break;
+            }
+        }
+
+        $lines = preg_split("/\n/", $text) ?: [];
+        $cleanLines = [];
+        foreach ($lines as $line) {
+            if (preg_match('/^\s*>+/', $line)) {
+                continue;
+            }
+            $cleanLines[] = $line;
+        }
+
+        return $this->normalizeBodyText(implode("\n", $cleanLines));
     }
 
     private function extractTextFromRawMime(string $raw): string

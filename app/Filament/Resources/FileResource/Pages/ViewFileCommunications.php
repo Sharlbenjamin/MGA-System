@@ -17,6 +17,7 @@ class ViewFileCommunications extends ViewRecord
     protected function getViewData(): array
     {
         $allCaseThreads = CommunicationThread::query()
+            ->with('latestMessage')
             ->where('linked_file_id', $this->record->id)
             ->orderByDesc('last_message_at')
             ->get();
@@ -42,9 +43,9 @@ class ViewFileCommunications extends ViewRecord
         }
 
         $opsThreads = CommunicationThread::query()
-            ->with('file:id,mga_reference,status')
+            ->with(['file:id,mga_reference,status', 'latestMessage'])
             ->orderByDesc('last_message_at')
-            ->limit(300)
+            ->limit(120)
             ->get();
 
         $selectedOpsThread = null;

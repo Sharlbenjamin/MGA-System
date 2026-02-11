@@ -80,8 +80,7 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ->with([
                         'bankAccount', 
                         'invoices.file.patient.client', 
-                        'bills.file.patient.client',
-                        'related'
+                        'bills.file.patient.client'
                     ]);
             })
             ->columns([
