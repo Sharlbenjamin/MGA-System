@@ -85,8 +85,14 @@ class GmailImapPollingService
                 continue;
             }
 
-            $thread = $this->resolveThread($mailbox, $subject, $normalizedSubject, $messageId, $inReplyTo);
-            if (!$thread->exists) {
+            ['thread' => $thread, 'created' => $threadCreated] = $this->resolveThread(
+                $mailbox,
+                $subject,
+                $normalizedSubject,
+                $messageId,
+                $inReplyTo
+            );
+            if ($threadCreated) {
                 $createdThreads++;
             }
 
@@ -188,11 +194,14 @@ class GmailImapPollingService
         string $normalizedSubject,
         ?string $messageId,
         ?string $inReplyTo
-    ): CommunicationThread {
+    ): array {
         if ($inReplyTo) {
             $replyToMessage = CommunicationMessage::query()->where('message_id', $inReplyTo)->first();
             if ($replyToMessage) {
-                return $replyToMessage->thread;
+                return [
+                    'thread' => $replyToMessage->thread,
+                    'created' => false,
+                ];
             }
         }
 
@@ -202,7 +211,10 @@ class GmailImapPollingService
                 ->where('external_thread_key', $messageId)
                 ->first();
             if ($byMessageKey) {
-                return $byMessageKey;
+                return [
+                    'thread' => $byMessageKey,
+                    'created' => false,
+                ];
             }
         }
 
@@ -213,10 +225,14 @@ class GmailImapPollingService
             ->first();
 
         if ($bySubject) {
-            return $bySubject;
+            return [
+                'thread' => $bySubject,
+                'created' => false,
+            ];
         }
 
-        return CommunicationThread::create([
+        return [
+            'thread' => CommunicationThread::create([
             'mailbox' => strtolower($mailbox),
             'subject' => $subject,
             'normalized_subject' => $normalizedSubject,
@@ -225,7 +241,9 @@ class GmailImapPollingService
             'awaiting_reply' => true,
             'external_thread_key' => $messageId,
             'participants' => [],
-        ]);
+            ]),
+            'created' => true,
+        ];
     }
 
     /**
