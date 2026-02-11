@@ -732,10 +732,15 @@ class ViewFile extends ViewRecord
                         ->options(\App\Models\User::query()->orderBy('name')->pluck('name', 'id'))
                         ->searchable()
                         ->required(),
+                    Textarea::make('description')
+                        ->label('Comment')
+                        ->rows(3)
+                        ->nullable(),
                 ])
                 ->action(function (array $data): void {
                     $title = (string) ($data['task_title'] ?? '');
                     $userId = (int) ($data['user_id'] ?? 0);
+                    $description = trim((string) ($data['description'] ?? ''));
                     if (!$title || !$userId) {
                         Notification::make()->danger()->title('Task and user are required')->send();
                         return;
@@ -749,7 +754,11 @@ class ViewFile extends ViewRecord
                         ->whereNull('user_id')
                         ->first();
                     if ($task) {
-                        $task->update(['user_id' => $userId]);
+                        $update = ['user_id' => $userId];
+                        if ($description !== '') {
+                            $update['description'] = $description;
+                        }
+                        $task->update($update);
                         $this->sendTaskAssignedDatabaseNotification($task);
                         Notification::make()->success()->title('Task assigned')->body("{$title} assigned to user.")->send();
                         return;
@@ -761,7 +770,11 @@ class ViewFile extends ViewRecord
                         })
                         ->first();
                     if ($task) {
-                        $task->update(['user_id' => $userId]);
+                        $update = ['user_id' => $userId];
+                        if ($description !== '') {
+                            $update['description'] = $description;
+                        }
+                        $task->update($update);
                         $this->sendTaskAssignedDatabaseNotification($task);
                         Notification::make()->success()->title('Task assigned')->body("{$title} assigned to user.")->send();
                         return;
@@ -791,6 +804,7 @@ class ViewFile extends ViewRecord
                             'taskable_type' => $linked::class,
                             'taskable_id' => $linked->id,
                             'user_id' => $userId,
+                            'description' => $description !== '' ? $description : null,
                             'is_done' => false,
                         ]);
                         $this->sendTaskAssignedDatabaseNotification($task);
@@ -804,6 +818,7 @@ class ViewFile extends ViewRecord
                             'taskable_type' => null,
                             'taskable_id' => null,
                             'user_id' => $userId,
+                            'description' => $description !== '' ? $description : null,
                             'is_done' => false,
                         ]);
                         $this->sendTaskAssignedDatabaseNotification($task);

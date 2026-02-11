@@ -2,406 +2,450 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>File View – Compact</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MGA System - Wireframe Mockup</title>
   <style>
-    :root{
-      --bg:#f6f7fb;
-      --card:#ffffff;
-      --border:#e7e9f0;
-      --muted:#6b7280;
-      --text:#111827;
-      --shadow: 0 10px 25px rgba(17,24,39,.06);
-      --radius:14px;
-      --gap:16px;
-      --primary:#2563eb;
-      --pill:#f3f4f6;
-      --pillText:#111827;
+    :root {
+      --bg: #f4f4f5;
+      --panel: #ffffff;
+      --line: #d4d4d8;
+      --line-dark: #a1a1aa;
+      --text: #18181b;
+      --muted: #52525b;
+      --chip: #ededee;
+      --hover: #f7f7f7;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-sm: 10px;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      background:var(--bg);
-      color:var(--text);
+
+    * {
+      box-sizing: border-box;
     }
-    .container{max-width:1280px;margin:0 auto;padding:18px 18px 28px}
-    .topbar{
-      position:sticky;top:0;z-index:10;
-      background:rgba(246,247,251,.85);
-      backdrop-filter: blur(10px);
-      border-bottom:1px solid var(--border);
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-width: 1360px;
     }
-    .topbar-inner{max-width:1280px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:12px}
-    .title{
-      display:flex;align-items:center;gap:12px;min-width:280px;
+
+    .frame {
+      width: 100%;
+      min-height: 100vh;
+      padding: 24px;
     }
-    .ref{font-size:28px;font-weight:800;letter-spacing:.3px}
-    .badge{
-      background:#fde68a;
-      color:#111827;
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:700;
-      font-size:13px;
-      border:1px solid #fcd34d;
+
+    .dashboard {
+      background: #fafafa;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 18px;
+      min-height: calc(100vh - 48px);
     }
-    .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .btn{
-      border:1px solid var(--border);
-      background:var(--card);
-      padding:10px 12px;
-      border-radius:12px;
-      font-weight:600;
-      font-size:14px;
-      display:inline-flex;align-items:center;gap:8px;
-      box-shadow:0 2px 0 rgba(17,24,39,.02);
-      cursor:pointer;
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
-    .btn.primary{background:var(--primary);border-color:var(--primary);color:white}
-    .btn.icon{padding:10px 11px}
-    .btn small{font-weight:700;color:var(--muted)}
-    .grid{
-      margin-top:16px;
-      display:grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap:var(--gap);
+
+    .panel-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      overflow:hidden;
+
+    .panel-title {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
     }
-    .card-h{
-      padding:14px 16px;
-      border-bottom:1px solid var(--border);
-      display:flex;align-items:center;justify-content:space-between;
-      font-weight:800;
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fcfcfc;
+      flex-wrap: wrap;
     }
-    .card-b{padding:12px 16px}
-    .kv{
-      display:grid;
-      grid-template-columns: 120px 1fr;
-      gap:8px 12px;
-      font-size:14px;
-      line-height:1.35;
+
+    .tab {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      user-select: none;
     }
-    .k{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-    .v{font-weight:650}
-    .pill{
-      display:inline-flex;align-items:center;gap:8px;
-      background:var(--pill);
-      border:1px solid var(--border);
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:700;
-      font-size:12px;
-      color:var(--pillText);
-      white-space:nowrap;
+
+    .tab.active {
+      color: #000;
+      border-color: var(--line-dark);
+      background: var(--chip);
     }
-    .split-row{
-      margin-top:16px;
-      display:grid;
-      grid-template-columns: 2fr 1fr;
-      gap:var(--gap);
+
+    .left-body {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 14px;
+      padding: 14px;
+      min-height: 0;
+      flex: 1;
     }
-    .split-vert{
-      display:grid;
+
+    .subcard {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .subcard-title {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .thread-list {
+      list-style: none;
+      padding: 10px;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .thread-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: #fcfcfc;
+      padding: 10px 11px;
+      font-size: 13px;
+      line-height: 1.25;
+      color: #202024;
+    }
+
+    .thread-item.active {
+      border-color: var(--line-dark);
+      background: #f2f2f2;
+    }
+
+    .viewer {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      min-height: 0;
+    }
+
+    .subject {
+      border: 1px dashed var(--line-dark);
+      border-radius: var(--radius-sm);
+      background: #fafafa;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .timeline {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      background: #fcfcfc;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: 1;
+    }
+
+    .msg {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 9px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .msg.meta {
+      background: #f7f7f7;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 2px;
+    }
+
+    .btn {
+      border: 1px solid var(--line-dark);
+      background: #fff;
+      color: #111;
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: default;
+    }
+
+    .right-body {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px;
+      flex: 1;
+    }
+
+    .right-tabs {
+      display: grid;
       grid-template-columns: 1fr 1fr;
-      gap:0;
-      min-height:220px;
-    }
-    .split-vert > .pane{
-      padding:12px 16px;
-    }
-    .split-vert > .pane + .pane{
-      border-left:1px solid var(--border);
-    }
-    .pane-title{
-      font-size:13px;
-      font-weight:900;
-      margin:2px 0 10px;
-      display:flex;align-items:center;justify-content:space-between;
-    }
-    ul.bullets{margin:0;padding-left:18px;color:var(--text)}
-    ul.bullets li{margin:6px 0;color:#111827}
-    .toolbar{
-      margin-top:12px;
-      display:flex;
-      gap:8px;
-      border-top:1px solid var(--border);
-      padding-top:12px;
-      flex-wrap:wrap;
-    }
-    .link{
-      color:var(--primary);
-      font-weight:800;
-      text-decoration:none;
-    }
-    .tasks{
-      display:flex;flex-direction:column;gap:10px;margin-top:8px;
-    }
-    .task{
-      display:flex;align-items:center;gap:10px;
-      padding:10px 10px;
-      border:1px solid var(--border);
-      border-radius:12px;
-      background:#fbfbfe;
-    }
-    .task-name{font-weight:800;font-size:13px;flex:1}
-    .task-meta{display:flex;align-items:center;gap:8px;white-space:nowrap}
-    .status{
-      font-size:12px;font-weight:900;
-      padding:6px 10px;border-radius:999px;border:1px solid var(--border);
-      background:#fff;
-    }
-    .status.pending{background:#fff7ed;border-color:#fed7aa}
-    .status.done{background:#ecfdf5;border-color:#a7f3d0}
-    .assignee{
-      font-size:12px;font-weight:900;color:#374151;
-      padding:6px 10px;border-radius:999px;background:#f3f4f6;border:1px solid var(--border);
+      gap: 10px;
     }
 
-    /* Provider details card */
-    .provider-links{margin-top:10px;display:flex;gap:14px;flex-wrap:wrap}
-    .provider-links a{font-weight:900}
-
-    /* Floating quick actions */
-    .fab{
-      position:fixed;right:22px;bottom:22px;z-index:30;
-      width:54px;height:54px;border-radius:999px;
-      background:var(--primary);color:#fff;border:0;
-      font-size:28px;font-weight:900;
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 18px 40px rgba(37,99,235,.28);
-      cursor:pointer;
-    }
-    .fab-menu{
-      position:fixed;right:22px;bottom:84px;z-index:30;
-      width:260px;
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:16px;
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-    .fab-item{
-      display:flex;align-items:center;gap:10px;
-      padding:12px 14px;
-      border-bottom:1px solid var(--border);
-      font-weight:900;
-      cursor:pointer;
-    }
-    .fab-item:last-child{border-bottom:0}
-    .fab-ic{
-      width:28px;height:28px;border-radius:10px;
-      background:#eef2ff;border:1px solid #e0e7ff;
-      display:flex;align-items:center;justify-content:center;
-      font-weight:900;color:#1e40af;
+    .right-tab {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fcfcfc;
+      text-align: center;
+      padding: 14px 12px;
+      font-size: 16px;
+      font-weight: 650;
     }
 
-    /* Responsive */
-    @media (max-width: 1020px){
-      .grid{grid-template-columns:1fr}
-      .split-row{grid-template-columns:1fr}
-      .split-vert{grid-template-columns:1fr}
-      .split-vert > .pane + .pane{border-left:0;border-top:1px solid var(--border)}
-      .title{min-width:auto}
+    .right-tab.active {
+      background: #f0f0f0;
+      border-color: var(--line-dark);
+    }
+
+    .thread-area {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #fff;
+      min-height: 260px;
+    }
+
+    .provider-switcher {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .provider-btn {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .provider-btn.active {
+      background: #ededed;
+      border-color: var(--line-dark);
+    }
+
+    .bottom-linking {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: #fcfcfc;
+      overflow: hidden;
+    }
+
+    .bottom-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .suggest-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 12px;
+      min-height: 126px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .suggest-text {
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .stack {
+      display: flex;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .fields {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 7px 8px;
+      gap: 8px;
+    }
+
+    .apply {
+      border: 1px solid var(--line-dark);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #fff;
+      white-space: nowrap;
     }
   </style>
 </head>
 <body>
-
-  <!-- Sticky header -->
-  <div class="topbar">
-    <div class="topbar-inner">
-      <div class="title">
-        <div class="ref">MG158HE</div>
-        <div class="badge">New</div>
-      </div>
-
-      <div class="actions">
-        <button class="btn icon" title="Toggle Old/New View">⇄</button>
-        <button class="btn" title="Invoices & Bills">🧾 <span>Invoices & Bills</span></button>
-        <button class="btn" title="Ready Replies">💬 <span>Ready Replies</span></button>
-        <button class="btn" title="Update File">✏️ <span>Update File</span></button>
-      </div>
-    </div>
-  </div>
-
-  <div class="container">
-
-    <!-- 3-column top grid -->
-    <div class="grid">
-
-      <!-- Patient + Client -->
-      <div class="card">
-        <div class="card-h">Patient & Client</div>
-        <div class="card-b">
-          <div class="kv">
-            <div class="k">Patient</div><div class="v">Luis Tomas Monteiro Moreira (F)</div>
-            <div class="k">DOB</div><div class="v">04/11/1957</div>
-            <div class="k">Phone</div><div class="v">—</div>
-            <div class="k">Email</div><div class="v">—</div>
-
-            <div class="k" style="margin-top:8px;">Client</div><div class="v" style="margin-top:8px;">Hero MGA Services LTD</div>
-            <div class="k">Client Ref</div><div class="v">—</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Case details -->
-      <div class="card">
-        <div class="card-h">Case Details</div>
-        <div class="card-b">
-          <div class="kv">
-            <div class="k">Service</div><div class="v">Dental Clinic</div>
-            <div class="k">Country</div><div class="v">France</div>
-            <div class="k">City</div><div class="v">Paris</div>
-            <div class="k">Service Date</div><div class="v">—</div>
-            <div class="k">Service Time</div><div class="v">—</div>
-
-            <div class="k">Status</div><div class="v"><span class="pill">New</span></div>
-            <div class="k">Invoice</div><div class="v"><span class="pill">No Invoice</span></div>
-            <div class="k">Bill</div><div class="v"><span class="pill">No Bill</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Medical summary -->
-      <div class="card">
-        <div class="card-h">Medical Summary</div>
-        <div class="card-b">
-          <div class="kv">
-            <div class="k">Address</div><div class="v">14 Rue du Pileu, 91300 Massy, France</div>
-            <div class="k">Symptoms</div><div class="v">Dental crown loose, causing discomfort</div>
-            <div class="k">Diagnosis</div><div class="v">—</div>
-            <div class="k">Drive</div><div class="v"><a class="link" href="#" onclick="return false;">Open folder</a></div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Second row: Summary (split vertically) + Provider details -->
-    <div class="split-row">
-
-      <!-- Summary split: left = summary bullets, right = tasks -->
-      <div class="card">
-        <div class="card-h">
-          <span>Summary</span>
-          <span style="color:var(--muted);font-size:12px;font-weight:900;">Collapsed by default in Filament</span>
+  <main class="frame">
+    <section class="dashboard" aria-label="MGA System Wireframe">
+      <article class="panel">
+        <div class="panel-header">
+          <h1 class="panel-title">Operations Inbox</h1>
         </div>
 
-        <div class="split-vert">
-          <div class="pane">
-            <div class="pane-title">
-              <span>Case Summary</span>
-              <a class="link" href="#" onclick="return false;">Copy</a>
-            </div>
-            <ul class="bullets">
-              <li>Dental clinic request — Paris</li>
-              <li>Crown loose, patient discomfort</li>
-              <li>No provider assigned yet</li>
-              <li>No invoice / bill</li>
+        <div class="tabs">
+          <div class="tab active">General</div>
+          <div class="tab">Open Cases</div>
+          <div class="tab">Unlinked</div>
+          <div class="tab">Providers</div>
+        </div>
+
+        <div class="left-body">
+          <section class="subcard">
+            <div class="subcard-title">Threads</div>
+            <ul class="thread-list">
+              <li class="thread-item active">[Case 12345] HERO -> New Case</li>
+              <li class="thread-item">[Case 12345] You -> Re: Info</li>
+              <li class="thread-item">[Unlinked] Provider X -> Prices</li>
+              <li class="thread-item">[General] Inquiry -> Partnership</li>
             </ul>
-            <div class="toolbar">
-              <button class="btn">✏️ Edit summary</button>
-              <button class="btn">📋 Copy for email / WhatsApp</button>
-            </div>
-          </div>
+          </section>
 
-          <div class="pane">
-            <div class="pane-title">
-              <span>Tasks</span>
-              <span style="color:var(--muted);font-size:12px;font-weight:900;">Status • Assignee</span>
-            </div>
-
-            <div class="tasks">
-              <div class="task">
-                <div class="task-name">Create GOP In</div>
-                <div class="task-meta">
-                  <span class="status pending">Pending</span>
-                  <span class="assignee">Samantha</span>
-                </div>
+          <section class="subcard">
+            <div class="subcard-title">Thread Viewer</div>
+            <div class="viewer">
+              <div class="subject">Subject: Case #12345 - Additional Info Required</div>
+              <div class="timeline">
+                <div class="msg meta"><strong>09:08</strong> HERO: We have opened a new case and attached initial details.</div>
+                <div class="msg"><strong>09:15</strong> MGA Ops: Received. We are reviewing provider options now.</div>
+                <div class="msg"><strong>09:24</strong> HERO: Please confirm if all required fields are complete.</div>
               </div>
-              <div class="task">
-                <div class="task-name">Upload GOP In</div>
-                <div class="task-meta">
-                  <span class="status pending">Pending</span>
-                  <span class="assignee">Samantha</span>
-                </div>
-              </div>
-              <div class="task">
-                <div class="task-name">Create MR</div>
-                <div class="task-meta">
-                  <span class="status pending">Pending</span>
-                  <span class="assignee">Jason</span>
-                </div>
-              </div>
-              <div class="task">
-                <div class="task-name">Upload MR</div>
-                <div class="task-meta">
-                  <span class="status done">Done</span>
-                  <span class="assignee">Jason</span>
-                </div>
-              </div>
-              <div class="task">
-                <div class="task-name">Create Bill</div>
-                <div class="task-meta">
-                  <span class="status pending">Pending</span>
-                  <span class="assignee">—</span>
-                </div>
-              </div>
-              <div class="task">
-                <div class="task-name">Upload Bill</div>
-                <div class="task-meta">
-                  <span class="status pending">Pending</span>
-                  <span class="assignee">—</span>
-                </div>
+              <div class="actions">
+                <button class="btn">Reply</button>
               </div>
             </div>
-
-          </div>
+          </section>
         </div>
-      </div>
+      </article>
 
-      <!-- Provider details -->
-      <div class="card">
-        <div class="card-h">Provider Details</div>
-        <div class="card-b">
-          <div class="kv">
-            <div class="k">Provider</div><div class="v">Dr. Jean Dupont</div>
-            <div class="k">Branch</div><div class="v">La Defense Branch</div>
-            <div class="k">Type</div><div class="v">Doctor</div>
-            <div class="k">Address</div><div class="v">21 Avenue de l'Arche</div>
-            <div class="k">City</div><div class="v">Paris</div>
-            <div class="k">Email</div><div class="v">—</div>
-            <div class="k">Phone</div><div class="v">—</div>
-          </div>
-
-          <div class="provider-links">
-            <a class="link" href="#" onclick="return false;">Open Provider</a>
-            <a class="link" href="#" onclick="return false;">Open Branch</a>
-          </div>
+      <article class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">File: Case #12345 - Communications</h2>
         </div>
-      </div>
 
-    </div>
+        <div class="right-body">
+          <div class="right-tabs">
+            <div class="right-tab active">Client Thread</div>
+            <div class="right-tab">Provider Threads</div>
+          </div>
 
-  </div>
+          <section class="thread-area">
+            <div class="subcard-title" style="margin: -12px -12px 0; border-bottom: 1px solid var(--line);">Client Thread</div>
+            <div class="timeline">
+              <div class="msg"><strong>09:02</strong> Client: Please arrange consultation for Case #12345.</div>
+              <div class="msg meta"><strong>09:11</strong> MGA Team: Noted. We are contacting providers.</div>
+              <div class="msg"><strong>09:19</strong> Client: Thank you, please keep us updated.</div>
+            </div>
+            <div class="actions">
+              <button class="btn">Reply</button>
+            </div>
+          </section>
 
-  <!-- Floating quick actions (New list) -->
-  <div class="fab-menu" aria-label="Quick actions">
-    <div class="fab-item"><span class="fab-ic">📅</span> Request Appointment</div>
-    <div class="fab-item"><span class="fab-ic">📝</span> Extract Consent</div>
-    <div class="fab-item"><span class="fab-ic">💬</span> Add Comment</div>
-    <div class="fab-item"><span class="fab-ic">🏥</span> Assign Provider</div>
-    <div class="fab-item"><span class="fab-ic">👤</span> Assign Employee</div>
-  </div>
-  <button class="fab" title="Quick actions">+</button>
+          <section class="thread-area">
+            <div class="subcard-title" style="margin: -12px -12px 0; border-bottom: 1px solid var(--line);">Provider Threads</div>
+            <div class="provider-switcher">
+              <div class="provider-btn active">Clinic A</div>
+              <div class="provider-btn">Dr. Smith</div>
+              <div class="provider-btn">Hospital X</div>
+            </div>
+            <div class="timeline" style="min-height: 126px;">
+              <div class="msg"><strong>10:02</strong> Clinic A: Earliest available slot is Thursday at 14:30.</div>
+              <div class="msg meta"><strong>10:10</strong> MGA Team: Please share consultation price and required documents.</div>
+            </div>
+          </section>
 
+          <section class="bottom-linking">
+            <div class="bottom-header">Linking &amp; Suggestions</div>
+            <div class="bottom-grid">
+              <div class="suggest-card">
+                <div class="suggest-text">Suggested Thread: Matches Case ID</div>
+                <div class="stack">
+                  <button class="btn">Confirm</button>
+                  <button class="btn">Adjust</button>
+                </div>
+              </div>
+
+              <div class="suggest-card">
+                <div class="suggest-text">Missing Fields:</div>
+                <ul class="fields">
+                  <li class="field-row"><span>DOB: 01/10/1992</span><button class="apply">Apply</button></li>
+                  <li class="field-row"><span>Address: 123 Main St</span><button class="apply">Apply</button></li>
+                </ul>
+              </div>
+            </div>
+          </section>
+        </div>
+      </article>
+    </section>
+  </main>
 </body>
 </html>
