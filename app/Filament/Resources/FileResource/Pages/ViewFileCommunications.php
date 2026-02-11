@@ -39,7 +39,18 @@ class ViewFileCommunications extends ViewRecord
         $selectedCaseThread = null;
         if ($casePool->isNotEmpty()) {
             $selectedCaseThread = $casePool->firstWhere('id', (int) request()->query('thread_id')) ?? $casePool->first();
-            $selectedCaseThread?->load(['messages' => fn ($q) => $q->with('attachments')->orderBy('sent_at')]);
+            $selectedCaseThread?->load([
+                'messages' => fn ($q) => $q
+                    ->with('attachments')
+                    ->orderByDesc('sent_at')
+                    ->limit(25),
+            ]);
+            if ($selectedCaseThread) {
+                $selectedCaseThread->setRelation(
+                    'messages',
+                    $selectedCaseThread->messages->sortBy('sent_at')->values()
+                );
+            }
         }
 
         $opsThreads = CommunicationThread::query()
@@ -51,7 +62,18 @@ class ViewFileCommunications extends ViewRecord
         $selectedOpsThread = null;
         if ($opsThreads->isNotEmpty()) {
             $selectedOpsThread = $opsThreads->firstWhere('id', (int) request()->query('inbox_thread_id')) ?? $opsThreads->first();
-            $selectedOpsThread?->load(['messages' => fn ($q) => $q->with('attachments')->orderBy('sent_at')]);
+            $selectedOpsThread?->load([
+                'messages' => fn ($q) => $q
+                    ->with('attachments')
+                    ->orderByDesc('sent_at')
+                    ->limit(25),
+            ]);
+            if ($selectedOpsThread) {
+                $selectedOpsThread->setRelation(
+                    'messages',
+                    $selectedOpsThread->messages->sortBy('sent_at')->values()
+                );
+            }
         }
 
         return [

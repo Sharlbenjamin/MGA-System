@@ -81,7 +81,7 @@
     <main class="wrapper">
         <div class="screen-toggle">
             <a class="pill {{ $activeView === 'case' ? 'active' : '' }}"
-               href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'case', 'case_tab' => $caseTab, 'thread_id' => $selectedCaseThread?->id]) }}">Case-Level View</a>
+               href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'case', 'case_tab' => $caseTab, 'thread_id' => $selectedCaseThread?->id]) }}">{{ $file->mga_reference ?? ('Case #' . $file->id) }}</a>
             <a class="pill {{ $activeView === 'ops' ? 'active' : '' }}"
                href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => 'ops', 'case_tab' => $caseTab, 'inbox_thread_id' => $selectedOpsThread?->id]) }}">Operations Inbox View</a>
         </div>
