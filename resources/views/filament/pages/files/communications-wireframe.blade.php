@@ -13,7 +13,7 @@
             --text: #1f2937;
             --muted: #6b7280;
 
-            --yellow-bg: #fff8cc;
+            --yellow-bg: #ffffff;
             --read-bg: #f3f4f6;
             --client: #22c55e;
             --client-soft: #ecfdf3;
@@ -255,6 +255,8 @@
 
         .thread.unread {
             background: var(--yellow-bg);
+            border-left: 3px solid #93c5fd;
+            padding-left: 9px;
         }
 
         .thread.active {
@@ -417,6 +419,7 @@
 
         .message.unread {
             background: var(--yellow-bg);
+            box-shadow: inset 0 0 0 1px #bfdbfe;
         }
 
         .message.client {
@@ -440,6 +443,50 @@
             font-size: 11px;
             color: #64748b;
             font-weight: 600;
+        }
+
+        .attachments {
+            margin-top: 9px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .attachment {
+            border: 1px solid var(--line);
+            background: #fff;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #334155;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .attachment::before {
+            content: "📎";
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .attachment.client {
+            background: var(--client-soft);
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+
+        .attachment.provider {
+            background: var(--provider-soft);
+            border-color: #ddd6fe;
+            color: #6d28d9;
+        }
+
+        .attachment.neutral {
+            background: var(--neutral-soft);
+            border-color: #e5e7eb;
+            color: #475569;
         }
 
         .status {
@@ -657,6 +704,10 @@
                                 <span class="type-badge client">Client • Unread</span>
                             </div>
                             Can you confirm required documents and expected timeline for Case #12345?
+                            <div class="attachments">
+                                <span class="attachment client">Passport_Copy.pdf</span>
+                                <span class="attachment client">Insurance_Card.jpg</span>
+                            </div>
                         </article>
                         <article class="message neutral">
                             <div class="msg-meta">
@@ -671,6 +722,9 @@
                                 <span class="type-badge client">Client</span>
                             </div>
                             Please arrange consultation at the earliest available slot.
+                            <div class="attachments">
+                                <span class="attachment client">Referral_Letter.pdf</span>
+                            </div>
                         </article>
                     </div>
 
@@ -682,6 +736,10 @@
                                 <span class="status confirmed">Confirmed</span>
                             </div>
                             Earliest available appointment is Thursday at 14:30. Fee details attached.
+                            <div class="attachments">
+                                <span class="attachment provider">Quote_ClinicA.pdf</span>
+                                <span class="attachment provider">Available_Slots.xlsx</span>
+                            </div>
                         </article>
                         <article class="message neutral">
                             <div class="msg-meta">
@@ -698,6 +756,9 @@
                                 <span class="status requested">Requested</span>
                             </div>
                             Request acknowledged. Coordinating with doctor schedule.
+                            <div class="attachments">
+                                <span class="attachment provider">Service_Catalog.pdf</span>
+                            </div>
                         </article>
                     </div>
 
@@ -790,6 +851,9 @@
                         <article class="message client unread">
                             <div class="msg-meta"><span>10:24</span><span class="type-badge client">Client • Unread</span><span class="chip">Case #12345</span></div>
                             We need provider availability and confirmation of cost by today.
+                            <div class="attachments">
+                                <span class="attachment client">Medical_Summary.pdf</span>
+                            </div>
                         </article>
                         <article class="message neutral">
                             <div class="msg-meta"><span>10:29</span><span class="type-badge neutral">MGA Ops</span></div>
@@ -798,6 +862,9 @@
                         <article class="message provider">
                             <div class="msg-meta"><span>10:36</span><span class="type-badge provider">Clinic A</span><span class="status waiting">Waiting</span></div>
                             Slot available Thursday at 14:30. Awaiting your approval to proceed.
+                            <div class="attachments">
+                                <span class="attachment provider">ClinicA_Fee_Sheet.pdf</span>
+                            </div>
                         </article>
                     </div>
                     <div class="suggestions" style="border-top: 1px solid var(--line);">
@@ -814,6 +881,10 @@
                                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                     <span class="status requested">Case: Open</span>
                                     <span class="status waiting">Provider: Waiting</span>
+                                </div>
+                                <div class="attachments" style="margin-top:10px;">
+                                    <span class="attachment neutral">Attachments (4)</span>
+                                    <span class="attachment neutral">Latest: Quote_ClinicA.pdf</span>
                                 </div>
                             </div>
                         </section>
