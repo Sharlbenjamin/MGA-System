@@ -3,11 +3,6 @@
         :root { --bg:#f1f4f9; --surface:#fff; --soft:#f8fafc; --line:#dfe3ea; --text:#1f2937; --muted:#6b7280; --client:#22c55e; --provider:#8b5cf6; --neutral:#9ca3af; }
         * { box-sizing:border-box; }
         body { margin:0; font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); min-width:1240px; }
-        .appbar { position:sticky; top:0; z-index:40; background:rgba(241,244,249,.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); padding:10px 16px; display:grid; grid-template-columns:280px 1fr auto; gap:12px; align-items:center; }
-        .brand { font-weight:700; font-size:18px; display:flex; gap:8px; align-items:center; }
-        .dot { width:12px; height:12px; border-radius:999px; background:linear-gradient(120deg,#22c55e,#8b5cf6); }
-        .search { border:1px solid var(--line); background:#eaf1fb; border-radius:999px; padding:10px 14px; font-size:13px; color:#475569; }
-        .top-actions { display:flex; gap:8px; }
         .btn { border:1px solid var(--line); border-radius:10px; background:#fff; color:#1f2937; padding:8px 12px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
         .btn.primary { background:#e8f0fe; border-color:#bfdbfe; color:#1d4ed8; }
         .btn.success { background:#ecfdf3; border-color:#86efac; color:#166534; }
@@ -63,17 +58,8 @@
         .panel-h { padding:10px 12px; border-bottom:1px solid var(--line); font-size:13px; font-weight:700; }
         .panel-b { padding:10px 12px; }
         .row { border:1px dashed var(--line); border-radius:8px; padding:7px 8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; }
-        .alert { margin:8px 16px 0; padding:10px 12px; border:1px solid #86efac; background:#ecfdf3; color:#166534; border-radius:10px; font-size:13px; font-weight:600; }
+        .alert { margin:0 0 8px; padding:10px 12px; border:1px solid #86efac; background:#ecfdf3; color:#166534; border-radius:10px; font-size:13px; font-weight:600; }
     </style>
-    <header class="appbar">
-        <div class="brand"><span class="dot"></span>MGA System</div>
-        <div class="search">Case: {{ $file->mga_reference ?? ('#' . $file->id) }} · {{ $allCaseThreads->count() }} linked thread(s)</div>
-        <div class="top-actions">
-            <a class="btn" href="{{ \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $file->id, 'view' => $activeView, 'case_tab' => $caseTab, 'thread_id' => $selectedCaseThread?->id, 'inbox_thread_id' => $selectedOpsThread?->id]) }}">Refresh</a>
-            <a class="btn" href="{{ route('filament.admin.resources.files.view', ['record' => $file->id]) }}">Back to File</a>
-        </div>
-    </header>
-
     @if (session('status'))
         <div class="alert">{{ session('status') }}</div>
     @endif
