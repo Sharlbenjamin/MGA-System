@@ -466,12 +466,20 @@ class ViewFile extends ViewRecord
 
     protected function getHeaderActions(): array
     {
+        $requestAppointmentAction = Action::make('requestAppointment')
+            ->label('Request Appointment')
+            ->icon('heroicon-o-globe-alt')
+            ->color('primary')
+            ->url(fn () => FileResource::getUrl('request-appointment', ['record' => $this->record]));
+
+        $communicationsThreadsAction = Action::make('communicationsThreads')
+            ->label('Threads')
+            ->icon('heroicon-o-chat-bubble-left-right')
+            ->color('gray')
+            ->url(fn ($record) => \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $record]))
+            ->openUrlInNewTab(false);
+
         $actions = [
-            Action::make('requestAppointment')
-                ->label('Request Appointment')
-                ->icon('heroicon-o-globe-alt')
-                ->color('primary')
-                ->url(fn () => FileResource::getUrl('request-appointment', ['record' => $this->record])),
             Action::make('exportMedicalReport')
                 ->label('Export MR')
                 ->icon('heroicon-o-document-arrow-down')
@@ -605,12 +613,6 @@ class ViewFile extends ViewRecord
                             $this->copyToClipboard($processedMessage, 'Ready Reply Message');
                         }),
                 ]),
-            Action::make('communicationsThreads')
-                ->label('Threads')
-                ->icon('heroicon-o-chat-bubble-left-right')
-                ->color('gray')
-                ->url(fn ($record) => \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $record]))
-                ->openUrlInNewTab(false),
             Action::make('viewFinancial')
                 ->label('Invocies & Bills')
                 ->icon('heroicon-o-document-currency-euro')
@@ -833,6 +835,8 @@ class ViewFile extends ViewRecord
                 }),
         ];
         return [
+            $requestAppointmentAction,
+            $communicationsThreadsAction,
             ActionGroup::make($actions)
                 ->icon('heroicon-m-ellipsis-vertical')
                 ->label('Actions')
