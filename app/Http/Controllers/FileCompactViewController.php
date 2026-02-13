@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Filament\Resources\FileResource;
+use App\Models\CommunicationAttachment;
 use App\Models\CommunicationMessage;
 use App\Models\CommunicationThread;
 use App\Models\File;
+use App\Services\GmailImapPollingService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -138,5 +140,47 @@ class FileCompactViewController extends Controller
         ]);
 
         return redirect()->to($target . '?' . $query)->with('status', 'Reply sent.');
+    }
+
+    public function downloadAttachment(
+        Request $request,
+        CommunicationAttachment $attachment,
+        GmailImapPollingService $imapService
+    ) {
+        $attachment->load('message.thread.file');
+
+        $threadFile = $attachment->message?->thread?->file;
+        if ($threadFile) {
+            $this->authorize('view', $threadFile);
+        }
+
+        if (!empty($attachment->url)) {
+            return redirect()->away($attachment->url);
+        }
+
+        $message = $attachment->message;
+        if (!$message || !$message->mailbox_uid || !$attachment->part_number) {
+            return back()->withErrors(['attachment' => 'Attachment payload is not available yet.']);
+        }
+
+        $payload = $imapService->fetchAttachmentContent(
+            (string) ($message->mailbox ?: config('mail.from.address', 'mga.operation@medguarda.com')),
+            (int) $message->mailbox_uid,
+            (string) $attachment->part_number
+        );
+
+        if (!$payload) {
+            return back()->withErrors(['attachment' => 'Attachment payload could not be fetched from mailbox.']);
+        }
+
+        $filename = $attachment->filename ?: ($payload['filename'] ?? ('attachment-' . $attachment->id));
+        $safeFilename = str_replace(['"', "\r", "\n"], '', (string) $filename);
+        $mode = $request->query('mode', 'open') === 'download' ? 'attachment' : 'inline';
+
+        return response($payload['content'], 200, [
+            'Content-Type' => (string) ($payload['mime_type'] ?? 'application/octet-stream'),
+            'Content-Disposition' => $mode . '; filename="' . $safeFilename . '"',
+            'Cache-Control' => 'private, max-age=0, no-cache',
+        ]);
     }
 }

@@ -18,28 +18,9 @@ class GmailImapPollingService
      *
      * @return array<string, int|string>
      */
-    public function poll(string $mailbox = 'mga.operation@medguarda.com', int $limit = 100): array
+    public function poll(string $mailbox = 'mga.operation@medguarda.com', int $limit = 100, bool $headersOnly = false): array
     {
-        if (!function_exists('imap_open')) {
-            throw new \RuntimeException('PHP IMAP extension is not installed.');
-        }
-
-        $host = env('MAIL_IMAP_HOST', env('GMAIL_IMAP_HOST', 'imap.gmail.com'));
-        $port = (int) env('MAIL_IMAP_PORT', env('GMAIL_IMAP_PORT', 993));
-        $flags = env('MAIL_IMAP_FLAGS', env('GMAIL_IMAP_FLAGS', '/imap/ssl'));
-        $username = env('MAIL_USERNAME', env('GMAIL_IMAP_USERNAME', $mailbox));
-        $password = env('MAIL_PASSWORD', env('GMAIL_IMAP_PASSWORD'));
-
-        if (!$password) {
-            throw new \RuntimeException('Missing MAIL_PASSWORD env value.');
-        }
-
-        $mailboxPath = sprintf('{%s:%d%s}INBOX', $host, $port, $flags);
-        $stream = @imap_open($mailboxPath, $username, $password);
-
-        if (!$stream) {
-            throw new \RuntimeException('IMAP connection failed: ' . (imap_last_error() ?: 'unknown'));
-        }
+        $stream = $this->openMailboxStream($mailbox);
 
         $sync = CommunicationSyncState::firstOrCreate(
             ['mailbox' => strtolower($mailbox)],
@@ -113,8 +94,13 @@ class GmailImapPollingService
                 ...$cc,
             ]);
 
-            ['text' => $bodyText, 'html' => $bodyHtml] = $this->extractBodyContent($stream, $uid);
-            $attachments = $this->extractAttachmentMetadata($stream, $uid);
+            $bodyText = null;
+            $bodyHtml = null;
+            $attachments = [];
+            if (!$headersOnly) {
+                ['text' => $bodyText, 'html' => $bodyHtml] = $this->extractBodyContent($stream, $uid);
+                $attachments = $this->extractAttachmentMetadata($stream, $uid);
+            }
 
             DB::transaction(function () use (
                 $thread,
@@ -128,6 +114,7 @@ class GmailImapPollingService
                 $subject,
                 $bodyText,
                 $bodyHtml,
+                $headersOnly,
                 $date,
                 $participants,
                 $attachments
@@ -150,7 +137,7 @@ class GmailImapPollingService
                     'is_unread' => true,
                     'has_attachments' => !empty($attachments),
                     'metadata' => [
-                        'source' => 'imap',
+                        'source' => $headersOnly ? 'imap_headers_only' : 'imap',
                     ],
                 ]);
 
@@ -197,7 +184,82 @@ class GmailImapPollingService
             'created_threads' => $createdThreads,
             'created_messages' => $createdMessages,
             'last_uid' => $maxUid,
+            'headers_only' => $headersOnly ? 1 : 0,
         ];
+    }
+
+    /**
+     * Fetch and decode attachment payload from IMAP using UID + part number.
+     *
+     * @return array{content:string, mime_type:string, filename:?string}|null
+     */
+    public function fetchAttachmentContent(string $mailbox, int $uid, string $partNumber): ?array
+    {
+        if ($uid <= 0 || trim($partNumber) === '') {
+            return null;
+        }
+
+        $stream = $this->openMailboxStream($mailbox);
+
+        try {
+            $structure = @imap_fetchstructure($stream, (string) $uid, FT_UID);
+            if (!$structure) {
+                return null;
+            }
+
+            $part = $this->resolvePartByNumber($structure, $partNumber);
+            if (!$part) {
+                return null;
+            }
+
+            $raw = @imap_fetchbody($stream, (string) $uid, $partNumber, FT_UID | FT_PEEK);
+            if ($raw === false || $raw === '') {
+                return null;
+            }
+
+            $content = $this->decodePartBody($raw, (int) ($part->encoding ?? 0));
+            $mime = strtolower((string) ($this->mimeFromPart($part) ?? 'application/octet-stream'));
+
+            $filename = null;
+            if (!empty($part->ifdparameters) && !empty($part->dparameters)) {
+                foreach ($part->dparameters as $param) {
+                    if (strtolower((string) ($param->attribute ?? '')) === 'filename') {
+                        $filename = $this->decodeMimeHeader((string) ($param->value ?? ''));
+                        break;
+                    }
+                }
+            }
+            if (!$filename && !empty($part->ifparameters) && !empty($part->parameters)) {
+                foreach ($part->parameters as $param) {
+                    if (strtolower((string) ($param->attribute ?? '')) === 'name') {
+                        $filename = $this->decodeMimeHeader((string) ($param->value ?? ''));
+                        break;
+                    }
+                }
+            }
+
+            return [
+                'content' => $content,
+                'mime_type' => $mime,
+                'filename' => $filename,
+            ];
+        } finally {
+            @imap_close($stream);
+        }
+    }
+
+    public function fetchMessageBodyForUid(string $mailbox, int $uid): ?array
+    {
+        if ($uid <= 0) {
+            return null;
+        }
+
+        $stream = $this->openMailboxStream($mailbox);
+        try {
+            return $this->extractBodyContent($stream, $uid);
+        } finally {
+            @imap_close($stream);
+        }
     }
 
     private function resolveThread(
@@ -654,6 +716,50 @@ class GmailImapPollingService
             || stripos($raw, 'content-type: application/pkcs7-mime') !== false
             || stripos($raw, 'smime.p7m') !== false
             || stripos($raw, 'content-type: application/pgp-encrypted') !== false;
+    }
+
+    private function openMailboxStream(string $mailbox)
+    {
+        if (!function_exists('imap_open')) {
+            throw new \RuntimeException('PHP IMAP extension is not installed.');
+        }
+
+        $host = env('MAIL_IMAP_HOST', env('GMAIL_IMAP_HOST', 'imap.gmail.com'));
+        $port = (int) env('MAIL_IMAP_PORT', env('GMAIL_IMAP_PORT', 993));
+        $flags = env('MAIL_IMAP_FLAGS', env('GMAIL_IMAP_FLAGS', '/imap/ssl'));
+        $username = env('MAIL_USERNAME', env('GMAIL_IMAP_USERNAME', $mailbox));
+        $password = env('MAIL_PASSWORD', env('GMAIL_IMAP_PASSWORD'));
+
+        if (!$password) {
+            throw new \RuntimeException('Missing MAIL_PASSWORD env value.');
+        }
+
+        $mailboxPath = sprintf('{%s:%d%s}INBOX', $host, $port, $flags);
+        $stream = @imap_open($mailboxPath, $username, $password);
+        if (!$stream) {
+            throw new \RuntimeException('IMAP connection failed: ' . (imap_last_error() ?: 'unknown'));
+        }
+
+        return $stream;
+    }
+
+    private function resolvePartByNumber(object $structure, string $partNumber): ?object
+    {
+        $segments = array_values(array_filter(explode('.', trim($partNumber)), fn ($v) => $v !== ''));
+        if (empty($segments)) {
+            return null;
+        }
+
+        $current = $structure;
+        foreach ($segments as $segment) {
+            $index = ((int) $segment) - 1;
+            if (!isset($current->parts) || !is_array($current->parts) || !isset($current->parts[$index])) {
+                return null;
+            }
+            $current = $current->parts[$index];
+        }
+
+        return $current;
     }
 
     /**

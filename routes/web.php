@@ -85,6 +85,7 @@ Route::middleware([FilamentAuthenticate::class])->group(function () {
     Route::get('/file-communications/{file}', [FileCompactViewController::class, 'communications'])->name('files.communications-wireframe');
     Route::post('/file-communications/{file}/threads/{thread}/read', [FileCompactViewController::class, 'markRead'])->name('files.communications.mark-read');
     Route::post('/file-communications/{file}/threads/{thread}/reply', [FileCompactViewController::class, 'sendReply'])->name('files.communications.reply');
+    Route::get('/communication-attachments/{attachment}', [FileCompactViewController::class, 'downloadAttachment'])->name('files.communications.attachment');
 });
 
 // API Routes for AJAX functionality

@@ -10,3 +10,9 @@ Artisan::command('inspire', function () {
 
 // Schedule the CleanTempZips command to run daily at 02:00
 Schedule::command('clean:temp-zips --older-than=24')->dailyAt('02:00');
+
+// Communications indexing cadence:
+// - headers-only frequently for fast inbox freshness
+// - full poll less frequently for deep body/attachment mirroring
+Schedule::command('communications:sync-headers --limit=200')->everyTwoMinutes();
+Schedule::command('communications:poll --limit=50')->everyTenMinutes();

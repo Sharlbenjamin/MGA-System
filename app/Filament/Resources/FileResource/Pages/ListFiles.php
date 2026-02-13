@@ -19,6 +19,11 @@ class ListFiles extends ListRecords
 {
     protected static string $resource = FileResource::class;
 
+    protected function getTablePollingInterval(): ?string
+    {
+        return '10s';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
