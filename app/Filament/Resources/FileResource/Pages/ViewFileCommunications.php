@@ -12,6 +12,7 @@ use App\Services\GmailImapPollingService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Url;
 
@@ -418,7 +419,16 @@ class ViewFileCommunications extends ViewRecord
 
         if ($this->activeView === 'case') {
             $allCaseThreads = CommunicationThread::query()
-                ->with('latestMessage')
+                ->with([
+                    'latestMessage' => fn ($q) => $q->select([
+                        'id',
+                        'communication_thread_id',
+                        'sent_at',
+                        'body_text',
+                        'direction',
+                        'is_unread',
+                    ]),
+                ])
                 ->where('linked_file_id', $this->record->id)
                 ->orderByDesc('last_message_at')
                 ->get();
@@ -463,6 +473,10 @@ class ViewFileCommunications extends ViewRecord
             }
         }
 
+        $opsFilterCounts = $this->activeView === 'ops'
+            ? $this->getOpsFilterCounts()
+            : ['general' => 0, 'open_cases' => 0, 'unlinked' => 0, 'providers' => 0];
+
         return [
             'file' => $this->record,
             'activeView' => $this->activeView,
@@ -474,7 +488,7 @@ class ViewFileCommunications extends ViewRecord
             'opsThreads' => $opsThreads,
             'selectedOpsThread' => $selectedOpsThread,
             'opsFilter' => $this->opsFilter,
-            'opsFilterCounts' => $this->getOpsFilterCounts(),
+            'opsFilterCounts' => $opsFilterCounts,
             'opsUnreadOnly' => $this->opsUnreadOnly,
             'opsLinkedOnly' => $this->opsLinkedOnly,
             'opsCategory' => $this->opsCategory,
@@ -489,7 +503,17 @@ class ViewFileCommunications extends ViewRecord
     protected function getOpsThreadsQuery(): Builder
     {
         $query = CommunicationThread::query()
-            ->with(['file:id,mga_reference,status', 'latestMessage'])
+            ->with([
+                'file:id,mga_reference,status',
+                'latestMessage' => fn ($q) => $q->select([
+                    'id',
+                    'communication_thread_id',
+                    'sent_at',
+                    'body_text',
+                    'direction',
+                    'is_unread',
+                ]),
+            ])
             ->orderByDesc('last_message_at');
 
         if ($this->opsFilter === 'general') {
@@ -525,13 +549,18 @@ class ViewFileCommunications extends ViewRecord
      */
     protected function getOpsFilterCounts(): array
     {
-        $base = CommunicationThread::query();
+        $row = CommunicationThread::query()
+            ->selectRaw("SUM(CASE WHEN category = 'general' THEN 1 ELSE 0 END) as general_count")
+            ->selectRaw("SUM(CASE WHEN linked_file_id IS NOT NULL THEN 1 ELSE 0 END) as open_cases_count")
+            ->selectRaw("SUM(CASE WHEN linked_file_id IS NULL THEN 1 ELSE 0 END) as unlinked_count")
+            ->selectRaw("SUM(CASE WHEN category = 'provider' THEN 1 ELSE 0 END) as providers_count")
+            ->first();
 
         return [
-            'general' => (clone $base)->where('category', 'general')->count(),
-            'open_cases' => (clone $base)->whereNotNull('linked_file_id')->count(),
-            'unlinked' => (clone $base)->whereNull('linked_file_id')->count(),
-            'providers' => (clone $base)->where('category', 'provider')->count(),
+            'general' => (int) ($row->general_count ?? 0),
+            'open_cases' => (int) ($row->open_cases_count ?? 0),
+            'unlinked' => (int) ($row->unlinked_count ?? 0),
+            'providers' => (int) ($row->providers_count ?? 0),
         ];
     }
 
@@ -548,8 +577,6 @@ class ViewFileCommunications extends ViewRecord
             'messages',
             $thread->messages->sortBy('sent_at')->values()
         );
-
-        $this->fetchMissingBodiesOnDemand($thread);
     }
 
     /**
@@ -633,35 +660,6 @@ class ViewFileCommunications extends ViewRecord
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
-    }
-
-    protected function fetchMissingBodiesOnDemand(CommunicationThread $thread): void
-    {
-        $messages = $thread->messages
-            ->filter(fn (CommunicationMessage $message) => $message->direction === 'incoming' && empty($message->body_text) && !empty($message->mailbox_uid))
-            ->take(5);
-
-        if ($messages->isEmpty()) {
-            return;
-        }
-
-        $imap = app(GmailImapPollingService::class);
-        foreach ($messages as $message) {
-            $payload = $imap->fetchMessageBodyForUid(
-                (string) ($message->mailbox ?: config('mail.from.address', 'mga.operation@medguarda.com')),
-                (int) $message->mailbox_uid
-            );
-
-            if (!$payload) {
-                continue;
-            }
-
-            $message->update([
-                'body_text' => $payload['text'] ?: '(No body)',
-                'body_html' => $payload['html'] ?? null,
-                'metadata' => array_merge($message->metadata ?? [], ['body_fetched_on_demand' => true]),
-            ]);
-        }
     }
 
     public function getBreadcrumb(): string
