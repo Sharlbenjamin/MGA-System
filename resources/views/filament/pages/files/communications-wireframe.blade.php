@@ -3,32 +3,33 @@
         :root { --bg:#f1f4f9; --surface:#fff; --soft:#f8fafc; --line:#dfe3ea; --text:#1f2937; --muted:#6b7280; --client:#22c55e; --provider:#8b5cf6; --neutral:#9ca3af; }
         * { box-sizing:border-box; }
         body { margin:0; font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); min-width:1240px; }
-        .btn { border:1px solid var(--line); border-radius:10px; background:#fff; color:#1f2937; padding:8px 12px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+        .btn { border:1px solid var(--line); border-radius:10px; background:#fff; color:#1f2937; padding:7px 10px; font-size:11px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:all .15s ease; }
+        .btn:hover { transform:translateY(-1px); box-shadow:0 3px 10px rgba(15,23,42,.08); }
         .btn.primary { background:#e8f0fe; border-color:#bfdbfe; color:#1d4ed8; }
         .btn.success { background:#ecfdf3; border-color:#86efac; color:#166534; }
         .btn.warning { background:#fff7ed; border-color:#fdba74; color:#b45309; }
         .btn.danger { background:#fef2f2; border-color:#fca5a5; color:#b91c1c; }
         .btn.info { background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; }
-        .wrapper { padding:12px 16px 16px; }
+        .wrapper { padding:10px 12px 12px; }
         .screen-toggle { display:flex; gap:8px; margin-bottom:8px; }
-        .pill { border:1px solid var(--line); border-radius:999px; padding:7px 12px; font-size:12px; font-weight:700; background:#fff; color:#64748b; text-decoration:none; }
+        .pill { border:1px solid var(--line); border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; background:#fff; color:#64748b; text-decoration:none; }
         .pill.active { background:#e8f0fe; color:#1d4ed8; border-color:#bfdbfe; }
-        .gmail-shell { border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#fff; box-shadow:0 8px 26px rgba(15,23,42,.08); }
+        .gmail-shell { border:1px solid var(--line); border-radius:14px; overflow:hidden; background:#fff; box-shadow:0 8px 24px rgba(15,23,42,.07); }
         .layout { display:grid; grid-template-columns:230px 430px 1fr; min-height:calc(100vh - 140px); }
-        .sidebar { border-right:1px solid var(--line); background:#f7f9fc; padding:14px; }
-        .compose { width:100%; border:0; border-radius:999px; background:#dbeafe; color:#1e3a8a; font-size:13px; font-weight:700; padding:11px 16px; margin-bottom:12px; }
+        .sidebar { border-right:1px solid var(--line); background:#f7f9fc; padding:10px; }
+        .compose { width:100%; border:0; border-radius:999px; background:#dbeafe; color:#1e3a8a; font-size:12px; font-weight:700; padding:8px 12px; margin-bottom:10px; }
         .nav { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:4px; }
-        .nav li { border-radius:999px; padding:8px 12px; font-size:13px; font-weight:600; display:flex; justify-content:space-between; color:#334155; }
+        .nav li { border-radius:999px; padding:7px 10px; font-size:12px; font-weight:600; display:flex; justify-content:space-between; color:#334155; }
         .nav li.active { background:#dbeafe; color:#1e40af; }
         .count { border:1px solid var(--line); border-radius:999px; padding:2px 7px; background:#fff; font-size:10px; font-weight:700; color:#64748b; }
         .column { border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
-        .column-h { border-bottom:1px solid var(--line); padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; font-weight:700; }
+        .column-h { border-bottom:1px solid var(--line); padding:9px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; font-weight:700; }
         .tabs { display:flex; gap:6px; flex-wrap:wrap; }
-        .tab { border:1px solid var(--line); border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; color:#64748b; background:#fff; text-decoration:none; }
+        .tab { border:1px solid var(--line); border-radius:999px; padding:5px 9px; font-size:10px; font-weight:700; color:#64748b; background:#fff; text-decoration:none; }
         .tab.active { background:#e8f0fe; color:#1d4ed8; border-color:#bfdbfe; }
         .list { margin:0; padding:0; list-style:none; overflow:auto; }
-        .item { border-bottom:1px solid #edf0f4; padding:10px 12px; background:#f3f4f6; text-decoration:none; color:inherit; display:block; }
-        .item.unread { background:#fff8cc; border-left:3px solid #f59e0b; padding-left:9px; }
+        .item { border-bottom:1px solid #edf0f4; padding:8px 10px; background:#f3f4f6; text-decoration:none; color:inherit; display:block; }
+        .item.unread { background:#fff; border-left:3px solid #93c5fd; padding-left:9px; }
         .item.active { outline:2px solid #bfdbfe; outline-offset:-2px; }
         .item-btn { width:100%; text-align:left; border:0; font:inherit; cursor:pointer; }
         .item-top { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px; }
@@ -40,13 +41,13 @@
         .subject { font-size:12px; font-weight:700; color:#1e293b; margin-bottom:3px; }
         .preview { font-size:12px; color:#64748b; }
         .reader { display:flex; flex-direction:column; min-height:0; }
-        .reader-h { border-bottom:1px solid var(--line); padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
-        .title { font-size:18px; font-weight:700; }
-        .toolbar { border-bottom:1px solid var(--line); padding:10px 14px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-        .body { padding:14px; overflow:auto; display:grid; gap:12px; }
-        .msg { border:1px solid var(--line); border-left:4px solid var(--neutral); border-radius:12px; background:#fff; padding:10px 11px; font-size:13px; line-height:1.35; }
+        .reader-h { border-bottom:1px solid var(--line); padding:9px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+        .title { font-size:16px; font-weight:700; }
+        .toolbar { border-bottom:1px solid var(--line); padding:8px 12px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+        .body { padding:10px; overflow:auto; display:grid; gap:10px; }
+        .msg { border:1px solid var(--line); border-left:4px solid var(--neutral); border-radius:10px; background:#fff; padding:8px 10px; font-size:12px; line-height:1.35; }
         .msg-body { white-space:pre-wrap; }
-        .msg.unread { background:#fff8cc; box-shadow:inset 0 0 0 1px #f59e0b; }
+        .msg.unread { background:#fff; box-shadow:inset 0 0 0 1px #bfdbfe; }
         .msg.client { border-left-color:var(--client); }
         .msg.provider { border-left-color:var(--provider); }
         .msg.neutral { border-left-color:var(--neutral); background:#fafafa; }
@@ -54,7 +55,7 @@
         .attach { margin-top:8px; display:flex; gap:7px; flex-wrap:wrap; }
         .file { border:1px solid var(--line); border-radius:999px; padding:5px 10px; font-size:11px; font-weight:600; color:#334155; background:#fff; }
         .empty { padding:16px; color:var(--muted); font-size:13px; }
-        .suggestions { border-top:1px solid var(--line); padding:12px 14px 14px; display:grid; grid-template-columns:1fr 1fr; gap:12px; background:#fafbff; }
+        .suggestions { border-top:1px solid var(--line); padding:10px 12px; display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#fafbff; }
         .panel { border:1px solid var(--line); border-radius:12px; background:#fff; }
         .panel-h { padding:10px 12px; border-bottom:1px solid var(--line); font-size:13px; font-weight:700; }
         .panel-b { padding:10px 12px; }
@@ -84,11 +85,9 @@
         <section class="gmail-shell" id="case-view">
             <div class="layout">
                 <aside class="sidebar">
-                    <button class="compose" type="button">+ Compose</button>
+                    <button class="compose" type="button">✉️ Compose</button>
                     <ul class="nav">
                         <li class="active"><span>Linked Threads</span><span class="count">{{ $allCaseThreads->count() }}</span></li>
-                        <li><span>Client</span><span class="count">{{ $clientThreads->count() }}</span></li>
-                        <li><span>Providers</span><span class="count">{{ $providerThreads->count() }}</span></li>
                         <li><span>Unread</span><span class="count">{{ $allCaseThreads->where('is_read', false)->count() }}</span></li>
                     </ul>
                 </aside>
@@ -136,7 +135,7 @@
                             @if($selectedCaseThread)
                                 <form method="POST" action="{{ route('files.communications.mark-read', ['file' => $file->id, 'thread' => $selectedCaseThread->id, 'view' => 'case', 'case_tab' => $caseTab]) }}">
                                     @csrf
-                                    <button class="btn" type="submit">Mark Read</button>
+                                    <button class="btn" type="submit">✅ Mark Read</button>
                                 </form>
                             @endif
                         </div>
@@ -179,8 +178,8 @@
                                             @foreach($message->attachments as $attachment)
                                                 <div class="chip-actions">
                                                     <span class="file">📎 {{ $attachment->filename ?: 'Attachment' }}</span>
-                                                    <button type="button" class="chip-btn" wire:click="handleAttachmentAction({{ $attachment->id }}, 'open')">Open</button>
-                                                    <button type="button" class="chip-btn" wire:click="handleAttachmentAction({{ $attachment->id }}, 'download')">Download</button>
+                                                    <button type="button" class="chip-btn" wire:click="handleAttachmentAction({{ $attachment->id }}, 'open')">👁️ Open</button>
+                                                    <button type="button" class="chip-btn" wire:click="handleAttachmentAction({{ $attachment->id }}, 'download')">⬇️ Download</button>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -194,7 +193,7 @@
                         @endif
                         @if($selectedCaseThread && $selectedCaseThread->messages->count() >= $caseMessagesLimit && $caseMessagesLimit < 100)
                             <div>
-                                <button class="btn" type="button" wire:click="loadOlderCaseMessages">Load older messages</button>
+                                <button class="btn" type="button" wire:click="loadOlderCaseMessages">⬆️ Load older messages</button>
                             </div>
                         @endif
                     </div>
@@ -205,7 +204,7 @@
                                 <input class="btn" style="text-align:left;" name="subject" placeholder="Subject (optional)" />
                                 <textarea class="btn" style="height:90px; border-radius:12px; font-weight:500;" name="body" placeholder="Write reply..." required>{{ old('body') }}</textarea>
                                 <div style="display:flex; justify-content:flex-end; gap:8px;">
-                                    <button class="btn primary" type="submit">Send Reply</button>
+                                    <button class="btn primary" type="submit">📨 Send Reply</button>
                                 </div>
                             </form>
                         @else
@@ -221,13 +220,10 @@
         <section class="gmail-shell" id="ops-view">
             <div class="layout">
                 <aside class="sidebar">
-                    <button class="compose" type="button">+ Compose</button>
+                    <button class="compose" type="button">✉️ Compose</button>
                     <ul class="nav">
                         <li class="active"><span>Operations Inbox</span><span class="count">{{ $opsThreads->count() }}</span></li>
-                        <li><span>General</span><span class="count">{{ $opsThreads->where('category','general')->count() }}</span></li>
-                        <li><span>Open Cases</span><span class="count">{{ $opsThreads->whereNotNull('linked_file_id')->count() }}</span></li>
-                        <li><span>Unlinked</span><span class="count">{{ $opsThreads->whereNull('linked_file_id')->count() }}</span></li>
-                        <li><span>Providers</span><span class="count">{{ $opsThreads->where('category','provider')->count() }}</span></li>
+                        <li><span>Unread</span><span class="count">{{ $opsThreads->where('is_read', false)->count() }}</span></li>
                     </ul>
                 </aside>
 
@@ -235,19 +231,19 @@
                     <div class="column-h">
                         <span>Operations Inbox</span>
                         <div class="tabs">
-                            <button type="button" class="tab {{ $opsFilter === 'general' ? 'active' : '' }}" wire:click="setOpsFilter('general')">General ({{ $opsFilterCounts['general'] ?? 0 }})</button>
-                            <button type="button" class="tab {{ $opsFilter === 'open_cases' ? 'active' : '' }}" wire:click="setOpsFilter('open_cases')">Open Cases ({{ $opsFilterCounts['open_cases'] ?? 0 }})</button>
-                            <button type="button" class="tab {{ $opsFilter === 'unlinked' ? 'active' : '' }}" wire:click="setOpsFilter('unlinked')">Unlinked ({{ $opsFilterCounts['unlinked'] ?? 0 }})</button>
-                            <button type="button" class="tab {{ $opsFilter === 'providers' ? 'active' : '' }}" wire:click="setOpsFilter('providers')">Providers ({{ $opsFilterCounts['providers'] ?? 0 }})</button>
+                            <button type="button" class="tab {{ $opsFilter === 'general' ? 'active' : '' }}" wire:click="setOpsFilter('general')">📥 General ({{ $opsFilterCounts['general'] ?? 0 }})</button>
+                            <button type="button" class="tab {{ $opsFilter === 'open_cases' ? 'active' : '' }}" wire:click="setOpsFilter('open_cases')">📂 Open Cases ({{ $opsFilterCounts['open_cases'] ?? 0 }})</button>
+                            <button type="button" class="tab {{ $opsFilter === 'unlinked' ? 'active' : '' }}" wire:click="setOpsFilter('unlinked')">🧩 Unlinked ({{ $opsFilterCounts['unlinked'] ?? 0 }})</button>
+                            <button type="button" class="tab {{ $opsFilter === 'providers' ? 'active' : '' }}" wire:click="setOpsFilter('providers')">🏥 Providers ({{ $opsFilterCounts['providers'] ?? 0 }})</button>
                         </div>
                     </div>
                     <div class="toolbar">
                         <div class="toolbar-actions">
-                            <button type="button" class="tab {{ $opsUnreadOnly ? 'active' : '' }}" wire:click="toggleOpsUnreadOnly">Unread only</button>
-                            <button type="button" class="tab {{ $opsLinkedOnly ? 'active' : '' }}" wire:click="toggleOpsLinkedOnly">Linked only</button>
-                            <button type="button" class="tab {{ $opsCategory === 'all' ? 'active' : '' }}" wire:click="setOpsCategory('all')">All</button>
-                            <button type="button" class="tab {{ $opsCategory === 'client' ? 'active' : '' }}" wire:click="setOpsCategory('client')">Client only</button>
-                            <button type="button" class="tab {{ $opsCategory === 'provider' ? 'active' : '' }}" wire:click="setOpsCategory('provider')">Provider only</button>
+                            <button type="button" class="tab {{ $opsUnreadOnly ? 'active' : '' }}" wire:click="toggleOpsUnreadOnly">👀 Unread only</button>
+                            <button type="button" class="tab {{ $opsLinkedOnly ? 'active' : '' }}" wire:click="toggleOpsLinkedOnly">🔗 Linked only</button>
+                            <button type="button" class="tab {{ $opsCategory === 'all' ? 'active' : '' }}" wire:click="setOpsCategory('all')">📋 All</button>
+                            <button type="button" class="tab {{ $opsCategory === 'client' ? 'active' : '' }}" wire:click="setOpsCategory('client')">🧑 Client only</button>
+                            <button type="button" class="tab {{ $opsCategory === 'provider' ? 'active' : '' }}" wire:click="setOpsCategory('provider')">🏥 Provider only</button>
                         </div>
                     </div>
                     <ul class="list">
@@ -277,7 +273,7 @@
                         @endforelse
                     </ul>
                     <div class="toolbar">
-                        <button class="btn" type="button" wire:click="loadMoreOpsThreads">Load more threads</button>
+                        <button class="btn" type="button" wire:click="loadMoreOpsThreads">⬇️ Load more threads</button>
                     </div>
                 </section>
 
@@ -287,9 +283,9 @@
                     </div>
                     <div class="toolbar">
                         <div class="toolbar-actions">
-                            <button class="btn" type="button" wire:click="openOpsReplyModal" @disabled(!$selectedOpsThread)>Reply</button>
-                            <button class="btn" type="button" wire:click="openOpsForwardModal" @disabled(!$selectedOpsThread)>Forward</button>
-                            <button class="btn" type="button" wire:click="openLinkToFileModal" @disabled(!$selectedOpsThread)>Link to File</button>
+                            <button class="btn" type="button" wire:click="openOpsReplyModal" @disabled(!$selectedOpsThread)>↩️ Reply</button>
+                            <button class="btn" type="button" wire:click="openOpsForwardModal" @disabled(!$selectedOpsThread)>➡️ Forward</button>
+                            <button class="btn" type="button" wire:click="openLinkToFileModal" @disabled(!$selectedOpsThread)>🔗 Link to File</button>
                         </div>
                     </div>
                     <div class="body">
@@ -324,8 +320,8 @@
                                             @foreach($message->attachments as $attachment)
                                                 <div class="chip-actions">
                                                     <span class="file">📎 {{ $attachment->filename ?: 'Attachment' }}</span>
-                                                    <button type="button" class="chip-btn" wire:click="handleAttachmentAction({{ $attachment->id }}, 'open')">Open</button>
-                                                    <button type="button" class="chip-btn" wire:click="handleAttachmentAction({{ $attachment->id }}, 'download')">Download</button>
+                                                    <button type="button" class="chip-btn" wire:click="handleAttachmentAction({{ $attachment->id }}, 'open')">👁️ Open</button>
+                                                    <button type="button" class="chip-btn" wire:click="handleAttachmentAction({{ $attachment->id }}, 'download')">⬇️ Download</button>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -337,7 +333,7 @@
                         @endif
                         @if($selectedOpsThread && $selectedOpsThread->messages->count() >= $opsMessagesLimit && $opsMessagesLimit < 100)
                             <div>
-                                <button class="btn" type="button" wire:click="loadOlderOpsMessages">Load older messages</button>
+                                <button class="btn" type="button" wire:click="loadOlderOpsMessages">⬆️ Load older messages</button>
                             </div>
                         @endif
                     </div>
@@ -369,13 +365,13 @@
             <div class="modal">
                 <div class="modal-h">
                     <span>Reply to thread</span>
-                    <button type="button" class="btn" wire:click="closeOpsReplyModal">Close</button>
+                    <button type="button" class="btn" wire:click="closeOpsReplyModal">✖️ Close</button>
                 </div>
                 <form class="modal-b" wire:submit="sendOpsReply">
                     <input class="btn" style="text-align:left;" wire:model.defer="opsReplySubject" placeholder="Subject (optional)" />
                     <textarea class="btn" style="height:120px; border-radius:12px; font-weight:500;" wire:model.defer="opsReplyBody" placeholder="Write reply..." required></textarea>
                     <div style="display:flex; justify-content:flex-end; gap:8px;">
-                        <button class="btn primary" type="submit">Send Reply</button>
+                        <button class="btn primary" type="submit">📨 Send Reply</button>
                     </div>
                 </form>
             </div>
@@ -386,13 +382,13 @@
             <div class="modal">
                 <div class="modal-h">
                     <span>Forward thread message</span>
-                    <button type="button" class="btn" wire:click="closeOpsForwardModal">Close</button>
+                    <button type="button" class="btn" wire:click="closeOpsForwardModal">✖️ Close</button>
                 </div>
                 <form class="modal-b" wire:submit="sendOpsForward">
                     <input class="btn" style="text-align:left;" wire:model.defer="opsForwardTo" placeholder="Forward to email" type="email" required />
                     <textarea class="btn" style="height:120px; border-radius:12px; font-weight:500;" wire:model.defer="opsForwardBody" placeholder="Optional note before forwarded content..."></textarea>
                     <div style="display:flex; justify-content:flex-end; gap:8px;">
-                        <button class="btn primary" type="submit">Send Forward</button>
+                        <button class="btn primary" type="submit">➡️ Send Forward</button>
                     </div>
                 </form>
             </div>
@@ -403,7 +399,7 @@
             <div class="modal">
                 <div class="modal-h">
                     <span>Link thread to file</span>
-                    <button type="button" class="btn" wire:click="closeLinkToFileModal">Close</button>
+                    <button type="button" class="btn" wire:click="closeLinkToFileModal">✖️ Close</button>
                 </div>
                 <form class="modal-b" wire:submit="linkOpsThreadToFile">
                     <input class="btn" style="text-align:left;" wire:model.live.debounce.300ms="linkSearch" placeholder="Search MGA ref / patient / client ref" />
@@ -426,7 +422,7 @@
                         </select>
                     @endif
                     <div style="display:flex; justify-content:flex-end; gap:8px;">
-                        <button class="btn primary" type="submit">Link</button>
+                        <button class="btn primary" type="submit">🔗 Link</button>
                     </div>
                 </form>
             </div>
