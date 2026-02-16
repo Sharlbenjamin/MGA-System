@@ -479,6 +479,12 @@ class ViewFile extends ViewRecord
             ->url(fn ($record) => \App\Filament\Resources\FileResource::getUrl('communications', ['record' => $record]))
             ->openUrlInNewTab(false);
 
+        $editAction = Action::make('edit')
+            ->label('Edit')
+            ->icon('heroicon-o-pencil')
+            ->color('warning')
+            ->url(fn () => FileResource::getUrl('edit', ['record' => $this->record]));
+
         $actions = [
             Action::make('exportMedicalReport')
                 ->label('Export MR')
@@ -837,6 +843,7 @@ class ViewFile extends ViewRecord
         return [
             $requestAppointmentAction,
             $communicationsThreadsAction,
+            $editAction,
             ActionGroup::make($actions)
                 ->icon('heroicon-m-ellipsis-vertical')
                 ->label('Actions')
