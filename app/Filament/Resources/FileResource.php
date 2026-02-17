@@ -33,6 +33,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Hidden;
 use App\Filament\Forms\Components\PatientNameInput;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Filters\SelectFilter;
@@ -114,7 +115,9 @@ class FileResource extends Resource
             TextInput::make('email')->label('Email')->email()->nullable(),
             TextInput::make('phone')->label('Phone')->tel()->nullable(),
             TextInput::make('address')->label('Address')->nullable(),
-            Select::make('contact_patient')->label('Who will Contact the Patient?')->options(['Client' => 'Client','MGA' => 'MGA', 'Ask' => 'Ask'])->default('Client'),
+            Hidden::make('contact_patient')
+                ->default('MGA')
+                ->dehydrateStateUsing(fn () => 'MGA'),
             Textarea::make('symptoms')->label('Symptoms')->nullable(),
             Textarea::make('diagnosis')->label('Diagnosis')->nullable(),
         ]);
@@ -413,6 +416,14 @@ class FileResource extends Resource
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
         return $record->mga_reference . ' - ' . ($record->patient?->name ?? 'Unknown Patient');
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return [
+            'mga_reference',
+            'client_reference',
+        ];
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array

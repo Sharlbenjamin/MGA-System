@@ -4,12 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\FilesWithoutInvoicesResource\Pages;
 use App\Models\File;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class FilesWithoutInvoicesResource extends Resource
 {
@@ -21,6 +23,27 @@ class FilesWithoutInvoicesResource extends Resource
     protected static ?string $navigationLabel = 'Files without invoices';
     protected static ?string $modelLabel = 'File without invoices';
     protected static ?string $pluralModelLabel = 'Files without invoices';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::userCanAccess();
+    }
+
+    public static function canViewAny(): bool
+    {
+        return static::userCanAccess();
+    }
+
+    protected static function userCanAccess(): bool
+    {
+        $user = Auth::user();
+
+        if (!$user instanceof User) {
+            return false;
+        }
+
+        return $user->hasAnyRole(['admin', 'Financial']);
+    }
 
     public static function getNavigationBadge(): ?string
     {
