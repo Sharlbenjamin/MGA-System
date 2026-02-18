@@ -47,10 +47,7 @@ class ListClients extends ListRecords
         // Potential Clients View (shows non-active clients)
         if ($this->viewMode === 'crm') {
             return $table
-                ->query(
-                    ClientResource::getEloquentQuery()
-                        ->whereNot('status', 'Active')
-                )
+                ->query(ClientResource::getEloquentQuery())
                 ->columns([
                     TextColumn::make('company_name')->searchable()->sortable()->label('Client Name')->sortable(),
                     TextColumn::make('type')->badge()->sortable()
@@ -72,7 +69,12 @@ class ListClients extends ListRecords
                     TextColumn::make('leadsCount')->label('Leads')->sortable(),
                     TextColumn::make('leadsLastContactDate')->label('Last Contact')->date('d-m-Y')->sortable(),
                 ])->filters([
+                    Filter::make('exclude_active_and_rejected')
+                        ->label('Exclude Active / Rejected')
+                        ->default()
+                        ->query(fn ($query) => $query->whereNotIn('status', ['Active', 'Rejected'])),
                     SelectFilter::make('status')->options([
+                        'Active' => 'Active',
                         'Searching' => 'Searching',
                         'Interested' => 'Interested',
                         'Sent' => 'Sent',
