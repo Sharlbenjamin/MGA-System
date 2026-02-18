@@ -72,7 +72,7 @@ class ListClients extends ListRecords
                     Filter::make('exclude_active_and_rejected')
                         ->label('Exclude Active / Rejected')
                         ->default()
-                        ->query(fn ($query) => $query->whereNotIn('status', ['Active', 'Rejected'])),
+                        ->query(fn ($query) => $query->whereRaw('LOWER(status) NOT IN (?, ?)', ['active', 'rejected'])),
                     SelectFilter::make('status')->options([
                         'Active' => 'Active',
                         'Searching' => 'Searching',
@@ -92,7 +92,7 @@ class ListClients extends ListRecords
         return $table
             ->query(
                 ClientResource::getEloquentQuery()
-                    ->where('status', 'Active')
+                    ->whereRaw('LOWER(status) = ?', ['active'])
             )
             ->columns([
                 TextColumn::make('company_name')
