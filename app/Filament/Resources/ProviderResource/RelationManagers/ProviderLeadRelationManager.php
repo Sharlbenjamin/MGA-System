@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProviderResource\RelationManagers;
 use App\Models\City;
 use App\Models\Provider;
 use App\Models\ServiceType;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -14,9 +15,11 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class ProviderLeadRelationManager extends RelationManager
 {
@@ -96,10 +99,20 @@ class ProviderLeadRelationManager extends RelationManager
             TextColumn::make('communication_method')->label('Contact Method')->sortable(),
             ])
             ->filters([
-                //
+                SelectFilter::make('assigned_user_id')
+                    ->label('Filter by Assigned User')
+                    ->options(User::query()->orderBy('name')->pluck('name', 'id'))
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->mutateFormDataUsing(function (array $data): array {
+                        $data['assigned_user_id'] = Auth::id();
+
+                        return $data;
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
