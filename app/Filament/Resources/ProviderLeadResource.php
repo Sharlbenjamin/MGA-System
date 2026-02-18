@@ -30,6 +30,7 @@ use App\Models\DraftMail;
 use Carbon\Carbon;
 use App\Mail\CustomLeadEmail;
 use App\Models\Interaction;
+use App\Models\User;
 use Filament\Forms\ComponentContainer;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\Filter;
@@ -295,7 +296,8 @@ class ProviderLeadResource extends Resource
                             ->label('Assigned User')
                             ->relationship('assignedUser', 'name')
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->visibleOn('edit'),
 
                         DatePicker::make('last_contact_date')
                             ->label('Last Contact Date'),
@@ -410,7 +412,13 @@ class ProviderLeadResource extends Resource
                 ->label('Filter by City')
                 ->options(City::whereHas('country', fn ($q) => $q->whereIn('id', [179, 73, 201, 119, 94, 156]))->pluck('name', 'id'))
                 ->preload()
-                ->multiple()
+                ->multiple(),
+                SelectFilter::make('assigned_user_id')
+                    ->label('Filter by Assigned User')
+                    ->options(User::query()->orderBy('name')->pluck('name', 'id'))
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
             ]);
     }
 

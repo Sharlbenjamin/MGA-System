@@ -37,6 +37,9 @@ class ProviderLeadApiController extends Controller
         if ($request->filled('provider_id')) {
             $query->where('provider_id', $request->input('provider_id'));
         }
+        if ($request->filled('assigned_user_id')) {
+            $query->where('assigned_user_id', $request->input('assigned_user_id'));
+        }
 
         $sort = $request->sortColumn();
         $dir = $request->sortDirection();
@@ -64,6 +67,7 @@ class ProviderLeadApiController extends Controller
     public function store(StoreProviderLeadRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $data['assigned_user_id'] = $request->user()?->id;
         $lead = ProviderLead::create($data);
         return response()->json($lead->load(['provider', 'city']), 201);
     }

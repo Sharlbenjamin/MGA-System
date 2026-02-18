@@ -7,6 +7,7 @@ use App\Models\Provider;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 
 class CreateProviderLead extends CreateRecord
 {
@@ -14,6 +15,8 @@ class CreateProviderLead extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $data['assigned_user_id'] = Auth::id();
+
         // Handle new provider creation
         if (isset($data['create_new_provider']) && $data['create_new_provider']) {
             $provider = Provider::create([

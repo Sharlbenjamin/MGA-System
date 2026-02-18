@@ -41,6 +41,7 @@ class ProviderLeadController extends Controller
     public function store(ProviderLeadStoreRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $data['assigned_user_id'] = $request->user()?->id;
         
         // Handle provider creation if needed
         if ($request->input('provider_selection') === 'new') {
