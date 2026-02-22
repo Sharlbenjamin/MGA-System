@@ -78,7 +78,8 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
         [$startOfMonth, $endOfMonth] = $this->currentMonthRange();
 
         return (clone $this->baseQuery($countryKeys))
-            ->whereBetween('provider_leads.created_at', [$startOfMonth, $endOfMonth])
+            ->whereDate('provider_leads.created_at', '>=', $startOfMonth->toDateString())
+            ->whereDate('provider_leads.created_at', '<=', $endOfMonth->toDateString())
             ->count('provider_leads.id');
     }
 
