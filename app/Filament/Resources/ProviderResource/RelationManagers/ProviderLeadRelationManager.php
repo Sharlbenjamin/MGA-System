@@ -47,7 +47,15 @@ class ProviderLeadRelationManager extends RelationManager
                 ->required(),
             TextInput::make('name')->label('Lead Name')->required()->maxLength(255),
             TextInput::make('email')->label('Email')->email()->nullable(),
-            TextInput::make('phone')->label('Phone')->tel()->nullable(),
+            TextInput::make('phone')
+                ->label('Phone')
+                ->tel()
+                ->nullable()
+                ->maxLength(20)
+                ->rules(['nullable', 'regex:/^[0-9+\-\s()]*$/'])
+                ->validationMessages([
+                    'regex' => 'Phone number may only contain digits, spaces, +, -, and parentheses.',
+                ]),
             Select::make('communication_method')
                 ->label('Contact Method')
                 ->options([

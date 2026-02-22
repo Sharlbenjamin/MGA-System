@@ -35,6 +35,7 @@ use Filament\Forms\ComponentContainer;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection as SupportCollection;
@@ -228,7 +229,12 @@ class ProviderLeadResource extends Resource
 
                                 TextInput::make('phone')
                                     ->label('Phone')
-                                    ->tel(),
+                                    ->tel()
+                                    ->maxLength(20)
+                                    ->rules(['nullable', 'regex:/^[0-9+\-\s()]*$/'])
+                                    ->validationMessages([
+                                        'regex' => 'Phone number may only contain digits, spaces, +, -, and parentheses.',
+                                    ]),
                             ]),
 
                         Select::make('city_id')
@@ -321,7 +327,11 @@ class ProviderLeadResource extends Resource
                 })
         )
             ->columns([
-                TextColumn::make('name')->label('Lead Name')->sortable()->searchable(),
+                TextColumn::make('name')
+                    ->label('Lead Name')
+                    ->sortable()
+                    ->searchable()
+                    ->description(fn (ProviderLead $record) => $record->created_at?->format('d-m-Y H:i')),
                 TextColumn::make('email')->label('Lead Email')->sortable()->searchable(),
                 TextColumn::make('provider.name')
                     ->label('Provider')
@@ -419,6 +429,23 @@ class ProviderLeadResource extends Resource
                     ->searchable()
                     ->preload()
                     ->multiple(),
+                Filter::make('created_at')
+                    ->label('Created Date')
+                    ->form([
+                        DatePicker::make('created_from')->label('Created From'),
+                        DatePicker::make('created_until')->label('Created Until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'] ?? null,
+                                fn (Builder $query, $date): Builder => $query->whereDate('provider_leads.created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'] ?? null,
+                                fn (Builder $query, $date): Builder => $query->whereDate('provider_leads.created_at', '<=', $date),
+                            );
+                    }),
             ]);
     }
 

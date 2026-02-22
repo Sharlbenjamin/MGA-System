@@ -479,6 +479,15 @@ class RequestAppointment extends EditRecord
         ]);
     }
 
+    public function copyToClipboard($text, $label): void
+    {
+        Notification::make()
+            ->title('Copied to clipboard')
+            ->body("'{$label}' has been copied to your clipboard")
+            ->success()
+            ->send();
+    }
+
     public function showPhoneNotification($phoneNumber, $branchName): void
     {
         Notification::make()
