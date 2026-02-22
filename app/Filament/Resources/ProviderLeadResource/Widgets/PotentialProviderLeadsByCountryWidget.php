@@ -41,19 +41,19 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
                 ->color('success'),
 
             Stat::make('Active - UK & Ireland', $this->countActiveLeadsThisMonth($ukIreland))
-                ->description('Last contact this month')
+                ->description('Created + contacted this month')
                 ->descriptionIcon('heroicon-m-bolt')
                 ->color('primary'),
             Stat::make('Active - France', $this->countActiveLeadsThisMonth($france))
-                ->description('Last contact this month')
+                ->description('Created + contacted this month')
                 ->descriptionIcon('heroicon-m-bolt')
                 ->color('success'),
             Stat::make('Active - Italy', $this->countActiveLeadsThisMonth($italy))
-                ->description('Last contact this month')
+                ->description('Created + contacted this month')
                 ->descriptionIcon('heroicon-m-bolt')
                 ->color('warning'),
             Stat::make('Active - Spain', $this->countActiveLeadsThisMonth($spain))
-                ->description('Last contact this month')
+                ->description('Created + contacted this month')
                 ->descriptionIcon('heroicon-m-bolt')
                 ->color('success'),
         ];
@@ -64,7 +64,7 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
         return ProviderLead::query()
             ->join('providers', 'providers.id', '=', 'provider_leads.provider_id')
             ->join('countries', 'countries.id', '=', 'providers.country_id')
-            ->where('providers.status', 'Potential')
+            ->where('providers.status', 'Active')
             ->where(function (Builder $query) use ($countryKeys) {
                 $query
                     ->whereIn('countries.iso', $countryKeys)
@@ -87,6 +87,7 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
         [$startOfMonth, $endOfMonth] = $this->currentMonthRange();
 
         return (clone $this->baseQuery($countryKeys))
+            ->whereBetween('provider_leads.created_at', [$startOfMonth, $endOfMonth])
             ->whereNotNull('provider_leads.last_contact_date')
             ->whereBetween('provider_leads.last_contact_date', [$startOfMonth, $endOfMonth])
             ->count('provider_leads.id');
