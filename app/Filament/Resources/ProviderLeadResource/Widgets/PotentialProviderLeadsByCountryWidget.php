@@ -59,12 +59,12 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
         ];
     }
 
-    protected function baseQuery(array $countryKeys): Builder
+    protected function baseQuery(array $countryKeys, string $providerStatus = 'Active'): Builder
     {
         return ProviderLead::query()
-            ->whereHas('provider', function (Builder $query) use ($countryKeys) {
+            ->whereHas('provider', function (Builder $query) use ($countryKeys, $providerStatus) {
                 $query
-                    ->where('status', 'Active')
+                    ->where('status', $providerStatus)
                     ->whereHas('country', function (Builder $countryQuery) use ($countryKeys) {
                         $countryQuery
                             ->whereIn('iso', $countryKeys)
@@ -78,7 +78,7 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
     {
         [$startOfMonth, $endOfMonth] = $this->currentMonthRange();
 
-        return (clone $this->baseQuery($countryKeys))
+        return (clone $this->baseQuery($countryKeys, 'Potential'))
             ->whereDate('provider_leads.created_at', '>=', $startOfMonth->toDateString())
             ->whereDate('provider_leads.created_at', '<=', $endOfMonth->toDateString())
             ->count();
