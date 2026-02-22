@@ -62,14 +62,15 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
     protected function baseQuery(array $countryKeys): Builder
     {
         return ProviderLead::query()
-            ->join('providers', 'providers.id', '=', 'provider_leads.provider_id')
-            ->join('countries', 'countries.id', '=', 'providers.country_id')
-            ->where('providers.status', 'Active')
-            ->where(function (Builder $query) use ($countryKeys) {
+            ->whereHas('provider', function (Builder $query) use ($countryKeys) {
                 $query
-                    ->whereIn('countries.iso', $countryKeys)
-                    ->orWhereIn('countries.name', $countryKeys)
-                    ->orWhereIn('countries.nicename', $countryKeys);
+                    ->where('status', 'Active')
+                    ->whereHas('country', function (Builder $countryQuery) use ($countryKeys) {
+                        $countryQuery
+                            ->whereIn('iso', $countryKeys)
+                            ->orWhereIn('name', $countryKeys)
+                            ->orWhereIn('nicename', $countryKeys);
+                    });
             });
     }
 
@@ -80,8 +81,7 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
         return (clone $this->baseQuery($countryKeys))
             ->whereDate('provider_leads.created_at', '>=', $startOfMonth->toDateString())
             ->whereDate('provider_leads.created_at', '<=', $endOfMonth->toDateString())
-            ->distinct('provider_leads.id')
-            ->count('provider_leads.id');
+            ->count();
     }
 
     protected function countActiveLeadsThisMonth(array $countryKeys): int
@@ -92,7 +92,7 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
             ->whereBetween('provider_leads.created_at', [$startOfMonth, $endOfMonth])
             ->whereNotNull('provider_leads.last_contact_date')
             ->whereBetween('provider_leads.last_contact_date', [$startOfMonth, $endOfMonth])
-            ->count('provider_leads.id');
+            ->count();
     }
 
     protected function currentMonthRange(): array
