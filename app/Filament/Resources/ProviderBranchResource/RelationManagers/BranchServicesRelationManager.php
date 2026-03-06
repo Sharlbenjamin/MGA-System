@@ -88,12 +88,12 @@ class BranchServicesRelationManager extends RelationManager
 
                 TextColumn::make('pivot.min_cost')
                     ->label('Minimum Cost')
-                    ->money('USD')
+                    ->money('EUR')
                     ->sortable(),
 
                 TextColumn::make('pivot.max_cost')
                     ->label('Selling Cost')
-                    ->money('USD')
+                    ->money('EUR')
                     ->sortable(),
             ])
             ->filters([

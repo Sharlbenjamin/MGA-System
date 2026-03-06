@@ -24,7 +24,7 @@ class ClientBalanceExport implements FromCollection, WithHeadings, WithMapping, 
 
     public function collection()
     {
-        return $this->client->invoices()->where('status', 'Unpaid')->get();
+        return $this->client->outstandingBalanceInvoicesQuery()->get();
     }
 
     public function headings(): array
@@ -90,7 +90,7 @@ class ClientBalanceExport implements FromCollection, WithHeadings, WithMapping, 
 
         // Add total row
         $totalRow = $lastRow + 2;
-        $totalAmount = $this->client->invoices()->where('status', 'Unpaid')->sum('total_amount');
+        $totalAmount = $this->client->outstandingBalanceInvoicesQuery()->sum('total_amount');
         
         $sheet->setCellValue('A' . $totalRow, 'Total Outstanding Amount:');
         $sheet->setCellValue('G' . $totalRow, '€' . number_format($totalAmount, 2));

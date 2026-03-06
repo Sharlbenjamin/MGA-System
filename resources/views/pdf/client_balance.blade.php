@@ -132,6 +132,10 @@
     </style>
 </head>
 <body>
+    @php
+        $outstandingInvoices = $invoices ?? $client->outstandingBalanceInvoicesQuery()->get();
+    @endphp
+
     <div class="watermark">
         <img src="{{ public_path('siglogo.png') }}" alt="Watermark">
     </div>
@@ -165,7 +169,7 @@
         </thead>
         <tbody>
             @php $total = 0; @endphp
-            @foreach($client->invoices()->where('status', 'Unpaid')->get() as $invoice)
+            @foreach($outstandingInvoices as $invoice)
             <tr>
                 <td>{{ $invoice->name }}</td>
                 <td><span class="patient-name">{{ $invoice->patient->name }}</span></td>
@@ -196,7 +200,7 @@
 
             <div class="footer-column">
                 @php
-                    $firstInvoice = $client->invoices()->where('status', 'Unpaid')->first();
+                    $firstInvoice = $outstandingInvoices->first();
                     $bankAccount = $firstInvoice?->bankAccount;
                 @endphp
                 @if($bankAccount)

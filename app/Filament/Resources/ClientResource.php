@@ -59,7 +59,10 @@ class ClientResource extends Resource
             Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
             Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
                 TextInput::make('phone')->label('Phone')->tel()->nullable(),
-                TextInput::make('email')->label('Email')->email()->nullable(),
+                TextInput::make('email')
+                    ->label(fn (string $operation): string => $operation === 'edit' ? 'Financial Email' : 'Email')
+                    ->email()
+                    ->nullable(),
                 TextInput::make('operation_email')->label('Operation Email')->email()->nullable(),
                 FileUpload::make('signed_contract_draft')
                     ->label('Signed Contract Draft (PDF)')

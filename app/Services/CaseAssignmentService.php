@@ -6,6 +6,7 @@ use App\Models\File;
 use App\Models\FileAssignment;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CaseAssignmentService
 {
@@ -16,19 +17,37 @@ class CaseAssignmentService
     {
         $assignedBy = $assignedBy ?? Auth::user();
 
-        // Unassign current primary assignment(s)
-        $file->fileAssignments()
-            ->whereNull('unassigned_at')
-            ->where('is_primary', true)
-            ->update(['unassigned_at' => now()]);
+        return DB::transaction(function () use ($file, $assignee, $assignedBy): FileAssignment {
+            $activePrimaryAssigneeIds = $file->fileAssignments()
+                ->whereNull('unassigned_at')
+                ->where('is_primary', true)
+                ->pluck('user_id')
+                ->filter()
+                ->unique()
+                ->values();
 
-        return FileAssignment::create([
-            'file_id' => $file->id,
-            'user_id' => $assignee->id,
-            'assigned_by_id' => $assignedBy?->id ?? $assignee->id,
-            'assigned_at' => now(),
-            'is_primary' => true,
-        ]);
+            // Unassign current primary assignment(s).
+            $file->fileAssignments()
+                ->whereNull('unassigned_at')
+                ->where('is_primary', true)
+                ->update(['unassigned_at' => now()]);
+
+            // Reassign all case tasks from previous assignee(s) to the new assignee.
+            if ($activePrimaryAssigneeIds->isNotEmpty()) {
+                $file->tasks()
+                    ->whereIn('user_id', $activePrimaryAssigneeIds->all())
+                    ->where('user_id', '!=', $assignee->id)
+                    ->update(['user_id' => $assignee->id]);
+            }
+
+            return FileAssignment::create([
+                'file_id' => $file->id,
+                'user_id' => $assignee->id,
+                'assigned_by_id' => $assignedBy?->id ?? $assignee->id,
+                'assigned_at' => now(),
+                'is_primary' => true,
+            ]);
+        });
     }
 
     /**

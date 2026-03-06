@@ -148,6 +148,11 @@ class Client extends Model
         return $this->hasManyThrough(Invoice::class, Patient::class);
     }
 
+    public function outstandingBalanceInvoicesQuery()
+    {
+        return $this->invoices()->where('status', 'Unpaid');
+    }
+
 
 
 
