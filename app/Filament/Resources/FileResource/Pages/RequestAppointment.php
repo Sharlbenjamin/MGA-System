@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Hidden;
@@ -169,37 +170,50 @@ class RequestAppointment extends EditRecord
                 ->label('Send Appointment Requests')
                 ->modalHeading('Confirm Appointment Request')
                 ->modalDescription($hasExistingOutGop
-                    ? 'Choose whether to include GOP. An existing Out GOP was found and will be reused.'
-                    : 'Choose whether to send a GOP now. If enabled, fill GOP amount, type, and date before confirming.')
+                    ? 'Choose whether to include GOP, then select an existing Out GOP or create a new Out GOP.'
+                    : 'Choose whether to include GOP. No Out GOP exists yet, so you can create a new Out GOP.')
                 ->modalSubmitActionLabel('Confirm & Send')
                 ->form([
                     Checkbox::make('send_gop')
                         ->label('Send GOP during this request')
                         ->default(false)
                         ->live(),
+                    Radio::make('gop_action')
+                        ->label('GOP Option')
+                        ->options($hasExistingOutGop
+                            ? [
+                                'use_existing' => 'Use existing Out GOP',
+                                'create_new' => 'Create new Out GOP',
+                            ]
+                            : [
+                                'create_new' => 'Create new Out GOP',
+                            ])
+                        ->default($hasExistingOutGop ? 'use_existing' : 'create_new')
+                        ->required(fn (Get $get) => (bool) $get('send_gop'))
+                        ->live()
+                        ->visible(fn (Get $get) => (bool) $get('send_gop')),
+                    Select::make('existing_gop_id')
+                        ->label('Choose Existing Out GOP')
+                        ->options(fn () => $this->getOutGopOptions())
+                        ->searchable()
+                        ->preload()
+                        ->required(fn (Get $get) => (bool) $get('send_gop') && $get('gop_action') === 'use_existing')
+                        ->visible(fn (Get $get) => (bool) $get('send_gop') && $get('gop_action') === 'use_existing'),
                     Grid::make(3)
                         ->schema([
                             TextInput::make('gop_amount')
                                 ->label('GOP Amount')
                                 ->numeric()
                                 ->minValue(0.01)
-                                ->required(fn (Get $get) => (bool) $get('send_gop') && !$hasExistingOutGop)
+                                ->required(fn (Get $get) => (bool) $get('send_gop') && $get('gop_action') === 'create_new')
                                 ->suffix('EUR'),
-                            Select::make('gop_type')
-                                ->label('GOP Type')
-                                ->options([
-                                    'In' => 'In',
-                                    'Out' => 'Out',
-                                ])
-                                ->default('Out')
-                                ->required(fn (Get $get) => (bool) $get('send_gop') && !$hasExistingOutGop),
                             DatePicker::make('gop_date')
                                 ->label('GOP Date')
                                 ->native(false)
                                 ->default(now()->toDateString())
-                                ->required(fn (Get $get) => (bool) $get('send_gop') && !$hasExistingOutGop),
+                                ->required(fn (Get $get) => (bool) $get('send_gop') && $get('gop_action') === 'create_new'),
                         ])
-                        ->visible(fn (Get $get) => (bool) $get('send_gop')),
+                        ->visible(fn (Get $get) => (bool) $get('send_gop') && $get('gop_action') === 'create_new'),
                 ])
                 ->action(function (array $data): void {
                     $this->sendRequest($data);
@@ -514,21 +528,31 @@ class RequestAppointment extends EditRecord
         }
 
         $record = $this->getRecord();
-        $existingOutGop = $this->getLatestOutGopForRecord();
+        $gopAction = $confirmationData['gop_action'] ?? ($this->hasExistingOutGop() ? 'use_existing' : 'create_new');
 
-        if ($existingOutGop) {
-            Notification::make()
-                ->title('Existing GOP Reused')
-                ->body('Found an existing Out GOP for this file. It will be attached to the appointment request email.')
-                ->success()
-                ->send();
+        if ($gopAction === 'use_existing') {
+            $selectedGopId = $confirmationData['existing_gop_id'] ?? null;
+            $existingOutGop = $record->gops()
+                ->where('type', 'Out')
+                ->whereKey($selectedGopId)
+                ->first();
+
+            if (!$existingOutGop) {
+                Notification::make()
+                    ->title('GOP Not Found')
+                    ->body('Please choose a valid Out GOP from the list or create a new Out GOP.')
+                    ->danger()
+                    ->send();
+
+                return null;
+            }
 
             return $existingOutGop;
         }
 
         $gop = Gop::create([
             'file_id' => $record->id,
-            'type' => $confirmationData['gop_type'],
+            'type' => 'Out',
             'amount' => (float) $confirmationData['gop_amount'],
             'date' => $confirmationData['gop_date'],
             'status' => 'Not Sent',
@@ -560,6 +584,23 @@ class RequestAppointment extends EditRecord
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->first();
+    }
+
+    protected function getOutGopOptions(): array
+    {
+        return $this->getRecord()
+            ->gops()
+            ->where('type', 'Out')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get()
+            ->mapWithKeys(function (Gop $gop) {
+                $date = $gop->date ? $gop->date->format('d/m/Y') : 'N/A';
+                $label = "{$date} - {$gop->amount} EUR (ID #{$gop->id})";
+
+                return [$gop->id => $label];
+            })
+            ->toArray();
     }
 
     protected function createManualFollowUpTaskForBranch($branch, $record): void
