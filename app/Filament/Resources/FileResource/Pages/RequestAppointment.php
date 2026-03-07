@@ -155,8 +155,8 @@ class RequestAppointment extends EditRecord
     {
         $this->authorizeAccess();
         $data = $this->form->getState();
-        $this->createAndSendGopIfRequested($confirmationData);
-        $this->sendAppointmentRequestsFromModal($data, $this->getRecord());
+        $createdGop = $this->createAndSendGopIfRequested($confirmationData);
+        $this->sendAppointmentRequestsFromModal($data, $this->getRecord(), $createdGop);
         $this->redirect(FileResource::getUrl('view', ['record' => $this->getRecord()]), navigate: true);
     }
 
@@ -457,13 +457,13 @@ class RequestAppointment extends EditRecord
         return $fileFee ? (float) $fileFee->amount : null;
     }
 
-    protected function sendAppointmentRequestsFromModal(array $data, $record): void
+    protected function sendAppointmentRequestsFromModal(array $data, $record, ?Gop $gop = null): void
     {
         $selectedBranchIds = $data['selected_branches'] ?? [];
         $customEmails = collect($data['custom_emails'] ?? [])->pluck('email')->filter();
         if (empty($selectedBranchIds) && $customEmails->isNotEmpty()) {
             try {
-                Mail::send(new \App\Mail\AppointmentRequestMailable($record, null, $customEmails->toArray()));
+                Mail::send(new \App\Mail\AppointmentRequestMailable($record, null, $customEmails->toArray(), $gop));
                 Notification::make()->title('Appointment Request Sent')->body('Successfully sent to ' . $customEmails->count() . ' custom email recipients')->success()->send();
                 return;
             } catch (\Exception $e) {
@@ -488,7 +488,7 @@ class RequestAppointment extends EditRecord
                     $failureCount++;
                     continue;
                 }
-                Mail::send(new \App\Mail\AppointmentRequestMailable($record, $branch, $customEmails->toArray()));
+                Mail::send(new \App\Mail\AppointmentRequestMailable($record, $branch, $customEmails->toArray(), $gop));
                 $successCount++;
             } catch (\Exception $e) {
                 Log::error('Failed to send appointment request', ['branch_id' => $branch->id, 'error' => $e->getMessage()]);
@@ -503,10 +503,10 @@ class RequestAppointment extends EditRecord
         }
     }
 
-    protected function createAndSendGopIfRequested(array $confirmationData): void
+    protected function createAndSendGopIfRequested(array $confirmationData): ?Gop
     {
         if (!($confirmationData['send_gop'] ?? false)) {
-            return;
+            return null;
         }
 
         $record = $this->getRecord();
@@ -524,6 +524,8 @@ class RequestAppointment extends EditRecord
 
         // Make sure newly created GOP is reflected in subsequent appointment email rendering.
         $record->unsetRelation('gops');
+
+        return $gop;
     }
 
     protected function createManualFollowUpTaskForBranch($branch, $record): void

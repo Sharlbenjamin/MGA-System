@@ -3,11 +3,14 @@
 namespace App\Mail;
 
 use App\Models\File;
+use App\Models\Gop;
 use App\Models\ProviderBranch;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AppointmentRequestMailable extends Mailable
 {
@@ -16,12 +19,14 @@ class AppointmentRequestMailable extends Mailable
     public $file;
     public ?ProviderBranch $branch;
     public $customEmails;
+    public ?Gop $gop;
 
-    public function __construct(File $file, ?ProviderBranch $branch = null, array $customEmails = [])
+    public function __construct(File $file, ?ProviderBranch $branch = null, array $customEmails = [], ?Gop $gop = null)
     {
         $this->file = $file;
         $this->branch = $branch;
         $this->customEmails = $customEmails;
+        $this->gop = $gop;
     }
 
     public function build()
@@ -64,6 +69,36 @@ class AppointmentRequestMailable extends Mailable
             }
         }
 
+        $gopForAttachment = $this->resolveGopForAttachment();
+        if ($gopForAttachment) {
+            try {
+                $pdf = Pdf::loadView('pdf.gop', ['gop' => $gopForAttachment]);
+                $mailBuilder->attachData(
+                    $pdf->output(),
+                    'GOP_' . $this->file->mga_reference . '.pdf',
+                    ['mime' => 'application/pdf']
+                );
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to attach GOP to appointment request email', [
+                    'file_id' => $this->file->id,
+                    'gop_id' => $gopForAttachment->id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
         return $mailBuilder;
+    }
+
+    protected function resolveGopForAttachment(): ?Gop
+    {
+        if ($this->gop) {
+            return $this->gop;
+        }
+
+        return $this->file->gops()
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first();
     }
 }
