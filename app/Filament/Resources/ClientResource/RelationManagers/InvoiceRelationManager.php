@@ -14,11 +14,13 @@ use Illuminate\Support\Facades\Mail;
 use App\Filament\Resources\FileResource;
 use App\Filament\Resources\FileResource\Pages;
 use App\Mail\SendBalance;
+use App\Mail\SendOutstandingBalance;
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Patient;
 use App\Services\UploadInvoiceToGoogleDrive;
+use Carbon\Carbon;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
@@ -306,6 +308,121 @@ class InvoiceRelationManager extends RelationManager
                          Notification::make()->success()->title('Invoice generated and sent successfully')->send();
                     })
             ])->headerActions([
+                Action::make('SendOutstandingBalance')
+                    ->label('Send Outstanding Balance')
+                    ->color('warning')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->modalHeading('Send Outstanding Balance')
+                    ->modalSubmitActionLabel('Send Email')
+                    ->modalWidth('7xl')
+                    ->form(function () {
+                        $client = $this->ownerRecord;
+                        $invoices = $client->outstandingBalanceInvoicesQuery()
+                            ->with(['patient', 'file'])
+                            ->get();
+                        $totalOutstanding = (float) $invoices->sum('total_amount');
+                        $invoiceCount = $invoices->count();
+                        $monthName = Carbon::now()->format('F');
+                        $yearNumber = (int) Carbon::now()->format('Y');
+
+                        return [
+                            Forms\Components\View::make('balance_preview')
+                                ->view('filament.forms.components.outstanding-balance-preview')
+                                ->viewData([
+                                    'client' => $client,
+                                    'invoices' => $invoices,
+                                    'totalOutstanding' => $totalOutstanding,
+                                    'invoiceCount' => $invoiceCount,
+                                    'monthName' => $monthName,
+                                    'yearNumber' => $yearNumber,
+                                ]),
+                            TextInput::make('cc_emails')
+                                ->label('CC Emails')
+                                ->placeholder('finance@example.com, manager@example.com')
+                                ->helperText('Separate multiple emails with commas.'),
+                        ];
+                    })
+                    ->action(function ($data) {
+                        $client = $this->ownerRecord;
+                        $invoices = $client->outstandingBalanceInvoicesQuery()
+                            ->with(['patient', 'file'])
+                            ->get();
+
+                        if ($invoices->isEmpty()) {
+                            Notification::make()
+                                ->warning()
+                                ->title('No outstanding invoices')
+                                ->body('This client has no outstanding invoices to send.')
+                                ->send();
+                            return;
+                        }
+
+                        $recipientEmail = $client->email;
+                        if (!$recipientEmail) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Missing financial email')
+                                ->body('Please set the client financial email before sending.')
+                                ->send();
+                            return;
+                        }
+
+                        $data = is_array($data) ? $data : [];
+                        $ccEmails = collect(explode(',', (string) ($data['cc_emails'] ?? '')))
+                            ->map(fn ($email) => trim($email))
+                            ->filter()
+                            ->unique()
+                            ->values();
+
+                        $invalidEmails = $ccEmails->filter(fn ($email) => !filter_var($email, FILTER_VALIDATE_EMAIL));
+                        if ($invalidEmails->isNotEmpty()) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Invalid CC email(s)')
+                                ->body('Please check: ' . $invalidEmails->implode(', '))
+                                ->send();
+                            return;
+                        }
+
+                        $monthName = Carbon::now()->format('F');
+                        $yearNumber = (int) Carbon::now()->format('Y');
+                        $mailer = 'financial';
+                        $user = \App\Models\User::find(Auth::id());
+                        $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
+
+                        if ($user && $user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
+                            Config::set('mail.mailers.financial.username', $user->smtp_username);
+                            Config::set('mail.mailers.financial.password', $user->smtp_password);
+                        }
+
+                        try {
+                            $email = Mail::mailer($mailer)->to($recipientEmail);
+
+                            if ($ccEmails->isNotEmpty()) {
+                                $email->cc($ccEmails->all());
+                            }
+
+                            $email->send(new SendOutstandingBalance($client, $invoices, $monthName, $yearNumber));
+
+                            Notification::make()
+                                ->success()
+                                ->title('Outstanding balance sent')
+                                ->body("Email sent successfully to {$recipientEmail}" . ($ccEmails->isNotEmpty() ? ' with CC recipients.' : '.'))
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            Log::error('Failed to send outstanding balance email', [
+                                'client_id' => $client->id,
+                                'recipient_email' => $recipientEmail,
+                                'error' => $exception->getMessage(),
+                            ]);
+
+                            Notification::make()
+                                ->danger()
+                                ->title('Failed to send outstanding balance')
+                                ->body($exception->getMessage())
+                                ->send();
+                        }
+                    }),
                 Action::make('ExportBalance')->label('Export Balance PDF')
                     ->color('info')
                     ->icon('heroicon-o-document-text')
