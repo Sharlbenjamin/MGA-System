@@ -84,6 +84,15 @@ class ClientOverview extends ViewRecord implements HasTable
 
     protected function getHeaderActions(): array
     {
+        $client = $this->record;
+        $invoices = $client->outstandingBalanceInvoicesQuery()
+            ->with(['patient', 'file'])
+            ->get();
+        $totalOutstanding = (float) $invoices->sum('total_amount');
+        $invoiceCount = $invoices->count();
+        $monthName = Carbon::now()->format('F');
+        $yearNumber = (int) Carbon::now()->format('Y');
+
         return [
             Action::make('sendOutstandingBalance')
                 ->label('Send Outstanding Balance')
@@ -92,33 +101,22 @@ class ClientOverview extends ViewRecord implements HasTable
                 ->modalHeading('Send Outstanding Balance')
                 ->modalSubmitActionLabel('Send Email')
                 ->modalWidth('7xl')
-                ->form(function () {
-                    $client = $this->record;
-                    $invoices = $client->outstandingBalanceInvoicesQuery()
-                        ->with(['patient', 'file'])
-                        ->get();
-                    $totalOutstanding = (float) $invoices->sum('total_amount');
-                    $invoiceCount = $invoices->count();
-                    $monthName = Carbon::now()->format('F');
-                    $yearNumber = (int) Carbon::now()->format('Y');
-
-                    return [
-                        Forms\Components\View::make('balance_preview')
-                            ->view('filament.forms.components.outstanding-balance-preview')
-                            ->viewData([
-                                'client' => $client,
-                                'invoices' => $invoices,
-                                'totalOutstanding' => $totalOutstanding,
-                                'invoiceCount' => $invoiceCount,
-                                'monthName' => $monthName,
-                                'yearNumber' => $yearNumber,
-                            ]),
-                        Forms\Components\TextInput::make('cc_emails')
-                            ->label('CC Emails')
-                            ->placeholder('finance@example.com, manager@example.com')
-                            ->helperText('Separate multiple emails with commas.'),
-                    ];
-                })
+                ->form([
+                    Forms\Components\View::make('balance_preview')
+                        ->view('filament.forms.components.outstanding-balance-preview')
+                        ->viewData([
+                            'client' => $client,
+                            'invoices' => $invoices,
+                            'totalOutstanding' => $totalOutstanding,
+                            'invoiceCount' => $invoiceCount,
+                            'monthName' => $monthName,
+                            'yearNumber' => $yearNumber,
+                        ]),
+                    Forms\Components\TextInput::make('cc_emails')
+                        ->label('CC Emails')
+                        ->placeholder('finance@example.com, manager@example.com')
+                        ->helperText('Separate multiple emails with commas.'),
+                ])
                 ->action(function ($data) {
                     $client = $this->record;
                     $invoices = $client->outstandingBalanceInvoicesQuery()
