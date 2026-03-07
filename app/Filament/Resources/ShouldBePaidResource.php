@@ -156,6 +156,17 @@ class ShouldBePaidResource extends Resource
                     ->label('Provider')
                     ->searchable()
                     ->multiple(),
+                Tables\Filters\Filter::make('providers_needing_payment')
+                    ->label('Providers Needing Payment')
+                    ->query(function (Builder $query): Builder {
+                        return $query->whereHas('provider', function (Builder $providerQuery) {
+                            $providerQuery->where('needs_payment', true);
+                        });
+                    })
+                    ->toggle()
+                    ->indicateUsing(function (): array {
+                        return ['providers_needing_payment' => 'Providers Needing Payment'];
+                    }),
                 Tables\Filters\SelectFilter::make('branch')
                     ->relationship('branch', 'branch_name')
                     ->label('Branch')

@@ -58,6 +58,8 @@ class Transaction extends Model
                 if ($transaction->bankAccount) {
                     $transaction->bankAccount->calculateBalance();
                 }
+
+                $transaction->clearProviderNeedsPaymentFlag();
             } catch (\Exception $e) {
                 Log::error('Error in transaction created event: ' . $e->getMessage(), [
                     'transaction_id' => $transaction->id,
@@ -104,6 +106,26 @@ class Transaction extends Model
     public function related(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * If the transaction is related to a provider (directly or through branch),
+     * mark provider as no longer needing payment.
+     */
+    public function clearProviderNeedsPaymentFlag(): void
+    {
+        $provider = null;
+
+        if ($this->related_type === 'Provider') {
+            $provider = Provider::find($this->related_id);
+        } elseif ($this->related_type === 'Branch') {
+            $branch = ProviderBranch::with('provider')->find($this->related_id);
+            $provider = $branch?->provider;
+        }
+
+        if ($provider && $provider->needs_payment) {
+            $provider->update(['needs_payment' => false]);
+        }
     }
 
     public function calculateBankCharges()

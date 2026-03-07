@@ -69,6 +69,9 @@ class ProviderResource extends Resource
                 'Bank Transfer' => 'Bank Transfer',
                 'AEAT' => 'AEAT',
             ])->nullable(),
+            Checkbox::make('needs_payment')
+                ->label('Needs Payment')
+                ->default(false),
             Textarea::make('comment')->label('Comment')->nullable(),
             Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
             Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),

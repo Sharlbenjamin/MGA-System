@@ -14,10 +14,11 @@ use App\Traits\LogsActivity;
 class Provider extends Model
 {
     use HasFactory, HasRelationships, LogsActivity;
-    protected $fillable = ['country_id','status','type','name','payment_due','payment_method','comment','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','signed_contract_draft','assigned_user_id',];
+    protected $fillable = ['country_id','status','type','name','payment_due','payment_method','needs_payment','comment','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','signed_contract_draft','assigned_user_id',];
 
     protected $casts = [
         'id' => 'integer',
+        'needs_payment' => 'boolean',
     ];
 
     /**
