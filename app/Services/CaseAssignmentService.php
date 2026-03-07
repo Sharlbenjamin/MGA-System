@@ -18,27 +18,19 @@ class CaseAssignmentService
         $assignedBy = $assignedBy ?? Auth::user();
 
         return DB::transaction(function () use ($file, $assignee, $assignedBy): FileAssignment {
-            $activePrimaryAssigneeIds = $file->fileAssignments()
-                ->whereNull('unassigned_at')
-                ->where('is_primary', true)
-                ->pluck('user_id')
-                ->filter()
-                ->unique()
-                ->values();
-
             // Unassign current primary assignment(s).
             $file->fileAssignments()
                 ->whereNull('unassigned_at')
                 ->where('is_primary', true)
                 ->update(['unassigned_at' => now()]);
 
-            // Reassign all case tasks from previous assignee(s) to the new assignee.
-            if ($activePrimaryAssigneeIds->isNotEmpty()) {
-                $file->tasks()
-                    ->whereIn('user_id', $activePrimaryAssigneeIds->all())
-                    ->where('user_id', '!=', $assignee->id)
-                    ->update(['user_id' => $assignee->id]);
-            }
+            // Reassign all tasks in this case to the new assignee.
+            $file->tasks()
+                ->where(function ($query) use ($assignee) {
+                    $query->whereNull('user_id')
+                        ->orWhere('user_id', '!=', $assignee->id);
+                })
+                ->update(['user_id' => $assignee->id]);
 
             return FileAssignment::create([
                 'file_id' => $file->id,
