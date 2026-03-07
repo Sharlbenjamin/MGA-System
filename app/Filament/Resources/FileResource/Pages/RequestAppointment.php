@@ -4,15 +4,18 @@ namespace App\Filament\Resources\FileResource\Pages;
 
 use App\Filament\Resources\FileResource;
 use App\Models\FileFee;
+use App\Models\Gop;
 use App\Models\Task;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
@@ -148,10 +151,11 @@ class RequestAppointment extends EditRecord
         ]);
     }
 
-    public function sendRequest(): void
+    public function sendRequest(array $confirmationData = []): void
     {
         $this->authorizeAccess();
         $data = $this->form->getState();
+        $this->createAndSendGopIfRequested($confirmationData);
         $this->sendAppointmentRequestsFromModal($data, $this->getRecord());
         $this->redirect(FileResource::getUrl('view', ['record' => $this->getRecord()]), navigate: true);
     }
@@ -161,7 +165,41 @@ class RequestAppointment extends EditRecord
         return [
             Action::make('send')
                 ->label('Send Appointment Requests')
-                ->submit('sendRequest')
+                ->modalHeading('Confirm Appointment Request')
+                ->modalDescription('Choose whether to send a GOP now. If enabled, fill GOP amount, type, and date before confirming.')
+                ->modalSubmitActionLabel('Confirm & Send')
+                ->form([
+                    Checkbox::make('send_gop')
+                        ->label('Send GOP during this request')
+                        ->default(false)
+                        ->live(),
+                    Grid::make(3)
+                        ->schema([
+                            TextInput::make('gop_amount')
+                                ->label('GOP Amount')
+                                ->numeric()
+                                ->minValue(0.01)
+                                ->required(fn (Get $get) => (bool) $get('send_gop'))
+                                ->suffix('EUR'),
+                            Select::make('gop_type')
+                                ->label('GOP Type')
+                                ->options([
+                                    'In' => 'In',
+                                    'Out' => 'Out',
+                                ])
+                                ->default('Out')
+                                ->required(fn (Get $get) => (bool) $get('send_gop')),
+                            DatePicker::make('gop_date')
+                                ->label('GOP Date')
+                                ->native(false)
+                                ->default(now()->toDateString())
+                                ->required(fn (Get $get) => (bool) $get('send_gop')),
+                        ])
+                        ->visible(fn (Get $get) => (bool) $get('send_gop')),
+                ])
+                ->action(function (array $data): void {
+                    $this->sendRequest($data);
+                })
                 ->color('primary'),
             Action::make('back')
                 ->label('Back to file')
@@ -463,6 +501,29 @@ class RequestAppointment extends EditRecord
         if ($failureCount > 0) {
             Notification::make()->title('Some Requests Failed')->body("Failed to send to {$failureCount} providers")->warning()->send();
         }
+    }
+
+    protected function createAndSendGopIfRequested(array $confirmationData): void
+    {
+        if (!($confirmationData['send_gop'] ?? false)) {
+            return;
+        }
+
+        $record = $this->getRecord();
+        $gop = Gop::create([
+            'file_id' => $record->id,
+            'type' => $confirmationData['gop_type'],
+            'amount' => (float) $confirmationData['gop_amount'],
+            'date' => $confirmationData['gop_date'],
+            'status' => 'Not Sent',
+        ]);
+
+        if ($gop->type === 'Out') {
+            $gop->sendGopToBranch();
+        }
+
+        // Make sure newly created GOP is reflected in subsequent appointment email rendering.
+        $record->unsetRelation('gops');
     }
 
     protected function createManualFollowUpTaskForBranch($branch, $record): void
