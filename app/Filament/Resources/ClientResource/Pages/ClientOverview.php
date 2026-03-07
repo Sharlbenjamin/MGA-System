@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\HtmlString;
 
 class ClientOverview extends ViewRecord implements HasTable
 {
@@ -104,26 +103,23 @@ class ClientOverview extends ViewRecord implements HasTable
                     $yearNumber = (int) Carbon::now()->format('Y');
 
                     return [
-                        Forms\Components\Placeholder::make('balance_email_intro')
-                            ->label('Email Preview')
-                            ->content(new HtmlString(
-                                '<div style="line-height:1.6;">' .
-                                '<p><strong>To:</strong> ' . e($client->email ?? 'No financial email configured') . '</p>' .
-                                '<p><strong>Subject:</strong> MGA x ' . e($client->company_name) . ' Outstanding for ' . e($monthName) . ' ' . e((string) $yearNumber) . '</p>' .
-                                '<p>Dear team,</p>' .
-                                '<p>Please note that the total outstanding is <strong>' . e(number_format($totalOutstanding, 2)) . ' EUR</strong> representing <strong>' . e((string) $invoiceCount) . '</strong> invoices.</p>' .
-                                '</div>'
-                            )),
-                        Forms\Components\Placeholder::make('balance_table_preview')
-                            ->label('Outstanding Invoices')
-                            ->content(new HtmlString($this->buildOutstandingBalanceTableHtml($invoices))),
+                        Forms\Components\View::make('balance_preview')
+                            ->view('filament.forms.components.outstanding-balance-preview')
+                            ->viewData([
+                                'client' => $client,
+                                'invoices' => $invoices,
+                                'totalOutstanding' => $totalOutstanding,
+                                'invoiceCount' => $invoiceCount,
+                                'monthName' => $monthName,
+                                'yearNumber' => $yearNumber,
+                            ]),
                         Forms\Components\TextInput::make('cc_emails')
                             ->label('CC Emails')
                             ->placeholder('finance@example.com, manager@example.com')
                             ->helperText('Separate multiple emails with commas.'),
                     ];
                 })
-                ->action(function (array $data) {
+                ->action(function ($data) {
                     $client = $this->record;
                     $invoices = $client->outstandingBalanceInvoicesQuery()
                         ->with(['patient', 'file'])
@@ -154,6 +150,7 @@ class ClientOverview extends ViewRecord implements HasTable
                     $mailer = 'financial';
                     $user = \App\Models\User::find(Auth::id());
                     $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
+                    $data = is_array($data) ? $data : [];
                     $ccEmails = collect(explode(',', (string) ($data['cc_emails'] ?? '')))
                         ->map(fn ($email) => trim($email))
                         ->filter()
@@ -205,42 +202,6 @@ class ClientOverview extends ViewRecord implements HasTable
                     }
                 }),
         ];
-    }
-
-    protected function buildOutstandingBalanceTableHtml($invoices): string
-    {
-        if ($invoices->isEmpty()) {
-            return '<p style="color:#b45309;">No outstanding invoices found for this client.</p>';
-        }
-
-        $rows = $invoices->map(function ($invoice) {
-            return '<tr>' .
-                '<td style="padding:8px;border:1px solid #e5e7eb;">' . e($invoice->name) . '</td>' .
-                '<td style="padding:8px;border:1px solid #e5e7eb;">' . e($invoice->patient?->name ?? '-') . '</td>' .
-                '<td style="padding:8px;border:1px solid #e5e7eb;">' . e(optional($invoice->created_at)->format('d/m/Y')) . '</td>' .
-                '<td style="padding:8px;border:1px solid #e5e7eb;">' . e(optional($invoice->due_date)->format('d/m/Y')) . '</td>' .
-                '<td style="padding:8px;border:1px solid #e5e7eb;">' . e($invoice->file?->mga_reference ?? '-') . '</td>' .
-                '<td style="padding:8px;border:1px solid #e5e7eb;">' . e($invoice->file?->client_reference ?? '-') . '</td>' .
-                '<td style="padding:8px;border:1px solid #e5e7eb;text-align:right;">' . e(number_format((float) $invoice->total_amount, 2)) . ' EUR</td>' .
-            '</tr>';
-        })->implode('');
-
-        return '<div style="max-height:320px;overflow:auto;border:1px solid #e5e7eb;border-radius:8px;">' .
-            '<table style="width:100%;border-collapse:collapse;font-size:12px;">' .
-            '<thead style="background:#f9fafb;">' .
-            '<tr>' .
-            '<th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Invoice</th>' .
-            '<th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Patient</th>' .
-            '<th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Date</th>' .
-            '<th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Due Date</th>' .
-            '<th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">MGA Ref</th>' .
-            '<th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Client Ref</th>' .
-            '<th style="padding:8px;border:1px solid #e5e7eb;text-align:right;">Amount</th>' .
-            '</tr>' .
-            '</thead>' .
-            '<tbody>' . $rows . '</tbody>' .
-            '</table>' .
-            '</div>';
     }
 
 }
