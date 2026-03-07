@@ -92,11 +92,12 @@ class AppointmentRequestMailable extends Mailable
 
     protected function resolveGopForAttachment(): ?Gop
     {
-        if ($this->gop) {
+        if ($this->gop && $this->gop->type === 'Out') {
             return $this->gop;
         }
 
         return $this->file->gops()
+            ->where('type', 'Out')
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->first();

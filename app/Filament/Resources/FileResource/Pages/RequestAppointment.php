@@ -162,11 +162,15 @@ class RequestAppointment extends EditRecord
 
     protected function getFormActions(): array
     {
+        $hasExistingOutGop = $this->hasExistingOutGop();
+
         return [
             Action::make('send')
                 ->label('Send Appointment Requests')
                 ->modalHeading('Confirm Appointment Request')
-                ->modalDescription('Choose whether to send a GOP now. If enabled, fill GOP amount, type, and date before confirming.')
+                ->modalDescription($hasExistingOutGop
+                    ? 'Choose whether to include GOP. An existing Out GOP was found and will be reused.'
+                    : 'Choose whether to send a GOP now. If enabled, fill GOP amount, type, and date before confirming.')
                 ->modalSubmitActionLabel('Confirm & Send')
                 ->form([
                     Checkbox::make('send_gop')
@@ -179,7 +183,7 @@ class RequestAppointment extends EditRecord
                                 ->label('GOP Amount')
                                 ->numeric()
                                 ->minValue(0.01)
-                                ->required(fn (Get $get) => (bool) $get('send_gop'))
+                                ->required(fn (Get $get) => (bool) $get('send_gop') && !$hasExistingOutGop)
                                 ->suffix('EUR'),
                             Select::make('gop_type')
                                 ->label('GOP Type')
@@ -188,12 +192,12 @@ class RequestAppointment extends EditRecord
                                     'Out' => 'Out',
                                 ])
                                 ->default('Out')
-                                ->required(fn (Get $get) => (bool) $get('send_gop')),
+                                ->required(fn (Get $get) => (bool) $get('send_gop') && !$hasExistingOutGop),
                             DatePicker::make('gop_date')
                                 ->label('GOP Date')
                                 ->native(false)
                                 ->default(now()->toDateString())
-                                ->required(fn (Get $get) => (bool) $get('send_gop')),
+                                ->required(fn (Get $get) => (bool) $get('send_gop') && !$hasExistingOutGop),
                         ])
                         ->visible(fn (Get $get) => (bool) $get('send_gop')),
                 ])
@@ -510,6 +514,18 @@ class RequestAppointment extends EditRecord
         }
 
         $record = $this->getRecord();
+        $existingOutGop = $this->getLatestOutGopForRecord();
+
+        if ($existingOutGop) {
+            Notification::make()
+                ->title('Existing GOP Reused')
+                ->body('Found an existing Out GOP for this file. It will be attached to the appointment request email.')
+                ->success()
+                ->send();
+
+            return $existingOutGop;
+        }
+
         $gop = Gop::create([
             'file_id' => $record->id,
             'type' => $confirmationData['gop_type'],
@@ -526,6 +542,24 @@ class RequestAppointment extends EditRecord
         $record->unsetRelation('gops');
 
         return $gop;
+    }
+
+    protected function hasExistingOutGop(): bool
+    {
+        return $this->getRecord()
+            ->gops()
+            ->where('type', 'Out')
+            ->exists();
+    }
+
+    protected function getLatestOutGopForRecord(): ?Gop
+    {
+        return $this->getRecord()
+            ->gops()
+            ->where('type', 'Out')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first();
     }
 
     protected function createManualFollowUpTaskForBranch($branch, $record): void
