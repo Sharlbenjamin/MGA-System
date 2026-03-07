@@ -26,6 +26,39 @@
         th {
             background: #f3f4f6;
         }
+
+        .signature-wrap {
+            margin-top: 16px;
+        }
+
+        .signature-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .signature-logo {
+            width: 120px;
+            height: auto;
+        }
+
+        .signature-divider {
+            width: 2px;
+            background: #FFC107;
+            height: 120px;
+        }
+
+        .signature-text {
+            font-size: 12px;
+            color: #2c3e50;
+            line-height: 1.5;
+        }
+
+        .signature-company {
+            font-size: 14px;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -69,5 +102,17 @@
     </table>
 
     <p>Kind Regards.</p>
+
+    <div class="signature-wrap">
+        <div class="signature-box">
+            <img class="signature-logo" src="{{ $message->embed(storage_path('app/public/siglogo.png')) }}" alt="Med Guard Assistance Logo">
+            <div class="signature-divider"></div>
+            <div class="signature-text">
+                <div class="signature-company">Med Guard Assistance</div>
+                24/7 Email: mga.operation@medguarda.com<br>
+                Website: <a href="https://medguarda.com" target="_blank">medguarda.com</a>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
