@@ -132,7 +132,7 @@ class ClientOverview extends ViewRecord implements HasTable
                         return;
                     }
 
-                    $recipientEmail = $client->email;
+                    $recipientEmail = $client->getOutstandingBalanceRecipientEmail();
 
                     if (!$recipientEmail) {
                         Notification::make()
@@ -191,12 +191,34 @@ class ClientOverview extends ViewRecord implements HasTable
                             'recipient_email' => $recipientEmail,
                             'error' => $exception->getMessage(),
                         ]);
+                        try {
+                            $fallbackEmail = Mail::mailer('smtp')->to($recipientEmail);
 
-                        Notification::make()
-                            ->danger()
-                            ->title('Failed to send outstanding balance')
-                            ->body($exception->getMessage())
-                            ->send();
+                            if ($ccEmails->isNotEmpty()) {
+                                $fallbackEmail->cc($ccEmails->all());
+                            }
+
+                            $fallbackEmail->send(new SendOutstandingBalance($client, $invoices, $monthName, $yearNumber));
+
+                            Notification::make()
+                                ->success()
+                                ->title('Outstanding balance sent (fallback)')
+                                ->body("Sent using SMTP fallback to {$recipientEmail}.")
+                                ->send();
+                        } catch (\Throwable $fallbackException) {
+                            Log::error('Fallback mailer also failed for outstanding balance email', [
+                                'client_id' => $client->id,
+                                'recipient_email' => $recipientEmail,
+                                'financial_error' => $exception->getMessage(),
+                                'smtp_error' => $fallbackException->getMessage(),
+                            ]);
+
+                            Notification::make()
+                                ->danger()
+                                ->title('Failed to send outstanding balance')
+                                ->body('Financial mailer: ' . $exception->getMessage() . ' | SMTP: ' . $fallbackException->getMessage())
+                                ->send();
+                        }
                     }
                 }),
         ];

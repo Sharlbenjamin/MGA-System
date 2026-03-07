@@ -153,6 +153,23 @@ class Client extends Model
         return $this->invoices()->where('status', 'Unpaid');
     }
 
+    public function getOutstandingBalanceRecipientEmail(): ?string
+    {
+        $financialContact = $this->financialContact;
+
+        if ($financialContact) {
+            if ($financialContact->preferred_contact === 'Second Email' && !empty($financialContact->second_email)) {
+                return $financialContact->second_email;
+            }
+
+            if (!empty($financialContact->email)) {
+                return $financialContact->email;
+            }
+        }
+
+        return $this->email;
+    }
+
 
 
 
