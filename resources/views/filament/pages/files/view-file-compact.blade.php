@@ -28,11 +28,18 @@
     $clientName = $patient?->client?->company_name ?? '—';
     $latestInvoice = $record->invoices()->latest()->first();
     $invoiceStatus = $latestInvoice ? $latestInvoice->status : 'No Invoice';
+    $canViewInvoiceAmount = auth()->user()?->hasAnyRole(['admin', 'Financial', 'financial']) ?? false;
+    $invoiceTotalAmount = $latestInvoice ? number_format((float) ($latestInvoice->total_amount ?? 0), 2) : null;
+    $latestGopIn = $record->gops()->where('type', 'In')->latest()->first();
+    $gopInAmount = $latestGopIn ? number_format((float) ($latestGopIn->amount ?? 0), 2) : null;
+    $gopInStatus = $latestGopIn?->status ?? 'No GOP In';
     $latestBill = $record->bills()->latest()->first();
     $billStatus = $latestBill ? $latestBill->status : 'No Bill';
+    $billTotalAmount = $latestBill ? number_format((float) ($latestBill->total_amount ?? 0), 2) : null;
+    $gopTotalAmount = number_format((float) $record->gopInTotal(), 2);
     $truncate = fn ($s, $len = 80) => $s ? (strlen($s) > $len ? substr($s, 0, $len) . '…' : $s) : '—';
     $statusColor = match ($record->status ?? '') {
-        'Assisted' => 'success',
+        'Assisted', 'Confirmed', 'confirmed' => 'success',
         'Cancelled', 'Void' => 'danger',
         default => 'warning',
     };
@@ -105,8 +112,11 @@
                         <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-clock', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Service Time:</dt><dd class="min-w-0">{{ \Carbon\Carbon::parse($record->service_time)->format('h:i A') }}</dd></div>
                     @endif
                     <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-flag', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Status:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$statusColor">{{ $record->status }}</x-filament::badge></dd></div>
-                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-banknotes', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Invoice:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$invoiceStatus === 'Paid' ? 'success' : ($invoiceStatus === 'No Invoice' ? 'gray' : 'warning')">{{ $invoiceStatus }}</x-filament::badge></dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-banknotes', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Invoice:</dt><dd class="min-w-0 inline-flex items-center gap-2"><x-filament::badge :color="$invoiceStatus === 'Paid' ? 'success' : ($invoiceStatus === 'No Invoice' ? 'gray' : 'warning')">{{ $invoiceStatus }}</x-filament::badge>@if($latestInvoice && $canViewInvoiceAmount)<span class="text-sm text-gray-700 dark:text-gray-300">EUR {{ $invoiceTotalAmount }}</span>@endif</dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-currency-euro', 'h-4 w-4')</span><dt class="{{ $labelClass }}">GOP Total Amount:</dt><dd class="min-w-0">{{ ((float) $record->gopInTotal()) > 0 ? 'EUR ' . $gopTotalAmount : '—' }}</dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-shield-check', 'h-4 w-4')</span><dt class="{{ $labelClass }}">GOP In Status:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$gopInStatus === 'Sent' ? 'success' : ($gopInStatus === 'No GOP In' ? 'gray' : 'warning')">{{ $gopInStatus }}</x-filament::badge></dd></div>
                     <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-document-text', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Bill:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$billStatus === 'Paid' ? 'success' : ($billStatus === 'No Bill' ? 'gray' : 'warning')">{{ $billStatus }}</x-filament::badge></dd></div>
+                    <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-banknotes', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Bill Total Amount:</dt><dd class="min-w-0">{{ $latestBill ? 'EUR ' . $billTotalAmount : '—' }}</dd></div>
                 </dl>
             </div>
         </div>
