@@ -61,6 +61,9 @@ class Invoice extends Model
             if (!$invoice->name) {
                 $invoice->name = static::generateInvoiceNumber($invoice);
             }
+            if (!$invoice->invoice_date) {
+                $invoice->invoice_date = $invoice->file?->service_date ?? now();
+            }
             $invoice->due_date = now()->addDays(30);
         });
 

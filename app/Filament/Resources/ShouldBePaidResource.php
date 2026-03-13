@@ -51,7 +51,7 @@ class ShouldBePaidResource extends Resource
     {
         return parent::getEloquentQuery()
             ->whereIn('status', ['Unpaid', 'Partial'])
-            ->with(['provider.bankAccounts', 'branch', 'file.providerBranch.provider', 'file.invoices']);
+            ->with(['provider.bankAccounts', 'branch', 'file.providerBranch.provider', 'file.invoices', 'file.patient']);
     }
 
     public static function form(Form $form): Form
@@ -70,7 +70,7 @@ class ShouldBePaidResource extends Resource
                 Group::make('branch.branch_name')->label('Branch')->collapsible(),
             ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
-                'provider', 'branch', 'file.providerBranch.provider', 'file.invoices'
+                'provider', 'branch', 'file.providerBranch.provider', 'file.invoices', 'file.patient'
             ]))
             ->defaultSort('due_date', 'asc')
             ->columns([
@@ -82,9 +82,16 @@ class ShouldBePaidResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->label('Branch'),
+                Tables\Columns\TextColumn::make('file.patient.name')
+                    ->label('Patient')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('provider_bank_iban')
                     ->label('Provider Bank IBAN')
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('provider.bankAccounts', function (Builder $bankAccountQuery) use ($search) {
+                            $bankAccountQuery->where('iban', 'like', "%{$search}%");
+                        });
+                    })
                     ->sortable(false)
                     ->copyable()
                     ->copyMessage('IBAN copied to clipboard')

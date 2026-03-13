@@ -6,6 +6,7 @@ use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ContactRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\InvoiceRelationManager;
+use App\Filament\Resources\ClientResource\RelationManagers\TransactionRelationManager;
 use App\Models\Client;
 use Filament\Resources\Resource;
 use Filament\Forms;
@@ -13,6 +14,7 @@ use Filament\Tables;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
 use App\Filament\RelationManagers\ActivityLogRelationManager;
@@ -64,6 +66,10 @@ class ClientResource extends Resource
                     ->email()
                     ->nullable(),
                 TextInput::make('operation_email')->label('Operation Email')->email()->nullable(),
+                Textarea::make('comment')
+                    ->label('Comment')
+                    ->rows(4)
+                    ->nullable(),
                 FileUpload::make('signed_contract_draft')
                     ->label('Signed Contract Draft (PDF)')
                     ->acceptedFileTypes(['application/pdf'])
@@ -136,6 +142,7 @@ class ClientResource extends Resource
             ContactRelationManager::class,
             BankAccountRelationManager::class,
             InvoiceRelationManager::class,
+            TransactionRelationManager::class,
             ActivityLogRelationManager::class,
         ];
     }

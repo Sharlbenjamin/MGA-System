@@ -52,6 +52,7 @@ class InvoiceResource extends Resource
                                     $file = \App\Models\File::find($state);
                                     if ($file) {
                                         $set('patient_id', $file->patient_id);
+                                        $set('invoice_date', optional($file->service_date)->format('Y-m-d') ?? now()->format('Y-m-d'));
                                     }
                                 }
                             }),
@@ -73,7 +74,16 @@ class InvoiceResource extends Resource
                             ->nullable(),
 
                         Forms\Components\DatePicker::make('invoice_date')
-                            ->default(now()->format('Y-m-d')),
+                            ->default(function (Get $get) {
+                                $fileId = $get('file_id');
+                                if (!$fileId) {
+                                    return now()->format('Y-m-d');
+                                }
+
+                                $file = \App\Models\File::find($fileId);
+
+                                return optional($file?->service_date)->format('Y-m-d') ?? now()->format('Y-m-d');
+                            }),
 
                         Forms\Components\Select::make('status')
                             ->options([

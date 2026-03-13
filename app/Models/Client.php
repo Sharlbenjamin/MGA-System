@@ -18,7 +18,7 @@ class Client extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
-    protected $fillable = ['company_name','type','status','initials','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','signed_contract_draft',];
+    protected $fillable = ['company_name','type','status','initials','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','signed_contract_draft','comment',];
 
     protected $casts = [
         'id' => 'integer',
@@ -84,9 +84,9 @@ class Client extends Model
         );
     }
 
-    public function transactions()
+    public function transactions(): HasMany
     {
-        return Transaction::where('related_type', 'Client')->where('related_id', $this->id);
+        return $this->hasMany(Transaction::class, 'related_id')->where('related_type', 'Client');
     }
 
     public function tasks()

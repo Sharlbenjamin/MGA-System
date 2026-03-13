@@ -2,15 +2,16 @@
 
 namespace App\Filament\Resources\InvoiceResource\RelationManagers;
 
+use App\Models\BillItem;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Components\TextInput;
-use Filament\Support\RawJs;
+use Filament\Forms\Components\Repeater;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Tables;
+use Filament\Notifications\Notification;
 use App\Models\FileFee;
-use App\Models\BillItem;
+use App\Services\InvoiceItemSuggestionService;
 
 class ItemsRelationManager extends RelationManager
 {
@@ -44,7 +45,16 @@ class ItemsRelationManager extends RelationManager
                         }
 
                         // Add file fees
-                        $fileFees = FileFee::with('serviceType', 'country', 'city')->get();
+                        $fileFees = FileFee::with('serviceType', 'country', 'city')
+                            ->where('service_type_id', $invoice->file?->service_type_id)
+                            ->where('country_id', $invoice->file?->country_id)
+                            ->where(function ($query) use ($invoice) {
+                                $query->whereNull('city_id');
+                                if ($invoice->file?->city_id) {
+                                    $query->orWhere('city_id', $invoice->file->city_id);
+                                }
+                            })
+                            ->get();
                         
                         foreach ($fileFees as $fileFee) {
                             $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
@@ -76,7 +86,7 @@ class ItemsRelationManager extends RelationManager
                                 $billItem = BillItem::find($billItemId);
                                 if ($billItem) {
                                     $set('description', "{$billItem->description} on {$dateString}");
-                                    // Don't auto-fill amount
+                                    $set('amount', (float) $billItem->amount);
                                 }
                             } elseif (str_starts_with($state, 'file_fee_')) {
                                 $fileFeeId = str_replace('file_fee_', '', $state);
@@ -86,7 +96,7 @@ class ItemsRelationManager extends RelationManager
                                     $isTelemedicine = $fileFee->serviceType && strtolower($fileFee->serviceType->name) === 'telemedicine';
                                     $description = $isTelemedicine ? "{$serviceName} on {$dateString}" : "File Fee";
                                     $set('description', $description);
-                                    // Don't auto-fill amount
+                                    $set('amount', (float) $fileFee->amount);
                                 }
                             }
                         } else {
@@ -158,7 +168,9 @@ class ItemsRelationManager extends RelationManager
                                 $billItem = BillItem::find($billItemId);
                                 if ($billItem) {
                                     $data['description'] = "{$billItem->description} on {$dateString}";
-                                    // Don't auto-fill amount
+                                    if (empty($data['amount'])) {
+                                        $data['amount'] = (float) $billItem->amount;
+                                    }
                                 }
                             } elseif (str_starts_with($data['item_selector'], 'file_fee_')) {
                                 $fileFeeId = str_replace('file_fee_', '', $data['item_selector']);
@@ -167,7 +179,9 @@ class ItemsRelationManager extends RelationManager
                                     $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
                                     $isTelemedicine = $fileFee->serviceType && strtolower($fileFee->serviceType->name) === 'telemedicine';
                                     $data['description'] = $isTelemedicine ? "{$serviceName} on {$dateString}" : "File Fee";
-                                    // Don't auto-fill amount
+                                    if (empty($data['amount'])) {
+                                        $data['amount'] = (float) $fileFee->amount;
+                                    }
                                 }
                             }
                         }
@@ -179,6 +193,71 @@ class ItemsRelationManager extends RelationManager
                     })
                     ->after(function ($record) {
                         $record->invoice->calculateTotal();
+                    }),
+                Tables\Actions\Action::make('predict_items')
+                    ->label('Suggest Items')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('info')
+                    ->modalHeading('Suggested Invoice Items')
+                    ->modalDescription('Review the suggested items and keep only the ones you want to add.')
+                    ->form([
+                        Repeater::make('suggestions')
+                            ->label('Predicted Items')
+                            ->default(fn () => $this->buildSuggestionRows())
+                            ->schema([
+                                Forms\Components\Toggle::make('use')
+                                    ->label('Use')
+                                    ->default(true),
+                                Forms\Components\TextInput::make('description')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('amount')
+                                    ->required()
+                                    ->numeric()
+                                    ->step('0.01')
+                                    ->prefix('EUR'),
+                                Forms\Components\TextInput::make('source')
+                                    ->disabled()
+                                    ->dehydrated(false),
+                            ])
+                            ->columns(4)
+                            ->addable(false)
+                            ->deletable(false)
+                            ->reorderable(false)
+                            ->collapsed(false)
+                            ->helperText('Turn off any row you do not want to add.'),
+                    ])
+                    ->action(function (array $data): void {
+                        $rows = collect($data['suggestions'] ?? [])
+                            ->filter(fn (array $row) => (bool) ($row['use'] ?? false))
+                            ->values();
+
+                        if ($rows->isEmpty()) {
+                            Notification::make()
+                                ->warning()
+                                ->title('No items selected')
+                                ->body('Enable at least one suggested row to create invoice items.')
+                                ->send();
+
+                            return;
+                        }
+
+                        foreach ($rows as $row) {
+                            $this->getRelationship()->create([
+                                'description' => $row['description'],
+                                'amount' => (float) $row['amount'],
+                                'discount' => 0,
+                                'tax' => 0,
+                            ]);
+                        }
+
+                        $this->getOwnerRecord()->calculateTotal();
+
+                        Notification::make()
+                            ->success()
+                            ->title('Suggested items added')
+                            ->body($rows->count() . ' invoice item(s) were created.')
+                            ->send();
                     }),
             ])
             ->actions([
@@ -197,5 +276,24 @@ class ItemsRelationManager extends RelationManager
                         $this->getOwnerRecord()->calculateTotal();
                     }),
             ]);
+    }
+
+    /**
+     * @return array<int, array{use: bool, description: string, amount: float, source: string}>
+     */
+    protected function buildSuggestionRows(): array
+    {
+        $service = app(InvoiceItemSuggestionService::class);
+        $suggestions = $service->suggestForInvoice($this->getOwnerRecord());
+
+        return collect($suggestions)
+            ->map(fn (array $item) => [
+                'use' => true,
+                'description' => $item['description'],
+                'amount' => (float) $item['amount'],
+                'source' => $item['source'],
+            ])
+            ->values()
+            ->all();
     }
 }
