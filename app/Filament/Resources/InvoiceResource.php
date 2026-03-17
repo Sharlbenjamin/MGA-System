@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\InvoiceResource\Pages;
 use App\Filament\Resources\InvoiceResource\RelationManagers\ItemsRelationManager;
+use App\Filament\Resources\TransactionResource;
 use App\Models\BankAccount;
 use App\Models\Invoice;
 use App\Services\UploadInvoiceToGoogleDrive;
@@ -136,6 +137,7 @@ class InvoiceResource extends Resource
             Group::make('patient.client.company_name')->collapsible(),
             Group::make('patient.name')->collapsible(),
              ])
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('transactions'))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
@@ -227,6 +229,18 @@ class InvoiceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Action::make('view_transaction')
+                    ->label('View Transaction')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->color('primary')
+                    ->visible(fn (Invoice $record): bool => $record->status === 'Paid' && $record->transactions()->exists())
+                    ->url(function (Invoice $record): ?string {
+                        $transaction = $record->transactions()->first();
+
+                        return $transaction
+                            ? TransactionResource::getUrl('edit', ['record' => $transaction->id])
+                            : null;
+                    }),
                 Action::make('generate')
                     ->modalHeading('Generate Invoice')
                     ->modalSubmitActionLabel('Generate')
