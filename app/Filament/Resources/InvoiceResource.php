@@ -174,27 +174,17 @@ class InvoiceResource extends Resource
                     ->description(fn (Invoice $record): string => $record->invoice_date?->format('d/m/Y') ?? '-'),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
 
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'danger' => 'Unpaid',
-                        'gray' => 'Draft',
-                        'info' => 'Posted',
-                        'success' => 'Paid',
-                        'primary' => 'Sent',
-                        'secondary' => 'Partial',
-                    ]),
                 Tables\Columns\TextColumn::make('total_amount')
+                    ->label('Invoice Amount / Status')
                     ->money('EUR')
                     ->sortable()
+                    ->description(fn (Invoice $record): string => $record->status ?? '-')
                     ->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('bill_total_amount')
-                    ->label('Bill Total')
+                    ->label('Bill Total / Status')
                     ->state(fn (Invoice $record): float => (float) ($record->file?->bills_sum_total_amount ?? 0))
                     ->money('EUR')
-                    ->sortable(false),
-                Tables\Columns\BadgeColumn::make('bill_paid')
-                    ->label('Bill Paid')
-                    ->state(function (Invoice $record): string {
+                    ->description(function (Invoice $record): string {
                         $billTotal = (float) ($record->file?->bills_sum_total_amount ?? 0);
                         $billPaid = (float) ($record->file?->bills_sum_paid_amount ?? 0);
 
@@ -204,11 +194,7 @@ class InvoiceResource extends Resource
 
                         return $billPaid >= $billTotal ? 'Paid' : 'Unpaid';
                     })
-                    ->colors([
-                        'gray' => 'No Bills',
-                        'success' => 'Paid',
-                        'danger' => 'Unpaid',
-                    ]),
+                    ->sortable(false),
                 Tables\Columns\TextColumn::make('profit')
                     ->label('Profit')
                     ->state(function (Invoice $record): float {
@@ -218,6 +204,26 @@ class InvoiceResource extends Resource
                         return $invoicesTotal - $billsTotal;
                     })
                     ->money('EUR')
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total Profit')
+                            ->using(function (Builder $query): float {
+                                return (float) $query
+                                    ->with([
+                                        'file' => fn ($fileQuery) => $fileQuery
+                                            ->withSum('bills', 'total_amount')
+                                            ->withSum('invoices', 'total_amount'),
+                                    ])
+                                    ->get()
+                                    ->sum(function (Invoice $invoice): float {
+                                        $invoicesTotal = (float) ($invoice->file?->invoices_sum_total_amount ?? 0);
+                                        $billsTotal = (float) ($invoice->file?->bills_sum_total_amount ?? 0);
+
+                                        return $invoicesTotal - $billsTotal;
+                                    });
+                            })
+                            ->formatStateUsing(fn ($state): string => '€' . number_format((float) $state, 2))
+                    )
                     ->sortable(false),
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->badge()->color(fn (string $state): string => match ($state) {
                     'New' => 'gray',
@@ -230,7 +236,8 @@ class InvoiceResource extends Resource
                     'Refund' => 'primary',
                     'Cancelled' => 'danger',
                     'Void' => 'gray',
-                }),
+                })
+                    ->description(fn (Invoice $record): string => $record->file?->service_date?->format('d/m/Y') ?? '-'),
                 Tables\Columns\TextColumn::make('paid_amount')
                     ->money('EUR')
                     ->sortable()
