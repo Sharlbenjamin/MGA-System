@@ -208,19 +208,36 @@ class InvoiceResource extends Resource
                         Summarizer::make()
                             ->label('Total Profit')
                             ->using(function ($query): float {
-                                return (float) $query
-                                    ->with([
-                                        'file' => fn ($fileQuery) => $fileQuery
-                                            ->withSum('bills', 'total_amount')
-                                            ->withSum('invoices', 'total_amount'),
-                                    ])
-                                    ->get()
-                                    ->sum(function (Invoice $invoice): float {
-                                        $invoicesTotal = (float) ($invoice->file?->invoices_sum_total_amount ?? 0);
-                                        $billsTotal = (float) ($invoice->file?->bills_sum_total_amount ?? 0);
+                                $invoiceRows = (clone $query)
+                                    ->select('file_id')
+                                    ->whereNotNull('file_id')
+                                    ->get();
 
-                                        return $invoicesTotal - $billsTotal;
+                                if ($invoiceRows->isEmpty()) {
+                                    return 0.0;
+                                }
+
+                                $fileIds = $invoiceRows
+                                    ->pluck('file_id')
+                                    ->filter()
+                                    ->unique()
+                                    ->values();
+
+                                $profitByFile = \App\Models\File::query()
+                                    ->whereIn('id', $fileIds)
+                                    ->withSum('bills', 'total_amount')
+                                    ->withSum('invoices', 'total_amount')
+                                    ->get()
+                                    ->mapWithKeys(function (\App\Models\File $file): array {
+                                        $invoicesTotal = (float) ($file->invoices_sum_total_amount ?? 0);
+                                        $billsTotal = (float) ($file->bills_sum_total_amount ?? 0);
+
+                                        return [$file->id => ($invoicesTotal - $billsTotal)];
                                     });
+
+                                return (float) $invoiceRows->sum(
+                                    fn ($row): float => (float) ($profitByFile[$row->file_id] ?? 0)
+                                );
                             })
                             ->formatStateUsing(fn ($state): string => '€' . number_format((float) $state, 2))
                     )
