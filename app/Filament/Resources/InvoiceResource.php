@@ -207,7 +207,7 @@ class InvoiceResource extends Resource
                     ->summarize(
                         Summarizer::make()
                             ->label('Total Profit')
-                            ->using(function (Builder $query): float {
+                            ->using(function ($query): float {
                                 return (float) $query
                                     ->with([
                                         'file' => fn ($fileQuery) => $fileQuery
