@@ -140,7 +140,7 @@ class InvoiceResource extends Resource
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
                 'transactions',
                 'patient.client',
-                'file' => fn (Builder $fileQuery) => $fileQuery
+                'file' => fn ($fileQuery) => $fileQuery
                     ->withSum('bills', 'total_amount')
                     ->withSum('bills', 'paid_amount')
                     ->withSum('invoices', 'total_amount'),
