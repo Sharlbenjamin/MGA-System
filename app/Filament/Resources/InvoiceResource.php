@@ -137,26 +137,41 @@ class InvoiceResource extends Resource
             Group::make('patient.client.company_name')->collapsible(),
             Group::make('patient.name')->collapsible(),
              ])
-            ->modifyQueryUsing(fn (Builder $query) => $query->with('transactions'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'transactions',
+                'patient.client',
+                'file' => fn (Builder $fileQuery) => $fileQuery
+                    ->withSum('bills', 'total_amount')
+                    ->withSum('bills', 'paid_amount')
+                    ->withSum('invoices', 'total_amount'),
+            ]))
             ->defaultSort('created_at', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('file.mga_reference')
+                Tables\Columns\TextColumn::make('patient.client.company_name')
+                    ->label('Client / Client Ref')
                     ->searchable()
                     ->sortable()
-                    ->url(fn (Invoice $record): string => $record->file->google_drive_link ?? '#')
-                    ->openUrlInNewTab()
-                    ->color(fn (Invoice $record): string => $record->file->google_drive_link ? 'primary' : 'gray'),
-                Tables\Columns\TextColumn::make('patient.client.company_name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('file.client_reference')
-                    ->label('Client Reference')
-                    ->searchable()
-                    ->sortable()
-                    ->copyable()
+                    ->description(function (Invoice $record): string {
+                        return $record->file?->client_reference ?: '-';
+                    })
+                    ->copyableState(fn (Invoice $record): string => $record->file?->client_reference ?? '')
                     ->copyMessage('Client reference copied to clipboard')
                     ->copyMessageDuration(1500),
-                Tables\Columns\TextColumn::make('patient.name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('invoice_date')->date()->sortable(),
+                Tables\Columns\TextColumn::make('patient.name')
+                    ->label('Patient / File Ref')
+                    ->searchable()
+                    ->sortable()
+                    ->description(function (Invoice $record): string {
+                        return $record->file?->mga_reference ?: '-';
+                    })
+                    ->url(fn (Invoice $record): string => $record->file?->google_drive_link ?? '#')
+                    ->openUrlInNewTab()
+                    ->color(fn (Invoice $record): string => $record->file?->google_drive_link ? 'primary' : 'gray'),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Name / Invoice Date')
+                    ->searchable()
+                    ->sortable()
+                    ->description(fn (Invoice $record): string => $record->invoice_date?->format('d/m/Y') ?? '-'),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
 
                 Tables\Columns\BadgeColumn::make('status')
@@ -168,9 +183,42 @@ class InvoiceResource extends Resource
                         'primary' => 'Sent',
                         'secondary' => 'Partial',
                     ]),
-                Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
-                Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
-                Tables\Columns\TextColumn::make('remaining_amount')->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)->money('EUR')->sortable(),
+                Tables\Columns\TextColumn::make('total_amount')
+                    ->money('EUR')
+                    ->sortable()
+                    ->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
+                Tables\Columns\TextColumn::make('bill_total_amount')
+                    ->label('Bill Total')
+                    ->state(fn (Invoice $record): float => (float) ($record->file?->bills_sum_total_amount ?? 0))
+                    ->money('EUR')
+                    ->sortable(false),
+                Tables\Columns\BadgeColumn::make('bill_paid')
+                    ->label('Bill Paid')
+                    ->state(function (Invoice $record): string {
+                        $billTotal = (float) ($record->file?->bills_sum_total_amount ?? 0);
+                        $billPaid = (float) ($record->file?->bills_sum_paid_amount ?? 0);
+
+                        if ($billTotal <= 0) {
+                            return 'No Bills';
+                        }
+
+                        return $billPaid >= $billTotal ? 'Paid' : 'Unpaid';
+                    })
+                    ->colors([
+                        'gray' => 'No Bills',
+                        'success' => 'Paid',
+                        'danger' => 'Unpaid',
+                    ]),
+                Tables\Columns\TextColumn::make('profit')
+                    ->label('Profit')
+                    ->state(function (Invoice $record): float {
+                        $invoicesTotal = (float) ($record->file?->invoices_sum_total_amount ?? 0);
+                        $billsTotal = (float) ($record->file?->bills_sum_total_amount ?? 0);
+
+                        return $invoicesTotal - $billsTotal;
+                    })
+                    ->money('EUR')
+                    ->sortable(false),
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->badge()->color(fn (string $state): string => match ($state) {
                     'New' => 'gray',
                     'Handling' => 'info',
@@ -183,6 +231,14 @@ class InvoiceResource extends Resource
                     'Cancelled' => 'danger',
                     'Void' => 'gray',
                 }),
+                Tables\Columns\TextColumn::make('paid_amount')
+                    ->money('EUR')
+                    ->sortable()
+                    ->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
+                Tables\Columns\TextColumn::make('remaining_amount')
+                    ->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)
+                    ->money('EUR')
+                    ->sortable(false),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('client')->relationship('patient.client', 'company_name')->label('Client')->searchable()->multiple(),
@@ -208,6 +264,22 @@ class InvoiceResource extends Resource
                             $data['show_draft_posted'] ?? true,
                             fn (Builder $query): Builder => $query->whereIn('status', ['Draft', 'Posted']),
                         );
+                    }),
+                Tables\Filters\Filter::make('invoice_date')
+                    ->form([
+                        Forms\Components\DatePicker::make('invoice_from'),
+                        Forms\Components\DatePicker::make('invoice_until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['invoice_from'] ?? null,
+                                fn (Builder $query, $date): Builder => $query->whereDate('invoice_date', '>=', $date),
+                            )
+                            ->when(
+                                $data['invoice_until'] ?? null,
+                                fn (Builder $query, $date): Builder => $query->whereDate('invoice_date', '<=', $date),
+                            );
                     }),
 
                 Tables\Filters\Filter::make('due_date')
