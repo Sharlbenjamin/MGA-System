@@ -370,6 +370,75 @@ class FileResource extends Resource
                     ->options(\App\Models\ServiceType::pluck('name', 'id')),
             ])
             ->actions([
+                Tables\Actions\Action::make('update_case')
+                    ->label('Update Case')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->modalHeading('Update Case Details')
+                    ->modalSubmitActionLabel('Update Case')
+                    ->fillForm(fn (File $record): array => [
+                        'service_type_id' => $record->service_type_id,
+                        'service_date' => $record->service_date,
+                        'service_time' => $record->service_time,
+                        'status' => $record->status,
+                        'provider_branch_id' => $record->provider_branch_id,
+                        'city_id' => $record->city_id,
+                    ])
+                    ->form([
+                        Hidden::make('city_id'),
+                        Select::make('service_type_id')
+                            ->label('Service Type')
+                            ->options(\App\Models\ServiceType::pluck('name', 'id'))
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->live(),
+                        DatePicker::make('service_date')
+                            ->label('Service Date')
+                            ->nullable(),
+                        TimePicker::make('service_time')
+                            ->label('Service Time')
+                            ->nullable(),
+                        Select::make('status')
+                            ->options([
+                                'New' => 'New',
+                                'Handling' => 'Handling',
+                                'Available' => 'Available',
+                                'Confirmed' => 'Confirmed',
+                                'Assisted' => 'Assisted',
+                                'Hold' => 'Hold',
+                                'Waiting MR' => 'Waiting MR',
+                                'Refund' => 'Refund',
+                                'Cancelled' => 'Cancelled',
+                                'Void' => 'Void',
+                            ])
+                            ->required(),
+                        Select::make('provider_branch_id')
+                            ->label('Provider Branch')
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->options(fn ($get) => \App\Models\ProviderBranch::query()
+                                ->when($get('service_type_id'), function ($query) use ($get) {
+                                    $query->whereHas('services', function ($q) use ($get) {
+                                        $q->where('service_type_id', $get('service_type_id'));
+                                    });
+                                })
+                                ->when($get('city_id') && (int) $get('service_type_id') !== 2, function ($query) use ($get) {
+                                    $query->whereHas('branchCities', fn ($q) => $q->where('city_id', $get('city_id')));
+                                })
+                                ->orderBy('priority', 'asc')
+                                ->pluck('branch_name', 'id')),
+                    ])
+                    ->action(function (File $record, array $data): void {
+                        $record->update([
+                            'service_type_id' => $data['service_type_id'],
+                            'service_date' => $data['service_date'],
+                            'service_time' => $data['service_time'],
+                            'status' => $data['status'],
+                            'provider_branch_id' => $data['provider_branch_id'] ?? null,
+                        ]);
+                    }),
                 Tables\Actions\Action::make('View')
                 ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id]))
                 ->icon('heroicon-o-eye'),
