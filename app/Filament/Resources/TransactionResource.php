@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 
@@ -379,11 +380,23 @@ class TransactionResource extends Resource
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
-                Forms\Components\TextInput::make('attachment_path')
-                    ->label('Link or Text')
-                    ->placeholder('Enter a Google Drive link, any URL, or any text here...')
-                    ->helperText('You can enter a Google Drive link, any URL (will be clickable), or any text.')
-                    ->maxLength(1000),
+                Forms\Components\FileUpload::make('attachment_path')
+                    ->label('Bill Payment / Transaction Proof')
+                    ->disk('public')
+                    ->directory('transactions')
+                    ->visibility('public')
+                    ->acceptedFileTypes([
+                        'application/pdf',
+                        'image/*',
+                        'application/msword',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    ])
+                    ->maxSize(10240)
+                    ->helperText('Upload payment proof (PDF, image, or Word document).')
+                    ->downloadable()
+                    ->openable()
+                    ->preserveFilenames()
+                    ->maxFiles(1),
 
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
@@ -496,11 +509,29 @@ class TransactionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with([
-                'bankAccount',
-                'invoices.file.patient.client',
-                'bills.file.patient.client'
-            ]))
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                $query->with([
+                    'bankAccount',
+                    'invoices.file.patient.client',
+                    'bills.file.patient.client',
+                ]);
+
+                $user = Auth::user();
+                $canViewAllTypes = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole([
+                    'admin',
+                    'Admin',
+                    'financial',
+                    'Financial',
+                    'financial manager',
+                    'Financial Manager',
+                ]);
+
+                if (!$canViewAllTypes) {
+                    $query->where('type', 'Outflow');
+                }
+
+                return $query;
+            })
             ->defaultSort('date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable(),
@@ -548,6 +579,11 @@ class TransactionResource extends Resource
                         if (!$record->attachment_path) {
                             return 'No Link/Text';
                         }
+
+                        // Check if it's an uploaded local file
+                        if ($record->isUploadedFile()) {
+                            return 'View Uploaded File';
+                        }
                         
                         // Check if it's a Google Drive link
                         if ($record->isGoogleDriveAttachment()) {
@@ -568,11 +604,14 @@ class TransactionResource extends Resource
                         if ($record->attachment_path && filter_var($record->attachment_path, FILTER_VALIDATE_URL)) {
                             return $record->attachment_path;
                         }
+                        if ($record->isUploadedFile()) {
+                            return Storage::url($record->attachment_path);
+                        }
                         return null;
                     })
                     ->openUrlInNewTab()
-                    ->icon(fn ($record) => !$record->attachment_path ? 'heroicon-o-document' : (($record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'heroicon-o-link' : 'heroicon-o-document-text'))
-                    ->color(fn ($record) => !$record->attachment_path ? 'gray' : (($record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'primary' : 'gray')),
+                    ->icon(fn ($record) => !$record->attachment_path ? 'heroicon-o-document' : (($record->isUploadedFile() || $record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'heroicon-o-link' : 'heroicon-o-document-text'))
+                    ->color(fn ($record) => !$record->attachment_path ? 'gray' : (($record->isUploadedFile() || $record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'primary' : 'gray')),
                 Tables\Columns\TextColumn::make('bank_charges')->money()->sortable(),
                 Tables\Columns\IconColumn::make('charges_covered_by_client')->label('Covered')->boolean()->sortable(),
             ])

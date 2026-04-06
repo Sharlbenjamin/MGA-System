@@ -44,12 +44,23 @@ class ListClients extends ListRecords
 
     public function table(Table $table): Table
     {
+        $statusOptions = [
+            'Searching' => 'Searching',
+            'Interested' => 'Interested',
+            'Sent' => 'Sent',
+            'Rejected' => 'Rejected',
+            'On Hold' => 'On Hold',
+            'Broker' => 'Broker',
+            'No Reply' => 'No Reply',
+            'Active' => 'Active',
+        ];
+
         // Potential Clients View (shows non-active clients)
         if ($this->viewMode === 'crm') {
             return $table
                 ->query(
                     ClientResource::getEloquentQuery()
-                        ->whereRaw('LOWER(status) = ?', ['interested'])
+                        ->whereRaw('LOWER(status) != ?', ['active'])
                 )
                 ->columns([
                     TextColumn::make('company_name')->searchable()->sortable()->label('Client Name')->sortable(),
@@ -71,7 +82,11 @@ class ListClients extends ListRecords
                         }),
                     TextColumn::make('leadsCount')->label('Leads')->sortable(),
                     TextColumn::make('leadsLastContactDate')->label('Last Contact')->date('d-m-Y')->sortable(),
-                ])->filters([])
+                ])->filters([
+                    SelectFilter::make('status')
+                        ->label('Status')
+                        ->options($statusOptions),
+                ])
                 ->defaultSort('company_name', 'asc');
         }
 

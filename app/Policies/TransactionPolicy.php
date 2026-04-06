@@ -8,6 +8,18 @@ use Illuminate\Auth\Access\Response;
 
 class TransactionPolicy
 {
+    protected function canViewAllTransactionTypes(User $user): bool
+    {
+        return method_exists($user, 'hasAnyRole') && $user->hasAnyRole([
+            'admin',
+            'Admin',
+            'financial',
+            'Financial',
+            'financial manager',
+            'Financial Manager',
+        ]);
+    }
+
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('view Transaction');
@@ -15,7 +27,11 @@ class TransactionPolicy
 
     public function view(User $user, Transaction $transaction): bool
     {
-        return $user->hasPermissionTo('view Transaction');
+        if (!$user->hasPermissionTo('view Transaction')) {
+            return false;
+        }
+
+        return $this->canViewAllTransactionTypes($user) || $transaction->type === 'Outflow';
     }
 
     public function create(User $user): bool
@@ -25,12 +41,20 @@ class TransactionPolicy
 
     public function update(User $user, Transaction $transaction): bool
     {
-        return $user->hasPermissionTo('edit Transaction');
+        if (!$user->hasPermissionTo('edit Transaction')) {
+            return false;
+        }
+
+        return $this->canViewAllTransactionTypes($user) || $transaction->type === 'Outflow';
     }
 
     public function delete(User $user, Transaction $transaction): bool
     {
-        return $user->hasPermissionTo('delete Transaction');
+        if (!$user->hasPermissionTo('delete Transaction')) {
+            return false;
+        }
+
+        return $this->canViewAllTransactionTypes($user) || $transaction->type === 'Outflow';
     }
 
     public function restore(User $user, Transaction $transaction): bool
