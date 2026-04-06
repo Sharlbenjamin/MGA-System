@@ -17,6 +17,8 @@ class TransactionPolicy
             'Financial',
             'financial manager',
             'Financial Manager',
+            'manager',
+            'Manager',
         ]);
     }
 

@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Auth;
+use Filament\Facades\Filament;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 
@@ -516,7 +516,7 @@ class TransactionResource extends Resource
                     'bills.file.patient.client',
                 ]);
 
-                $user = Auth::user();
+                $user = Filament::auth()->user();
                 $canViewAllTypes = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole([
                     'admin',
                     'Admin',
@@ -524,6 +524,8 @@ class TransactionResource extends Resource
                     'Financial',
                     'financial manager',
                     'Financial Manager',
+                    'manager',
+                    'Manager',
                 ]);
 
                 if (!$canViewAllTypes) {
