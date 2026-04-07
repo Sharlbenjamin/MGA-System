@@ -7,6 +7,7 @@ use App\Filament\Resources\InvoiceResource\RelationManagers\ItemsRelationManager
 use App\Filament\Resources\TransactionResource;
 use App\Models\BankAccount;
 use App\Models\Invoice;
+use App\Models\Patient;
 use App\Services\UploadInvoiceToGoogleDrive;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -66,6 +67,22 @@ class InvoiceResource extends Resource
                             ->default(fn () => request()->get('patient_id'))
                             ->disabled(fn () => request()->has('file_id'))
                             ->dehydrated(),
+
+                        Forms\Components\Placeholder::make('client_comment')
+                            ->label('Client Comment')
+                            ->content(function (Get $get, ?Invoice $record): string {
+                                $patientId = $get('patient_id') ?: $record?->patient_id;
+
+                                if (!$patientId) {
+                                    return '-';
+                                }
+
+                                $patient = Patient::query()
+                                    ->with('client:id,comment')
+                                    ->find($patientId);
+
+                                return $patient?->client?->comment ?: '-';
+                            }),
 
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')

@@ -380,7 +380,7 @@ class TransactionResource extends Resource
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
-                Forms\Components\FileUpload::make('attachment_path')
+                Forms\Components\FileUpload::make('attachment_file')
                     ->label('Bill Payment / Transaction Proof')
                     ->disk('public')
                     ->directory('transactions')
@@ -396,7 +396,21 @@ class TransactionResource extends Resource
                     ->downloadable()
                     ->openable()
                     ->preserveFilenames()
-                    ->maxFiles(1),
+                    ->maxFiles(1)
+                    ->fetchFileInformation(false)
+                    ->dehydrated(false)
+                    ->afterStateHydrated(function (callable $set, $state, ?Transaction $record): void {
+                        $existingPath = $record?->attachment_path;
+                        $set('attachment_file', (is_string($existingPath) && str_starts_with($existingPath, 'transactions/')) ? $existingPath : null);
+                    })
+                    ->afterStateUpdated(function ($state, callable $set): void {
+                        if (is_array($state)) {
+                            $state = $state[0] ?? null;
+                        }
+
+                        $set('attachment_path', $state ?: null);
+                    }),
+                Forms\Components\Hidden::make('attachment_path'),
 
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
@@ -517,7 +531,7 @@ class TransactionResource extends Resource
                 ]);
 
                 $user = Filament::auth()->user();
-                $canViewAllTypes = $user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole([
+                $privilegedRoles = [
                     'admin',
                     'Admin',
                     'financial',
@@ -526,7 +540,11 @@ class TransactionResource extends Resource
                     'Financial Manager',
                     'manager',
                     'Manager',
-                ]);
+                ];
+
+                $canViewAllTypes = $user
+                    && method_exists($user, 'hasAnyRole')
+                    && (bool) call_user_func([$user, 'hasAnyRole'], $privilegedRoles);
 
                 if (!$canViewAllTypes) {
                     $query->where('type', 'Outflow');
@@ -711,46 +729,14 @@ class TransactionResource extends Resource
                                 return;
                             }
 
-                            // Handle the uploaded file properly using Storage facade
-                            try {
-                                // Get the file content using Storage facade
-                                $content = Storage::disk('public')->get($uploadedFile);
-                                
-                                if ($content === false) {
-                                    Log::error('Transaction file not found in storage:', ['path' => $uploadedFile]);
-                                    Notification::make()
-                                        ->danger()
-                                        ->title('File not found')
-                                        ->body('The uploaded file could not be found in storage.')
-                                        ->send();
-                                    return;
-                                }
-                                
-                                // Generate the proper filename format
-                                $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
-                                $fileName = 'Transaction ' . $record->name . ' - ' . $record->date->format('Y-m-d') . '.' . $originalExtension;
-                                Log::info('Transaction file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
-                                
-                                // Here you would upload to Google Drive
-                                // For now, we'll just update the transaction with the file path
-                                $record->attachment_path = $uploadedFile;
-                                $record->save();
-                                
-                                Notification::make()
-                                    ->success()
-                                    ->title('Transaction document uploaded successfully')
-                                    ->body('Transaction document has been uploaded.')
-                                    ->send();
-                                    
-                            } catch (\Exception $e) {
-                                Log::error('Transaction file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
-                                Notification::make()
-                                    ->danger()
-                                    ->title('File access error')
-                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
-                                    ->send();
-                                return;
-                            }
+                            $record->attachment_path = $uploadedFile;
+                            $record->save();
+
+                            Notification::make()
+                                ->success()
+                                ->title('Transaction document uploaded successfully')
+                                ->body('Transaction document has been uploaded.')
+                                ->send();
                         } catch (\Exception $e) {
                             Log::error('Transaction upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
                             Notification::make()
