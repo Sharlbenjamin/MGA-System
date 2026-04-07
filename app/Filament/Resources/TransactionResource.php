@@ -401,9 +401,18 @@ class TransactionResource extends Resource
                     ->dehydrated(false)
                     ->afterStateHydrated(function (callable $set, $state, ?Transaction $record): void {
                         $existingPath = $record?->attachment_path;
-                        $set('attachment_file', (is_string($existingPath) && str_starts_with($existingPath, 'transactions/')) ? $existingPath : null);
+                        $set(
+                            'attachment_file',
+                            (is_string($existingPath) && str_starts_with($existingPath, 'transactions/'))
+                                ? [$existingPath]
+                                : []
+                        );
                     })
                     ->afterStateUpdated(function ($state, callable $set): void {
+                        if (is_string($state)) {
+                            $state = [$state];
+                        }
+
                         if (is_array($state)) {
                             $state = $state[0] ?? null;
                         }
