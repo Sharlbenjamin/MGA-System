@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use App\Exports\TaxesModeExport;
 use App\Models\Invoice;
 use App\Models\Bill;
+use App\Models\FileFee;
 use Maatwebsite\Excel\Facades\Excel;
 use Google\Client;
 use Google\Service\Drive;
@@ -51,7 +52,13 @@ class TaxesExportController extends Controller
         $ivaRate = $ivaPercent / 100;
 
         $invoices = Invoice::query()
-            ->with(['file.serviceType', 'file.country', 'patient.client', 'patient.country'])
+            ->with([
+                'file.serviceType',
+                'patient.country',
+                'patient.client.financialContact.country',
+                'patient.client.operationContact.country',
+                'patient.client.gopContact.country',
+            ])
             ->where('status', 'Paid')
             ->whereBetween('invoice_date', [$startDate, $endDate])
             ->orderBy('invoice_date')
@@ -63,6 +70,7 @@ class TaxesExportController extends Controller
             'Invoice Number',
             'Service',
             'Client Name',
+            'Client Country',
             'NIF',
             'Patient Name',
             'Total Amount',
@@ -76,7 +84,12 @@ class TaxesExportController extends Controller
         $rows = [];
 
         foreach ($invoices as $invoice) {
-            $amount = (float) $invoice->total_amount;
+            $fileFeeAmount = $this->resolveFileFeeAmountForFile($invoice->file);
+            $clientCountry = $this->resolveClientCountryFromInvoice($invoice);
+            $amount = $fileFeeAmount !== null ? round($fileFeeAmount, 2) : 'N/A';
+            $totalAfterIva = $fileFeeAmount !== null
+                ? round($fileFeeAmount * (1 + $ivaRate), 2)
+                : 'N/A';
 
             $rows[] = [
                 'Invoice',
@@ -84,11 +97,12 @@ class TaxesExportController extends Controller
                 $invoice->name,
                 $invoice->file?->serviceType?->name ?? '-',
                 $invoice->patient?->client?->company_name ?? '-',
+                $clientCountry,
                 $this->resolveNifValue($invoice, $nifSource),
                 $invoice->patient?->name ?? '-',
-                round($amount, 2),
+                $amount,
                 $ivaPercent,
-                round($amount * (1 + $ivaRate), 2),
+                $totalAfterIva,
                 $invoice->status,
                 'Invoice',
                 '',
@@ -97,7 +111,13 @@ class TaxesExportController extends Controller
 
         if ($exportMode === 'invoices_and_payments') {
             $bills = Bill::query()
-                ->with(['file.serviceType', 'file.country', 'file.patient.client', 'file.patient.country'])
+                ->with([
+                    'file.serviceType',
+                    'file.patient.country',
+                    'file.patient.client.financialContact.country',
+                    'file.patient.client.operationContact.country',
+                    'file.patient.client.gopContact.country',
+                ])
                 ->whereBetween('bill_date', [$startDate, $endDate])
                 ->orderBy('bill_date')
                 ->get();
@@ -105,6 +125,7 @@ class TaxesExportController extends Controller
             foreach ($bills as $bill) {
                 $amount = (float) $bill->total_amount;
                 $file = $bill->file;
+                $clientCountry = $this->resolveClientCountryFromFile($file);
 
                 $rows[] = [
                     'Payment',
@@ -112,12 +133,13 @@ class TaxesExportController extends Controller
                     $bill->name,
                     $file?->serviceType?->name ?? '-',
                     $file?->patient?->client?->company_name ?? '-',
+                    $clientCountry,
                     $this->resolveNifFromFile($file, $nifSource),
                     $file?->patient?->name ?? '-',
                     round($amount, 2),
-                    $ivaPercent,
-                    round($amount * (1 + $ivaRate), 2),
-                    $bill->status,
+                    'N/A',
+                    'N/A',
+                    'N/A',
                     'Bill',
                     '',
                 ];
@@ -140,10 +162,11 @@ class TaxesExportController extends Controller
                     '-',
                     '-',
                     '-',
+                    '-',
                     round($amount, 2),
-                    $ivaPercent,
-                    round($amount * (1 + $ivaRate), 2),
-                    $transaction->type,
+                    'N/A',
+                    'N/A',
+                    'N/A',
                     'Transaction',
                     $transaction->notes ?? '',
                 ];
@@ -180,24 +203,124 @@ class TaxesExportController extends Controller
 
     private function resolveNifValue(Invoice $invoice, string $nifSource): string
     {
-        if ($nifSource === 'niv_number') {
-            return $invoice->patient?->client?->niv_number ?: '-';
+        $clientCountry = $this->resolveClientCountryFromInvoice($invoice);
+        $clientNiv = $invoice->patient?->client?->niv_number ?: '-';
+
+        // Business rule: If client country is in Europe use NIF/NIV, otherwise use country name.
+        if ($this->isEuropeanCountry($clientCountry)) {
+            return $clientNiv;
         }
 
-        return $invoice->file?->country?->name
-            ?? $invoice->patient?->country?->name
-            ?? '-';
+        return $clientCountry ?: '-';
     }
 
     private function resolveNifFromFile($file, string $nifSource): string
     {
-        if ($nifSource === 'niv_number') {
-            return $file?->patient?->client?->niv_number ?: '-';
+        $clientCountry = $this->resolveClientCountryFromFile($file);
+        $clientNiv = $file?->patient?->client?->niv_number ?: '-';
+
+        // Business rule: If client country is in Europe use NIF/NIV, otherwise use country name.
+        if ($this->isEuropeanCountry($clientCountry)) {
+            return $clientNiv;
         }
 
-        return $file?->country?->name
-            ?? $file?->patient?->country?->name
+        return $clientCountry ?: '-';
+    }
+
+    private function resolveClientCountryFromInvoice(Invoice $invoice): string
+    {
+        return $this->resolveClientCountryFromClient(
+            $invoice->patient?->client,
+            $invoice->patient?->country?->name
+        );
+    }
+
+    private function resolveClientCountryFromFile($file): string
+    {
+        return $this->resolveClientCountryFromClient(
+            $file?->patient?->client,
+            $file?->patient?->country?->name
+        );
+    }
+
+    private function resolveClientCountryFromClient($client, ?string $fallback = null): string
+    {
+        if (!$client) {
+            return $fallback ?: '-';
+        }
+
+        return $client->financialContact?->country?->name
+            ?? $client->operationContact?->country?->name
+            ?? $client->gopContact?->country?->name
+            ?? $fallback
             ?? '-';
+    }
+
+    private function isEuropeanCountry(?string $countryName): bool
+    {
+        if (!$countryName) {
+            return false;
+        }
+
+        $euCountries = [
+            'austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic',
+            'denmark', 'estonia', 'finland', 'france', 'germany', 'greece', 'hungary',
+            'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg', 'malta',
+            'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia',
+            'spain', 'sweden',
+        ];
+
+        return in_array(mb_strtolower(trim($countryName)), $euCountries, true);
+    }
+
+    private function resolveFileFeeAmountForFile($file): ?float
+    {
+        if (!$file || !$file->service_type_id) {
+            return null;
+        }
+
+        $serviceTypeId = (int) $file->service_type_id;
+        $countryId = $file->country_id ? (int) $file->country_id : null;
+        $cityId = $file->city_id ? (int) $file->city_id : null;
+
+        static $cache = [];
+        $cacheKey = implode(':', [$serviceTypeId, $countryId ?? 'null', $cityId ?? 'null']);
+
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
+        if ($countryId && $cityId) {
+            $exact = FileFee::query()
+                ->where('service_type_id', $serviceTypeId)
+                ->where('country_id', $countryId)
+                ->where('city_id', $cityId)
+                ->first();
+            if ($exact) {
+                return $cache[$cacheKey] = (float) $exact->amount;
+            }
+        }
+
+        if ($countryId) {
+            $countryDefault = FileFee::query()
+                ->where('service_type_id', $serviceTypeId)
+                ->where('country_id', $countryId)
+                ->whereNull('city_id')
+                ->first();
+            if ($countryDefault) {
+                return $cache[$cacheKey] = (float) $countryDefault->amount;
+            }
+        }
+
+        $globalDefault = FileFee::query()
+            ->where('service_type_id', $serviceTypeId)
+            ->whereNull('country_id')
+            ->whereNull('city_id')
+            ->first();
+
+        $cache[$cacheKey] = $globalDefault ? (float) $globalDefault->amount : null;
+
+        return $cache[$cacheKey];
     }
 
     public function exportZip(Request $request)

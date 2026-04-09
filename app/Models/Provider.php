@@ -101,9 +101,9 @@ class Provider extends Model
         );
     }
 
-    public function transactions()
+    public function transactions(): HasMany
     {
-        return Transaction::where('related_type', 'Provider')->where('related_id', $this->id);
+        return $this->hasMany(Transaction::class, 'related_id')->where('related_type', 'Provider');
     }
 
     // calculations calculations calculations calculations calculations calculations
