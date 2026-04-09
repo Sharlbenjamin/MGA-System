@@ -2,13 +2,19 @@
 
 namespace App\Filament\Resources\TaxesResource\Pages;
 
+use App\Exports\TaxesModeExport;
 use App\Filament\Resources\TaxesResource;
+use App\Http\Controllers\TaxesExportController;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Invoice;
 use App\Models\Bill;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use App\Filament\Widgets\TaxPeriodSelector;
 use App\Filament\Widgets\TaxSummaryWidget;
@@ -17,13 +23,11 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Actions\Exports\ExportBulkAction;
-use Filament\Actions\Exports\Models\Export;
-use Filament\Actions\Exports\Enums\ExportFormat;
-use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Form;
-use Filament\Forms\Components\Actions\Action;
-use Illuminate\Http\Request;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ListTaxes extends ListRecords
 {
@@ -54,12 +58,29 @@ class ListTaxes extends ListRecords
                 ->label('Export Data')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->form([
-                    Checkbox::make('include_created_at')
-                        ->label('Include Created Date')
-                        ->default(false),
-                    Checkbox::make('include_due_date')
-                        ->label('Include Due Date')
-                        ->default(false),
+                    Select::make('export_mode')
+                        ->label('Export Option')
+                        ->options([
+                            'invoices_only' => 'Invoices Only',
+                            'invoices_and_payments' => 'Invoices + Payments',
+                        ])
+                        ->default('invoices_only')
+                        ->required(),
+                    TextInput::make('iva_percent')
+                        ->label('IVA %')
+                        ->numeric()
+                        ->default(21)
+                        ->required()
+                        ->minValue(0)
+                        ->maxValue(100),
+                    Select::make('nif_source')
+                        ->label('NIF Source')
+                        ->options([
+                            'country' => 'Country',
+                            'niv_number' => 'NIV Number',
+                        ])
+                        ->default('country')
+                        ->required(),
                 ])
                 ->action(function (array $data) {
                     $year = $this->selectedYear ?? Carbon::now()->year;
@@ -68,8 +89,9 @@ class ListTaxes extends ListRecords
                     $url = route('taxes.export', [
                         'year' => $year,
                         'quarter' => $quarter,
-                        'include_created_at' => $data['include_created_at'] ?? false,
-                        'include_due_date' => $data['include_due_date'] ?? false,
+                        'export_mode' => $data['export_mode'] ?? 'invoices_only',
+                        'iva_percent' => $data['iva_percent'] ?? 21,
+                        'nif_source' => $data['nif_source'] ?? 'country',
                     ]);
                     
                     return redirect($url);
@@ -77,6 +99,117 @@ class ListTaxes extends ListRecords
                 ->extraAttributes([
                     'class' => 'bg-primary-600 hover:bg-primary-700',
                 ]),
+            Actions\Action::make('send_tax_email')
+                ->label('Send Tax Email')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('warning')
+                ->form([
+                    TextInput::make('to_email')
+                        ->label('To Email')
+                        ->email()
+                        ->required(),
+                    TextInput::make('cc_email')
+                        ->label('CC Email (optional)')
+                        ->email()
+                        ->nullable(),
+                    Select::make('export_mode')
+                        ->label('Attachment Export Option')
+                        ->options([
+                            'invoices_only' => 'Invoices Only',
+                            'invoices_and_payments' => 'Invoices + Payments',
+                        ])
+                        ->default('invoices_only')
+                        ->required(),
+                    TextInput::make('iva_percent')
+                        ->label('IVA %')
+                        ->numeric()
+                        ->default(21)
+                        ->required()
+                        ->minValue(0)
+                        ->maxValue(100),
+                    Select::make('nif_source')
+                        ->label('NIF Source')
+                        ->options([
+                            'country' => 'Country',
+                            'niv_number' => 'NIV Number',
+                        ])
+                        ->default('country')
+                        ->required(),
+                    TextInput::make('subject')
+                        ->label('Email Subject')
+                        ->default(function (): string {
+                            $quarter = $this->selectedQuarter ?? (string) Carbon::now()->quarter;
+
+                            return 'MEd Guard Assistance Tax documents for ' . $this->getQuarterCode($quarter);
+                        })
+                        ->required(),
+                    Textarea::make('body')
+                        ->label('Email Body')
+                        ->rows(7)
+                        ->default(function (): string {
+                            $quarter = $this->selectedQuarter ?? (string) Carbon::now()->quarter;
+                            $year = $this->selectedYear ?? Carbon::now()->year;
+
+                            return sprintf(
+                                'Mail please find below the list of the invoices of the %s of %s.',
+                                $this->getQuarterDescription($quarter),
+                                $year
+                            );
+                        })
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $year = (int) ($this->selectedYear ?? Carbon::now()->year);
+                    $quarter = (string) ($this->selectedQuarter ?? '1');
+                    $exportMode = (string) ($data['export_mode'] ?? 'invoices_only');
+                    $ivaPercent = (float) ($data['iva_percent'] ?? 21);
+                    $nifSource = (string) ($data['nif_source'] ?? 'country');
+
+                    $payload = app(TaxesExportController::class)
+                        ->buildExportPayload($year, $quarter, $exportMode, $ivaPercent, $nifSource);
+
+                    $excelBinary = Excel::raw(
+                        new TaxesModeExport($payload['rows'], $payload['headings']),
+                        ExcelFormat::XLSX
+                    );
+
+                    $toEmail = strtolower(trim((string) $data['to_email']));
+                    $ccEmail = trim((string) ($data['cc_email'] ?? ''));
+
+                    $user = Auth::user();
+                    if ($user) {
+                        $freshUser = \App\Models\User::find($user->id);
+                        $smtpUsername = $freshUser?->smtp_username ?? Config::get('mail.mailers.smtp.username');
+                        $smtpPassword = $freshUser?->smtp_password ?? Config::get('mail.mailers.smtp.password');
+
+                        if ($smtpUsername && $smtpPassword) {
+                            Config::set('mail.mailers.smtp.username', $smtpUsername);
+                            Config::set('mail.mailers.smtp.password', $smtpPassword);
+                        }
+                    }
+
+                    $fromAddress = $user?->email ?: (string) config('mail.from.address');
+                    $fromName = $user?->name ?: (string) config('mail.from.name');
+
+                    Mail::raw((string) $data['body'], function ($message) use ($toEmail, $ccEmail, $data, $fromAddress, $fromName, $excelBinary, $payload): void {
+                        $message->from($fromAddress, $fromName)
+                            ->to($toEmail)
+                            ->subject((string) $data['subject'])
+                            ->attachData($excelBinary, $payload['filename'], [
+                                'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ]);
+
+                        if ($ccEmail !== '') {
+                            $message->cc(strtolower($ccEmail));
+                        }
+                    });
+
+                    Notification::make()
+                        ->success()
+                        ->title('Tax email sent')
+                        ->body('Email sent successfully from your account with the Excel attachment.')
+                        ->send();
+                }),
             Actions\Action::make('export_zip')
                 ->label('Export Zip')
                 ->icon('heroicon-o-archive-box')
@@ -398,5 +531,21 @@ class ListTaxes extends ListRecords
         $this->selectedYear = $data['year'];
         $this->selectedQuarter = $data['quarter'];
         $this->resetTable();
+    }
+
+    private function getQuarterCode(string $quarter): string
+    {
+        return $quarter === 'full' ? 'Full Year' : 'Q' . $quarter;
+    }
+
+    private function getQuarterDescription(string $quarter): string
+    {
+        return match ($quarter) {
+            '1' => 'first quarter',
+            '2' => 'second quarter',
+            '3' => 'third quarter',
+            '4' => 'fourth quarter',
+            default => 'full year',
+        };
     }
 } 

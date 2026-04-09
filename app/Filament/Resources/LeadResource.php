@@ -1,6 +1,7 @@
 <?php
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ClientResource;
 use App\Filament\Resources\LeadResource\Pages;
 use App\Filament\Resources\LeadResource\RelationManagers\InteractionsRelationManager;
 use App\Models\Lead;
@@ -225,7 +226,10 @@ class LeadResource extends Resource
         return $table
         ->query(Lead::query()->whereHas('client', function ($query) {$query->whereNotIn('status', ['Active', 'On Hold', 'Rejected']);}))
             ->columns([
-                TextColumn::make('client.company_name')->sortable()->searchable(),
+                TextColumn::make('client.company_name')
+                    ->sortable()
+                    ->searchable()
+                    ->url(fn (Lead $record): ?string => $record->client ? ClientResource::getUrl('overview', ['record' => $record->client]) : null),
                 TextColumn::make('email')->sortable()->searchable(),
                 TextColumn::make('first_name')->sortable()->searchable(),
                 TextColumn::make('contact_method')->sortable()->searchable(),

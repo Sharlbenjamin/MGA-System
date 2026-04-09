@@ -78,7 +78,11 @@ class FileRelationManager extends RelationManager
                 }])
                 ->with(['medicalReports', 'bills', 'invoices']))
             ->columns([
-                Tables\Columns\TextColumn::make('mga_reference')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('mga_reference')
+                    ->label('MGA Reference')
+                    ->sortable()
+                    ->searchable()
+                    ->url(fn (File $record): string => FileResource::getUrl('view', ['record' => $record->id])),
                 Tables\Columns\TextColumn::make('client_reference')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'New' => 'success',

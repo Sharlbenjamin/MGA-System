@@ -7,8 +7,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use App\Exports\TaxesModeExport;
 use App\Models\Invoice;
 use App\Models\Bill;
+use Maatwebsite\Excel\Facades\Excel;
 use Google\Client;
 use Google\Service\Drive;
 
@@ -16,151 +18,186 @@ class TaxesExportController extends Controller
 {
     public function export(Request $request)
     {
-        $year = $request->get('year', Carbon::now()->year);
-        $quarter = $request->get('quarter', '1');
-        $includeCreatedAt = $request->get('include_created_at', false);
-        $includeDueDate = $request->get('include_due_date', false);
+        $validated = $request->validate([
+            'year' => ['nullable', 'integer'],
+            'quarter' => ['nullable', 'string'],
+            'export_mode' => ['nullable', 'in:invoices_only,invoices_and_payments'],
+            'iva_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'nif_source' => ['nullable', 'in:country,niv_number'],
+        ]);
 
-        // Calculate date range based on quarter
-        if ($quarter !== 'full') {
-            $startMonth = ($quarter - 1) * 3 + 1;
-            $endMonth = $startMonth + 2;
-            $startDate = Carbon::create($year, $startMonth, 1)->startOfMonth();
-            $endDate = Carbon::create($year, $endMonth, 1)->endOfMonth();
-        } else {
-            $startDate = Carbon::create($year, 1, 1)->startOfYear();
-            $endDate = Carbon::create($year, 12, 31)->endOfYear();
-        }
+        $year = (int) ($validated['year'] ?? Carbon::now()->year);
+        $quarter = (string) ($validated['quarter'] ?? '1');
+        $exportMode = (string) ($validated['export_mode'] ?? 'invoices_only');
+        $ivaPercent = (float) ($validated['iva_percent'] ?? 21);
+        $nifSource = (string) ($validated['nif_source'] ?? 'country');
 
-        // Calculate totals - using the same logic as the view
-        $invoiceTotal = Invoice::whereBetween('invoice_date', [$startDate, $endDate])->sum('total_amount');
-        $billTotal = Bill::whereBetween('bill_date', [$startDate, $endDate])->sum('total_amount');
-        $expenseTotal = DB::table('transactions')
-            ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
-            ->where('transactions.type', 'Expense')
-            ->where('bank_accounts.type', 'Internal')
-            ->whereBetween('transactions.date', [$startDate, $endDate])
-            ->sum('transactions.amount');
-        
-        // Outflow is the sum of bills and expenses
-        $outflowTotal = $billTotal + $expenseTotal;
+        $payload = $this->buildExportPayload($year, $quarter, $exportMode, $ivaPercent, $nifSource);
 
-        // Get filtered data - using the EXACT same query logic as the view
+        return Excel::download(
+            new TaxesModeExport($payload['rows'], $payload['headings']),
+            $payload['filename']
+        );
+    }
+
+    public function buildExportPayload(
+        int $year,
+        string $quarter,
+        string $exportMode,
+        float $ivaPercent,
+        string $nifSource
+    ): array {
+        [$startDate, $endDate] = $this->resolvePeriodDates($year, $quarter);
+        $ivaRate = $ivaPercent / 100;
+
         $invoices = Invoice::query()
+            ->with(['file.serviceType', 'file.country', 'patient.client', 'patient.country'])
+            ->where('status', 'Paid')
             ->whereBetween('invoice_date', [$startDate, $endDate])
-            ->select([
-                'id',
-                'name as document_number',
-                'total_amount',
-                'created_at',
-                'invoice_date as document_date',
-                'status',
-                'due_date',
-                DB::raw("'invoice' as type"),
-                DB::raw("name as invoice_number"),
-                DB::raw("NULL as bill_number"),
-                DB::raw("NULL as transaction_notes"),
-                'invoice_google_link as google_drive_link'
-            ]);
+            ->orderBy('invoice_date')
+            ->get();
 
-        $bills = Bill::query()
-            ->whereBetween('bill_date', [$startDate, $endDate])
-            ->select([
-                'id',
-                'name as document_number',
-                'total_amount',
-                'created_at',
-                'bill_date as document_date',
-                'status',
-                'due_date',
-                DB::raw("'bill' as type"),
-                DB::raw("NULL as invoice_number"),
-                DB::raw("name as bill_number"),
-                DB::raw("NULL as transaction_notes"),
-                'bill_google_link as google_drive_link'
-            ]);
+        $headings = [
+            'Record Type',
+            'Invoice Date',
+            'Invoice Number',
+            'Service',
+            'Client Name',
+            'NIF',
+            'Patient Name',
+            'Total Amount',
+            'IVA %',
+            'Total After IVA',
+            'Status',
+            'Source',
+            'Notes',
+        ];
 
-        $expenses = DB::table('transactions')
-            ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
-            ->where('transactions.type', 'Expense')
-            ->where('bank_accounts.type', 'Internal')
-            ->whereBetween('transactions.date', [$startDate, $endDate])
-            ->select([
-                'transactions.id',
-                'transactions.name as document_number',
-                'transactions.amount as total_amount',
-                'transactions.created_at',
-                'transactions.date as document_date',
-                DB::raw("'Expense' as status"),
-                DB::raw("NULL as due_date"),
-                DB::raw("'expense' as type"),
-                DB::raw("NULL as invoice_number"),
-                DB::raw("NULL as bill_number"),
-                'transactions.notes as transaction_notes',
-                DB::raw("NULL as google_drive_link")
-            ]);
+        $rows = [];
 
-        $data = $invoices->union($bills)->union($expenses)->get();
+        foreach ($invoices as $invoice) {
+            $amount = (float) $invoice->total_amount;
 
-        // Prepare export data
-        $exportData = [];
-        foreach ($data as $record) {
-            $row = [
-                'Document Number' => $record->document_number,
-                'Type' => ucfirst($record->type),
-                'Amount' => $record->total_amount, // Remove currency formatting for Excel
-                'Status' => $record->status,
-                'Document Date' => $record->document_date,
-                'Notes' => $record->transaction_notes ?? '',
-                'Google Drive Link' => $record->google_drive_link ?? '',
+            $rows[] = [
+                'Invoice',
+                optional($invoice->invoice_date)->format('Y-m-d'),
+                $invoice->name,
+                $invoice->file?->serviceType?->name ?? '-',
+                $invoice->patient?->client?->company_name ?? '-',
+                $this->resolveNifValue($invoice, $nifSource),
+                $invoice->patient?->name ?? '-',
+                round($amount, 2),
+                $ivaPercent,
+                round($amount * (1 + $ivaRate), 2),
+                $invoice->status,
+                'Invoice',
+                '',
             ];
-            
-            // Add optional columns based on user choice
-            if ($includeCreatedAt) {
-                $row['Created Date'] = $record->created_at;
-            }
-            
-            if ($includeDueDate) {
-                $row['Due Date'] = $record->due_date;
-            }
-            
-            $exportData[] = $row;
         }
 
-        // Add summary rows
-        $exportData[] = []; // Empty row
-        $exportData[] = ['SUMMARY', '', '', '', '', '', ''];
-        $exportData[] = ['Invoice Total', '', $invoiceTotal, '', '', '', ''];
-        $exportData[] = ['Bill Total', '', $billTotal, '', '', '', ''];
-        $exportData[] = ['Expense Total', '', $expenseTotal, '', '', '', ''];
-        $exportData[] = ['Outflow Total', '', $outflowTotal, '', '', '', ''];
-        $exportData[] = ['Net Total', '', $invoiceTotal - $outflowTotal, '', '', '', ''];
-        $exportData[] = ['Expected Tax (25%)', '', ($invoiceTotal - $outflowTotal) * 0.25, '', '', '', ''];
+        if ($exportMode === 'invoices_and_payments') {
+            $bills = Bill::query()
+                ->with(['file.serviceType', 'file.country', 'file.patient.client', 'file.patient.country'])
+                ->whereBetween('bill_date', [$startDate, $endDate])
+                ->orderBy('bill_date')
+                ->get();
 
-        // Generate filename
-        $filename = "taxes_report_{$year}_Q{$quarter}_" . now()->format('Y-m-d_H-i-s') . '.csv';
-        
-        // Create CSV content
-        $csv = '';
-        if (!empty($exportData)) {
-            $csv .= implode(',', array_keys($exportData[0])) . "\n";
-        }
-        foreach ($exportData as $row) {
-            $csvRow = [];
-            foreach ($row as $value) {
-                // Handle null values and special characters
-                $value = $value ?? '';
-                $value = str_replace('"', '""', $value);
-                $csvRow[] = '"' . $value . '"';
+            foreach ($bills as $bill) {
+                $amount = (float) $bill->total_amount;
+                $file = $bill->file;
+
+                $rows[] = [
+                    'Payment',
+                    optional($bill->bill_date)->format('Y-m-d'),
+                    $bill->name,
+                    $file?->serviceType?->name ?? '-',
+                    $file?->patient?->client?->company_name ?? '-',
+                    $this->resolveNifFromFile($file, $nifSource),
+                    $file?->patient?->name ?? '-',
+                    round($amount, 2),
+                    $ivaPercent,
+                    round($amount * (1 + $ivaRate), 2),
+                    $bill->status,
+                    'Bill',
+                    '',
+                ];
             }
-            $csv .= implode(',', $csvRow) . "\n";
+
+            $outTransactions = DB::table('transactions')
+                ->whereIn('type', ['Outflow', 'Expense'])
+                ->whereBetween('date', [$startDate, $endDate])
+                ->orderBy('date')
+                ->get();
+
+            foreach ($outTransactions as $transaction) {
+                $amount = (float) $transaction->amount;
+
+                $rows[] = [
+                    'Payment',
+                    optional(Carbon::parse($transaction->date))->format('Y-m-d'),
+                    $transaction->name,
+                    '-',
+                    '-',
+                    '-',
+                    '-',
+                    round($amount, 2),
+                    $ivaPercent,
+                    round($amount * (1 + $ivaRate), 2),
+                    $transaction->type,
+                    'Transaction',
+                    $transaction->notes ?? '',
+                ];
+            }
         }
-        
-        return response($csv)
-            ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->header('Cache-Control', 'must-revalidate, post-check=0, pre-check=0')
-            ->header('Expires', '0');
+
+        $filenameQuarter = $quarter === 'full' ? 'full' : 'Q' . $quarter;
+        $filename = "taxes_report_{$year}_{$filenameQuarter}_" . now()->format('Y-m-d_H-i-s') . '.xlsx';
+
+        return [
+            'headings' => $headings,
+            'rows' => $rows,
+            'filename' => $filename,
+        ];
+    }
+
+    private function resolvePeriodDates(int $year, string $quarter): array
+    {
+        if ($quarter !== 'full') {
+            $startMonth = ((int) $quarter - 1) * 3 + 1;
+            $endMonth = $startMonth + 2;
+
+            return [
+                Carbon::create($year, $startMonth, 1)->startOfMonth(),
+                Carbon::create($year, $endMonth, 1)->endOfMonth(),
+            ];
+        }
+
+        return [
+            Carbon::create($year, 1, 1)->startOfYear(),
+            Carbon::create($year, 12, 31)->endOfYear(),
+        ];
+    }
+
+    private function resolveNifValue(Invoice $invoice, string $nifSource): string
+    {
+        if ($nifSource === 'niv_number') {
+            return $invoice->patient?->client?->niv_number ?: '-';
+        }
+
+        return $invoice->file?->country?->name
+            ?? $invoice->patient?->country?->name
+            ?? '-';
+    }
+
+    private function resolveNifFromFile($file, string $nifSource): string
+    {
+        if ($nifSource === 'niv_number') {
+            return $file?->patient?->client?->niv_number ?: '-';
+        }
+
+        return $file?->country?->name
+            ?? $file?->patient?->country?->name
+            ?? '-';
     }
 
     public function exportZip(Request $request)

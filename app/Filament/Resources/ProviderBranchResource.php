@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ProviderResource;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\BillRelationManager;
 use App\Filament\Resources\ProviderBranchResource\Pages;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\ContactRelationManager;
@@ -320,7 +321,11 @@ class ProviderBranchResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('branch_name')->label('Branch Name')->sortable()->searchable(),
-                TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
+                TextColumn::make('provider.name')
+                    ->label('Provider')
+                    ->sortable()
+                    ->searchable()
+                    ->url(fn (ProviderBranch $record): ?string => $record->provider ? ProviderResource::getUrl('overview', ['record' => $record->provider]) : null),
                 TextColumn::make('cities.name')->label('Cities')->sortable()->searchable(),
                 TextColumn::make('services.name')
                     ->label('Services')

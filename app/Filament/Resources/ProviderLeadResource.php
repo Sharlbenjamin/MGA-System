@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ProviderResource;
 use App\Filament\Resources\ProviderLeadResource\Pages;
 use App\Filament\Resources\ProviderLeadResource\RelationManagers\InteractionsRelationManager;
 use App\Models\ProviderLead;
@@ -337,6 +338,7 @@ class ProviderLeadResource extends Resource
                     ->label('Provider')
                     ->sortable()
                     ->searchable()
+                    ->url(fn (ProviderLead $record): ?string => $record->provider ? ProviderResource::getUrl('overview', ['record' => $record->provider]) : null)
                     ->description(fn (ProviderLead $record) => $record->assignedUser?->name),
                 TextColumn::make('city.name')->label('City')->sortable()->searchable(),
                 TextColumn::make('service_types')

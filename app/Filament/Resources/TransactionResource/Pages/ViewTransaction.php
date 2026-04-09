@@ -13,6 +13,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class ViewTransaction extends ViewRecord
 {
@@ -68,11 +69,10 @@ class ViewTransaction extends ViewRecord
                             $message->to($provider->email)
                                 ->subject('Proof of Payment - ' . ($transaction->name ?? ('Transaction #' . $transaction->id)));
 
-                            if (! empty($attachmentPath)) {
-                                $message->attachFromStorageDisk(
-                                    'public',
-                                    $attachmentPath,
-                                    basename($attachmentPath)
+                            if (! empty($attachmentPath) && Storage::disk('public')->exists($attachmentPath)) {
+                                $message->attachData(
+                                    Storage::disk('public')->get($attachmentPath),
+                                    basename($attachmentPath),
                                 );
                             }
                         }

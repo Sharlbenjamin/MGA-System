@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ClientResource\RelationManagers;
 
+use App\Filament\Resources\LeadResource;
 use App\Mail\CustomLeadEmail;
 use App\Models\Client;
 use App\Models\DraftMail;
@@ -51,7 +52,10 @@ class LeadsRelationManager extends RelationManager
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         return $table
             ->columns([
-                TextColumn::make('email')->sortable()->searchable(),
+                TextColumn::make('email')
+                    ->sortable()
+                    ->searchable()
+                    ->url(fn (Lead $record): string => LeadResource::getUrl('edit', ['record' => $record])),
                 TextColumn::make('first_name')->sortable()->searchable(),
                 TextColumn::make('contact_method')->sortable()->searchable(),
                 TextColumn::make('status')->badge()->sortable()->color(fn (string $state): string => match ($state) {

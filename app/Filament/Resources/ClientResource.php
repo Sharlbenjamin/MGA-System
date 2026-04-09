@@ -56,6 +56,10 @@ class ClientResource extends Resource
                     ->required()->default('Searching'),
 
                 TextInput::make('initials')->maxLength(10)->required(),
+                TextInput::make('niv_number')
+                    ->label('NIV Number')
+                    ->maxLength(255)
+                    ->nullable(),
                 TextInput::make('number_requests')->numeric()->required()->default(0),
                             Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
             Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),

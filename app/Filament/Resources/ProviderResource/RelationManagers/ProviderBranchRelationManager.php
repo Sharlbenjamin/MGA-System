@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProviderResource\RelationManagers;
 
+use App\Filament\Resources\ProviderBranchResource;
 use App\Models\City;
 use App\Models\Provider;
 use App\Models\Province;
@@ -102,7 +103,8 @@ class ProviderBranchRelationManager extends RelationManager
                 TextColumn::make('branch_name')
                     ->label('Branch Name')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->url(fn (ProviderBranch $record): string => ProviderBranchResource::getUrl('overview', ['record' => $record])),
 
                 TextColumn::make('services.name')
                     ->label('Services')

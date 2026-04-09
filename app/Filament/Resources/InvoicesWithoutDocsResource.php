@@ -58,7 +58,7 @@ class InvoicesWithoutDocsResource extends Resource
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('invoice_google_link')
                 ->orWhere('invoice_google_link', '')
-                ->whereIn('status', ['Draft', 'Posted'])
+                ->whereIn('status', ['Draft', 'Posted', 'Not Sent'])
                 ->with(['file.patient.client']))
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -89,6 +89,7 @@ class InvoicesWithoutDocsResource extends Resource
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'warning' => 'Draft',
+                        'gray' => 'Not Sent',
                         'info' => 'Sent',
                         'success' => 'Paid',
                         'primary' => 'Partial',
@@ -105,6 +106,7 @@ class InvoicesWithoutDocsResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Draft' => 'Draft',
+                        'Not Sent' => 'Not Sent',
                         'Sent' => 'Sent',
                         'Paid' => 'Paid',
                         'Partial' => 'Partial',

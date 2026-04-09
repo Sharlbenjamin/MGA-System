@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\ProviderResource\RelationManagers;
 
+use App\Filament\Resources\ProviderLeadResource;
+use App\Filament\Resources\ProviderResource;
 use App\Models\City;
 use App\Models\Provider;
 use App\Models\ServiceType;
@@ -96,8 +98,16 @@ class ProviderLeadRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('Leads')
             ->columns([
-            TextColumn::make('name')->label('Lead Name')->sortable()->searchable(),
-            TextColumn::make('provider.name')->label('Provider')->sortable()->searchable(),
+            TextColumn::make('name')
+                ->label('Lead Name')
+                ->sortable()
+                ->searchable()
+                ->url(fn ($record): string => ProviderLeadResource::getUrl('edit', ['record' => $record])),
+            TextColumn::make('provider.name')
+                ->label('Provider')
+                ->sortable()
+                ->searchable()
+                ->url(fn ($record): ?string => $record->provider ? ProviderResource::getUrl('overview', ['record' => $record->provider]) : null),
             TextColumn::make('city.name')->label('City')->sortable()->searchable(),
             TextColumn::make('service_types')
                 ->label('Service Types')

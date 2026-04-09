@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ClientResource;
 use App\Filament\Resources\PatientResource\Pages;
 use App\Filament\Resources\PatientResource\RelationManagers\FileRelationManager;
 use App\Filament\Resources\PatientResource\RelationManagers\InvoiceRelationManager;
@@ -132,7 +133,8 @@ class PatientResource extends Resource
                     ->label('Client')
                     ->sortable()
                     ->searchable()
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->url(fn (Patient $record): ?string => $record->client ? ClientResource::getUrl('overview', ['record' => $record->client]) : null),
                 Tables\Columns\TextColumn::make('name')
                     ->sortable()
                     ->searchable()

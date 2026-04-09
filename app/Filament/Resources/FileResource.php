@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ClientResource;
 use App\Filament\Resources\FileResource\Pages;
 use App\Filament\Resources\FileResource\RelationManagers\GopRelationManager;
 use App\Filament\Resources\FileResource\RelationManagers\MedicalReportRelationManager;
@@ -43,6 +44,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Models\Comment;
 use App\Models\Gop;
+use App\Filament\Resources\PatientResource;
+use App\Filament\Resources\ProviderBranchResource;
 
 class FileResource extends Resource
 {
@@ -175,7 +178,8 @@ class FileResource extends Resource
                     ->label('Client')
                     ->description(fn ($record) => $record->client_reference ? "Ref: {$record->client_reference}" : null)
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->url(fn (File $record): ?string => $record->patient?->client ? ClientResource::getUrl('overview', ['record' => $record->patient->client]) : null),
                 
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('Patient')
@@ -185,7 +189,8 @@ class FileResource extends Resource
                         ($record->patient?->gender ? ' | ' . $record->patient->gender : '')
                     )
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->url(fn (File $record): ?string => $record->patient ? PatientResource::getUrl('edit', ['record' => $record->patient]) : null),
                 
                 Tables\Columns\TextColumn::make('country.name')
                     ->label('Location')
@@ -208,7 +213,8 @@ class FileResource extends Resource
                     ->label('Provider')
                     ->description(fn ($record) => $record->providerBranch?->provider?->name)
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->url(fn (File $record): ?string => $record->providerBranch ? ProviderBranchResource::getUrl('overview', ['record' => $record->providerBranch]) : null),
                 
                 Tables\Columns\TextColumn::make('status')
                     ->sortable()

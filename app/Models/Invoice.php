@@ -132,7 +132,7 @@ class Invoice extends Model
 
     public function statuses(): array
     {
-        return ['Draft', 'Posted', 'Sent', 'Paid', 'Unpaid', 'Partial', 'Assisted'];
+        return ['Draft', 'Posted', 'Not Sent', 'Sent', 'Paid', 'Unpaid', 'Partial', 'Assisted'];
     }
 
     public function bankAccount(): BelongsTo

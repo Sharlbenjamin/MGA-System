@@ -3,17 +3,21 @@
 namespace App\Filament\Resources\ClientResource\Pages;
 
 use App\Filament\Resources\ClientResource;
+use App\Mail\SendOutstandingBalance;
 use App\Models\Client;
+use App\Models\Invoice;
+use Carbon\Carbon;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Livewire\Attributes\Reactive;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ListClients extends ListRecords
 {
@@ -38,8 +42,158 @@ class ListClients extends ListRecords
                     $this->resetTable();
                 })
                 ->color('success'),
+            Actions\Action::make('resetSentInvoicesToNotSent')
+                ->label('Sent > 30 Days to Not Sent')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Reset Old Sent Invoices')
+                ->modalDescription('This will change all invoices with status Sent and older than 30 days to Not Sent.')
+                ->modalSubmitActionLabel('Reset Statuses')
+                ->hidden(fn (): bool => $this->viewMode !== 'active')
+                ->action(function () {
+                    $cutoffDate = now()->subDays(30)->startOfDay();
+
+                    $updatedCount = Invoice::query()
+                        ->where('status', 'Sent')
+                        ->where(function ($query) use ($cutoffDate) {
+                            $query->whereDate('invoice_date', '<=', $cutoffDate)
+                                ->orWhere(function ($fallbackQuery) use ($cutoffDate) {
+                                    $fallbackQuery->whereNull('invoice_date')
+                                        ->whereDate('created_at', '<=', $cutoffDate);
+                                });
+                        })
+                        ->update(['status' => 'Not Sent']);
+
+                    Notification::make()
+                        ->success()
+                        ->title('Old sent invoices updated')
+                        ->body("{$updatedCount} invoice(s) were changed to Not Sent.")
+                        ->send();
+
+                    $this->resetTable();
+                }),
+            Actions\Action::make('clientsOutstandings')
+                ->label('Clients Outstandings')
+                ->icon('heroicon-o-document-currency-euro')
+                ->color('info')
+                ->hidden(fn (): bool => $this->viewMode !== 'active')
+                ->modalHeading('Clients With Outstanding Invoices')
+                ->modalWidth('7xl')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Close')
+                ->modalContent(fn () => view('filament.actions.clients-outstandings-modal', [
+                    'clients' => $this->getOutstandingClientsSummary(),
+                ])),
             Actions\CreateAction::make(),
         ];
+    }
+
+    protected function getOutstandingClientsSummary()
+    {
+        return Client::query()
+            ->select('clients.id', 'clients.company_name')
+            ->join('patients', 'patients.client_id', '=', 'clients.id')
+            ->join('invoices', 'invoices.patient_id', '=', 'patients.id')
+            ->whereRaw('LOWER(clients.status) = ?', ['active'])
+            ->groupBy('clients.id', 'clients.company_name')
+            ->selectRaw('SUM(COALESCE(invoices.total_amount, 0) - COALESCE(invoices.paid_amount, 0)) as total_outstanding')
+            ->selectRaw("MAX(CASE WHEN invoices.status = 'Sent' THEN COALESCE(invoices.invoice_date, DATE(invoices.updated_at)) END) as last_outstanding_sent_date")
+            ->selectRaw("SUM(CASE WHEN invoices.status IN ('Draft', 'Posted', 'Not Sent') THEN 1 ELSE 0 END) as unsent_invoices_count")
+            ->havingRaw('SUM(COALESCE(invoices.total_amount, 0) - COALESCE(invoices.paid_amount, 0)) > 0')
+            ->orderByDesc('total_outstanding')
+            ->get();
+    }
+
+    public function sendOutstandingBalanceForClient(int $clientId): void
+    {
+        $client = Client::query()->find($clientId);
+
+        if (!$client) {
+            Notification::make()
+                ->danger()
+                ->title('Client not found')
+                ->send();
+            return;
+        }
+
+        $invoices = $client->outstandingBalanceInvoicesQuery()
+            ->with(['patient', 'file'])
+            ->get();
+
+        if ($invoices->isEmpty()) {
+            Notification::make()
+                ->warning()
+                ->title('No outstanding invoices')
+                ->body('This client has no outstanding invoices to send.')
+                ->send();
+            return;
+        }
+
+        $recipientEmail = $client->getOutstandingBalanceRecipientEmail();
+
+        if (!$recipientEmail) {
+            Notification::make()
+                ->danger()
+                ->title('Missing financial email')
+                ->body("Please set the client financial email before sending for {$client->company_name}.")
+                ->send();
+            return;
+        }
+
+        $monthName = Carbon::now()->format('F');
+        $yearNumber = (int) Carbon::now()->format('Y');
+        $mailer = 'financial';
+        $user = \App\Models\User::find(Auth::id());
+        $financialRoles = ['Financial Manager', 'Financial Supervisor', 'Financial Department'];
+
+        if ($user && $user->hasRole($financialRoles) && $user->smtp_username && $user->smtp_password) {
+            Config::set('mail.mailers.financial.username', $user->smtp_username);
+            Config::set('mail.mailers.financial.password', $user->smtp_password);
+        }
+
+        try {
+            Mail::mailer($mailer)
+                ->to($recipientEmail)
+                ->send(new SendOutstandingBalance($client, $invoices, $monthName, $yearNumber));
+
+            Notification::make()
+                ->success()
+                ->title('Outstanding balance sent')
+                ->body("Email sent successfully to {$recipientEmail} for {$client->company_name}.")
+                ->send();
+        } catch (\Throwable $exception) {
+            Log::error('Failed to send outstanding balance email', [
+                'client_id' => $client->id,
+                'recipient_email' => $recipientEmail,
+                'error' => $exception->getMessage(),
+            ]);
+
+            try {
+                Mail::mailer('smtp')
+                    ->to($recipientEmail)
+                    ->send(new SendOutstandingBalance($client, $invoices, $monthName, $yearNumber));
+
+                Notification::make()
+                    ->success()
+                    ->title('Outstanding balance sent (fallback)')
+                    ->body("Sent using SMTP fallback to {$recipientEmail} for {$client->company_name}.")
+                    ->send();
+            } catch (\Throwable $fallbackException) {
+                Log::error('Fallback mailer also failed for outstanding balance email', [
+                    'client_id' => $client->id,
+                    'recipient_email' => $recipientEmail,
+                    'financial_error' => $exception->getMessage(),
+                    'smtp_error' => $fallbackException->getMessage(),
+                ]);
+
+                Notification::make()
+                    ->danger()
+                    ->title('Failed to send outstanding balance')
+                    ->body('Financial mailer: ' . $exception->getMessage() . ' | SMTP: ' . $fallbackException->getMessage())
+                    ->send();
+            }
+        }
     }
 
     public function table(Table $table): Table
@@ -140,6 +294,6 @@ class ListClients extends ListRecords
                 Tables\Actions\Action::make('Overview')
                 ->url(fn (Client $record) => ClientResource::getUrl('overview', ['record' => $record]))->color('success'),
             ])
-            ->defaultSort('company_name', 'asc');
+            ->defaultSort('invoicesTotalOutstanding', 'desc');
     }
 }

@@ -36,11 +36,13 @@ class InvoiceRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'Draft' => 'gray',
+                    'Not Sent' => 'gray',
                     'Sent' => 'info',
                     'Overdue' => 'danger',
                     'Paid' => 'success',
                     'Posted' => 'primary',
                     'Unpaid' => 'danger',
+                    default => 'gray',
                 }),
                 Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
                 Tables\Columns\TextColumn::make('total_amount')->sortable()->searchable()->money('EUR'),
@@ -51,6 +53,7 @@ class InvoiceRelationManager extends RelationManager
                 SelectFilter::make('status')
                     ->options([
                         'Draft' => 'Draft',
+                        'Not Sent' => 'Not Sent',
                         'Posted' => 'Posted',
                         'Sent' => 'Sent',
                         'Unpaid' => 'Unpaid',
@@ -129,7 +132,7 @@ class InvoiceRelationManager extends RelationManager
                     ->modalHeading('Mark Invoice as Sent')
                     ->modalDescription('Are you sure you want to mark this invoice as Sent?')
                     ->modalSubmitActionLabel('Mark as Sent')
-                    ->visible(fn (Invoice $record): bool => $record->status === 'Posted')
+                    ->visible(fn (Invoice $record): bool => in_array($record->status, ['Posted', 'Not Sent'], true))
                     ->action(function (Invoice $record) {
                         $record->status = 'Sent';
                         $record->save();
