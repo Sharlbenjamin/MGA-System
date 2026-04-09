@@ -14,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
@@ -248,6 +249,12 @@ class ListClients extends ListRecords
         return $table
             ->query(
                 ClientResource::getEloquentQuery()
+                    ->addSelect([
+                        'invoices_total_outstanding_sort' => Invoice::query()
+                            ->selectRaw('COALESCE(SUM(COALESCE(invoices.total_amount, 0) - COALESCE(invoices.paid_amount, 0)), 0)')
+                            ->join('patients', 'patients.id', '=', 'invoices.patient_id')
+                            ->whereColumn('patients.client_id', 'clients.id'),
+                    ])
                     ->whereRaw('LOWER(status) = ?', ['active'])
             )
             ->columns([
@@ -285,7 +292,9 @@ class ListClients extends ListRecords
                 TextColumn::make('invoicesTotalOutstanding')
                     ->label('Outstanding Amount')
                     ->money('eur')
-                    ->sortable(),
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('invoices_total_outstanding_sort', $direction);
+                    }),
                 TextColumn::make('transactionsLastDate')
                     ->label('Last Transaction')
                     ->date('d-m-Y')
@@ -294,6 +303,6 @@ class ListClients extends ListRecords
                 Tables\Actions\Action::make('Overview')
                 ->url(fn (Client $record) => ClientResource::getUrl('overview', ['record' => $record]))->color('success'),
             ])
-            ->defaultSort('invoicesTotalOutstanding', 'desc');
+            ->defaultSort('invoices_total_outstanding_sort', 'desc');
     }
 }
