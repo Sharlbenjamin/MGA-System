@@ -98,10 +98,10 @@ class ListClients extends ListRecords
             ->join('invoices', 'invoices.patient_id', '=', 'patients.id')
             ->whereRaw('LOWER(clients.status) = ?', ['active'])
             ->groupBy('clients.id', 'clients.company_name')
-            ->selectRaw("SUM(CASE WHEN invoices.status = 'Not Sent' THEN COALESCE(invoices.total_amount, 0) ELSE 0 END) as total_outstanding")
+            ->selectRaw("SUM(CASE WHEN invoices.status = 'Unpaid' THEN COALESCE(invoices.total_amount, 0) ELSE 0 END) as total_outstanding")
             ->selectRaw("MAX(CASE WHEN invoices.status = 'Sent' THEN COALESCE(invoices.invoice_date, DATE(invoices.updated_at)) END) as last_outstanding_sent_date")
-            ->selectRaw("SUM(CASE WHEN invoices.status = 'Not Sent' THEN 1 ELSE 0 END) as unsent_invoices_count")
-            ->havingRaw("SUM(CASE WHEN invoices.status = 'Not Sent' THEN COALESCE(invoices.total_amount, 0) ELSE 0 END) > 0")
+            ->selectRaw("SUM(CASE WHEN invoices.status = 'Unpaid' THEN 1 ELSE 0 END) as unpaid_invoices_count")
+            ->havingRaw("SUM(CASE WHEN invoices.status = 'Unpaid' THEN COALESCE(invoices.total_amount, 0) ELSE 0 END) > 0")
             ->orderByDesc('total_outstanding')
             ->get();
     }
