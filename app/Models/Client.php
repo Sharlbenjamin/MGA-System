@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Filament\Notifications\Notification;
 use Twilio\Rest\Client as TwilioClient;
 use Illuminate\Support\Facades\Log;
@@ -18,10 +19,11 @@ class Client extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
-    protected $fillable = ['company_name','type','status','initials','niv_number','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','signed_contract_draft','comment',];
+    protected $fillable = ['company_name','type','status','initials','country_id','niv_number','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','signed_contract_draft','comment',];
 
     protected $casts = [
         'id' => 'integer',
+        'country_id' => 'integer',
     ];
 
     public function getNameAttribute()
@@ -70,6 +72,11 @@ class Client extends Model
     public function patients(): HasMany
     {
         return $this->hasMany(Patient::class);
+    }
+
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class);
     }
 
     public function files(): HasManyThrough

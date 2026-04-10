@@ -215,10 +215,12 @@ class ListClients extends ListRecords
             return $table
                 ->query(
                     ClientResource::getEloquentQuery()
+                        ->with('country')
                         ->whereRaw('LOWER(status) != ?', ['active'])
                 )
                 ->columns([
                     TextColumn::make('company_name')->searchable()->sortable()->label('Client Name')->sortable(),
+                    TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
                     TextColumn::make('type')->badge()->sortable()
                         ->color(fn (string $state): string => match ($state) {
                             'Assistance' => 'success',
@@ -249,6 +251,7 @@ class ListClients extends ListRecords
         return $table
             ->query(
                 ClientResource::getEloquentQuery()
+                    ->with('country')
                     ->addSelect([
                         'invoices_total_outstanding_sort' => Invoice::query()
                             ->selectRaw('COALESCE(SUM(COALESCE(invoices.total_amount, 0) - COALESCE(invoices.paid_amount, 0)), 0)')
@@ -262,6 +265,10 @@ class ListClients extends ListRecords
                     ->searchable()
                     ->sortable()
                     ->label('Company Name'),
+                TextColumn::make('country.name')
+                    ->label('Country')
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('type')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {

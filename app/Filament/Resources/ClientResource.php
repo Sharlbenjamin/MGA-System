@@ -20,6 +20,7 @@ use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
 use App\Filament\RelationManagers\ActivityLogRelationManager;
 use Filament\Tables\Filters\SelectFilter;
 use App\Models\Contact;
+use App\Models\Country;
 use Illuminate\Database\Eloquent\Builder;
 
 class ClientResource extends Resource
@@ -54,6 +55,11 @@ class ClientResource extends Resource
                         'No Reply' => 'No Reply',
                     ])
                     ->required()->default('Searching'),
+                Select::make('country_id')
+                    ->label('Country')
+                    ->options(Country::pluck('name', 'id'))
+                    ->searchable()
+                    ->nullable(),
 
                 TextInput::make('initials')->maxLength(10)->required(),
                 TextInput::make('niv_number')
@@ -95,6 +101,7 @@ class ClientResource extends Resource
         return $table->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('company_name')->sortable()->searchable(),
+                TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
                 TextColumn::make('operation_email')->label('Operation Email')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                 ->badge()->color(fn (string $state): string => match ($state) {
@@ -120,6 +127,9 @@ class ClientResource extends Resource
                 TextColumn::make('transactionLastAmount')->label('Last Transaction Amount')->sortable()->money('eur'),
 
             ])->filters([
+                SelectFilter::make('country_id')
+                    ->label('Country')
+                    ->options(Country::pluck('name', 'id')),
                 SelectFilter::make('status')->multiple()
                 ->options([
                         'Searching' => 'Searching',
@@ -175,13 +185,15 @@ class ClientResource extends Resource
             'Phone' => $record->phone ?? 'Unknown',
             'Email' => $record->email ?? 'Unknown',
             'Operation Email' => $record->operation_email ?? 'Unknown',
+            'Country' => $record->country?->name ?? 'Unknown',
         ];
     }
 
     public static function getGlobalSearchEloquentQuery(): Builder
     {
         return parent::getGlobalSearchEloquentQuery()
-            ->withCount('files');
+            ->withCount('files')
+            ->with('country');
     }
 
     public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
