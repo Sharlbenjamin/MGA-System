@@ -86,9 +86,12 @@ class TaxesExportController extends Controller
         foreach ($invoices as $invoice) {
             $fileFeeAmount = $this->resolveFileFeeAmountForFile($invoice->file);
             $clientCountry = $this->resolveClientCountryFromInvoice($invoice);
-            $amount = $fileFeeAmount !== null ? round($fileFeeAmount, 2) : 'N/A';
+            $amount = $fileFeeAmount !== null
+                ? round($this->resolveAmountBeforeIva($fileFeeAmount, $ivaRate), 2)
+                : 'N/A';
+            // Business rule: File fee is the total after IVA.
             $totalAfterIva = $fileFeeAmount !== null
-                ? round($fileFeeAmount * (1 + $ivaRate), 2)
+                ? round($fileFeeAmount, 2)
                 : 'N/A';
 
             $rows[] = [
@@ -325,6 +328,15 @@ class TaxesExportController extends Controller
         $cache[$cacheKey] = $globalDefault ? (float) $globalDefault->amount : null;
 
         return $cache[$cacheKey];
+    }
+
+    private function resolveAmountBeforeIva(float $fileFeeAmount, float $ivaRate): float
+    {
+        if ($ivaRate <= 0) {
+            return $fileFeeAmount;
+        }
+
+        return $fileFeeAmount / (1 + $ivaRate);
     }
 
     public function exportZip(Request $request)
