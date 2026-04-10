@@ -113,6 +113,8 @@ class TaxesExportController extends Controller
             $bills = Bill::query()
                 ->with([
                     'file.serviceType',
+                    'file.providerBranch.provider',
+                    'provider',
                     'file.patient.country',
                     'file.patient.client.financialContact.country',
                     'file.patient.client.operationContact.country',
@@ -132,7 +134,9 @@ class TaxesExportController extends Controller
                     optional($bill->bill_date)->format('Y-m-d'),
                     $bill->name,
                     $file?->serviceType?->name ?? '-',
-                    $file?->patient?->client?->company_name ?? '-',
+                    $bill->provider?->name
+                        ?? $file?->providerBranch?->provider?->name
+                        ?? '-',
                     $clientCountry,
                     $this->resolveNifFromFile($file, $nifSource),
                     $file?->patient?->name ?? '-',
@@ -159,7 +163,7 @@ class TaxesExportController extends Controller
                     optional(Carbon::parse($transaction->date))->format('Y-m-d'),
                     $transaction->name,
                     '-',
-                    '-',
+                    $transaction->name ?? '-',
                     '-',
                     '-',
                     '-',
