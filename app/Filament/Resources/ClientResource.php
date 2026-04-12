@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ClientResource\Pages;
 use App\Filament\Resources\ClientResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ContactRelationManager;
+use App\Filament\Resources\ClientResource\RelationManagers\FileRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\InvoiceRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\TransactionRelationManager;
 use App\Models\Client;
@@ -153,6 +154,7 @@ class ClientResource extends Resource
     {
         return [
             LeadsRelationManager::class,
+            FileRelationManager::class,
             ContactRelationManager::class,
             BankAccountRelationManager::class,
             InvoiceRelationManager::class,
