@@ -8,6 +8,7 @@ use App\Filament\Resources\ProviderBranchResource\Pages;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\ContactRelationManager;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\BankAccountRelationManager;
 use App\Filament\Resources\ProviderBranchResource\RelationManagers\BranchServicesRelationManager;
+use App\Filament\RelationManagers\ActivityLogRelationManager;
 use App\Models\ProviderBranch;
 use App\Models\Provider;
 use App\Models\ServiceType;
@@ -621,6 +622,7 @@ class ProviderBranchResource extends Resource
             BankAccountRelationManager::class,
             BillRelationManager::class,
             BranchServicesRelationManager::class,
+            ActivityLogRelationManager::class,
         ];
     }
 

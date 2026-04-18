@@ -15,6 +15,7 @@ use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Schema;
 use App\Traits\LogsActivity;
 
@@ -41,6 +42,11 @@ class ProviderBranch extends Model
     {
         $provider = $this->provider?->name ?? 'Provider #' . $this->provider_id;
         return "{$this->branch_name} ({$provider})";
+    }
+
+    public function activityLogs(): MorphMany
+    {
+        return $this->morphMany(ActivityLog::class, 'subject')->latest();
     }
 
     public function provider(): BelongsTo
