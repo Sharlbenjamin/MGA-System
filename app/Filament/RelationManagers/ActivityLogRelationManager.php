@@ -5,13 +5,16 @@ namespace App\Filament\RelationManagers;
 use App\Models\ActivityLog;
 use App\Models\File;
 use App\Models\Provider;
+use App\Models\ProviderBranch;
 use App\Models\Client;
 use App\Models\Patient;
 use App\Models\Invoice;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Shows activity for the owner record and all its relation-manager records (GOPs, Bills, Comments, etc.).
@@ -31,8 +34,19 @@ class ActivityLogRelationManager extends RelationManager
 
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($owner) {
+                $activityLogTable = $query->getModel()->getTable();
+
                 $query->with(['user'])
-                    ->select(['id', 'user_id', 'action', 'changes', 'created_at', 'subject_type', 'subject_id', 'subject_reference']);
+                    ->select([
+                        $activityLogTable . '.id',
+                        $activityLogTable . '.user_id',
+                        $activityLogTable . '.action',
+                        $activityLogTable . '.changes',
+                        $activityLogTable . '.created_at',
+                        $activityLogTable . '.subject_type',
+                        $activityLogTable . '.subject_id',
+                        $activityLogTable . '.subject_reference',
+                    ]);
 
                 $this->includeRelatedActivity($query, $owner);
             })
@@ -94,7 +108,7 @@ class ActivityLogRelationManager extends RelationManager
     {
         if ($owner instanceof File) {
             foreach (['gops', 'bills', 'comments', 'medicalReports', 'prescriptions', 'appointments', 'tasks', 'bankAccounts', 'invoices', 'fileAssignments'] as $relation) {
-                $ids = $owner->$relation()->pluck('id');
+                $ids = $this->pluckRelationIds($owner, $relation);
                 if ($ids->isNotEmpty()) {
                     $relationClass = $owner->$relation()->getRelated()::class;
                     $query->orWhere(fn (Builder $q) => $q->where('subject_type', $relationClass)->whereIn('subject_id', $ids));
@@ -104,7 +118,17 @@ class ActivityLogRelationManager extends RelationManager
 
         if ($owner instanceof Provider) {
             foreach (['branches', 'leads', 'bankAccounts', 'bills'] as $relation) {
-                $ids = $owner->$relation()->pluck('id');
+                $ids = $this->pluckRelationIds($owner, $relation);
+                if ($ids->isNotEmpty()) {
+                    $relationClass = $owner->$relation()->getRelated()::class;
+                    $query->orWhere(fn (Builder $q) => $q->where('subject_type', $relationClass)->whereIn('subject_id', $ids));
+                }
+            }
+        }
+
+        if ($owner instanceof ProviderBranch) {
+            foreach (['files', 'bills', 'contacts', 'bankAccounts'] as $relation) {
+                $ids = $this->pluckRelationIds($owner, $relation);
                 if ($ids->isNotEmpty()) {
                     $relationClass = $owner->$relation()->getRelated()::class;
                     $query->orWhere(fn (Builder $q) => $q->where('subject_type', $relationClass)->whereIn('subject_id', $ids));
@@ -128,12 +152,21 @@ class ActivityLogRelationManager extends RelationManager
 
         if ($owner instanceof Patient) {
             foreach (['files', 'invoices'] as $relation) {
-                $ids = $owner->$relation()->pluck('id');
+                $ids = $this->pluckRelationIds($owner, $relation);
                 if ($ids->isNotEmpty()) {
                     $relationClass = $owner->$relation()->getRelated()::class;
                     $query->orWhere(fn (Builder $q) => $q->where('subject_type', $relationClass)->whereIn('subject_id', $ids));
                 }
             }
         }
+    }
+
+    protected function pluckRelationIds(Model $owner, string $relation): Collection
+    {
+        $relationQuery = $owner->$relation();
+        $related = $relationQuery->getRelated();
+        $qualifiedKey = $related->getTable() . '.' . $related->getKeyName();
+
+        return $relationQuery->pluck($qualifiedKey);
     }
 }
