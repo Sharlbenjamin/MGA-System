@@ -409,11 +409,16 @@ class RequestAppointment extends EditRecord
     protected function formatAppointmentRequestText($branch): string
     {
         $address = $branch->address ?? 'N/A';
+        $patientAddress = $this->record->address ?? null;
         $distanceData = $this->calculateBranchDistanceForSorting($branch);
         $distanceText = $distanceData['sort_value'] < 999999 ? round($distanceData['sort_value'], 0) . 'Mins by car' : 'N/A';
         $branchName = $branch->branch_name ?? 'N/A';
-        $dateTime = 'N/A';
-        if ($this->record->service_date) {
+        $serviceTypeName = trim((string) ($this->record->serviceType?->name ?? ''));
+        $isHospitalVisit = strcasecmp($serviceTypeName, 'Hospital Visit') === 0;
+        $dateTime = $isHospitalVisit
+            ? 'The patient will wait in the ER for assesment'
+            : 'N/A';
+        if (!$isHospitalVisit && $this->record->service_date) {
             $parts = [$this->record->service_date->format('d/m/Y')];
             if ($this->record->service_time) {
                 $parts[] = \Carbon\Carbon::parse($this->record->service_time)->format('H:i');
@@ -449,7 +454,19 @@ class RequestAppointment extends EditRecord
                 }
             }
         }
-        return "Address: {$address}\nDistance: {$distanceText}\nName: {$branchName}\nDate & Time: {$dateTime}\nCost: {$cost}\nRequested GOP: {$gop}";
+        $text = "Address: {$address}\n";
+        $text .= "Distance: {$distanceText}\n";
+        $text .= "Name: {$branchName}\n";
+
+        if (!empty($patientAddress)) {
+            $text .= "Patient Address: {$patientAddress}\n";
+        }
+
+        $text .= "Date & Time: {$dateTime}\n";
+        $text .= "Cost: {$cost}\n";
+        $text .= "Requested GOP: {$gop}";
+
+        return $text;
     }
 
     protected function getFileFeeForServiceType(?int $serviceTypeId): ?float

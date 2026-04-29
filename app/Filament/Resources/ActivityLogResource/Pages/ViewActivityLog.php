@@ -16,7 +16,9 @@ class ViewActivityLog extends ViewRecord
     public function getTitle(): string
     {
         $record = $this->record;
-        return $record->action_label . ' ' . $record->subject_type_label . ' · ' . ($record->subject_reference ?? $record->subject_id);
+        $reference = $record->subject_reference ?? $record->subject_id;
+
+        return $record->action_label . ' ' . $record->subject_type_label . ' · ' . $this->stringifyValue($reference);
     }
 
     public function infolist(Infolist $infolist): Infolist
@@ -41,6 +43,7 @@ class ViewActivityLog extends ViewRecord
                             ->label('Subject ID'),
                         TextEntry::make('subject_reference')
                             ->label('Reference')
+                            ->formatStateUsing(fn ($state) => $this->stringifyValue($state))
                             ->placeholder('—'),
                     ])
                     ->columns(2),
@@ -48,19 +51,30 @@ class ViewActivityLog extends ViewRecord
                     ->schema([
                         TextEntry::make('changes')
                             ->label('')
-                            ->formatStateUsing(function (?array $state) {
+                            ->formatStateUsing(function ($state) {
                                 if (empty($state)) {
                                     return 'No field changes recorded.';
                                 }
+
+                                if (! is_array($state)) {
+                                    return $this->stringifyValue($state);
+                                }
+
                                 $lines = [];
                                 foreach ($state as $attr => $pair) {
-                                    $old = $pair['old'] ?? null;
-                                    $new = $pair['new'] ?? null;
-                                    if (is_array($old) || is_array($new)) {
-                                        $old = json_encode($old);
-                                        $new = json_encode($new);
+                                    if (is_array($pair)) {
+                                        $old = $pair['old'] ?? null;
+                                        $new = $pair['new'] ?? null;
+                                    } else {
+                                        $old = null;
+                                        $new = $pair;
                                     }
-                                    $lines[] = "**" . str_replace('_', ' ', ucfirst($attr)) . "**: " . (strlen((string) $old) > 80 ? substr((string) $old, 0, 80) . '…' : $old) . " → " . (strlen((string) $new) > 80 ? substr((string) $new, 0, 80) . '…' : $new);
+
+                                    $oldText = $this->truncateText($this->stringifyValue($old), 80);
+                                    $newText = $this->truncateText($this->stringifyValue($new), 80);
+                                    $label = str_replace('_', ' ', ucfirst((string) $attr));
+
+                                    $lines[] = "**{$label}**: {$oldText} → {$newText}";
                                 }
                                 return implode("\n", $lines);
                             })
@@ -69,5 +83,29 @@ class ViewActivityLog extends ViewRecord
                     ])
                     ->visible(fn ($record) => $record->action === ActivityLog::ACTION_UPDATED && ! empty($record->changes)),
             ]);
+    }
+
+    protected function stringifyValue(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return $encoded !== false ? $encoded : '[unserializable]';
+    }
+
+    protected function truncateText(string $text, int $limit): string
+    {
+        return strlen($text) > $limit ? substr($text, 0, $limit) . '…' : $text;
     }
 }

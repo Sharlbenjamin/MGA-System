@@ -83,11 +83,20 @@ class ActivityLogRelationManager extends RelationManager
                         if ($record->action !== ActivityLog::ACTION_UPDATED || empty($record->changes)) {
                             return '—';
                         }
+
                         $keys = array_keys($record->changes);
-                        if (count($keys) <= 3) {
-                            return implode(', ', array_map(fn ($k) => str_replace('_', ' ', ucfirst($k)), $keys));
-                        }
-                        return count($keys) . ' fields updated';
+                        $labels = array_map(
+                            fn ($key) => str_replace('_', ' ', ucfirst((string) $key)),
+                            $keys
+                        );
+
+                        $visibleLabels = array_slice($labels, 0, 5);
+                        $remaining = count($labels) - count($visibleLabels);
+                        $summary = implode(', ', $visibleLabels);
+
+                        return $remaining > 0
+                            ? $summary . " +{$remaining} more"
+                            : $summary;
                     })
                     ->placeholder('—'),
             ])

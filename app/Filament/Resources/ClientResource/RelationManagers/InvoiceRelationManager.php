@@ -27,6 +27,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Actions\BulkAction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
@@ -47,7 +48,9 @@ class InvoiceRelationManager extends RelationManager
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(fn ($query) => $query->with(['file.providerBranch.provider']))
             ->columns([
-                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->sortable()
+                    ->searchable(['invoices.name']),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('MGA Reference')
                     ->sortable()
@@ -119,7 +122,12 @@ class InvoiceRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('Remaining_Amount')
                     ->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)
                     ->sortable()
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereRaw(
+                            'CAST((invoices.total_amount - invoices.paid_amount) AS CHAR) LIKE ?',
+                            ["%{$search}%"]
+                        );
+                    })
                     ->money('EUR')
                     ->summarize(
                         Summarizer::make()

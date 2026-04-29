@@ -81,10 +81,10 @@
             <div class="detail-line"><strong>Patient Name:</strong> {{ $file->patient->name }}</div>
             <div class="detail-line"><strong>Date of Birth:</strong> {{ $file->patient->dob ? \Carbon\Carbon::parse($file->patient->dob)->format('d-m-Y') : 'N/A' }}</div>
             <div class="detail-line"><strong>Gender:</strong> {{ $file->patient->gender }}</div>
+            @if($file->address)
+                <div class="detail-line"><strong>Patient Address:</strong> {{ $file->address }}</div>
+            @endif
             @if($file->serviceType->id == 1)
-                @if($file->address)
-                <div class="detail-line"><strong>Address:</strong> {{ $file->address }}</div>
-                @endif
                 @if($file->phone)
                     <div class="detail-line"><strong>Phone:</strong> {{ $file->phone }}</div>
                 @endif

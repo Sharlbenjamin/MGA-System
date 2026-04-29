@@ -2403,6 +2403,7 @@ class ViewFile extends ViewRecord
     {
         // Address
         $address = $branch->address ?? 'N/A';
+        $patientAddress = $this->record->address ?? null;
         
         // Distance - extract from distance calculation
         $distanceText = 'N/A';
@@ -2539,6 +2540,9 @@ class ViewFile extends ViewRecord
         $text = "Address: {$address}\n";
         $text .= "Distance: {$distanceText}\n";
         $text .= "Name: {$branchName}\n";
+        if (!empty($patientAddress)) {
+            $text .= "Patient Address: {$patientAddress}\n";
+        }
         $text .= "Date & Time: {$dateTime}\n";
         $text .= "Cost: {$cost}{$fileFeeText}\n";
         $text .= "Requested GOP: {$gop}";
