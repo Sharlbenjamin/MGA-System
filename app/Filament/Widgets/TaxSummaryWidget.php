@@ -36,11 +36,20 @@ class TaxSummaryWidget extends BaseWidget
             $endDate = Carbon::create($year, 12, 31)->endOfYear();
         }
 
+        $paidInvoiceFileIds = Invoice::query()
+            ->where('status', 'Paid')
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereNotNull('file_id')
+            ->distinct()
+            ->pluck('file_id');
+
         // Calculate totals
         $invoiceTotal = Invoice::whereBetween('payment_date', [$startDate, $endDate])
             ->where('status', 'Paid')
             ->sum('total_amount');
-        $billTotal = Bill::whereBetween('bill_date', [$startDate, $endDate])->sum('total_amount');
+        $billTotal = Bill::whereBetween('bill_date', [$startDate, $endDate])
+            ->whereIn('file_id', $paidInvoiceFileIds)
+            ->sum('total_amount');
         $expenseTotal = DB::table('transactions')
             ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
             ->where('transactions.type', 'Expense')

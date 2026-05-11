@@ -250,9 +250,22 @@ class ListTaxes extends ListRecords
             $endDate = Carbon::create($year, 12, 31)->endOfYear();
         }
 
+        $paidInvoiceFileIds = Invoice::query()
+            ->where('status', 'Paid')
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereNotNull('file_id')
+            ->distinct()
+            ->pluck('file_id');
+
         // Calculate totals
-        $invoiceTotal = Invoice::whereBetween('invoice_date', [$startDate, $endDate])->sum('total_amount');
-        $billTotal = Bill::whereBetween('bill_date', [$startDate, $endDate])->sum('total_amount');
+        $invoiceTotal = Invoice::query()
+            ->where('status', 'Paid')
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->sum('total_amount');
+        $billTotal = Bill::query()
+            ->whereBetween('bill_date', [$startDate, $endDate])
+            ->whereIn('file_id', $paidInvoiceFileIds)
+            ->sum('total_amount');
         $expenseTotal = DB::table('transactions')
             ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
             ->where('transactions.type', 'Expense')
@@ -450,6 +463,13 @@ class ListTaxes extends ListRecords
             $endDate = Carbon::create($year, 12, 31)->endOfYear();
         }
 
+        $paidInvoiceFileIds = Invoice::query()
+            ->where('status', 'Paid')
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->whereNotNull('file_id')
+            ->select('file_id')
+            ->distinct();
+
         // Query only paid invoices for the selected period
         $invoices = Invoice::query()
             ->where('status', 'Paid')
@@ -469,9 +489,10 @@ class ListTaxes extends ListRecords
                 'invoice_google_link as google_drive_link'
             ]);
 
-        // Query bills for the selected period
+        // Query bills for the selected period, but only for cases with paid invoices
         $bills = Bill::query()
             ->whereBetween('bill_date', [$startDate, $endDate])
+            ->whereIn('file_id', $paidInvoiceFileIds)
             ->select([
                 'id',
                 'name as document_number',

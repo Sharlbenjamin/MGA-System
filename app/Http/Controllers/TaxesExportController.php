@@ -64,6 +64,12 @@ class TaxesExportController extends Controller
             ->orderBy('payment_date')
             ->get();
 
+        $paidInvoiceFileIds = $invoices
+            ->pluck('file_id')
+            ->filter()
+            ->unique()
+            ->values();
+
         $headings = [
             'Record Type',
             'Invoice Date',
@@ -124,6 +130,7 @@ class TaxesExportController extends Controller
                     'file.patient.client.gopContact.country',
                 ])
                 ->whereBetween('bill_date', [$startDate, $endDate])
+                ->whereIn('file_id', $paidInvoiceFileIds)
                 ->orderBy('bill_date')
                 ->get();
 
