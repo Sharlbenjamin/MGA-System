@@ -60,8 +60,8 @@ class TaxesExportController extends Controller
                 'patient.client.gopContact.country',
             ])
             ->where('status', 'Paid')
-            ->whereBetween('invoice_date', [$startDate, $endDate])
-            ->orderBy('invoice_date')
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->orderBy('payment_date')
             ->get();
 
         $headings = [
