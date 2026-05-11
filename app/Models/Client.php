@@ -19,7 +19,7 @@ class Client extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
-    protected $fillable = ['company_name','type','status','initials','country_id','niv_number','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','signed_contract_draft','comment',];
+    protected $fillable = ['company_name','type','status','initials','country_id','niv_number','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','address','signed_contract_draft','comment',];
 
     protected $casts = [
         'id' => 'integer',

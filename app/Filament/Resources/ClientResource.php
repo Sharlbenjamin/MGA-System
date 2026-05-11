@@ -77,6 +77,10 @@ class ClientResource extends Resource
                     ->email()
                     ->nullable(),
                 TextInput::make('operation_email')->label('Operation Email')->email()->nullable(),
+                Textarea::make('address')
+                    ->label('Client Address')
+                    ->rows(2)
+                    ->nullable(),
                 Textarea::make('comment')
                     ->label('Comment')
                     ->rows(4)
@@ -104,6 +108,7 @@ class ClientResource extends Resource
                 TextColumn::make('company_name')->sortable()->searchable(),
                 TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
                 TextColumn::make('operation_email')->label('Operation Email')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('address')->label('Client Address')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                 ->badge()->color(fn (string $state): string => match ($state) {
                         'Searching' => 'danger',
@@ -187,6 +192,7 @@ class ClientResource extends Resource
             'Phone' => $record->phone ?? 'Unknown',
             'Email' => $record->email ?? 'Unknown',
             'Operation Email' => $record->operation_email ?? 'Unknown',
+            'Client Address' => $record->address ?? 'Unknown',
             'Country' => $record->country?->name ?? 'Unknown',
         ];
     }

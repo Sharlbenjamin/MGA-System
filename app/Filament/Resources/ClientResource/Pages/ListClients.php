@@ -6,9 +6,12 @@ use App\Exports\ActiveClientsExport;
 use App\Filament\Resources\ClientResource;
 use App\Mail\SendOutstandingBalance;
 use App\Models\Client;
+use App\Models\DraftMail;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Filament\Actions;
+use Filament\Forms;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Tables;
@@ -322,7 +325,182 @@ class ListClients extends ListRecords
             ])->actions([
                 Tables\Actions\Action::make('Overview')
                 ->url(fn (Client $record) => ClientResource::getUrl('overview', ['record' => $record]))->color('success'),
+                Tables\Actions\Action::make('sendDraftEmail')
+                    ->label('Send Draft Email')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('warning')
+                    ->modalHeading('Send Draft Email')
+                    ->modalSubmitActionLabel('Send Email')
+                    ->modalWidth('4xl')
+                    ->form([
+                        Forms\Components\TextInput::make('sender_email')
+                            ->label('From (My Operation Email)')
+                            ->default(function (): string {
+                                $user = Auth::user();
+                                return $user?->smtp_username ?? $user?->email ?? '';
+                            })
+                            ->disabled()
+                            ->dehydrated(false),
+                        Forms\Components\TextInput::make('recipient_email')
+                            ->label('To (Client Operation Email)')
+                            ->default(fn (Client $record): string => (string) ($record->operation_email ?? ''))
+                            ->disabled()
+                            ->dehydrated(false),
+                        Forms\Components\Select::make('draft_mail_id')
+                            ->label('Draft Email')
+                            ->options(fn (): array => DraftMail::query()
+                                ->where('type', 'Client')
+                                ->orderBy('mail_name')
+                                ->pluck('mail_name', 'id')
+                                ->toArray())
+                            ->required()
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Set $set, Client $record): void {
+                                $draftId = $state ? (int) $state : null;
+                                $set('subject_preview', $this->buildClientDraftSubject($draftId, $record));
+                                $set('message_preview', $this->buildClientDraftPreview($draftId, $record));
+                            }),
+                        Forms\Components\TextInput::make('subject_preview')
+                            ->label('Subject Preview')
+                            ->disabled()
+                            ->dehydrated(false),
+                        Forms\Components\Textarea::make('message_preview')
+                            ->label('Message Preview')
+                            ->rows(12)
+                            ->placeholder('Select a draft email to preview the message.')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->columnSpanFull(),
+                    ])
+                    ->action(function (array $data, Client $record): void {
+                        $draftId = (int) ($data['draft_mail_id'] ?? 0);
+                        $draftMail = DraftMail::query()
+                            ->where('type', 'Client')
+                            ->find($draftId);
+
+                        if (!$draftMail) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Draft email not found')
+                                ->body('Please select a valid client draft email.')
+                                ->send();
+                            return;
+                        }
+
+                        $recipientEmail = trim((string) $record->operation_email);
+                        if ($recipientEmail === '' || !filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Invalid client operation email')
+                                ->body("Please set a valid operation email for {$record->company_name}.")
+                                ->send();
+                            return;
+                        }
+
+                        $user = \App\Models\User::find(Auth::id());
+                        if (!$user) {
+                            Notification::make()
+                                ->danger()
+                                ->title('User not found')
+                                ->body('You must be logged in to send emails.')
+                                ->send();
+                            return;
+                        }
+
+                        $smtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
+                        $smtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
+
+                        if ($smtpUsername && $smtpPassword) {
+                            Config::set('mail.mailers.smtp.username', $smtpUsername);
+                            Config::set('mail.mailers.smtp.password', $smtpPassword);
+                        }
+
+                        $fromAddress = $user->smtp_username ?: $user->email ?: (string) config('mail.from.address');
+                        $fromName = $user->name ?: (string) config('mail.from.name');
+                        $subject = $this->buildClientDraftSubject($draftMail->id, $record);
+                        $message = $this->buildClientDraftPreview($draftMail->id, $record);
+
+                        try {
+                            Mail::raw($message, function ($mail) use ($recipientEmail, $subject, $fromAddress, $fromName): void {
+                                $mail->from($fromAddress, $fromName)
+                                    ->to($recipientEmail)
+                                    ->subject($subject);
+                            });
+
+                            Notification::make()
+                                ->success()
+                                ->title('Draft email sent')
+                                ->body("Email sent to {$recipientEmail}.")
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            Log::error('Failed to send client draft email', [
+                                'client_id' => $record->id,
+                                'draft_mail_id' => $draftMail->id,
+                                'recipient_email' => $recipientEmail,
+                                'error' => $exception->getMessage(),
+                            ]);
+
+                            Notification::make()
+                                ->danger()
+                                ->title('Failed to send email')
+                                ->body($exception->getMessage())
+                                ->send();
+                        }
+                    }),
             ])
             ->defaultSort('invoices_total_outstanding_sort', 'desc');
+    }
+
+    private function buildClientDraftSubject(?int $draftMailId, Client $client): string
+    {
+        if (!$draftMailId) {
+            return '';
+        }
+
+        $draftMail = DraftMail::query()
+            ->where('type', 'Client')
+            ->find($draftMailId);
+
+        if (!$draftMail) {
+            return '';
+        }
+
+        return $this->applyClientDraftPlaceholders((string) $draftMail->mail_name, $client);
+    }
+
+    private function buildClientDraftPreview(?int $draftMailId, Client $client): string
+    {
+        if (!$draftMailId) {
+            return '';
+        }
+
+        $draftMail = DraftMail::query()
+            ->where('type', 'Client')
+            ->find($draftMailId);
+
+        if (!$draftMail) {
+            return '';
+        }
+
+        return $this->applyClientDraftPlaceholders((string) $draftMail->body_mail, $client);
+    }
+
+    private function applyClientDraftPlaceholders(string $content, Client $client): string
+    {
+        $user = Auth::user();
+        $username = $user?->signature?->name ?? $user?->name ?? 'MGA Team';
+
+        return str_replace(
+            ['{name}', '{company}', '{email}', '{operation_email}', '{username}'],
+            [
+                (string) ($client->company_name ?? ''),
+                (string) ($client->company_name ?? ''),
+                (string) ($client->email ?? ''),
+                (string) ($client->operation_email ?? ''),
+                (string) $username,
+            ],
+            $content
+        );
     }
 }

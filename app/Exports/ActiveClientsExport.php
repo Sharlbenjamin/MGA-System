@@ -12,7 +12,7 @@ class ActiveClientsExport implements FromCollection, WithHeadings, WithMapping
     public function collection()
     {
         return Client::query()
-            ->with(['country', 'operationContact'])
+            ->with('country')
             ->whereRaw('LOWER(status) = ?', ['active'])
             ->orderBy('company_name')
             ->get();
@@ -32,7 +32,7 @@ class ActiveClientsExport implements FromCollection, WithHeadings, WithMapping
     {
         return [
             $client->company_name ?? '',
-            $client->operationContact?->address ?? '',
+            $client->address ?? '',
             $client->country?->name ?? '',
             $client->niv_number ?? '',
         ];
