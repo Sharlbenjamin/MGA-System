@@ -51,6 +51,18 @@ class Transaction extends Model
                     'bank_account_id' => $transaction->bank_account_id
                 ]);
             }
+
+            try {
+                if ($transaction->shouldClearProviderNeedsPaymentFlag()) {
+                    $transaction->clearProviderNeedsPaymentFlag();
+                }
+            } catch (\Exception $e) {
+                Log::error('Error clearing provider needs_payment on transaction update: ' . $e->getMessage(), [
+                    'transaction_id' => $transaction->id,
+                    'related_type' => $transaction->related_type,
+                    'related_id' => $transaction->related_id,
+                ]);
+            }
         });
 
         static::created(function ($transaction) {
@@ -58,12 +70,22 @@ class Transaction extends Model
                 if ($transaction->bankAccount) {
                     $transaction->bankAccount->calculateBalance();
                 }
-
-                $transaction->clearProviderNeedsPaymentFlag();
             } catch (\Exception $e) {
                 Log::error('Error in transaction created event: ' . $e->getMessage(), [
                     'transaction_id' => $transaction->id,
                     'bank_account_id' => $transaction->bank_account_id
+                ]);
+            }
+
+            try {
+                if ($transaction->shouldClearProviderNeedsPaymentFlag()) {
+                    $transaction->clearProviderNeedsPaymentFlag();
+                }
+            } catch (\Exception $e) {
+                Log::error('Error clearing provider needs_payment on transaction create: ' . $e->getMessage(), [
+                    'transaction_id' => $transaction->id,
+                    'related_type' => $transaction->related_type,
+                    'related_id' => $transaction->related_id,
                 ]);
             }
         });
@@ -126,6 +148,23 @@ class Transaction extends Model
         if ($provider && $provider->needs_payment) {
             $provider->update(['needs_payment' => false]);
         }
+    }
+
+    /**
+     * Only clear provider payment flag for issued outflow transactions.
+     */
+    public function shouldClearProviderNeedsPaymentFlag(): bool
+    {
+        if ($this->type !== 'Outflow') {
+            return false;
+        }
+
+        // If status is not used on this record, treat it as issued.
+        if (!$this->status) {
+            return true;
+        }
+
+        return $this->status === 'Completed';
     }
 
     public function calculateBankCharges()
