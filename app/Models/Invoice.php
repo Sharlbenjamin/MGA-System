@@ -292,7 +292,7 @@ class Invoice extends Model
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'invoice',
             'id' => $this->id
-        ]);
+        ], absolute: false);
     }
 
     /**
@@ -310,6 +310,6 @@ class Invoice extends Model
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'invoice',
             'id' => $this->id
-        ]);
+        ], absolute: false);
     }
 }

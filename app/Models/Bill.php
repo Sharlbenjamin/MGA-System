@@ -328,7 +328,7 @@ class Bill extends Model
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'bill',
             'id' => $this->id
-        ]);
+        ], absolute: false);
     }
 
     /**
@@ -346,6 +346,6 @@ class Bill extends Model
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'bill',
             'id' => $this->id
-        ]);
+        ], absolute: false);
     }
 }

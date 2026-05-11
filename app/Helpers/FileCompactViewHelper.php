@@ -128,7 +128,7 @@ class FileCompactViewHelper
             return URL::temporarySignedRoute('docs.serve', now()->addMinutes($expiryMinutes), [
                 'type' => 'bill',
                 'id' => $bill->id,
-            ]);
+            ], absolute: false);
         }
         return null;
     }
@@ -179,7 +179,7 @@ class FileCompactViewHelper
             return URL::temporarySignedRoute('docs.serve', now()->addMinutes($expiryMinutes), [
                 'type' => 'bill',
                 'id' => $record->id,
-            ]);
+            ], absolute: false);
         }
         return null;
     }

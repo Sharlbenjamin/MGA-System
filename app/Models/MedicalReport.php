@@ -76,7 +76,7 @@ class MedicalReport extends Model
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'medical_report',
             'id' => $this->id
-        ]);
+        ], absolute: false);
     }
 
     /**
@@ -94,6 +94,6 @@ class MedicalReport extends Model
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'medical_report',
             'id' => $this->id
-        ]);
+        ], absolute: false);
     }
 }

@@ -89,7 +89,7 @@ class Gop extends Model
         return URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'gop',
             'id' => $this->id
-        ]);
+        ], absolute: false);
     }
 
     /**
@@ -107,6 +107,6 @@ class Gop extends Model
         return URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'gop',
             'id' => $this->id
-        ]);
+        ], absolute: false);
     }
 }

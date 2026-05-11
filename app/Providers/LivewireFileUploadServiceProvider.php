@@ -172,7 +172,7 @@ class LivewireFileUploadServiceProvider extends ServiceProvider
                     }
 
                     return \Illuminate\Support\Facades\URL::temporarySignedRoute(
-                        'livewire.preview-file', now()->addMinutes(30)->endOfHour(), ['filename' => $this->getFilename()]
+                        'livewire.preview-file', now()->addMinutes(30)->endOfHour(), ['filename' => $this->getFilename()], absolute: false
                     );
                 }
 
