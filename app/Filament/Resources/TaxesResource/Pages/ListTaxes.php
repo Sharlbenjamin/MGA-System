@@ -450,8 +450,9 @@ class ListTaxes extends ListRecords
             $endDate = Carbon::create($year, 12, 31)->endOfYear();
         }
 
-        // Query invoices for the selected period
+        // Query only paid invoices for the selected period
         $invoices = Invoice::query()
+            ->where('status', 'Paid')
             ->whereBetween('invoice_date', [$startDate, $endDate])
             ->select([
                 'id',
@@ -486,7 +487,8 @@ class ListTaxes extends ListRecords
                 'bill_google_link as google_drive_link'
             ]);
 
-        // Query expense transactions from Med Guard bank account for the selected period
+        // Query only expense transactions for the selected period.
+        // Outflow can duplicate bills already listed above.
         $expenses = DB::table('transactions')
             ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
             ->where('transactions.type', 'Expense')
@@ -498,7 +500,7 @@ class ListTaxes extends ListRecords
                 'transactions.amount as total_amount',
                 'transactions.created_at',
                 'transactions.date as document_date',
-                DB::raw("'Expense' as status"),
+                DB::raw("transactions.type as status"),
                 DB::raw("NULL as due_date"),
                 DB::raw("'expense' as type"),
                 DB::raw("NULL as invoice_number"),
