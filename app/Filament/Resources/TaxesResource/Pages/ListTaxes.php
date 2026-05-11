@@ -64,7 +64,7 @@ class ListTaxes extends ListRecords
                             'invoices_only' => 'Invoices Only',
                             'invoices_and_payments' => 'Invoices + Payments',
                         ])
-                        ->default('invoices_only')
+                        ->default('invoices_and_payments')
                         ->required(),
                     TextInput::make('iva_percent')
                         ->label('IVA %')
@@ -118,7 +118,7 @@ class ListTaxes extends ListRecords
                             'invoices_only' => 'Invoices Only',
                             'invoices_and_payments' => 'Invoices + Payments',
                         ])
-                        ->default('invoices_only')
+                        ->default('invoices_and_payments')
                         ->required(),
                     TextInput::make('iva_percent')
                         ->label('IVA %')

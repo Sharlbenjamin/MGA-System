@@ -152,10 +152,15 @@ class TaxesExportController extends Controller
                 ];
             }
 
+            // Keep export aligned with Taxes view table:
+            // include only Expense transactions (not Outflow) to avoid bill duplication.
             $outTransactions = DB::table('transactions')
-                ->whereIn('type', ['Outflow', 'Expense'])
+                ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
+                ->where('transactions.type', 'Expense')
+                ->where('bank_accounts.type', 'Internal')
                 ->whereBetween('date', [$startDate, $endDate])
                 ->orderBy('date')
+                ->select('transactions.*')
                 ->get();
 
             foreach ($outTransactions as $transaction) {
