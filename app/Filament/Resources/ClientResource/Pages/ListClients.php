@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ClientResource\Pages;
 
+use App\Exports\ActiveClientsExport;
 use App\Filament\Resources\ClientResource;
 use App\Mail\SendOutstandingBalance;
 use App\Models\Client;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ListClients extends ListRecords
 {
@@ -86,6 +88,17 @@ class ListClients extends ListRecords
                 ->modalContent(fn () => view('filament.actions.clients-outstandings-modal', [
                     'clients' => $this->getOutstandingClientsSummary(),
                 ])),
+            Actions\Action::make('exportActiveClients')
+                ->label('Export Active Clients')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->hidden(fn (): bool => $this->viewMode !== 'active')
+                ->action(function () {
+                    return Excel::download(
+                        new ActiveClientsExport(),
+                        'active_clients_' . now()->format('Y-m-d_H-i-s') . '.xlsx'
+                    );
+                }),
             Actions\CreateAction::make(),
         ];
     }
