@@ -399,14 +399,16 @@ class TransactionResource extends Resource
                     ->maxFiles(1)
                     ->fetchFileInformation(false)
                     ->dehydrated(false)
-                    ->afterStateHydrated(function (callable $set, $state, ?Transaction $record): void {
+                    ->afterStateHydrated(function ($component, $state, ?Transaction $record): void {
                         $existingPath = $record?->attachment_path;
-                        $set(
-                            'attachment_file',
-                            (is_string($existingPath) && str_starts_with($existingPath, 'transactions/'))
-                                ? [$existingPath]
-                                : []
-                        );
+
+                        // Preload previously uploaded local files when editing a transaction.
+                        if (is_string($existingPath) && str_starts_with($existingPath, 'transactions/')) {
+                            $component->state([$existingPath]);
+                            return;
+                        }
+
+                        $component->state([]);
                     })
                     ->afterStateUpdated(function ($state, callable $set): void {
                         if (is_string($state)) {
@@ -419,7 +421,8 @@ class TransactionResource extends Resource
 
                         $set('attachment_path', $state ?: null);
                     }),
-                Forms\Components\Hidden::make('attachment_path'),
+                Forms\Components\Hidden::make('attachment_path')
+                    ->default(fn (?Transaction $record) => $record?->attachment_path),
 
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
