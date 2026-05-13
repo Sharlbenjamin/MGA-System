@@ -253,13 +253,11 @@ class ShouldBePaidResource extends Resource
                             return redirect()->route('filament.admin.resources.transactions.create');
                         }
                         
-                        // Get bill names for the transaction name
-                        $billNames = $records->pluck('name')->take(3); // Take first 3 bill names
-                        $name = 'Payment for ' . $billNames->implode(', ');
-                        
-                        // If there are more than 3 bills, add a count
-                        if ($records->count() > 3) {
-                            $name .= ' and ' . ($records->count() - 3) . ' more';
+                        $labels = collect(Bill::compactPaymentReasonLabels($records));
+                        if ($labels->count() > 3) {
+                            $name = 'Payment for ' . $labels->take(3)->implode(', ') . ' and ' . ($labels->count() - 3) . ' more';
+                        } else {
+                            $name = Bill::formatPaymentReasonSentence($records);
                         }
                         
                         // Create URL with pre-filled parameters

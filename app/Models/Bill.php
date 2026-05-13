@@ -348,4 +348,55 @@ class Bill extends Model
             'id' => $this->id
         ], absolute: false);
     }
+
+    /**
+     * Compact label for bank payment reference: "MG002WH-Bill-01" → "002WH";
+     * when several bills for the same file are included, keep "-Bill-NN" to disambiguate.
+     */
+    public static function formatSinglePaymentReasonLabel(string $fullBillName, bool $includeBillSuffix): string
+    {
+        if (preg_match('/^(.+)-Bill-(\d+)$/i', $fullBillName, $m)) {
+            $ref = $m[1];
+            $billNo = $m[2];
+            $shortRef = preg_replace('/^MG/i', '', $ref);
+
+            if ($includeBillSuffix) {
+                return $shortRef . '-Bill-' . $billNo;
+            }
+
+            return $shortRef;
+        }
+
+        return preg_replace('/^MG/i', '', $fullBillName);
+    }
+
+    /**
+     * @param  iterable<int, self>  $bills
+     * @return list<string>
+     */
+    public static function compactPaymentReasonLabels(iterable $bills): array
+    {
+        $ordered = collect($bills)->values();
+        $countsByFile = $ordered->groupBy('file_id')->map->count();
+
+        return $ordered
+            ->map(function (self $bill) use ($countsByFile) {
+                $multipleForSameFile = ($countsByFile->get($bill->file_id) ?? 0) > 1;
+
+                return static::formatSinglePaymentReasonLabel($bill->name, $multipleForSameFile);
+            })
+            ->all();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, self>  $bills
+     */
+    public static function formatPaymentReasonSentence(\Illuminate\Support\Collection $bills): string
+    {
+        if ($bills->isEmpty()) {
+            return 'Payment for services';
+        }
+
+        return 'Payment for ' . implode(', ', static::compactPaymentReasonLabels($bills));
+    }
 }

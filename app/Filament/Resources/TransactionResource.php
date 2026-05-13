@@ -104,31 +104,8 @@ class TransactionResource extends Resource
                                     return 'No bank account found for the selected provider/branch.';
                                 }
                                 
-                                // Get bills for the transaction reason
-                                $bills = collect();
-                                if ($relatedType === 'Provider') {
-                                    $bills = \App\Models\Bill::query()
-                                        ->whereHas('file', function ($query) use ($relatedId) {
-                                            $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
-                                                $providerQuery->where('providers.id', $relatedId);
-                                            })
-                                            ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
-                                                $branchQuery->where('provider_branches.provider_id', $relatedId);
-                                            });
-                                        })
-                                        ->whereIn('status', ['Unpaid', 'Partial'])
-                                        ->get();
-                                } elseif ($relatedType === 'Branch') {
-                                    $bills = \App\Models\Bill::query()
-                                        ->whereHas('file', function ($query) use ($relatedId) {
-                                            $query->where('provider_branch_id', $relatedId);
-                                        })
-                                        ->whereIn('status', ['Unpaid', 'Partial'])
-                                        ->get();
-                                }
-                                
-                                $billNames = $bills->pluck('name')->implode(', ');
-                                $reason = $billNames ? "Payment for {$billNames}" : "Payment for services";
+                                $bills = static::resolveBillsForPaymentReason($get);
+                                $reason = Bill::formatPaymentReasonSentence($bills);
                                 
                                 $details = [
                                     'IBAN: ' . $bankAccount->iban,
@@ -300,78 +277,23 @@ class TransactionResource extends Resource
                                     })
                             ),
                         
-                        Forms\Components\TextInput::make('provider_reason_display')
+                        Forms\Components\Placeholder::make('provider_reason_display')
                             ->label('Transaction Reason')
-                            ->default(function (callable $get) {
-                                $relatedType = $get('related_type');
-                                $relatedId = $get('related_id');
-                                
-                                // Get bills for the transaction reason
-                                $bills = collect();
-                                if ($relatedType === 'Provider') {
-                                    $bills = \App\Models\Bill::query()
-                                        ->whereHas('file', function ($query) use ($relatedId) {
-                                            $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
-                                                $providerQuery->where('providers.id', $relatedId);
-                                            })
-                                            ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
-                                                $branchQuery->where('provider_branches.provider_id', $relatedId);
-                                            });
-                                        })
-                                        ->whereIn('status', ['Unpaid', 'Partial'])
-                                        ->get();
-                                } elseif ($relatedType === 'Branch') {
-                                    $bills = \App\Models\Bill::query()
-                                        ->whereHas('file', function ($query) use ($relatedId) {
-                                            $query->where('provider_branch_id', $relatedId);
-                                        })
-                                        ->whereIn('status', ['Unpaid', 'Partial'])
-                                        ->get();
-                                }
-                                
-                                $billNames = $bills->pluck('name')->implode(', ');
-                                return $billNames ? "Payment for {$billNames}" : "Payment for services";
-                            })
-                            ->disabled()
-                            ->reactive()
-                            ->visible(fn ($get) => $get('type') === 'Outflow')
-                            ->helperText('Click to copy')
-                            ->suffixAction(
+                            ->content(fn (callable $get) => Bill::formatPaymentReasonSentence(static::resolveBillsForPaymentReason($get)))
+                            ->hint('Use the clipboard icon to copy')
+                            ->hintAction(
                                 \Filament\Forms\Components\Actions\Action::make('copy_reason')
                                     ->icon('heroicon-o-clipboard')
+                                    ->iconButton()
                                     ->action(function (callable $get) {
-                                        $relatedType = $get('related_type');
-                                        $relatedId = $get('related_id');
-                                        
-                                        // Get bills for the transaction reason
-                                        $bills = collect();
-                                        if ($relatedType === 'Provider') {
-                                            $bills = \App\Models\Bill::query()
-                                                ->whereHas('file', function ($query) use ($relatedId) {
-                                                    $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
-                                                        $providerQuery->where('providers.id', $relatedId);
-                                                    })
-                                                    ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
-                                                        $branchQuery->where('provider_branches.provider_id', $relatedId);
-                                                    });
-                                                })
-                                                ->whereIn('status', ['Unpaid', 'Partial'])
-                                                ->get();
-                                        } elseif ($relatedType === 'Branch') {
-                                            $bills = \App\Models\Bill::query()
-                                                ->whereHas('file', function ($query) use ($relatedId) {
-                                                    $query->where('provider_branch_id', $relatedId);
-                                                })
-                                                ->whereIn('status', ['Unpaid', 'Partial'])
-                                                ->get();
-                                        }
-                                        
-                                        $billNames = $bills->pluck('name')->implode(', ');
-                                        $reason = $billNames ? "Payment for {$billNames}" : "Payment for services";
-                                        
-                                        return "navigator.clipboard.writeText('{$reason}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'Transaction reason copied to clipboard!' } })); });";
+                                        $reason = Bill::formatPaymentReasonSentence(static::resolveBillsForPaymentReason($get));
+                                        $jsReason = json_encode($reason, JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+
+                                        return "navigator.clipboard.writeText({$jsReason}).then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'Transaction reason copied to clipboard!' } })); });";
                                     })
-                            ),
+                            )
+                            ->visible(fn ($get) => $get('type') === 'Outflow')
+                            ->columnSpanFull(),
                     ])
                     ->visible(fn ($get) => $get('type') === 'Outflow' && in_array($get('related_type'), ['Provider', 'Branch']))
                     ->collapsible()
@@ -855,6 +777,100 @@ class TransactionResource extends Resource
         return $this->hasMany(Bill::class);
     }
 
+
+    /**
+     * Bills for payment reference text: use the Bills multi-select (or bill_ids / bill_id from the URL),
+     * otherwise every unpaid or partial bill for the related provider or branch.
+     *
+     * @return \Illuminate\Support\Collection<int, Bill>
+     */
+    public static function resolveBillsForPaymentReason(callable $get): \Illuminate\Support\Collection
+    {
+        $relatedType = $get('related_type');
+        $relatedId = $get('related_id');
+
+        if (! $relatedId || ! in_array($relatedType, ['Provider', 'Branch'], true)) {
+            return collect();
+        }
+
+        $relatedId = (int) $relatedId;
+
+        $orderedIds = [];
+
+        $fromForm = $get('bills');
+        if (is_array($fromForm)) {
+            foreach ($fromForm as $id) {
+                if ($id === null || $id === '' || $id === false) {
+                    continue;
+                }
+                $orderedIds[] = (int) $id;
+            }
+        }
+
+        if ($orderedIds === [] && request()->filled('bill_ids')) {
+            foreach (explode(',', (string) request()->get('bill_ids')) as $raw) {
+                $raw = trim($raw);
+                if ($raw !== '' && ctype_digit($raw)) {
+                    $orderedIds[] = (int) $raw;
+                }
+            }
+        }
+
+        if ($orderedIds === [] && request()->filled('bill_id')) {
+            $bid = request()->get('bill_id');
+            if (is_numeric($bid)) {
+                $orderedIds[] = (int) $bid;
+            }
+        }
+
+        $orderedIds = array_values(array_unique($orderedIds));
+
+        if ($orderedIds !== []) {
+            $query = static::billsBaseQueryForRelated($relatedType, $relatedId)
+                ->whereIn('id', $orderedIds);
+
+            $models = $query->get()->keyBy('id');
+
+            return collect($orderedIds)
+                ->map(fn (int $id) => $models->get($id))
+                ->filter()
+                ->values();
+        }
+
+        return static::allUnpaidPartialBillsForRelated($relatedType, $relatedId);
+    }
+
+    protected static function billsBaseQueryForRelated(string $relatedType, int $relatedId): Builder
+    {
+        $q = Bill::query();
+
+        if ($relatedType === 'Provider') {
+            $q->whereHas('file', function ($query) use ($relatedId) {
+                $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
+                    $providerQuery->where('providers.id', $relatedId);
+                })
+                    ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
+                        $branchQuery->where('provider_branches.provider_id', $relatedId);
+                    });
+            });
+        } elseif ($relatedType === 'Branch') {
+            $q->whereHas('file', function ($query) use ($relatedId) {
+                $query->where('provider_branch_id', $relatedId);
+            });
+        }
+
+        return $q;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Bill>
+     */
+    protected static function allUnpaidPartialBillsForRelated(string $relatedType, int $relatedId): \Illuminate\Support\Collection
+    {
+        return static::billsBaseQueryForRelated($relatedType, $relatedId)
+            ->whereIn('status', ['Unpaid', 'Partial'])
+            ->get();
+    }
 
     public static function getBills($relatedType, $relatedId)
     {

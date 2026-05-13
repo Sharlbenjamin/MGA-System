@@ -54,17 +54,28 @@ class CreateTransaction extends CreateRecord
             $transaction->attachInvoices($this->invoicesToAttach);
         }
         
-        // Also check for bill_id or invoice_id from the request (for pay bill/invoice buttons)
+        // Also check for bill_id, bill_ids, or invoice_id from the request (for pay bill / Should Be Paid bulk)
         $billId = request()->get('bill_id');
+        $billIdsParam = request()->get('bill_ids');
         $invoiceId = request()->get('invoice_id');
         
         // Debug: Log request parameters
         Log::info('Request parameters:', ['bill_id' => $billId, 'invoice_id' => $invoiceId]);
         
         // Attach the bill if bill_id is provided (from pay bill button)
-        if ($billId && !$transaction->bills()->where('bill_id', $billId)->exists()) {
+        if ($billId && ! $transaction->bills()->where('bill_id', $billId)->exists()) {
             Log::info('Attaching bill from request:', $billId);
             $transaction->attachBills([$billId]);
+        }
+
+        if (empty($this->billsToAttach) && $billIdsParam) {
+            $ids = array_values(array_filter(array_map('intval', explode(',', (string) $billIdsParam))));
+            foreach ($ids as $id) {
+                if ($id && ! $transaction->bills()->where('bill_id', $id)->exists()) {
+                    Log::info('Attaching bill from bill_ids request:', $id);
+                    $transaction->attachBills([$id]);
+                }
+            }
         }
         
         // Attach the invoice if invoice_id is provided (from pay invoice button)

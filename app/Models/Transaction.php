@@ -169,11 +169,16 @@ class Transaction extends Model
 
     public function calculateBankCharges()
     {
-        // Calculate total paid amount from all attached invoices
-        $totalPaidAmount = $this->invoices()
+        // Sum amounts applied to invoices and bills (both use amount_paid on the pivot).
+        $totalPaidAmount = (float) $this->invoices()
             ->withPivot('amount_paid')
             ->get()
-            ->sum('pivot.amount_paid');
+            ->sum(fn ($invoice) => (float) ($invoice->pivot->amount_paid ?? 0));
+
+        $totalPaidAmount += (float) $this->bills()
+            ->withPivot('amount_paid')
+            ->get()
+            ->sum(fn ($bill) => (float) ($bill->pivot->amount_paid ?? 0));
 
         // Update each invoice's paid_amount
         $this->invoices()->each(function ($invoice) {
@@ -185,7 +190,7 @@ class Transaction extends Model
             $invoice->checkStatus();
         });
 
-        // Bank charges are the difference between transaction amount and total paid
+        // Bank charges = difference between what left the account and what was allocated to invoices/bills
         $this->bank_charges = abs($this->amount - $totalPaidAmount);
         $this->save();
     }

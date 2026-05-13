@@ -48,7 +48,10 @@ class TransactionRelationManager extends RelationManager
                     ->openUrlInNewTab()
                     ->color('info'),
             ])
-            ->actions([])
+            ->actions([
+                Tables\Actions\EditAction::make()
+                    ->url(fn (Transaction $record): string => route('filament.admin.resources.transactions.edit', $record->id)),
+            ])
             ->bulkActions([]);
     }
 }

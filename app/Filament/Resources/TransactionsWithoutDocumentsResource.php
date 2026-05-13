@@ -155,8 +155,10 @@ class TransactionsWithoutDocumentsResource extends Resource
                             return 'Error: ' . $e->getMessage();
                         }
                     })
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(true, function (Builder $query, string $search): void {
+                        static::applyRelatedPartySearchConstraint($query, $search);
+                    })
+                    ->sortable(false),
                 Tables\Columns\TextColumn::make('related_type')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -316,6 +318,57 @@ class TransactionsWithoutDocumentsResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Global search for the computed "Provider / Client" column (not a database column).
+     */
+    protected static function applyRelatedPartySearchConstraint(Builder $query, string $search): void
+    {
+        $like = '%' . addcslashes($search, '%_\\') . '%';
+
+        $query->where(function (Builder $q) use ($like): void {
+            $q->where(function (Builder $sub) use ($like): void {
+                $sub->where('transactions.related_type', 'Provider')
+                    ->whereExists(function ($exists) use ($like): void {
+                        $exists->selectRaw('1')
+                            ->from('providers')
+                            ->whereColumn('providers.id', 'transactions.related_id')
+                            ->where('providers.name', 'like', $like);
+                    });
+            })
+                ->orWhere(function (Builder $sub) use ($like): void {
+                    $sub->where('transactions.related_type', 'Branch')
+                        ->whereExists(function ($exists) use ($like): void {
+                            $exists->selectRaw('1')
+                                ->from('provider_branches')
+                                ->leftJoin('providers', 'providers.id', '=', 'provider_branches.provider_id')
+                                ->whereColumn('provider_branches.id', 'transactions.related_id')
+                                ->where(function ($w) use ($like): void {
+                                    $w->where('providers.name', 'like', $like)
+                                        ->orWhere('provider_branches.branch_name', 'like', $like);
+                                });
+                        });
+                })
+                ->orWhere(function (Builder $sub) use ($like): void {
+                    $sub->where('transactions.related_type', 'Client')
+                        ->whereExists(function ($exists) use ($like): void {
+                            $exists->selectRaw('1')
+                                ->from('clients')
+                                ->whereColumn('clients.id', 'transactions.related_id')
+                                ->where('clients.company_name', 'like', $like);
+                        });
+                })
+                ->orWhere(function (Builder $sub) use ($like): void {
+                    $sub->where('transactions.related_type', 'Patient')
+                        ->whereExists(function ($exists) use ($like): void {
+                            $exists->selectRaw('1')
+                                ->from('patients')
+                                ->whereColumn('patients.id', 'transactions.related_id')
+                                ->where('patients.name', 'like', $like);
+                        });
+                });
+        });
     }
 
     public static function getPages(): array
