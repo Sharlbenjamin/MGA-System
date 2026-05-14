@@ -278,6 +278,7 @@ class TransactionResource extends Resource
                             ),
                         
                         Forms\Components\Placeholder::make('provider_reason_display')
+                            ->key('transaction_form_outflow_provider_reason')
                             ->label('Transaction Reason')
                             ->content(fn (callable $get) => Bill::formatPaymentReasonSentence(static::resolveBillsForPaymentReason($get)))
                             ->hint('Use the clipboard icon to copy')
