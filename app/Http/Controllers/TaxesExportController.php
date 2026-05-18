@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -60,8 +61,14 @@ class TaxesExportController extends Controller
                 'patient.client.gopContact.country',
             ])
             ->where('status', 'Paid')
-            ->whereBetween('payment_date', [$startDate, $endDate])
-            ->orderBy('payment_date')
+            ->where(function (Builder $query) use ($startDate, $endDate) {
+                $query->whereBetween('payment_date', [$startDate, $endDate])
+                    ->orWhere(function (Builder $fallbackQuery) use ($startDate, $endDate) {
+                        $fallbackQuery->whereNull('payment_date')
+                            ->whereBetween('invoice_date', [$startDate, $endDate]);
+                    });
+            })
+            ->orderByRaw('COALESCE(payment_date, invoice_date)')
             ->get();
 
         $paidInvoiceFileIds = $invoices

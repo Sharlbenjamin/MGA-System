@@ -252,7 +252,13 @@ class ListTaxes extends ListRecords
 
         $paidInvoiceFileIds = Invoice::query()
             ->where('status', 'Paid')
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->where(function (Builder $query) use ($startDate, $endDate) {
+                $query->whereBetween('payment_date', [$startDate, $endDate])
+                    ->orWhere(function (Builder $fallbackQuery) use ($startDate, $endDate) {
+                        $fallbackQuery->whereNull('payment_date')
+                            ->whereBetween('invoice_date', [$startDate, $endDate]);
+                    });
+            })
             ->whereNotNull('file_id')
             ->distinct()
             ->pluck('file_id');
@@ -260,7 +266,13 @@ class ListTaxes extends ListRecords
         // Calculate totals
         $invoiceTotal = Invoice::query()
             ->where('status', 'Paid')
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->where(function (Builder $query) use ($startDate, $endDate) {
+                $query->whereBetween('payment_date', [$startDate, $endDate])
+                    ->orWhere(function (Builder $fallbackQuery) use ($startDate, $endDate) {
+                        $fallbackQuery->whereNull('payment_date')
+                            ->whereBetween('invoice_date', [$startDate, $endDate]);
+                    });
+            })
             ->sum('total_amount');
         $billTotal = Bill::query()
             ->whereBetween('bill_date', [$startDate, $endDate])
@@ -465,7 +477,13 @@ class ListTaxes extends ListRecords
 
         $paidInvoiceFileIds = Invoice::query()
             ->where('status', 'Paid')
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->where(function (Builder $query) use ($startDate, $endDate) {
+                $query->whereBetween('payment_date', [$startDate, $endDate])
+                    ->orWhere(function (Builder $fallbackQuery) use ($startDate, $endDate) {
+                        $fallbackQuery->whereNull('payment_date')
+                            ->whereBetween('invoice_date', [$startDate, $endDate]);
+                    });
+            })
             ->whereNotNull('file_id')
             ->select('file_id')
             ->distinct();
@@ -473,7 +491,13 @@ class ListTaxes extends ListRecords
         // Query only paid invoices for the selected period
         $invoices = Invoice::query()
             ->where('status', 'Paid')
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->where(function (Builder $query) use ($startDate, $endDate) {
+                $query->whereBetween('payment_date', [$startDate, $endDate])
+                    ->orWhere(function (Builder $fallbackQuery) use ($startDate, $endDate) {
+                        $fallbackQuery->whereNull('payment_date')
+                            ->whereBetween('invoice_date', [$startDate, $endDate]);
+                    });
+            })
             ->select([
                 'id',
                 'name as document_number',

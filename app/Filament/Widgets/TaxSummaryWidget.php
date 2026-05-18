@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Bill;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 
@@ -38,14 +39,27 @@ class TaxSummaryWidget extends BaseWidget
 
         $paidInvoiceFileIds = Invoice::query()
             ->where('status', 'Paid')
-            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->where(function (Builder $query) use ($startDate, $endDate) {
+                $query->whereBetween('payment_date', [$startDate, $endDate])
+                    ->orWhere(function (Builder $fallbackQuery) use ($startDate, $endDate) {
+                        $fallbackQuery->whereNull('payment_date')
+                            ->whereBetween('invoice_date', [$startDate, $endDate]);
+                    });
+            })
             ->whereNotNull('file_id')
             ->distinct()
             ->pluck('file_id');
 
         // Calculate totals
-        $invoiceTotal = Invoice::whereBetween('payment_date', [$startDate, $endDate])
+        $invoiceTotal = Invoice::query()
             ->where('status', 'Paid')
+            ->where(function (Builder $query) use ($startDate, $endDate) {
+                $query->whereBetween('payment_date', [$startDate, $endDate])
+                    ->orWhere(function (Builder $fallbackQuery) use ($startDate, $endDate) {
+                        $fallbackQuery->whereNull('payment_date')
+                            ->whereBetween('invoice_date', [$startDate, $endDate]);
+                    });
+            })
             ->sum('total_amount');
         $billTotal = Bill::whereBetween('bill_date', [$startDate, $endDate])
             ->whereIn('file_id', $paidInvoiceFileIds)
