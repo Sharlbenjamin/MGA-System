@@ -59,6 +59,7 @@ class TaxesExportController extends Controller
                 'patient.client.financialContact.country',
                 'patient.client.operationContact.country',
                 'patient.client.gopContact.country',
+                'patient.client.country',
             ])
             ->where('status', 'Paid')
             ->where(function (Builder $query) use ($startDate, $endDate) {
@@ -135,6 +136,7 @@ class TaxesExportController extends Controller
                     'file.patient.client.financialContact.country',
                     'file.patient.client.operationContact.country',
                     'file.patient.client.gopContact.country',
+                    'file.patient.client.country',
                 ])
                 ->whereBetween('bill_date', [$startDate, $endDate])
                 ->whereIn('file_id', $paidInvoiceFileIds)
@@ -142,7 +144,7 @@ class TaxesExportController extends Controller
                 ->get();
 
             foreach ($bills as $bill) {
-                $amount = (float) $bill->total_amount;
+                $amount = $this->resolveBillAmount($bill);
                 $file = $bill->file;
                 $clientCountry = $this->resolveClientCountryFromFile($file);
 
@@ -159,7 +161,7 @@ class TaxesExportController extends Controller
                     $file?->patient?->name ?? '-',
                     round($amount, 2),
                     'N/A',
-                    'N/A',
+                    round($amount, 2),
                     'N/A',
                     'Bill',
                     '',
@@ -178,7 +180,7 @@ class TaxesExportController extends Controller
                 ->get();
 
             foreach ($outTransactions as $transaction) {
-                $amount = (float) $transaction->amount;
+                $amount = $this->resolveTransactionAmount($transaction);
 
                 $rows[] = [
                     'Payment',
@@ -191,7 +193,7 @@ class TaxesExportController extends Controller
                     '-',
                     round($amount, 2),
                     'N/A',
-                    'N/A',
+                    round($amount, 2),
                     'N/A',
                     'Transaction',
                     $transaction->notes ?? '',
@@ -255,30 +257,24 @@ class TaxesExportController extends Controller
 
     private function resolveClientCountryFromInvoice(Invoice $invoice): string
     {
-        return $this->resolveClientCountryFromClient(
-            $invoice->patient?->client,
-            $invoice->patient?->country?->name
-        );
+        return $this->resolveClientCountryFromClient($invoice->patient?->client);
     }
 
     private function resolveClientCountryFromFile($file): string
     {
-        return $this->resolveClientCountryFromClient(
-            $file?->patient?->client,
-            $file?->patient?->country?->name
-        );
+        return $this->resolveClientCountryFromClient($file?->patient?->client);
     }
 
-    private function resolveClientCountryFromClient($client, ?string $fallback = null): string
+    private function resolveClientCountryFromClient($client): string
     {
         if (!$client) {
-            return $fallback ?: '-';
+            return '-';
         }
 
         return $client->financialContact?->country?->name
             ?? $client->operationContact?->country?->name
             ?? $client->gopContact?->country?->name
-            ?? $fallback
+            ?? $client->country?->name
             ?? '-';
     }
 
@@ -356,6 +352,29 @@ class TaxesExportController extends Controller
         }
 
         return $fileFeeAmount / (1 + $ivaRate);
+    }
+
+    private function resolveBillAmount(Bill $bill): float
+    {
+        if ($bill->total_amount !== null) {
+            return (float) $bill->total_amount;
+        }
+
+        // Fallback for legacy/incomplete bills where total_amount was not persisted.
+        if ($bill->relationLoaded('items')) {
+            return (float) $bill->items->sum('amount');
+        }
+
+        return (float) $bill->items()->sum('amount');
+    }
+
+    private function resolveTransactionAmount(object $transaction): float
+    {
+        if (isset($transaction->amount) && $transaction->amount !== null) {
+            return (float) $transaction->amount;
+        }
+
+        return 0.0;
     }
 
     public function exportZip(Request $request)
