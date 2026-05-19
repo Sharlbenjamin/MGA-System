@@ -100,13 +100,14 @@ class TaxesExportController extends Controller
         foreach ($invoices as $invoice) {
             $fileFeeAmount = $this->resolveFileFeeAmountForFile($invoice->file);
             $clientCountry = $this->resolveClientCountryFromInvoice($invoice);
+            $invoiceAmount = (float) ($invoice->total_amount ?? 0);
             $amount = $fileFeeAmount !== null
                 ? round($this->resolveAmountBeforeIva($fileFeeAmount, $ivaRate), 2)
-                : 'N/A';
+                : round($invoiceAmount, 2);
             // Business rule: File fee is the total after IVA.
             $totalAfterIva = $fileFeeAmount !== null
                 ? round($fileFeeAmount, 2)
-                : 'N/A';
+                : round($invoiceAmount, 2);
 
             $rows[] = [
                 'Invoice',
@@ -145,6 +146,7 @@ class TaxesExportController extends Controller
 
             foreach ($bills as $bill) {
                 $amount = $this->resolveBillAmount($bill);
+                $exportBillAmount = $amount > 0 ? round($amount, 2) : 0;
                 $file = $bill->file;
                 $clientCountry = $this->resolveClientCountryFromFile($file);
 
@@ -159,9 +161,9 @@ class TaxesExportController extends Controller
                     $clientCountry,
                     $this->resolveNifFromFile($file, $nifSource),
                     $file?->patient?->name ?? '-',
-                    round($amount, 2),
+                    $exportBillAmount,
                     'N/A',
-                    round($amount, 2),
+                    $exportBillAmount,
                     'N/A',
                     'Bill',
                     '',
