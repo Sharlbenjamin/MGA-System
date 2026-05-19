@@ -180,6 +180,10 @@ class FilesWithoutInvoicesResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('client')
+                    ->relationship('patient.client', 'company_name')
+                    ->label('Client')
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'New' => 'New',
