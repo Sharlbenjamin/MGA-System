@@ -181,9 +181,15 @@ class FilesWithoutInvoicesResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('client')
-                    ->relationship('patient.client', 'company_name')
+                    ->relationship(
+                        'patient.client',
+                        'company_name',
+                        fn ($query) => $query->where('status', 'Active')
+                    )
                     ->label('Client')
-                    ->searchable(),
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'New' => 'New',
