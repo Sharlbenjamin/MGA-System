@@ -81,15 +81,15 @@ class RequestAppointment extends EditRecord
 
                 Section::make('Available Branches')
                     ->description('Select the provider branches you want to send appointment requests to')
-                    ->key(fn ($get) => 'branches-' . ($get('city_filter') ?? 'default'))
-                    ->schema([
+                    ->key(fn (Get $get) => 'branches-' . ($get('city_filter') ?? 'default'))
+                    ->schema(fn (Get $get): array => [
                         Grid::make(12)
                             ->schema([
                                 Checkbox::make('select_all_branches')
                                     ->label('')
                                     ->live()
                                     ->afterStateUpdated(function ($state, $set, $get) {
-                                        $cityFilter = $get('city_filter');
+                                        $cityFilter = filled($get('city_filter')) ? (int) $get('city_filter') : null;
                                         $branches = $this->getDisplayedProviderBranchesForRequest($cityFilter);
                                         $branchIds = $branches->pluck('id')->toArray();
                                         if ($state) {
@@ -117,7 +117,7 @@ class RequestAppointment extends EditRecord
                                 \Filament\Forms\Components\Placeholder::make('header_request')->label('Request')->content('')->columnSpan(1),
                             ])
                             ->extraAttributes(['class' => 'bg-gray-50 border-b-2 border-gray-200 font-semibold text-sm']),
-                        ...$this->getBranchRows(),
+                        ...$this->getBranchRows(filled($get('city_filter')) ? (int) $get('city_filter') : null),
                         Hidden::make('selected_branches')
                             ->default([])
                             ->rules(['array']),
@@ -236,9 +236,8 @@ class RequestAppointment extends EditRecord
         return 'Request Appointment';
     }
 
-    protected function getBranchRows(): array
+    protected function getBranchRows(?int $cityFilter = null): array
     {
-        $cityFilter = $this->data['city_filter'] ?? null;
         $sortedBranches = $this->getDisplayedProviderBranchesForRequest($cityFilter);
         $rows = [];
         foreach ($sortedBranches as $branch) {
@@ -257,7 +256,9 @@ class RequestAppointment extends EditRecord
                                 $selectedBranches = array_values(array_filter($selectedBranches, fn ($id) => $id != $branch->id));
                             }
                             $set('selected_branches', $selectedBranches);
-                            $displayedBranches = $this->getDisplayedProviderBranchesForRequest($get('city_filter'));
+                            $displayedBranches = $this->getDisplayedProviderBranchesForRequest(
+                                filled($get('city_filter')) ? (int) $get('city_filter') : null
+                            );
                             $totalBranches = $displayedBranches->count();
                             $selectedCount = count($selectedBranches);
                             $set('select_all_branches', $selectedCount === $totalBranches && $totalBranches > 0);
@@ -339,31 +340,12 @@ class RequestAppointment extends EditRecord
 
     protected function getEligibleProviderBranches($record, $cityId = null)
     {
-        $serviceTypeId = $record->service_type_id;
-        $filterCityId = $cityId ?? $record->city_id;
-        if ($record->service_type_id == 2) {
-            return \App\Models\ProviderBranch::query()
-                ->where('status', 'Active')
-                ->whereHas('services', fn ($q) => $q->where('service_type_id', $serviceTypeId))
-                ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
-                ->get();
-        }
-        if (!$record->country_id) {
-            return \App\Models\ProviderBranch::query()
-                ->where('status', 'Active')
-                ->whereHas('services', fn ($q) => $q->where('service_type_id', $serviceTypeId))
-                ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
-                ->get();
-        }
-        $query = \App\Models\ProviderBranch::query()
-            ->where('status', 'Active')
-            ->whereHas('services', fn ($q) => $q->where('service_type_id', $serviceTypeId))
-            ->whereHas('provider', fn ($q) => $q->where('country_id', $record->country_id))
-            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact']);
-        if ($filterCityId) {
-            $query->where(fn ($q) => $q->where('all_country', true)->orWhereHas('cities', fn ($q2) => $q2->where('cities.id', $filterCityId)));
-        }
-        return $query->get();
+        $filterCityId = filled($cityId) ? (int) $cityId : $record->city_id;
+
+        return \App\Models\ProviderBranch::query()
+            ->eligibleForFile($record->service_type_id, $record->country_id, $filterCityId)
+            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
+            ->get();
     }
 
     protected function getBranchContactInfo($branch): string

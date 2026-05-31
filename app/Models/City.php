@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class City extends Model
 {
@@ -42,6 +44,64 @@ class City extends Model
         'clinic',
         'cost',
     ];
+
+    public static function normalizeName(string $name): string
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name));
+        $name = str_replace(["'", '´', '`', 'ʼ', '′', '‘', '’', '"'], "'", $name);
+
+        return strtolower(Str::ascii($name));
+    }
+
+    public static function findDuplicate(
+        string $name,
+        ?int $countryId = null,
+        ?int $provinceId = null,
+        ?int $ignoreId = null,
+    ): ?self {
+        if (blank($name) || ! $countryId) {
+            return null;
+        }
+
+        $normalized = static::normalizeName($name);
+
+        return static::query()
+            ->where('country_id', $countryId)
+            ->when($provinceId, fn ($query) => $query->where('province_id', $provinceId))
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->get()
+            ->first(fn (self $city) => static::normalizeName($city->name) === $normalized);
+    }
+
+    public static function findSimilar(
+        string $name,
+        ?int $countryId = null,
+        ?int $provinceId = null,
+        int $limit = 10,
+    ): Collection {
+        if (blank($name) || strlen($name) < 2 || ! $countryId) {
+            return collect();
+        }
+
+        $normalized = static::normalizeName($name);
+
+        return static::query()
+            ->with('province')
+            ->where('country_id', $countryId)
+            ->when($provinceId, fn ($query) => $query->where('province_id', $provinceId))
+            ->where('name', 'like', '%' . $name . '%')
+            ->orderBy('name')
+            ->limit($limit * 5)
+            ->get()
+            ->filter(function (self $city) use ($normalized) {
+                $cityNormalized = static::normalizeName($city->name);
+
+                return str_contains($cityNormalized, $normalized)
+                    || str_contains($normalized, $cityNormalized);
+            })
+            ->take($limit)
+            ->values();
+    }
 
     public function country(): BelongsTo
     {

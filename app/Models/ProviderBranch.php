@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -210,6 +211,39 @@ class ProviderBranch extends Model
     public function cities()
     {
         return $this->belongsToMany(City::class, 'branch_cities');
+    }
+
+    /**
+     * Branches eligible for a file based on service type, provider country, and city coverage.
+     * Telemedicine (service type 2) ignores location filters.
+     */
+    public function scopeEligibleForFile(
+        Builder $query,
+        ?int $serviceTypeId,
+        ?int $countryId,
+        ?int $cityId = null,
+    ): Builder {
+        $query->where('status', 'Active');
+
+        if ($serviceTypeId) {
+            $query->whereHas('services', fn (Builder $q) => $q->where('service_type_id', $serviceTypeId));
+        }
+
+        if ((int) $serviceTypeId === 2 || ! filled($countryId)) {
+            return $query;
+        }
+
+        $resolvedCityId = filled($cityId) ? (int) $cityId : null;
+
+        $query->whereHas('provider', fn (Builder $q) => $q->where('country_id', (int) $countryId));
+
+        if ($resolvedCityId) {
+            $query->where(fn (Builder $q) => $q
+                ->where('all_country', true)
+                ->orWhereHas('cities', fn (Builder $q2) => $q2->where('cities.id', $resolvedCityId)));
+        }
+
+        return $query;
     }
 
     public function branchCities()

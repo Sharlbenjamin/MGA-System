@@ -388,9 +388,11 @@ class FileResource extends Resource
                         'service_time' => $record->service_time,
                         'status' => $record->status,
                         'provider_branch_id' => $record->provider_branch_id,
+                        'country_id' => $record->country_id,
                         'city_id' => $record->city_id,
                     ])
                     ->form([
+                        Hidden::make('country_id'),
                         Hidden::make('city_id'),
                         Select::make('service_type_id')
                             ->label('Service Type')
@@ -425,14 +427,11 @@ class FileResource extends Resource
                             ->preload()
                             ->nullable()
                             ->options(fn ($get) => \App\Models\ProviderBranch::query()
-                                ->when($get('service_type_id'), function ($query) use ($get) {
-                                    $query->whereHas('services', function ($q) use ($get) {
-                                        $q->where('service_type_id', $get('service_type_id'));
-                                    });
-                                })
-                                ->when($get('city_id') && (int) $get('service_type_id') !== 2, function ($query) use ($get) {
-                                    $query->whereHas('branchCities', fn ($q) => $q->where('city_id', $get('city_id')));
-                                })
+                                ->eligibleForFile(
+                                    $get('service_type_id') ? (int) $get('service_type_id') : null,
+                                    filled($get('country_id')) ? (int) $get('country_id') : null,
+                                    filled($get('city_id')) ? (int) $get('city_id') : null,
+                                )
                                 ->orderBy('priority', 'asc')
                                 ->pluck('branch_name', 'id')),
                     ])

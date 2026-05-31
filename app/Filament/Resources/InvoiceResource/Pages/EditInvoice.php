@@ -443,10 +443,13 @@ class EditInvoice extends EditRecord
                             Mail::mailer($mailer)->to($recipientEmail)->send(
                                 new SendInvoiceToClient($invoice, $attachmentsArray, $emailBody)
                             );
+
+                            $invoice->update(['status' => 'Sent']);
+                            $this->record->refresh();
                             
                             Notification::make()
                                 ->title('Invoice Sent')
-                                ->body('Invoice has been sent to the client successfully.')
+                                ->body('Invoice has been sent to the client and status updated to Sent.')
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {

@@ -1741,57 +1741,12 @@ class ViewFile extends ViewRecord
      */
     protected function getEligibleProviderBranches($record, $cityId = null)
     {
-        $serviceTypeId = $record->service_type_id;
-        
-        // Use city filter from parameter, fallback to file's city
-        $filterCityId = $cityId ?? $record->city_id;
-        
-        // If service type is 2 (telemedicine), ignore city filters
-        if ($record->service_type_id == 2) {
-            return \App\Models\ProviderBranch::query()
-                ->where('status', 'Active')
-                ->whereHas('services', function ($q) use ($serviceTypeId) {
-                    $q->where('service_type_id', $serviceTypeId);
-                })
-                ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
-                ->get();
-        }
-        
-        // If no country is assigned, show all branches with matching service type
-        if (!$record->country_id) {
-            return \App\Models\ProviderBranch::query()
-                ->where('status', 'Active')
-                ->whereHas('services', function ($q) use ($serviceTypeId) {
-                    $q->where('service_type_id', $serviceTypeId);
-                })
-                ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
-                ->get();
-        }
-        
-        // Filter branches by city (direct or via pivot) or all_country
-        $query = \App\Models\ProviderBranch::query()
-            ->where('status', 'Active')
-            ->whereHas('services', function ($q) use ($serviceTypeId) {
-                $q->where('service_type_id', $serviceTypeId);
-            })
-            ->whereHas('provider', function ($q) use ($record) {
-                // Filter by country - provider must be in the file's country
-                $q->where('country_id', $record->country_id);
-            })
-            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact']);
-        
-        // Filter by city if provided
-        if ($filterCityId) {
-            $query->where(function ($q) use ($filterCityId) {
-                // Filter by city - branch serves this city in any way
-                $q->where('all_country', true)
-                  // OR branches assigned to this city via many-to-many relationship (branch_cities table)
-                  ->orWhereHas('cities', fn ($q) => $q->where('cities.id', $filterCityId));
-            });
-        }
-        
-        // Don't order here - sorting will be done by distance in getBranchRows
-        return $query->get();
+        $filterCityId = filled($cityId) ? (int) $cityId : $record->city_id;
+
+        return \App\Models\ProviderBranch::query()
+            ->eligibleForFile($record->service_type_id, $record->country_id, $filterCityId)
+            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
+            ->get();
     }
 
     /**
