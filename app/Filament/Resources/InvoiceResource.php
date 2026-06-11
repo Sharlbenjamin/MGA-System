@@ -6,8 +6,10 @@ use App\Filament\Resources\InvoiceResource\Pages;
 use App\Filament\Resources\InvoiceResource\RelationManagers\ItemsRelationManager;
 use App\Filament\Resources\TransactionResource;
 use App\Models\BankAccount;
+use App\Models\Comment;
 use App\Models\Invoice;
 use App\Models\Patient;
+use Illuminate\Support\HtmlString;
 use App\Services\UploadInvoiceToGoogleDrive;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -83,6 +85,33 @@ class InvoiceResource extends Resource
 
                                 return $patient?->client?->comment ?: '-';
                             }),
+
+                        Forms\Components\Placeholder::make('case_last_comment')
+                            ->label('Last Case Comment')
+                            ->content(function (Get $get, ?Invoice $record): HtmlString|string {
+                                $fileId = $get('file_id') ?: $record?->file_id;
+
+                                if (!$fileId) {
+                                    return '-';
+                                }
+
+                                $comment = Comment::query()
+                                    ->where('file_id', $fileId)
+                                    ->with('user:id,name')
+                                    ->latest()
+                                    ->first();
+
+                                if (!$comment) {
+                                    return '-';
+                                }
+
+                                $name = e($comment->user?->name ?? 'Unknown');
+                                $date = $comment->created_at->format('d/m/Y H:i');
+                                $content = nl2br(e($comment->content));
+
+                                return new HtmlString("<span class=\"font-medium\">{$name}</span> <span class=\"text-gray-500 text-xs\">{$date}</span><div class=\"mt-1\">{$content}</div>");
+                            })
+                            ->columnSpanFull(),
 
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')

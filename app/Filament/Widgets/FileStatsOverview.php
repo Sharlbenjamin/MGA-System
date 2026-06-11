@@ -7,11 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use App\Models\File;
-use App\Models\Invoice;
-use App\Models\Bill;
-use App\Models\Transaction;
 use App\Filament\Widgets\Traits\HasDashboardFilters;
-use Carbon\Carbon;
 
 class FileStatsOverview extends  StatsOverviewWidget
 {
@@ -28,48 +24,23 @@ class FileStatsOverview extends  StatsOverviewWidget
     {
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
-        
-        // Current period calculations
-        $revenue = Invoice::whereBetween('invoice_date', [
-            $dateRange['current']['start'],
-            $dateRange['current']['end']
-        ])->sum('total_amount');
-        
-        $cost = Bill::whereBetween('bill_date', [
-            $dateRange['current']['start'],
-            $dateRange['current']['end']
-        ])->sum('total_amount');
-        
-        $expenses = Transaction::where('type', 'Expense')
-            ->whereBetween('date', [
-                $dateRange['current']['start'],
-                $dateRange['current']['end']
-            ])->sum('amount');
 
-        $income = $revenue - $cost;
-        $outflow = $cost + $expenses;
-        $profit = $revenue - $outflow;
+        // Cases created in the period → all their invoices & bills; expenses by transaction date
+        $current = $this->getFileBasedFinancials('current');
+        $revenue = $current['revenue'];
+        $cost = $current['cost'];
+        $expenses = $current['expenses'];
+        $income = $current['income'];
+        $outflow = $current['outflow'];
+        $profit = $current['profit'];
 
-        // Previous period calculations for comparison
-        $previousRevenue = Invoice::whereBetween('invoice_date', [
-            $dateRange['previous']['start'],
-            $dateRange['previous']['end']
-        ])->sum('total_amount');
-        
-        $previousCost = Bill::whereBetween('bill_date', [
-            $dateRange['previous']['start'],
-            $dateRange['previous']['end']
-        ])->sum('total_amount');
-        
-        $previousExpenses = Transaction::where('type', 'Expense')
-            ->whereBetween('date', [
-                $dateRange['previous']['start'],
-                $dateRange['previous']['end']
-            ])->sum('amount');
-
-        $previousIncome = $previousRevenue - $previousCost;
-        $previousOutflow = $previousCost + $previousExpenses;
-        $previousProfit = $previousRevenue - $previousOutflow;
+        $previous = $this->getFileBasedFinancials('previous');
+        $previousRevenue = $previous['revenue'];
+        $previousCost = $previous['cost'];
+        $previousExpenses = $previous['expenses'];
+        $previousIncome = $previous['income'];
+        $previousOutflow = $previous['outflow'];
+        $previousProfit = $previous['profit'];
 
         // Calculate comparisons
         $revenueComparison = $this->calculateComparison($revenue, $previousRevenue);
@@ -79,10 +50,10 @@ class FileStatsOverview extends  StatsOverviewWidget
         $expensesComparison = $this->calculateComparison($expenses, $previousExpenses);
         $outflowComparison = $this->calculateComparison($outflow, $previousOutflow);
 
-        // Chart data
-        $revenueChart = $this->getChartData('invoices', 'invoice_date', 'total_amount');
-        $costChart = $this->getChartData('bills', 'bill_date', 'total_amount');
-        $expensesChart = $this->getChartData('transactions', 'date', 'amount', ['type' => 'Expense']);
+        // Chart data (bucketed by case creation date for revenue/cost, transaction date for expenses)
+        $revenueChart = $this->getFileBasedChartData('revenue');
+        $costChart = $this->getFileBasedChartData('cost');
+        $expensesChart = $this->getExpensesChartData();
 
         $incomeChart = array_map(function($revenueChart, $costChart) {
             return $revenueChart - $costChart;
@@ -149,7 +120,11 @@ class FileStatsOverview extends  StatsOverviewWidget
         $cancelledFilesComparison = $this->calculateComparison($cancelledFiles, $previousCancelledFiles);
         $totalFilesComparison = $this->calculateComparison($totalFiles, $previousTotalFiles);
 
-        $periodLabel = $filters['duration'] === 'Month' ? 'Month' : 'Year';
+        $periodLabel = match ($filters['duration']) {
+            'Day' => 'Day',
+            'Month' => 'Month',
+            default => 'Year',
+        };
 
         return [
             Stat::make("Revenue this {$periodLabel}", '€' . number_format($revenue))
@@ -203,44 +178,6 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->descriptionIcon($totalFilesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($totalFilesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($totalFilesComparison)),
         ];
-    }
-
-    protected function getChartData($table, $dateField, $amountField, $additionalConditions = []): array
-    {
-        $filters = $this->getDashboardFilters();
-        $dateRange = $this->getDateRange();
-        
-        $query = \DB::table($table)
-            ->whereBetween($dateField, [
-                $dateRange['current']['start'],
-                $dateRange['current']['end']
-            ]);
-            
-        foreach ($additionalConditions as $field => $value) {
-            $query->where($field, $value);
-        }
-        
-        if ($filters['duration'] === 'Day') {
-            $data = $query->selectRaw('HOUR(' . $dateField . ') as hour, SUM(' . $amountField . ') as total')
-                ->groupBy('hour')
-                ->orderBy('hour')
-                ->pluck('total')
-                ->toArray();
-        } elseif ($filters['duration'] === 'Month') {
-            $data = $query->selectRaw('DATE(' . $dateField . ') as date, SUM(' . $amountField . ') as total')
-                ->groupBy('date')
-                ->orderBy('date')
-                ->pluck('total')
-                ->toArray();
-        } else {
-            $data = $query->selectRaw('DATE_FORMAT(' . $dateField . ', "%Y-%m") as date, SUM(' . $amountField . ') as total')
-                ->groupBy('date')
-                ->orderBy('date')
-                ->pluck('total')
-                ->toArray();
-        }
-        
-        return $data;
     }
 
     protected function hasFiltersForm(): bool
