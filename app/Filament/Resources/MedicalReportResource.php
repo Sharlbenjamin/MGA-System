@@ -20,6 +20,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Get;
+use App\Models\File;
+use App\Services\DocumentPathResolver;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\BelongsToSelect;
 use Filament\Facades\Filament;
@@ -44,7 +47,8 @@ class MedicalReportResource extends Resource
                     ->label('File')
                     ->required()
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->live(),
                 Forms\Components\DatePicker::make('date')
                     ->label('Date')
                     ->required(),
@@ -93,7 +97,18 @@ class MedicalReportResource extends Resource
                     ->maxSize(10240) // 10MB
                     ->nullable()
                     ->disk('public')
-                    ->directory('medical-reports')
+                    ->directory(function (Get $get) {
+                        $fileId = $get('file_id');
+                        if (!$fileId) {
+                            return 'medical-reports';
+                        }
+
+                        $file = File::find($fileId);
+
+                        return $file
+                            ? app(DocumentPathResolver::class)->dirFor($file, 'medical_reports')
+                            : 'medical-reports';
+                    })
                     ->visibility('public')
                     ->helperText('Upload the medical report document (PDF or image)')
                     ->storeFileNamesIn('original_filename')

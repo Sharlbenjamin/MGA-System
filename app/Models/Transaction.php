@@ -415,7 +415,7 @@ class Transaction extends Model
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'transaction',
             'id' => $this->id
-        ], absolute: false);
+        ]);
     }
 
     /**
@@ -433,6 +433,6 @@ class Transaction extends Model
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'transaction',
             'id' => $this->id
-        ], absolute: false);
+        ]);
     }
 }

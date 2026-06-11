@@ -84,7 +84,7 @@
             @endif
             @if($medicalReportWithDocument)
                 <div>
-                    <a href="{{ $medicalReportWithDocument->getDocumentSignedUrl() }}" 
+                    <a href="{{ asset('storage/' . $medicalReportWithDocument->document_path) }}" 
                        target="_blank"
                        class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium transition-colors duration-200">
                         View MR

@@ -139,7 +139,7 @@ class SendInvoiceToClient extends Mailable
             }
         }
 
-        // Attach medical report PDF if selected - double check attachmentTypes is array
+        // Attach medical report if selected - double check attachmentTypes is array
         if (is_array($attachmentTypes) && in_array('medical_report', $attachmentTypes) && $file) {
             $medicalReports = $file->medicalReports()->whereNotNull('document_path')->get();
             foreach ($medicalReports as $report) {
@@ -148,9 +148,10 @@ class SendInvoiceToClient extends Mailable
                     if (file_exists($reportPath)) {
                         $patientName = $file->patient->name ?? 'Unknown';
                         $mgaRef = $file->mga_reference ?? '';
+                        $extension = strtolower(pathinfo($report->document_path, PATHINFO_EXTENSION) ?: 'pdf');
                         $mail->attach($reportPath, [
-                            'as' => 'Medical Report for ' . $patientName . ' | ' . $mgaRef . '.pdf',
-                            'mime' => 'application/pdf',
+                            'as' => 'Medical Report for ' . $patientName . ' | ' . $mgaRef . '.' . $extension,
+                            'mime' => Storage::disk('public')->mimeType($report->document_path) ?: 'application/octet-stream',
                         ]);
                     }
                 }

@@ -11,6 +11,9 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\MedicalReport;
+use App\Services\DocumentPathResolver;
+use App\Services\UploadMedicalReportToGoogleDrive;
+use App\Services\GoogleDriveFolderService;
 
 class EditMedicalReport extends EditRecord
 {
@@ -34,7 +37,7 @@ class EditMedicalReport extends EditRecord
                         ->maxSize(10240) // 10MB
                         ->required()
                         ->disk('public')
-                        ->directory('medical-reports')
+                        ->directory(fn (MedicalReport $record) => app(DocumentPathResolver::class)->dirFor($record->file, 'medical_reports'))
                         ->visibility('public')
                         ->helperText('Upload the medical report document (PDF or image)')
                         ->storeFileNamesIn('original_filename')
@@ -88,15 +91,39 @@ class EditMedicalReport extends EditRecord
                                     ->send();
                                 return;
                             }
-                            
-                            // Update the medical report with the file path
-                            $record->document_path = $uploadedFile;
+
+                            $record->loadMissing('file.patient');
+
+                            $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION) ?: 'pdf';
+                            $fileName = 'Medical Report ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
+
+                            $resolver = app(DocumentPathResolver::class);
+                            $localPath = $resolver->ensurePathFor($record->file, 'medical_reports', $fileName);
+                            Storage::disk('public')->put($localPath, $content);
+
+                            $record->document_path = $localPath;
+
+                            if ($uploadedFile !== $localPath) {
+                                try {
+                                    Storage::disk('public')->delete($uploadedFile);
+                                } catch (\Exception $e) {
+                                    Log::warning('Could not delete temporary medical report file', ['path' => $uploadedFile, 'error' => $e->getMessage()]);
+                                }
+                            }
+
+                            $uploadService = new UploadMedicalReportToGoogleDrive(new GoogleDriveFolderService());
+                            $uploadResult = $uploadService->uploadMedicalReportToGoogleDrive($content, $fileName, $record);
+
+                            if ($uploadResult) {
+                                Log::info('Medical report uploaded to Google Drive successfully:', ['result' => $uploadResult]);
+                            }
+
                             $record->save();
-                            
+
                             Notification::make()
                                 ->success()
                                 ->title('Medical report document uploaded successfully')
-                                ->body('Medical report document has been uploaded.')
+                                ->body('Medical report document has been saved locally.')
                                 ->send();
                         } catch (\Exception $e) {
                             Log::error('Error uploading medical report file:', [
