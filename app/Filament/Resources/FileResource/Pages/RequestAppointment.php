@@ -18,16 +18,22 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\Concerns\InteractsWithRecord;
+use Filament\Resources\Pages\Page;
 use Illuminate\Support\Facades\Auth;
 
 /**
  * Full-page "Request Appointment" view for a file.
  * Reuses the same form and logic as the previous slide-over modal.
  */
-class RequestAppointment extends EditRecord
+class RequestAppointment extends Page implements HasForms
 {
+    use InteractsWithForms;
+    use InteractsWithRecord;
+
     protected static string $resource = FileResource::class;
 
     protected static string $view = 'filament.resources.file-resource.pages.request-appointment';
@@ -51,6 +57,15 @@ class RequestAppointment extends EditRecord
     public bool $distancesLoading = false;
 
     public bool $distancesLoaded = false;
+
+    public ?array $data = [];
+
+    protected function getForms(): array
+    {
+        return [
+            'form',
+        ];
+    }
 
     public function mount(int|string $record): void
     {
@@ -112,7 +127,7 @@ class RequestAppointment extends EditRecord
                         \Filament\Forms\Components\Repeater::make('custom_emails')
                             ->label('Additional Email Recipients')
                             ->schema([
-                                TextInput::make('email')->label('Email Address')->email()->required()->placeholder('example@email.com'),
+                                TextInput::make('email')->label('Email Address')->email()->nullable()->placeholder('example@email.com'),
                             ])
                             ->addActionLabel('Add Email')
                             ->reorderable(false)
@@ -121,7 +136,8 @@ class RequestAppointment extends EditRecord
                             ->defaultItems(0),
                     ])
                     ->collapsible(),
-            ]);
+            ])
+            ->statePath('data');
     }
 
     protected function fillForm(): void
@@ -248,11 +264,26 @@ class RequestAppointment extends EditRecord
     public function sendRequest(array $confirmationData = []): void
     {
         $this->authorizeAccess();
-        $data = $this->form->getState();
+
+        try {
+            $data = $this->form->getState();
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            Notification::make()
+                ->title('Please fix the form')
+                ->body(collect($exception->errors())->flatten()->first() ?? 'Some fields are invalid.')
+                ->danger()
+                ->send();
+
+            throw $exception;
+        }
 
         $selectedBranchIds = array_map('intval', $this->selectedBranchIds);
         $data['selected_branches'] = $selectedBranchIds;
-        $customEmails = collect($data['custom_emails'] ?? [])->pluck('email')->filter();
+        $data['custom_emails'] = collect($data['custom_emails'] ?? [])
+            ->filter(fn (array $item): bool => filled($item['email'] ?? null))
+            ->values()
+            ->all();
+        $customEmails = collect($data['custom_emails'])->pluck('email')->filter();
         if (empty($selectedBranchIds) && $customEmails->isEmpty()) {
             Notification::make()
                 ->title('No Recipients Selected')
@@ -281,7 +312,7 @@ class RequestAppointment extends EditRecord
         $this->redirect(FileResource::getUrl('view', ['record' => $this->getRecord()]), navigate: true);
     }
 
-    protected function getFormActions(): array
+    protected function getHeaderActions(): array
     {
         $hasExistingOutGop = $this->hasExistingOutGop();
 
