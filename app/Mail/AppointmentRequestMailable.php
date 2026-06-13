@@ -5,11 +5,13 @@ namespace App\Mail;
 use App\Models\File;
 use App\Models\Gop;
 use App\Models\ProviderBranch;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 
 class AppointmentRequestMailable extends Mailable
@@ -20,19 +22,35 @@ class AppointmentRequestMailable extends Mailable
     public ?ProviderBranch $branch;
     public $customEmails;
     public ?Gop $gop;
+    public ?User $user;
+    public ?string $gopPdfContent;
 
-    public function __construct(File $file, ?ProviderBranch $branch = null, array $customEmails = [], ?Gop $gop = null)
-    {
+    public function __construct(
+        File $file,
+        ?ProviderBranch $branch = null,
+        array $customEmails = [],
+        ?Gop $gop = null,
+        ?User $user = null,
+        ?string $gopPdfContent = null,
+    ) {
         $this->file = $file;
         $this->branch = $branch;
         $this->customEmails = $customEmails;
         $this->gop = $gop;
+        $this->user = $user;
+        $this->gopPdfContent = $gopPdfContent;
     }
 
     public function build()
     {
-        $username = Auth::user()->smtp_username ?? config('mail.from.address');
-        $name = Auth::user()->name ?? config('mail.from.name');
+        $user = $this->user ?? Auth::user();
+        $username = $user?->smtp_username ?? config('mail.from.address');
+        $name = $user?->name ?? config('mail.from.name');
+
+        if ($user) {
+            Config::set('mail.mailers.smtp.username', $user->smtp_username ?? Config::get('mail.mailers.smtp.username'));
+            Config::set('mail.mailers.smtp.password', $user->smtp_password ?? Config::get('mail.mailers.smtp.password'));
+        }
 
         $subject = 'Appointment Request - ' . $this->file->patient->name . ' - ' . $this->file->mga_reference;
 
@@ -72,9 +90,9 @@ class AppointmentRequestMailable extends Mailable
         $gopForAttachment = $this->resolveGopForAttachment();
         if ($gopForAttachment) {
             try {
-                $pdf = Pdf::loadView('pdf.gop', ['gop' => $gopForAttachment]);
+                $pdfContent = $this->gopPdfContent ?? Pdf::loadView('pdf.gop', ['gop' => $gopForAttachment])->output();
                 $mailBuilder->attachData(
-                    $pdf->output(),
+                    $pdfContent,
                     'GOP_' . $this->file->mga_reference . '.pdf',
                     ['mime' => 'application/pdf']
                 );

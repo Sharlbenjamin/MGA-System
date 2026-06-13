@@ -136,6 +136,8 @@ class FileResource extends Resource
             Group::make('country.name')->collapsible()->label('Country'),
             Group::make('serviceType.name')->collapsible()->label('Service Type'),
         ])
+            ->recordUrl(fn (File $record): string => static::getUrl('view', ['record' => $record]))
+            ->recordClasses(fn (): string => 'cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-white/5')
             ->modifyQueryUsing(function (Builder $query) {
                 $fileTable = (new File())->getTable();
                 $query->with([
@@ -445,12 +447,13 @@ class FileResource extends Resource
                         ]);
                     }),
                 Tables\Actions\Action::make('View')
-                ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id]))
-                ->icon('heroicon-o-eye'),
+                    ->label('View')
+                    ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record->id]))
+                    ->icon('heroicon-o-eye'),
                 Tables\Actions\Action::make('Edit')
-                ->url(fn (File $record) => FileResource::getUrl('edit', ['record' => $record->id]))
-                ->icon('heroicon-o-pencil'),
-
+                    ->label('Edit')
+                    ->url(fn (File $record) => FileResource::getUrl('edit', ['record' => $record->id]))
+                    ->icon('heroicon-o-pencil'),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

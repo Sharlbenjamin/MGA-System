@@ -303,49 +303,57 @@ class TransactionResource extends Resource
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
-                Forms\Components\FileUpload::make('attachment_file')
-                    ->label('Bill Payment / Transaction Proof')
-                    ->disk('public')
-                    ->directory('transactions')
-                    ->visibility('public')
-                    ->acceptedFileTypes([
-                        'application/pdf',
-                        'image/*',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                Forms\Components\Section::make('Transaction Document')
+                    ->description('Upload payment proof or transaction document.')
+                    ->icon('heroicon-o-document-arrow-up')
+                    ->schema([
+                        Forms\Components\FileUpload::make('attachment_file')
+                            ->label('Bill Payment / Transaction Proof')
+                            ->disk('public')
+                            ->directory('transactions')
+                            ->visibility('public')
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'image/*',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                            ])
+                            ->maxSize(10240)
+                            ->helperText('Upload payment proof (PDF, image, or Word document).')
+                            ->downloadable()
+                            ->openable()
+                            ->preserveFilenames()
+                            ->maxFiles(1)
+                            ->fetchFileInformation(false)
+                            ->dehydrated(false)
+                            ->afterStateHydrated(function ($component, $state, ?Transaction $record): void {
+                                $existingPath = $record?->attachment_path;
+
+                                if (is_string($existingPath) && $existingPath !== ''
+                                    && ! str_starts_with($existingPath, 'http')
+                                    && ! str_contains($existingPath, 'drive.google.com')) {
+                                    $component->state([$existingPath]);
+
+                                    return;
+                                }
+
+                                $component->state([]);
+                            })
+                            ->afterStateUpdated(function ($state, callable $set): void {
+                                if (is_string($state)) {
+                                    $state = [$state];
+                                }
+
+                                if (is_array($state)) {
+                                    $state = $state[0] ?? null;
+                                }
+
+                                $set('attachment_path', $state ?: null);
+                            }),
+                        Forms\Components\Hidden::make('attachment_path')
+                            ->default(fn (?Transaction $record) => $record?->attachment_path),
                     ])
-                    ->maxSize(10240)
-                    ->helperText('Upload payment proof (PDF, image, or Word document).')
-                    ->downloadable()
-                    ->openable()
-                    ->preserveFilenames()
-                    ->maxFiles(1)
-                    ->fetchFileInformation(false)
-                    ->dehydrated(false)
-                    ->afterStateHydrated(function ($component, $state, ?Transaction $record): void {
-                        $existingPath = $record?->attachment_path;
-
-                        // Preload previously uploaded local files when editing a transaction.
-                        if (is_string($existingPath) && str_starts_with($existingPath, 'transactions/')) {
-                            $component->state([$existingPath]);
-                            return;
-                        }
-
-                        $component->state([]);
-                    })
-                    ->afterStateUpdated(function ($state, callable $set): void {
-                        if (is_string($state)) {
-                            $state = [$state];
-                        }
-
-                        if (is_array($state)) {
-                            $state = $state[0] ?? null;
-                        }
-
-                        $set('attachment_path', $state ?: null);
-                    }),
-                Forms\Components\Hidden::make('attachment_path')
-                    ->default(fn (?Transaction $record) => $record?->attachment_path),
+                    ->columnSpanFull(),
 
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
@@ -556,13 +564,7 @@ class TransactionResource extends Resource
                             : $record->attachment_path;
                     })
                     ->action(function ($state, $record) {
-                        if ($record->attachment_path && filter_var($record->attachment_path, FILTER_VALIDATE_URL)) {
-                            return $record->attachment_path;
-                        }
-                        if ($record->isUploadedFile()) {
-                            return Storage::url($record->attachment_path);
-                        }
-                        return null;
+                        return $record->getAttachmentUrl();
                     })
                     ->openUrlInNewTab()
                     ->icon(fn ($record) => !$record->attachment_path ? 'heroicon-o-document' : (($record->isUploadedFile() || $record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'heroicon-o-link' : 'heroicon-o-document-text'))
@@ -617,22 +619,7 @@ class TransactionResource extends Resource
                     ->modalHeading('Upload Transaction Document')
                     ->modalDescription('Upload the transaction document to Google Drive.')
                     ->modalSubmitActionLabel('Upload')
-                    ->form([
-                        Forms\Components\FileUpload::make('transaction_document_main')
-                            ->label('Upload Transaction Document')
-                            ->acceptedFileTypes(['application/pdf', 'image/*'])
-                            ->maxSize(10240) // 10MB
-                            ->required()
-                            ->disk('public')
-                            ->directory('transactions')
-                            ->visibility('public')
-                            ->helperText('Upload the transaction document (PDF or image)')
-                            ->storeFileNamesIn('original_filename')
-                            ->downloadable()
-                            ->openable()
-                            ->preserveFilenames()
-                            ->maxFiles(1),
-                    ])
+                    ->form(static::documentUploadFormSchema('transaction_document_main'))
                     ->action(function ($record, array $data = []) {
                         try {
                             if (!isset($data['transaction_document_main']) || empty($data['transaction_document_main'])) {
@@ -644,34 +631,7 @@ class TransactionResource extends Resource
                                 return;
                             }
 
-                            // Handle the uploaded file properly
-                            $uploadedFile = $data['transaction_document_main'];
-                            
-                            // Log the uploaded file data for debugging
-                            Log::info('Transaction upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
-                            
-                            // If it's an array (multiple files), take the first one
-                            if (is_array($uploadedFile)) {
-                                $uploadedFile = $uploadedFile[0] ?? null;
-                            }
-                            
-                            if (!$uploadedFile) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Invalid file data')
-                                    ->body('The uploaded file data is invalid.')
-                                    ->send();
-                                return;
-                            }
-
-                            $record->attachment_path = $uploadedFile;
-                            $record->save();
-
-                            Notification::make()
-                                ->success()
-                                ->title('Transaction document uploaded successfully')
-                                ->body('Transaction document has been uploaded.')
-                                ->send();
+                            static::saveUploadedDocument($record, $data['transaction_document_main']);
                         } catch (\Exception $e) {
                             Log::error('Transaction upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
                             Notification::make()
@@ -929,5 +889,52 @@ class TransactionResource extends Resource
             ],
             default => [],
         };
+    }
+
+    public static function documentUploadFormSchema(string $fieldName = 'transaction_document'): array
+    {
+        return [
+            Forms\Components\FileUpload::make($fieldName)
+                ->label('Upload Transaction Document')
+                ->acceptedFileTypes(['application/pdf', 'image/*'])
+                ->maxSize(10240)
+                ->required()
+                ->disk('public')
+                ->directory('transactions')
+                ->visibility('public')
+                ->helperText('Upload the transaction document (PDF or image)')
+                ->downloadable()
+                ->openable()
+                ->preserveFilenames()
+                ->maxFiles(1),
+        ];
+    }
+
+    public static function saveUploadedDocument(Transaction $record, mixed $uploadedFile): bool
+    {
+        if (is_array($uploadedFile)) {
+            $uploadedFile = $uploadedFile[0] ?? null;
+        }
+
+        if (! $uploadedFile) {
+            Notification::make()
+                ->danger()
+                ->title('Invalid file data')
+                ->body('The uploaded file data is invalid.')
+                ->send();
+
+            return false;
+        }
+
+        $record->attachment_path = $uploadedFile;
+        $record->save();
+
+        Notification::make()
+            ->success()
+            ->title('Transaction document uploaded successfully')
+            ->body('Transaction document has been uploaded.')
+            ->send();
+
+        return true;
     }
 }

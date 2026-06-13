@@ -300,11 +300,23 @@ class Transaction extends Model
     }
 
     /**
+     * Check if the attachment is a local storage file (not a URL).
+     */
+    public function isLocalStorageFile(): bool
+    {
+        if (! $this->attachment_path || $this->isGoogleDriveAttachment() || $this->isUrl()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Check if the attachment is an uploaded file
      */
     public function isUploadedFile(): bool
     {
-        return $this->attachment_path && str_starts_with($this->attachment_path, 'transactions/');
+        return $this->isLocalStorageFile();
     }
 
     /**
@@ -332,13 +344,41 @@ class Transaction extends Model
             return 'View Document Link';
         }
         
-        if (str_starts_with($this->attachment_path, 'transactions/')) {
-            // Extract original filename from path if possible
-            $filename = basename($this->attachment_path);
-            return 'Download: ' . $filename;
+        if ($this->isLocalStorageFile()) {
+            return 'View Document: ' . basename($this->attachment_path);
         }
         
         return 'View Document';
+    }
+
+    /**
+     * Resolve a browser-ready URL for the attachment.
+     */
+    public function getAttachmentUrl(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        if ($this->isGoogleDriveAttachment() || $this->isUrl()) {
+            $url = $this->attachment_path;
+
+            if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
+                $url = 'https://' . ltrim($url, '/');
+            }
+
+            return $url;
+        }
+
+        if ($this->isLocalStorageFile()) {
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->attachment_path)) {
+                return asset('storage/' . $this->attachment_path);
+            }
+
+            return $this->getDocumentSignedUrl();
+        }
+
+        return null;
     }
 
     /**

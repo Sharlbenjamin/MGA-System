@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -20,6 +21,9 @@ class DistanceCalculationService
 
     /** @var bool Whether Distance/Geocoding API calls are enabled */
     protected $enabled;
+
+    /** @var array<string, array{lat: float, lng: float}|null> In-request geocode cache */
+    protected array $geocodeMemoryCache = [];
 
     public function __construct()
     {
@@ -49,6 +53,18 @@ class DistanceCalculationService
         $address = $this->normalizeAddress($address);
         if ($address === '') {
             return null;
+        }
+
+        if (array_key_exists($address, $this->geocodeMemoryCache)) {
+            return $this->geocodeMemoryCache[$address];
+        }
+
+        $cacheKey = 'google_geocode:' . md5($address);
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            $this->geocodeMemoryCache[$address] = $cached;
+
+            return $cached;
         }
 
         if (empty($this->apiKey)) {
@@ -84,12 +100,18 @@ class DistanceCalculationService
             }
 
             $loc = $data['results'][0]['geometry']['location'];
-            return [
+            $coords = [
                 'lat' => (float) $loc['lat'],
                 'lng' => (float) $loc['lng'],
             ];
+            Cache::put($cacheKey, $coords, now()->addDays(30));
+            $this->geocodeMemoryCache[$address] = $coords;
+
+            return $coords;
         } catch (\Exception $e) {
             Log::warning('Geocoding error', ['message' => $e->getMessage(), 'address' => $address]);
+            $this->geocodeMemoryCache[$address] = null;
+
             return null;
         }
     }
@@ -132,7 +154,14 @@ class DistanceCalculationService
             return null;
         }
 
-        // Prefer coordinates for accuracy: geocode both addresses, then call Distance Matrix with lat,lng
+        $cacheKey = 'google_distance:' . md5($originAddress . '|' . $destinationAddress . '|' . $mode);
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            $this->lastError = null;
+
+            return $cached;
+        }
+
         $originCoords = $this->geocodeAddress($originAddress);
         $destinationCoords = $this->geocodeAddress($destinationAddress);
 
@@ -143,6 +172,138 @@ class DistanceCalculationService
             ? $destinationCoords['lat'] . ',' . $destinationCoords['lng']
             : $destinationAddress;
 
+        $result = $this->requestDistanceMatrix($origins, $destinations, $mode, [
+            'origin' => $originAddress,
+            'destination' => $destinationAddress,
+        ]);
+
+        if ($result !== null) {
+            Cache::put($cacheKey, $result, now()->addDays(7));
+        }
+
+        return $result;
+    }
+
+    /**
+     * Calculate distances from one origin to many destinations in batched API calls.
+     *
+     * @param  array<int|string, string>  $destinations
+     * @return array<int|string, array|null>
+     */
+    public function calculateDistancesBatch(string $originAddress, array $destinations, string $mode = 'driving'): array
+    {
+        $results = [];
+
+        if (! $this->enabled) {
+            foreach ($destinations as $key => $destinationAddress) {
+                $results[$key] = null;
+            }
+
+            return $results;
+        }
+
+        $originAddress = $this->normalizeAddress($originAddress);
+        if ($originAddress === '') {
+            foreach ($destinations as $key => $destinationAddress) {
+                $results[$key] = null;
+            }
+
+            return $results;
+        }
+
+        if (empty($this->apiKey)) {
+            $this->lastError = 'API key not configured';
+            foreach ($destinations as $key => $destinationAddress) {
+                $results[$key] = null;
+            }
+
+            return $results;
+        }
+
+        $pending = [];
+        foreach ($destinations as $key => $destinationAddress) {
+            $destinationAddress = $this->normalizeAddress($destinationAddress ?? '');
+            if ($destinationAddress === '') {
+                $results[$key] = null;
+                continue;
+            }
+
+            $cacheKey = 'google_distance:' . md5($originAddress . '|' . $destinationAddress . '|' . $mode);
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) {
+                $results[$key] = $cached;
+                continue;
+            }
+
+            $pending[$key] = $destinationAddress;
+        }
+
+        if ($pending === []) {
+            $this->lastError = null;
+
+            return $results;
+        }
+
+        $originCoords = $this->geocodeAddress($originAddress);
+        $origins = $originCoords
+            ? $originCoords['lat'] . ',' . $originCoords['lng']
+            : $originAddress;
+
+        foreach (array_chunk($pending, 25, true) as $batch) {
+            $batchKeys = array_keys($batch);
+            $batchDestinations = [];
+
+            foreach ($batch as $key => $destinationAddress) {
+                $destinationCoords = $this->geocodeAddress($destinationAddress);
+                $batchDestinations[$key] = $destinationCoords
+                    ? $destinationCoords['lat'] . ',' . $destinationCoords['lng']
+                    : $destinationAddress;
+            }
+
+            $matrixDestinations = implode('|', array_values($batchDestinations));
+            $matrixResults = $this->requestDistanceMatrixElements($origins, $matrixDestinations, $mode, [
+                'origin' => $originAddress,
+                'destinations' => array_values($batch),
+            ]);
+
+            foreach ($batchKeys as $index => $key) {
+                $destinationAddress = $batch[$key];
+                $element = $matrixResults[$index] ?? null;
+                $parsed = $this->parseDistanceElement($element);
+
+                if ($parsed !== null) {
+                    Cache::put(
+                        'google_distance:' . md5($originAddress . '|' . $destinationAddress . '|' . $mode),
+                        $parsed,
+                        now()->addDays(7),
+                    );
+                }
+
+                $results[$key] = $parsed;
+            }
+        }
+
+        $this->lastError = null;
+
+        return $results;
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    protected function requestDistanceMatrix(string $origins, string $destinations, string $mode, array $context = []): ?array
+    {
+        $elements = $this->requestDistanceMatrixElements($origins, $destinations, $mode, $context);
+
+        return $this->parseDistanceElement($elements[0] ?? null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<int, array<string, mixed>|null>
+     */
+    protected function requestDistanceMatrixElements(string $origins, string $destinations, string $mode, array $context = []): array
+    {
         try {
             $response = Http::get($this->distanceMatrixUrl, [
                 'origins' => $origins,
@@ -156,11 +317,11 @@ class DistanceCalculationService
                 Log::error('Distance Matrix API request failed', [
                     'status_code' => $response->status(),
                     'response_body' => $response->body(),
-                    'origin' => $originAddress,
-                    'destination' => $destinationAddress,
+                    'context' => $context,
                     'mode' => $mode,
                 ]);
-                return null;
+
+                return [];
             }
 
             $data = $response->json();
@@ -170,54 +331,52 @@ class DistanceCalculationService
                 Log::error('Google Maps API Error', [
                     'error_message' => $data['error_message'],
                     'status' => $data['status'] ?? 'unknown',
-                    'origin' => $originAddress,
-                    'destination' => $destinationAddress,
+                    'context' => $context,
                 ]);
-                return null;
+
+                return [];
             }
 
-            if ($data['status'] !== 'OK' || empty($data['rows'][0]['elements'][0])) {
+            if (($data['status'] ?? null) !== 'OK' || empty($data['rows'][0]['elements'])) {
                 $this->lastError = 'API status: ' . ($data['status'] ?? 'UNKNOWN');
                 Log::warning('Distance Matrix response not OK', [
                     'response_status' => $data['status'] ?? 'unknown',
                     'data' => $data,
-                    'origin' => $originAddress,
-                    'destination' => $destinationAddress,
+                    'context' => $context,
                     'mode' => $mode,
                 ]);
-                return null;
+
+                return [];
             }
 
-            $element = $data['rows'][0]['elements'][0];
-
-            if ($element['status'] !== 'OK') {
-                $this->lastError = 'Element status: ' . ($element['status'] ?? 'UNKNOWN');
-                Log::warning('Distance Matrix element status not OK', [
-                    'element_status' => $element['status'],
-                    'element' => $element,
-                    'origin' => $originAddress,
-                    'destination' => $destinationAddress,
-                    'mode' => $mode,
-                ]);
-                return null;
-            }
-
-            $this->lastError = null;
-            return [
-                'distance' => $element['distance']['text'],
-                'distance_meters' => $element['distance']['value'],
-                'duration' => $element['duration']['text'],
-                'duration_seconds' => $element['duration']['value'],
-                'duration_minutes' => round($element['duration']['value'] / 60, 1),
-            ];
+            return $data['rows'][0]['elements'];
         } catch (\Exception $e) {
             Log::error('Distance calculation error', [
                 'message' => $e->getMessage(),
-                'origin' => $originAddress,
-                'destination' => $destinationAddress,
+                'context' => $context,
             ]);
+
+            return [];
+        }
+    }
+
+    protected function parseDistanceElement(?array $element): ?array
+    {
+        if (($element['status'] ?? null) !== 'OK') {
+            if ($element !== null) {
+                $this->lastError = 'Element status: ' . ($element['status'] ?? 'UNKNOWN');
+            }
+
             return null;
         }
+
+        return [
+            'distance' => $element['distance']['text'],
+            'distance_meters' => $element['distance']['value'],
+            'duration' => $element['duration']['text'],
+            'duration_seconds' => $element['duration']['value'],
+            'duration_minutes' => round($element['duration']['value'] / 60, 1),
+        ];
     }
 
     /**

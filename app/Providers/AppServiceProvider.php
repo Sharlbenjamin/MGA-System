@@ -16,6 +16,9 @@ use App\Models\Task;
 use App\Observers\TaskObserver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Support\HtmlString;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -49,6 +52,23 @@ class AppServiceProvider extends ServiceProvider
         Task::observe(TaskObserver::class);
 
         $this->registerPerfLogging();
+        $this->registerFilamentStyles();
+    }
+
+    protected function registerFilamentStyles(): void
+    {
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::HEAD_END,
+            fn (): HtmlString => new HtmlString(<<<'HTML'
+<style>
+    .fi-resource-files .fi-ta-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.25rem;
+    }
+</style>
+HTML),
+        );
     }
 
     /**

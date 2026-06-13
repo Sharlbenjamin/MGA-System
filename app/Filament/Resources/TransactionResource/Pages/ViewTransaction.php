@@ -23,6 +23,34 @@ class ViewTransaction extends ViewRecord
     {
         return [
             Actions\EditAction::make(),
+            Action::make('uploadDocument')
+                ->label('Upload Document')
+                ->icon('heroicon-o-document-arrow-up')
+                ->color('success')
+                ->modalHeading('Upload Transaction Document')
+                ->modalDescription('Upload the transaction document (PDF or image).')
+                ->modalSubmitActionLabel('Upload')
+                ->form(TransactionResource::documentUploadFormSchema())
+                ->action(function (array $data = []): void {
+                    if (empty($data['transaction_document'])) {
+                        Notification::make()
+                            ->danger()
+                            ->title('No document uploaded')
+                            ->body('Please upload a document first.')
+                            ->send();
+
+                        return;
+                    }
+
+                    TransactionResource::saveUploadedDocument($this->record, $data['transaction_document']);
+                }),
+            Action::make('viewDocument')
+                ->label('View Document')
+                ->icon('heroicon-o-eye')
+                ->color('info')
+                ->url(fn () => $this->record->getAttachmentUrl())
+                ->openUrlInNewTab()
+                ->visible(fn () => (bool) $this->record->getAttachmentUrl()),
             Action::make('send_proof')
                 ->label('Send Proof')
                 ->icon('heroicon-o-paper-airplane')

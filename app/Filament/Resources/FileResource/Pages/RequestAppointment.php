@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\FileResource\Pages;
 
 use App\Filament\Resources\FileResource;
+use App\Jobs\SendAppointmentRequestsJob;
 use App\Models\FileFee;
 use App\Models\Gop;
-use App\Models\Task;
+use App\Models\ServiceType;
+use App\Services\DistanceCalculationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -20,8 +22,6 @@ use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * Full-page "Request Appointment" view for a file.
@@ -35,9 +35,20 @@ class RequestAppointment extends EditRecord
 
     protected static ?string $title = 'Request Appointment';
 
+    /** @var array<string, \Illuminate\Support\Collection> */
+    protected array $displayedBranchesCache = [];
+
+    /** @var array<int, array{sort_value: float|int, display: string}> */
+    protected array $branchDistanceCache = [];
+
+    protected ?float $cachedFileFeeAmount = null;
+
+    protected bool $fileFeeResolved = false;
+
     public function mount(int|string $record): void
     {
         $this->record = $this->resolveRecord($record);
+        $this->record->loadMissing('serviceType');
         $this->authorizeAccess();
         $this->fillForm();
         $this->previousUrl = url()->previous();
@@ -156,8 +167,34 @@ class RequestAppointment extends EditRecord
     {
         $this->authorizeAccess();
         $data = $this->form->getState();
-        $createdGop = $this->createAndSendGopIfRequested($confirmationData);
-        $this->sendAppointmentRequestsFromModal($data, $this->getRecord(), $createdGop);
+
+        $selectedBranchIds = $data['selected_branches'] ?? [];
+        $customEmails = collect($data['custom_emails'] ?? [])->pluck('email')->filter();
+        if (empty($selectedBranchIds) && $customEmails->isEmpty()) {
+            Notification::make()
+                ->title('No Recipients Selected')
+                ->body('Please select at least one provider branch or add custom email recipients.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $createdGop = $this->createGopIfRequested($confirmationData);
+
+        SendAppointmentRequestsJob::dispatchAfterResponse(
+            $this->getRecord()->id,
+            $data,
+            Auth::id(),
+            $createdGop?->id,
+        );
+
+        Notification::make()
+            ->title('Sending Appointment Requests')
+            ->body('Your appointment requests are being sent. You will be notified when complete.')
+            ->success()
+            ->send();
+
         $this->redirect(FileResource::getUrl('view', ['record' => $this->getRecord()]), navigate: true);
     }
 
@@ -277,12 +314,11 @@ class RequestAppointment extends EditRecord
                     \Filament\Forms\Components\Placeholder::make("cost_{$branch->id}")
                         ->label('')
                         ->content(function () use ($branch) {
-                            if ($this->record && $this->record->service_type_id) {
-                                $service = $branch->services()->where('service_type_id', $this->record->service_type_id)->first();
-                                if ($service && $service->pivot->min_cost) {
-                                    return '€' . number_format($service->pivot->min_cost, 2);
-                                }
+                            $service = $this->getBranchServiceForRecord($branch);
+                            if ($service && $service->pivot->min_cost) {
+                                return '€' . number_format($service->pivot->min_cost, 2);
                             }
+
                             return 'N/A';
                         })
                         ->columnSpan(1),
@@ -320,13 +356,24 @@ class RequestAppointment extends EditRecord
 
     protected function getDisplayedProviderBranchesForRequest($cityFilter = null, ?int $limit = null): \Illuminate\Support\Collection
     {
+        $cacheKey = filled($cityFilter) ? (string) (int) $cityFilter : 'default';
+
+        if (isset($this->displayedBranchesCache[$cacheKey])) {
+            $cached = $this->displayedBranchesCache[$cacheKey];
+
+            return $limit ? $cached->take($limit) : $cached;
+        }
+
         $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
+        $this->warmBranchDistanceCache($branches);
+
         $branchesWithSortData = $branches->map(function ($branch) {
             $distanceData = $this->calculateBranchDistanceForSorting($branch);
             $branch->sort_distance = $distanceData['sort_value'];
             $branch->distance_display = $distanceData['display'];
             $branch->sort_service_type = $this->record->service_type_id ?? 999;
             $branch->sort_status = $branch->status === 'Active' ? 1 : 2;
+
             return $branch;
         });
         $sortedBranches = $branchesWithSortData->sortBy([
@@ -334,6 +381,8 @@ class RequestAppointment extends EditRecord
             ['sort_service_type', 'asc'],
             ['sort_status', 'asc'],
         ])->values();
+
+        $this->displayedBranchesCache[$cacheKey] = $sortedBranches;
 
         return $limit ? $sortedBranches->take($limit) : $sortedBranches;
     }
@@ -364,43 +413,138 @@ class RequestAppointment extends EditRecord
         return 'None';
     }
 
+    protected function warmBranchDistanceCache(\Illuminate\Support\Collection $branches): void
+    {
+        if (! $this->record || ! $this->record->address) {
+            foreach ($branches as $branch) {
+                $this->branchDistanceCache[$branch->id] = [
+                    'sort_value' => 999999,
+                    'display' => '<span class="text-gray-400 text-sm">No file address</span>',
+                ];
+            }
+
+            return;
+        }
+
+        $destinations = [];
+        foreach ($branches as $branch) {
+            if (isset($this->branchDistanceCache[$branch->id])) {
+                continue;
+            }
+
+            $branchAddress = $branch->address ?? $branch->operationContact?->address;
+            if (! $branchAddress) {
+                $this->branchDistanceCache[$branch->id] = [
+                    'sort_value' => 999999,
+                    'display' => '<span class="text-gray-400 text-sm">No branch address</span>',
+                ];
+                continue;
+            }
+
+            $destinations[$branch->id] = $branchAddress;
+        }
+
+        if ($destinations === []) {
+            return;
+        }
+
+        $distanceService = app(DistanceCalculationService::class);
+        $results = $distanceService->calculateDistancesBatch($this->record->address, $destinations, 'driving');
+
+        foreach ($destinations as $branchId => $branchAddress) {
+            if (isset($this->branchDistanceCache[$branchId])) {
+                continue;
+            }
+
+            $drivingDistance = $results[$branchId] ?? null;
+            if ($drivingDistance) {
+                $minutes = $drivingDistance['duration_minutes']
+                    ?? (isset($drivingDistance['duration_seconds']) ? round($drivingDistance['duration_seconds'] / 60, 1) : null);
+
+                if ($minutes !== null) {
+                    $this->branchDistanceCache[$branchId] = [
+                        'sort_value' => $minutes,
+                        'display' => $minutes . ' min by car',
+                    ];
+                    continue;
+                }
+            }
+
+            $this->branchDistanceCache[$branchId] = [
+                'sort_value' => 999999,
+                'display' => '<span class="text-gray-400 text-sm">N/A</span>',
+            ];
+        }
+    }
+
+    protected function getBranchServiceForRecord($branch): ?ServiceType
+    {
+        $serviceTypeId = $this->record?->service_type_id;
+        if (! $serviceTypeId) {
+            return null;
+        }
+
+        return $branch->services->firstWhere('id', $serviceTypeId);
+    }
+
     protected function calculateBranchDistanceForSorting($branch): array
     {
-        if (!$this->record || !$this->record->address) {
-            return ['sort_value' => 999999, 'display' => '<span class="text-gray-400 text-sm">No file address</span>'];
+        if (isset($this->branchDistanceCache[$branch->id])) {
+            return $this->branchDistanceCache[$branch->id];
         }
+
+        if (! $this->record || ! $this->record->address) {
+            return [
+                'sort_value' => 999999,
+                'display' => '<span class="text-gray-400 text-sm">No file address</span>',
+            ];
+        }
+
         $branchAddress = $branch->address ?? $branch->operationContact?->address ?? null;
-        if (!$branchAddress) {
-            return ['sort_value' => 999999, 'display' => '<span class="text-gray-400 text-sm">No branch address</span>'];
+        if (! $branchAddress) {
+            return [
+                'sort_value' => 999999,
+                'display' => '<span class="text-gray-400 text-sm">No branch address</span>',
+            ];
         }
+
         try {
-            $distanceService = new \App\Services\DistanceCalculationService();
+            $distanceService = app(DistanceCalculationService::class);
             $drivingDistance = $distanceService->calculateDistance($this->record->address, $branchAddress, 'driving');
             if ($drivingDistance) {
-                $minutes = $drivingDistance['duration_minutes'] ?? (isset($drivingDistance['duration_seconds']) ? round($drivingDistance['duration_seconds'] / 60, 1) : null);
+                $minutes = $drivingDistance['duration_minutes']
+                    ?? (isset($drivingDistance['duration_seconds']) ? round($drivingDistance['duration_seconds'] / 60, 1) : null);
                 if ($minutes !== null) {
-                    return ['sort_value' => $minutes, 'display' => $minutes . ' min by car'];
+                    return $this->branchDistanceCache[$branch->id] = [
+                        'sort_value' => $minutes,
+                        'display' => $minutes . ' min by car',
+                    ];
                 }
             }
         } catch (\Throwable $e) {
             // ignore
         }
-        return ['sort_value' => 999999, 'display' => '<span class="text-gray-400 text-sm">N/A</span>'];
+
+        return $this->branchDistanceCache[$branch->id] = [
+            'sort_value' => 999999,
+            'display' => '<span class="text-gray-400 text-sm">N/A</span>',
+        ];
     }
 
     protected function formatAppointmentRequestText($branch): string
     {
         $address = $branch->address ?? 'N/A';
         $patientAddress = $this->record->address ?? null;
-        $distanceData = $this->calculateBranchDistanceForSorting($branch);
-        $distanceText = $distanceData['sort_value'] < 999999 ? round($distanceData['sort_value'], 0) . 'Mins by car' : 'N/A';
+        $distanceText = isset($branch->sort_distance) && $branch->sort_distance < 999999
+            ? round($branch->sort_distance, 0) . 'Mins by car'
+            : 'N/A';
         $branchName = $branch->branch_name ?? 'N/A';
         $serviceTypeName = trim((string) ($this->record->serviceType?->name ?? ''));
         $isHospitalVisit = strcasecmp($serviceTypeName, 'Hospital Visit') === 0;
         $dateTime = $isHospitalVisit
             ? 'The patient will wait in the ER for assesment'
             : 'N/A';
-        if (!$isHospitalVisit && $this->record->service_date) {
+        if (! $isHospitalVisit && $this->record->service_date) {
             $parts = [$this->record->service_date->format('d/m/Y')];
             if ($this->record->service_time) {
                 $parts[] = \Carbon\Carbon::parse($this->record->service_time)->format('H:i');
@@ -411,7 +555,7 @@ class RequestAppointment extends EditRecord
         $gop = 'N/A';
         $serviceTypeId = $this->record->service_type_id;
         if ($serviceTypeId) {
-            $service = $branch->services()->where('service_type_id', $serviceTypeId)->first();
+            $service = $this->getBranchServiceForRecord($branch);
             if ($service) {
                 $minCost = $service->pivot->min_cost;
                 $maxCost = $service->pivot->max_cost;
@@ -453,74 +597,36 @@ class RequestAppointment extends EditRecord
 
     protected function getFileFeeForServiceType(?int $serviceTypeId): ?float
     {
-        if (!$serviceTypeId || !$this->record) {
-            return null;
+        if ($this->fileFeeResolved) {
+            return $this->cachedFileFeeAmount;
         }
+
+        $this->fileFeeResolved = true;
+
+        if (! $serviceTypeId || ! $this->record) {
+            return $this->cachedFileFeeAmount = null;
+        }
+
         $countryId = $this->record->country_id;
         $cityId = $this->record->city_id;
         if ($countryId && $cityId) {
             $fileFee = FileFee::where('service_type_id', $serviceTypeId)->where('country_id', $countryId)->where('city_id', $cityId)->first();
             if ($fileFee) {
-                return (float) $fileFee->amount;
+                return $this->cachedFileFeeAmount = (float) $fileFee->amount;
             }
         }
         if ($countryId) {
             $fileFee = FileFee::where('service_type_id', $serviceTypeId)->where('country_id', $countryId)->whereNull('city_id')->first();
             if ($fileFee) {
-                return (float) $fileFee->amount;
+                return $this->cachedFileFeeAmount = (float) $fileFee->amount;
             }
         }
         $fileFee = FileFee::where('service_type_id', $serviceTypeId)->whereNull('country_id')->whereNull('city_id')->first();
-        return $fileFee ? (float) $fileFee->amount : null;
+
+        return $this->cachedFileFeeAmount = $fileFee ? (float) $fileFee->amount : null;
     }
 
-    protected function sendAppointmentRequestsFromModal(array $data, $record, ?Gop $gop = null): void
-    {
-        $selectedBranchIds = $data['selected_branches'] ?? [];
-        $customEmails = collect($data['custom_emails'] ?? [])->pluck('email')->filter();
-        if (empty($selectedBranchIds) && $customEmails->isNotEmpty()) {
-            try {
-                Mail::send(new \App\Mail\AppointmentRequestMailable($record, null, $customEmails->toArray(), $gop));
-                Notification::make()->title('Appointment Request Sent')->body('Successfully sent to ' . $customEmails->count() . ' custom email recipients')->success()->send();
-                return;
-            } catch (\Exception $e) {
-                Log::error('Failed to send appointment request to custom emails', ['error' => $e->getMessage()]);
-                Notification::make()->title('Failed to Send')->body('Failed to send appointment request to custom emails.')->danger()->send();
-                return;
-            }
-        }
-        if (empty($selectedBranchIds)) {
-            Notification::make()->title('No Recipients Selected')->body('Please select at least one provider branch or add custom email recipients.')->warning()->send();
-            return;
-        }
-        $successCount = 0;
-        $failureCount = 0;
-        $branches = \App\Models\ProviderBranch::whereIn('id', $selectedBranchIds)->get();
-        foreach ($branches as $branch) {
-            try {
-                $hasBranchEmail = !empty($branch->email);
-                $hasCustomEmails = $customEmails->isNotEmpty();
-                if (!$hasBranchEmail && !$hasCustomEmails) {
-                    $this->createManualFollowUpTaskForBranch($branch, $record);
-                    $failureCount++;
-                    continue;
-                }
-                Mail::send(new \App\Mail\AppointmentRequestMailable($record, $branch, $customEmails->toArray(), $gop));
-                $successCount++;
-            } catch (\Exception $e) {
-                Log::error('Failed to send appointment request', ['branch_id' => $branch->id, 'error' => $e->getMessage()]);
-                $failureCount++;
-            }
-        }
-        if ($successCount > 0) {
-            Notification::make()->title('Appointment Requests Sent')->body("Successfully sent to {$successCount} providers")->success()->send();
-        }
-        if ($failureCount > 0) {
-            Notification::make()->title('Some Requests Failed')->body("Failed to send to {$failureCount} providers")->warning()->send();
-        }
-    }
-
-    protected function createAndSendGopIfRequested(array $confirmationData): ?Gop
+    protected function createGopIfRequested(array $confirmationData): ?Gop
     {
         if (!($confirmationData['send_gop'] ?? false)) {
             return null;
@@ -557,11 +663,7 @@ class RequestAppointment extends EditRecord
             'status' => 'Not Sent',
         ]);
 
-        if ($gop->type === 'Out') {
-            $gop->sendGopToBranch();
-        }
-
-        // Make sure newly created GOP is reflected in subsequent appointment email rendering.
+        // GOP is attached to appointment request emails in the background job.
         $record->unsetRelation('gops');
 
         return $gop;
@@ -600,20 +702,6 @@ class RequestAppointment extends EditRecord
                 return [$gop->id => $label];
             })
             ->toArray();
-    }
-
-    protected function createManualFollowUpTaskForBranch($branch, $record): void
-    {
-        Task::create([
-            'title' => 'Manual follow-up required for appointment request',
-            'description' => "File: {$record->mga_reference} - Patient: {$record->patient->name} - Branch: {$branch->branch_name}",
-            'taskable_type' => \App\Models\ProviderBranch::class,
-            'taskable_id' => $branch->id,
-            'user_id' => Auth::id(),
-            'file_id' => $record->id,
-            'department' => 'Operation',
-            'due_date' => now()->addDay(),
-        ]);
     }
 
     public function copyToClipboard($text, $label): void
