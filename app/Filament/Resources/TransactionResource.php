@@ -29,6 +29,8 @@ use Filament\Facades\Filament;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Filament\Support\TransactionDocumentationForm;
+use App\Services\TransactionDocumentationService;
 use Filament\Notifications\Notification;
 
 
@@ -36,10 +38,27 @@ class TransactionResource extends Resource
 {
     protected static ?string $model = Transaction::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationGroup = 'Ops';
-    protected static ?int $navigationSort = 5;
+    protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+    protected static ?string $navigationGroup = 'Finance';
+    protected static ?string $navigationLabel = 'Bank Transactions';
+    protected static ?int $navigationSort = 2;
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getNavigationBadge(): ?string
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('transactions', 'documentation_status')) {
+            return null;
+        }
+
+        $count = Transaction::query()->where('documentation_status', '!=', 'complete')->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
 
 
 
@@ -460,7 +479,40 @@ class TransactionResource extends Resource
                         ->pluck('name', 'id')
                         ->toArray();
                 }),
+            static::documentationStatusSection(),
             ]);
+    }
+
+    public static function documentationStatusSection(): Forms\Components\Section
+    {
+        return Forms\Components\Section::make('Documentation status')
+            ->schema([
+                Forms\Components\Placeholder::make('documentation_checklist')
+                    ->label('Checklist')
+                    ->content(function (?Transaction $record) {
+                        if (! $record?->exists) {
+                            return 'Save the transaction to see documentation status.';
+                        }
+
+                        $service = app(TransactionDocumentationService::class);
+                        $tasks = $service->getMissingTasks($record);
+                        $done = collect($tasks)->where('status', 'done')->count();
+
+                        return collect($tasks)->map(function ($task) {
+                            $icon = $task['status'] === 'done' ? '✓' : '⚠';
+
+                            return "{$icon} {$task['label']}";
+                        })->prepend('Progress: ' . $done . ' of ' . count($tasks) . ' complete')->implode("\n");
+                    })
+                    ->columnSpanFull(),
+                Forms\Components\Placeholder::make('reference_display')
+                    ->label('Reference')
+                    ->content(fn (?Transaction $record) => $record?->reference ?? '—'),
+                Forms\Components\Placeholder::make('documentation_status_display')
+                    ->label('Status')
+                    ->content(fn (?Transaction $record) => ucfirst(str_replace('_', ' ', $record?->documentation_status ?? 'incomplete'))),
+            ])
+            ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction);
     }
 
     public static function table(Table $table): Table
@@ -512,6 +564,27 @@ class TransactionResource extends Resource
                     ])
                     ->default('Completed'),
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
+                Tables\Columns\TextColumn::make('direction')
+                    ->label('Direction')
+                    ->badge()
+                    ->getStateUsing(fn (Transaction $record) => $record->direction === 'in' ? 'In' : 'Out')
+                    ->color(fn (Transaction $record) => $record->direction === 'in' ? 'success' : 'warning'),
+                Tables\Columns\TextColumn::make('documentation_label')
+                    ->label('Category')
+                    ->getStateUsing(fn (Transaction $record) => $record->documentation_label),
+                Tables\Columns\BadgeColumn::make('documentation_status')
+                    ->label('Documentation')
+                    ->colors([
+                        'success' => 'complete',
+                        'warning' => 'incomplete',
+                        'danger' => fn ($state) => in_array($state, ['missing_attachment', 'missing_linked_record', 'missing_generated_pdf'], true),
+                    ])
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('pending_documentation_count')
+                    ->label('Missing')
+                    ->badge()
+                    ->color(fn ($state) => ((int) $state) > 0 ? 'danger' : 'success')
+                    ->getStateUsing(fn (Transaction $record) => $record->pending_documentation_count),
                 Tables\Columns\TextColumn::make('client_reference')
                     ->label('Client Reference')
                     ->formatStateUsing(function ($record) {
@@ -574,6 +647,18 @@ class TransactionResource extends Resource
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
+                Tables\Filters\SelectFilter::make('documentation_status')
+                    ->options([
+                        'complete' => 'Complete',
+                        'incomplete' => 'Incomplete',
+                        'missing_attachment' => 'Missing attachment',
+                        'missing_linked_record' => 'Missing linked record',
+                        'missing_generated_pdf' => 'Missing generated PDF',
+                    ])
+                    ->multiple(),
+                Tables\Filters\Filter::make('incomplete_only')
+                    ->label('Incomplete documentation only')
+                    ->query(fn (Builder $query) => $query->where('documentation_status', '!=', 'complete')),
                 Tables\Filters\SelectFilter::make('status')->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])->multiple(),
                 Tables\Filters\SelectFilter::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->multiple()->preload(),
                 Tables\Filters\Filter::make('missing_documents')
@@ -601,6 +686,12 @@ class TransactionResource extends Resource
                     }),
             ])
             ->groups([
+                Tables\Grouping\Group::make('documentation_status')
+                    ->label('Documentation status')
+                    ->collapsible(),
+                Tables\Grouping\Group::make('type')
+                    ->label('Type')
+                    ->collapsible(),
                 Tables\Grouping\Group::make('date')
                     ->label('Month')
                     ->date()
@@ -610,6 +701,7 @@ class TransactionResource extends Resource
 
             ])
             ->actions([
+                TransactionDocumentationForm::makeTableAction(),
                 Tables\Actions\ViewAction::make(),
                 Action::make('uploadDocument')
                     ->label('Upload Document')
@@ -692,6 +784,7 @@ class TransactionResource extends Resource
             'create' => Pages\CreateTransaction::route('/create'),
             'edit' => Pages\EditTransaction::route('/{record}/edit'),
             'view' => Pages\ViewTransaction::route('/{record}'),
+            'import' => Pages\ImportTransactions::route('/import'),
         ];
     }
 
@@ -928,6 +1021,8 @@ class TransactionResource extends Resource
 
         $record->attachment_path = $uploadedFile;
         $record->save();
+
+        app(TransactionDocumentationService::class)->syncAndRecalculate($record);
 
         Notification::make()
             ->success()

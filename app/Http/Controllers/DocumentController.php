@@ -118,6 +118,14 @@ class DocumentController extends Controller
             case 'transaction':
                 $model = Transaction::find($id);
                 return $model?->attachment_path;
+
+            case 'transaction_trx_in':
+                $model = Transaction::find($id);
+                return $model?->trx_in_pdf_path;
+
+            case 'transaction_trx_out':
+                $model = Transaction::find($id);
+                return $model?->trx_out_pdf_path;
                 
             default:
                 Log::warning('Unknown document type requested', [

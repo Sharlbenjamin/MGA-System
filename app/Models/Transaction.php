@@ -24,6 +24,13 @@ class Transaction extends Model
         'bank_charges',
         'charges_covered_by_client',
         'status',
+        'reference',
+        'documentation_status',
+        'trx_out_pdf_path',
+        'trx_in_pdf_path',
+        'import_batch_id',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
@@ -32,6 +39,65 @@ class Transaction extends Model
         'charges_covered_by_client' => 'boolean',
         'bank_charges' => 'decimal:2',
     ];
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(TransactionAttachment::class);
+    }
+
+    public function importBatch(): BelongsTo
+    {
+        return $this->belongsTo(TransactionImportBatch::class, 'import_batch_id');
+    }
+
+    public function createdByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function getDirectionAttribute(): string
+    {
+        return app(\App\Services\TransactionDocumentationService::class)->getDirection($this);
+    }
+
+    public function getDocumentationLabelAttribute(): string
+    {
+        return app(\App\Services\TransactionDocumentationService::class)->getDocumentationLabel($this);
+    }
+
+    public function getPendingDocumentationCountAttribute(): int
+    {
+        return app(\App\Services\TransactionDocumentationService::class)->getPendingTaskCount($this);
+    }
+
+    public function getTrxInPdfUrl(): ?string
+    {
+        if (! $this->trx_in_pdf_path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($this->trx_in_pdf_path)) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes(60), [
+            'type' => 'transaction_trx_in',
+            'id' => $this->id,
+        ]);
+    }
+
+    public function getTrxOutPdfUrl(): ?string
+    {
+        if (! $this->trx_out_pdf_path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($this->trx_out_pdf_path)) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes(60), [
+            'type' => 'transaction_trx_out',
+            'id' => $this->id,
+        ]);
+    }
 
 
 

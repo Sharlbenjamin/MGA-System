@@ -3,17 +3,60 @@
 namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\TransactionDocumentationForm;
+use App\Services\GenerateTrxInPdfService;
+use App\Services\GenerateTrxOutPdfService;
 use Filament\Actions;
 use Filament\Actions\Action;
+use Filament\Forms;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Auth;
 
 class EditTransaction extends EditRecord
 {
     protected static string $resource = TransactionResource::class;
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['updated_by'] = Auth::id();
+
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            TransactionDocumentationForm::makeHeaderAction(),
+            Action::make('viewTrxInPdf')
+                ->label('View Trx In PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('info')
+                ->url(fn () => $this->record->getTrxInPdfUrl())
+                ->openUrlInNewTab()
+                ->visible(fn () => (bool) $this->record->getTrxInPdfUrl()),
+            Action::make('viewTrxOutPdf')
+                ->label('View Trx Out PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('info')
+                ->url(fn () => $this->record->getTrxOutPdfUrl())
+                ->openUrlInNewTab()
+                ->visible(fn () => (bool) $this->record->getTrxOutPdfUrl()),
+            Action::make('regenerateTrxInPdf')
+                ->label('Regenerate Trx In PDF')
+                ->icon('heroicon-o-arrow-path')
+                ->visible(fn () => $this->record->type === 'Income')
+                ->action(function () {
+                    app(GenerateTrxInPdfService::class)->generate($this->record);
+                    $this->refreshFormData(['trx_in_pdf_path', 'documentation_status']);
+                }),
+            Action::make('regenerateTrxOutPdf')
+                ->label('Regenerate Trx Out PDF')
+                ->icon('heroicon-o-arrow-path')
+                ->visible(fn () => $this->record->type === 'Outflow' && $this->record->bills()->exists())
+                ->action(function () {
+                    app(GenerateTrxOutPdfService::class)->generate($this->record);
+                    $this->refreshFormData(['trx_out_pdf_path', 'documentation_status']);
+                }),
             Action::make('uploadDocument')
                 ->label('Upload Document')
                 ->icon('heroicon-o-document-arrow-up')
@@ -34,7 +77,7 @@ class EditTransaction extends EditRecord
                     }
 
                     TransactionResource::saveUploadedDocument($this->record, $data['transaction_document']);
-                    $this->refreshFormData(['attachment_path']);
+                    $this->refreshFormData(['attachment_path', 'documentation_status']);
                 }),
             Action::make('viewDocument')
                 ->label('View Document')

@@ -3,8 +3,12 @@
 namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\TransactionDocumentationForm;
+use App\Services\TransactionDocumentationService;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class CreateTransaction extends CreateRecord
@@ -30,6 +34,10 @@ class CreateTransaction extends CreateRecord
         // Remove these fields from the data since we handle them manually
         unset($data['bills']);
         unset($data['invoices']);
+
+        $data['created_by'] = Auth::id();
+        $data['updated_by'] = Auth::id();
+        $data['documentation_status'] = $data['documentation_status'] ?? 'incomplete';
         
         return $data;
     }
@@ -89,5 +97,7 @@ class CreateTransaction extends CreateRecord
             'bills_count' => $transaction->bills()->count(),
             'invoices_count' => $transaction->invoices()->count()
         ]);
+
+        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction);
     }
 }
