@@ -13,10 +13,7 @@ class TransactionObserver
 
     public function saved(Transaction $transaction): void
     {
-        if ($transaction->wasRecentlyCreated || $transaction->wasChanged([
-            'type', 'related_type', 'related_id', 'attachment_path',
-            'notes', 'name', 'trx_in_pdf_path', 'trx_out_pdf_path',
-        ])) {
+        if ($transaction->wasRecentlyCreated || $transaction->wasChanged()) {
             $this->documentationService->syncAndRecalculate($transaction);
         }
     }

@@ -23,6 +23,20 @@ class ViewTransaction extends ViewRecord
     {
         return [
             Actions\EditAction::make(),
+            Action::make('viewTrxInPdf')
+                ->label('View Trx In PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('info')
+                ->url(fn () => $this->record->getTrxInPdfUrl())
+                ->openUrlInNewTab()
+                ->visible(fn () => (bool) $this->record->getTrxInPdfUrl()),
+            Action::make('viewTrxOutPdf')
+                ->label('View Trx Out PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('info')
+                ->url(fn () => $this->record->getTrxOutPdfUrl())
+                ->openUrlInNewTab()
+                ->visible(fn () => (bool) $this->record->getTrxOutPdfUrl()),
             Action::make('uploadDocument')
                 ->label('Upload Document')
                 ->icon('heroicon-o-document-arrow-up')

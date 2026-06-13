@@ -510,7 +510,9 @@ class TransactionResource extends Resource
                     ->content(fn (?Transaction $record) => $record?->reference ?? '—'),
                 Forms\Components\Placeholder::make('documentation_status_display')
                     ->label('Status')
-                    ->content(fn (?Transaction $record) => ucfirst(str_replace('_', ' ', $record?->documentation_status ?? 'incomplete'))),
+                    ->content(fn (?Transaction $record) => $record
+                        ? app(TransactionDocumentationService::class)->getDocumentationStatusLabel($record)
+                        : '—'),
             ])
             ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction);
     }
@@ -570,20 +572,12 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('documentation_status')
                     ->label('Documentation')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'complete' => 'Complete',
-                        'incomplete' => 'Incomplete',
-                        'missing_attachment' => 'Missing attachment',
-                        'missing_linked_record' => 'Missing linked record',
-                        'missing_generated_pdf' => 'Missing PDF',
-                        default => ucfirst(str_replace('_', ' ', $state ?? 'incomplete')),
-                    })
-                    ->color(fn (Transaction $record): string => match ($record->documentation_status) {
-                        'complete' => 'success',
-                        'incomplete' => 'warning',
-                        default => 'danger',
-                    })
-                    ->sortable(),
+                    ->getStateUsing(fn (Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationStatusLabel($record))
+                    ->tooltip(fn (Transaction $record): ?string => app(TransactionDocumentationService::class)->getPendingTaskSummary($record))
+                    ->color(fn (Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationStatusColor($record))
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        return $query->orderBy('documentation_status', $direction);
+                    }),
                 Tables\Columns\TextColumn::make('pending_documentation_count')
                     ->label('Missing tasks')
                     ->badge()
@@ -715,6 +709,20 @@ class TransactionResource extends Resource
             ->actions([
                 TransactionDocumentationForm::makeTableAction(),
                 Tables\Actions\ViewAction::make(),
+                Action::make('viewTrxInPdf')
+                    ->label('Trx In PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->url(fn (Transaction $record) => $record->getTrxInPdfUrl())
+                    ->openUrlInNewTab()
+                    ->visible(fn (Transaction $record) => (bool) $record->getTrxInPdfUrl()),
+                Action::make('viewTrxOutPdf')
+                    ->label('Trx Out PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->url(fn (Transaction $record) => $record->getTrxOutPdfUrl())
+                    ->openUrlInNewTab()
+                    ->visible(fn (Transaction $record) => (bool) $record->getTrxOutPdfUrl()),
                 Action::make('uploadDocument')
                     ->label('Upload Document')
                     ->icon('heroicon-o-document-arrow-up')

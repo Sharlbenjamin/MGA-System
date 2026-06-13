@@ -36,7 +36,9 @@ class TransactionDocumentationForm
                     return "{$icon} {$task['label']}";
                 })->implode("\n");
 
-                return "Progress: {$done} of {$total} complete\n\n{$lines}";
+                $proofLines = collect($service->getProofPathLines($record))->implode("\n");
+
+                return "Progress: {$done} of {$total} complete\n\n{$lines}\n\nProof paths:\n{$proofLines}";
             })
             ->columnSpanFull();
     }
@@ -250,7 +252,7 @@ class TransactionDocumentationForm
             ->label('Complete documentation')
             ->icon('heroicon-o-clipboard-document-check')
             ->color('warning')
-            ->visible(fn (Transaction $record) => $record->documentation_status !== 'complete')
+            ->visible(fn (Transaction $record) => app(TransactionDocumentationService::class)->resolveDocumentationStatus($record) !== 'complete')
             ->modalHeading('Complete documentation')
             ->modalDescription('Resolve missing links, attachments, and PDFs in one place.')
             ->modalSubmitActionLabel('Save & update')
@@ -272,7 +274,7 @@ class TransactionDocumentationForm
             ->label('Complete documentation')
             ->icon('heroicon-o-clipboard-document-check')
             ->color('warning')
-            ->visible(fn (Transaction $record) => $record->documentation_status !== 'complete')
+            ->visible(fn (Transaction $record) => app(TransactionDocumentationService::class)->resolveDocumentationStatus($record) !== 'complete')
             ->modalHeading('Complete documentation')
             ->modalSubmitActionLabel('Save & update')
             ->fillForm(fn (Transaction $record) => [

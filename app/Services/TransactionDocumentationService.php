@@ -49,25 +49,124 @@ class TransactionDocumentationService
 
     public function recalculateDocumentationStatus(Transaction $transaction): void
     {
-        $tasks = $this->getMissingTasks($transaction);
-        $pending = collect($tasks)->where('status', 'pending');
-
-        if ($pending->isEmpty()) {
-            $status = 'complete';
-        } elseif ($pending->count() > 1) {
-            $status = 'incomplete';
-        } else {
-            $status = match ($pending->first()['key']) {
-                'missing_linked_client', 'missing_linked_provider', 'missing_linked_invoices', 'missing_linked_bills' => 'missing_linked_record',
-                'missing_trx_in_pdf', 'missing_trx_out_pdf' => 'missing_generated_pdf',
-                default => 'missing_attachment',
-            };
-        }
+        $status = $this->resolveDocumentationStatus($transaction);
 
         if ($transaction->documentation_status !== $status) {
             $transaction->documentation_status = $status;
             $transaction->saveQuietly();
         }
+    }
+
+    public function resolveDocumentationStatus(Transaction $transaction): string
+    {
+        $pending = collect($this->getMissingTasks($transaction))->where('status', 'pending');
+
+        if ($pending->isEmpty()) {
+            return 'complete';
+        }
+
+        if ($pending->count() > 1) {
+            return 'incomplete';
+        }
+
+        return match ($pending->first()['key']) {
+            'missing_linked_client', 'missing_linked_provider', 'missing_linked_invoices', 'missing_linked_bills' => 'missing_linked_record',
+            'missing_trx_in_pdf', 'missing_trx_out_pdf' => 'missing_generated_pdf',
+            default => 'missing_attachment',
+        };
+    }
+
+    public function getDocumentationStatusLabel(Transaction $transaction): string
+    {
+        return $this->formatDocumentationStatusLabel(
+            $this->resolveDocumentationStatus($transaction)
+        );
+    }
+
+    public function formatDocumentationStatusLabel(?string $status): string
+    {
+        return match ($status) {
+            'complete' => 'Complete',
+            'incomplete' => 'Incomplete',
+            'missing_attachment' => 'Missing attachment',
+            'missing_linked_record' => 'Missing linked record',
+            'missing_generated_pdf' => 'Missing PDF',
+            default => ucfirst(str_replace('_', ' ', $status ?? 'incomplete')),
+        };
+    }
+
+    public function getDocumentationStatusColor(Transaction $transaction): string
+    {
+        return match ($this->resolveDocumentationStatus($transaction)) {
+            'complete' => 'success',
+            'incomplete' => 'warning',
+            default => 'danger',
+        };
+    }
+
+    public function getPendingTaskSummary(Transaction $transaction): ?string
+    {
+        $pending = collect($this->getMissingTasks($transaction))
+            ->where('status', 'pending')
+            ->pluck('label')
+            ->map(fn (string $label) => trim($label, '. '));
+
+        if ($pending->isEmpty()) {
+            return null;
+        }
+
+        return 'Still needed: ' . $pending->implode('; ');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getProofPathLines(Transaction $transaction): array
+    {
+        $transaction->loadMissing(['invoices', 'bills', 'attachments']);
+
+        $lines = [];
+
+        if ($transaction->attachment_path) {
+            $lines[] = '✓ Transaction attachment (Link/Text)';
+        } else {
+            $lines[] = '⚠ Transaction attachment (Link/Text) — not set';
+        }
+
+        if ($transaction->attachments->isNotEmpty()) {
+            $types = $transaction->attachments->pluck('type')->unique()->implode(', ');
+            $lines[] = "✓ Typed attachments: {$types}";
+        }
+
+        if ($transaction->type === 'Income') {
+            $undocumented = $transaction->invoices->filter(fn (Invoice $invoice) => ! $this->invoiceHasDocument($invoice));
+            if ($transaction->invoices->isEmpty()) {
+                $lines[] = '⚠ No invoices linked';
+            } elseif ($undocumented->isEmpty()) {
+                $lines[] = '✓ All linked invoices have documents';
+            } else {
+                $lines[] = '⚠ ' . $undocumented->count() . ' linked invoice(s) missing documents';
+            }
+
+            $lines[] = $transaction->trx_in_pdf_path
+                ? '✓ Trx In PDF generated'
+                : '⚠ Trx In PDF not generated';
+        }
+
+        if ($transaction->type === 'Outflow' && $transaction->bills->isNotEmpty()) {
+            $undocumented = $transaction->bills->filter(fn (Bill $bill) => ! $this->billHasDocument($bill));
+            if ($undocumented->isEmpty()) {
+                $lines[] = '✓ All linked bills have documents';
+            } else {
+                $lines[] = '⚠ ' . $undocumented->count() . ' linked bill(s) missing documents';
+            }
+
+            $lines[] = $transaction->trx_out_pdf_path
+                ? '✓ Trx Out PDF generated'
+                : '⚠ Trx Out PDF not generated';
+        }
+
+        return $lines;
     }
 
     /**

@@ -340,6 +340,7 @@ class Transaction extends Model
 
         // Recalculate bank charges after attaching invoices
         $this->calculateBankCharges();
+        app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 
     public function updateInvoicePaidAmount(Invoice $invoice, float $amount)
@@ -385,6 +386,7 @@ class Transaction extends Model
 
         // Recalculate bank charges after attaching bills
         $this->calculateBankCharges();
+        app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 
     /**
@@ -410,6 +412,7 @@ class Transaction extends Model
 
         // Recalculate bank charges after attaching bills
         $this->calculateBankCharges();
+        app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 
     /**
