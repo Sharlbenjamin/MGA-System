@@ -33,18 +33,8 @@ class TransactionRelationManager extends RelationManager
                     ->sortable(),
                 Tables\Columns\TextColumn::make('attachment_path')
                     ->label('Attachment')
-                    ->state(fn (Transaction $record): string => $record->attachment_path ? 'View Attachment' : 'No Attachment')
-                    ->url(function (Transaction $record): ?string {
-                        if (! $record->attachment_path) {
-                            return null;
-                        }
-
-                        if ($record->isUrl() || $record->isGoogleDriveAttachment()) {
-                            return $record->attachment_path;
-                        }
-
-                        return $record->getDocumentSignedUrl();
-                    })
+                    ->state(fn (Transaction $record): string => $record->getAttachmentUrl() ? 'View Attachment' : 'No Attachment')
+                    ->url(fn (Transaction $record): ?string => $record->getAttachmentUrl())
                     ->openUrlInNewTab()
                     ->color('info'),
             ])

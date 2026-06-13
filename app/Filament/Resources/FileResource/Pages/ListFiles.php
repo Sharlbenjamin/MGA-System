@@ -5,6 +5,7 @@ namespace App\Filament\Resources\FileResource\Pages;
 use App\Filament\Resources\FileResource;
 use App\Filament\Widgets\FilesCaseStatusWidget;
 use App\Models\Client;
+use App\Models\File;
 use App\Models\ServiceType;
 use App\Services\OcrService;
 use Filament\Actions;
@@ -14,10 +15,20 @@ use Filament\Forms\Components\Section;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Tables\Table;
 
 class ListFiles extends ListRecords
 {
     protected static string $resource = FileResource::class;
+
+    protected static string $view = 'filament.resources.file-resource.pages.list-files';
+
+    public function table(Table $table): Table
+    {
+        return parent::table($table)
+            ->recordUrl(fn (File $record): string => FileResource::getUrl('view', ['record' => $record]))
+            ->recordClasses(fn (): string => 'cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-white/5');
+    }
 
     protected function getTablePollingInterval(): ?string
     {
@@ -115,6 +126,7 @@ class ListFiles extends ListRecords
                                 'phone' => $cleanedData['phone'],
                                 'country' => $cleanedData['country'],
                                 'city' => $cleanedData['city'],
+                                'service_type' => $cleanedData['service_type'],
                                 'gender' => $gender,
                             ]
                         ]);

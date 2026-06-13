@@ -300,11 +300,28 @@ class Transaction extends Model
     }
 
     /**
+     * Check if the attachment is an external link (Google Drive, HTTP, etc.).
+     */
+    public function isExternalAttachment(): bool
+    {
+        if (! $this->attachment_path) {
+            return false;
+        }
+
+        if ($this->isGoogleDriveAttachment() || $this->isUrl()) {
+            return true;
+        }
+
+        return str_contains($this->attachment_path, '://')
+            || str_starts_with($this->attachment_path, 'www.');
+    }
+
+    /**
      * Check if the attachment is a local storage file (not a URL).
      */
     public function isLocalStorageFile(): bool
     {
-        if (! $this->attachment_path || $this->isGoogleDriveAttachment() || $this->isUrl()) {
+        if (! $this->attachment_path || $this->isExternalAttachment()) {
             return false;
         }
 
@@ -360,7 +377,7 @@ class Transaction extends Model
             return null;
         }
 
-        if ($this->isGoogleDriveAttachment() || $this->isUrl()) {
+        if ($this->isExternalAttachment()) {
             $url = $this->attachment_path;
 
             if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
@@ -370,12 +387,9 @@ class Transaction extends Model
             return $url;
         }
 
-        if ($this->isLocalStorageFile()) {
-            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->attachment_path)) {
-                return asset('storage/' . $this->attachment_path);
-            }
-
-            return $this->getDocumentSignedUrl();
+        if ($this->isLocalStorageFile()
+            && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->attachment_path)) {
+            return asset('storage/' . $this->attachment_path);
         }
 
         return null;
@@ -433,11 +447,12 @@ class Transaction extends Model
     }
 
     /**
-     * Check if the transaction has a local document
+     * Check if the transaction has a local document on disk.
      */
     public function hasLocalDocument(): bool
     {
-        return !empty($this->attachment_path);
+        return $this->isLocalStorageFile()
+            && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->attachment_path);
     }
 
     /**
@@ -448,7 +463,7 @@ class Transaction extends Model
      */
     public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
     {
-        if (!$this->hasLocalDocument()) {
+        if (! $this->hasLocalDocument()) {
             return null;
         }
 
@@ -466,7 +481,7 @@ class Transaction extends Model
      */
     public function getDocumentMetadataSignedUrl(int $expirationMinutes = 60): ?string
     {
-        if (!$this->hasLocalDocument()) {
+        if (! $this->hasLocalDocument()) {
             return null;
         }
 

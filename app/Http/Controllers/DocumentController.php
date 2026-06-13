@@ -27,6 +27,10 @@ class DocumentController extends Controller
         try {
             // Resolve model and get document path
             $documentPath = $this->resolveDocumentPath($type, $id);
+
+            if ($documentPath && $this->isExternalDocumentPath($documentPath)) {
+                return redirect()->away($this->normalizeExternalUrl($documentPath));
+            }
             
             if (!$documentPath) {
                 Log::warning('Document not found', [
@@ -169,6 +173,24 @@ class DocumentController extends Controller
             
             return response()->json(['error' => 'Internal server error'], 500);
         }
+    }
+
+    private function isExternalDocumentPath(string $path): bool
+    {
+        return str_starts_with($path, 'http://')
+            || str_starts_with($path, 'https://')
+            || str_contains($path, 'drive.google.com')
+            || str_contains($path, '://')
+            || str_starts_with($path, 'www.');
+    }
+
+    private function normalizeExternalUrl(string $url): string
+    {
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            return $url;
+        }
+
+        return 'https://' . ltrim($url, '/');
     }
 
     /**

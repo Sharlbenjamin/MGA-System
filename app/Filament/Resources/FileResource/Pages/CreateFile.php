@@ -40,11 +40,24 @@ class CreateFile extends CreateRecord
                 $countryId = $country ? $country->id : null;
             }
             
-            if (!empty($ocrData['city']) && $countryId) {
-                $city = \App\Models\City::where('name', 'like', '%' . $ocrData['city'] . '%')
-                    ->where('country_id', $countryId)
-                    ->first();
+            if (!empty($ocrData['city'])) {
+                $cityQuery = \App\Models\City::where('name', 'like', '%' . $ocrData['city'] . '%');
+                if ($countryId) {
+                    $cityQuery->where('country_id', $countryId);
+                }
+                $city = $cityQuery->first();
                 $cityId = $city ? $city->id : null;
+            }
+
+            $serviceTypeId = null;
+            if (!empty($ocrData['service_type'])) {
+                $serviceTypeValue = $ocrData['service_type'];
+                if (is_numeric($serviceTypeValue)) {
+                    $serviceTypeId = (int) $serviceTypeValue;
+                } else {
+                    $serviceType = \App\Models\ServiceType::where('name', 'like', '%' . $serviceTypeValue . '%')->first();
+                    $serviceTypeId = $serviceType?->id;
+                }
             }
             
             // Pre-fill the form with OCR data
@@ -58,7 +71,7 @@ class CreateFile extends CreateRecord
                 'address' => $ocrData['patient_address'] ?? '',
                 'symptoms' => $ocrData['symptoms'] ?? '',
                 'phone' => $ocrData['phone'] ?? '',
-                'service_type_id' => $ocrData['service_type'] ?? '',
+                'service_type_id' => $serviceTypeId,
                 'country_id' => $countryId,
                 'city_id' => $cityId,
                 'status' => 'New',

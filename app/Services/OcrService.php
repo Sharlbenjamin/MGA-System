@@ -81,6 +81,17 @@ class OcrService
             }
         }
         
+        // Extract city/country from address when not explicitly provided
+        if (!empty($data['patient_address']) && (empty($data['city']) || empty($data['country']))) {
+            $parsedAddress = $this->parseAddress($data['patient_address']);
+            if (empty($data['city']) && !empty($parsedAddress['city'])) {
+                $data['city'] = $parsedAddress['city'];
+            }
+            if (empty($data['country']) && !empty($parsedAddress['country'])) {
+                $data['country'] = $parsedAddress['country'];
+            }
+        }
+
         // Set confidence based on how many fields were found
         $foundFields = 0;
         foreach ($data as $key => $value) {
@@ -275,6 +286,21 @@ class OcrService
         if (preg_match('/•\s*Kind\s+of\s+assistance\s*:\s*(.+)/i', $line, $matches)) {
             $data['service_type'] = trim($matches[1]);
         }
+
+        // Look for service type patterns (bullet point format)
+        if (preg_match('/•\s*Service\s+Type\s*:\s*(.+)/i', $line, $matches)) {
+            $data['service_type'] = trim($matches[1]);
+        }
+
+        // Look for service type patterns (non-bullet format)
+        if (preg_match('/^Service\s+Type\s*:\s*(.+)/i', $line, $matches)) {
+            $data['service_type'] = trim($matches[1]);
+        }
+
+        // Look for kind of assistance (non-bullet format)
+        if (preg_match('/^Kind\s+of\s+assistance\s*:\s*(.+)/i', $line, $matches)) {
+            $data['service_type'] = trim($matches[1]);
+        }
         
         // Look for Policy Number patterns
         if (preg_match('/Policy\s+Number\s*:\s*(.+)/i', $line, $matches)) {
@@ -377,14 +403,24 @@ class OcrService
                 'medical centre' => '5', // Clinic Visit
                 'clinic' => '5', // Clinic Visit
                 'clinic visit' => '5', // Clinic Visit
+                'initial consultation' => '2', // Telemedicine
                 'house call' => '1',
                 'telemedicine' => '2',
                 'hospital visit' => '3',
                 'dental clinic' => '4',
             ];
         }
-        
-        return $mappings[$serviceType] ?? $serviceType;
+
+        if (isset($mappings[$serviceType])) {
+            return $mappings[$serviceType];
+        }
+
+        $serviceTypeModel = \App\Models\ServiceType::whereRaw('LOWER(name) = ?', [$serviceType])->first();
+        if ($serviceTypeModel) {
+            return (string) $serviceTypeModel->id;
+        }
+
+        return $serviceType;
     }
     
     /**

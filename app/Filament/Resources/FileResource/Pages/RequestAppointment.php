@@ -15,7 +15,6 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -35,9 +34,6 @@ class RequestAppointment extends EditRecord
 
     protected static ?string $title = 'Request Appointment';
 
-    /** @var array<string, \Illuminate\Support\Collection> */
-    protected array $displayedBranchesCache = [];
-
     /** @var array<int, array{sort_value: float|int, display: string}> */
     protected array $branchDistanceCache = [];
 
@@ -45,12 +41,24 @@ class RequestAppointment extends EditRecord
 
     protected bool $fileFeeResolved = false;
 
+    /** @var array<int, array<string, mixed>> */
+    public array $branchTableRows = [];
+
+    public array $selectedBranchIds = [];
+
+    public bool $selectAllBranches = false;
+
+    public bool $distancesLoading = false;
+
+    public bool $distancesLoaded = false;
+
     public function mount(int|string $record): void
     {
         $this->record = $this->resolveRecord($record);
         $this->record->loadMissing('serviceType');
         $this->authorizeAccess();
         $this->fillForm();
+        $this->prepareBranchTable(filled($this->record->city_id) ? (int) $this->record->city_id : null);
         $this->previousUrl = url()->previous();
     }
 
@@ -82,9 +90,10 @@ class RequestAppointment extends EditRecord
                             ->placeholder('Use file\'s city')
                             ->default(fn () => $this->record->city_id ?? null)
                             ->live()
-                            ->afterStateUpdated(function ($state, $set) {
-                                $set('selected_branches', []);
-                                $set('select_all_branches', false);
+                            ->afterStateUpdated(function ($state) {
+                                $this->selectedBranchIds = [];
+                                $this->selectAllBranches = false;
+                                $this->refreshBranchTable(filled($state) ? (int) $state : null);
                             }),
                     ])
                     ->collapsible()
@@ -92,46 +101,9 @@ class RequestAppointment extends EditRecord
 
                 Section::make('Available Branches')
                     ->description('Select the provider branches you want to send appointment requests to')
-                    ->key(fn (Get $get) => 'branches-' . ($get('city_filter') ?? 'default'))
-                    ->schema(fn (Get $get): array => [
-                        Grid::make(12)
-                            ->schema([
-                                Checkbox::make('select_all_branches')
-                                    ->label('')
-                                    ->live()
-                                    ->afterStateUpdated(function ($state, $set, $get) {
-                                        $cityFilter = filled($get('city_filter')) ? (int) $get('city_filter') : null;
-                                        $branches = $this->getDisplayedProviderBranchesForRequest($cityFilter);
-                                        $branchIds = $branches->pluck('id')->toArray();
-                                        if ($state) {
-                                            $set('selected_branches', $branchIds);
-                                            foreach ($branchIds as $branchId) {
-                                                $set("branch_{$branchId}", true);
-                                            }
-                                        } else {
-                                            $set('selected_branches', []);
-                                            foreach ($branchIds as $branchId) {
-                                                $set("branch_{$branchId}", false);
-                                            }
-                                        }
-                                    })
-                                    ->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_branch')->label('Branch Name')->content('')->columnSpan(2),
-                                \Filament\Forms\Components\Placeholder::make('header_priority')->label('Priority')->content('')->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_cost')->label('Cost')->content('')->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_communication')->label('Contact By')->content('')->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_contact')->label('Contact')->content('')->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_phone')->label('Phone')->content('')->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_address')->label('Address')->content('')->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_website')->label('Website')->content('')->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_distance')->label('Distance')->content('')->columnSpan(1),
-                                \Filament\Forms\Components\Placeholder::make('header_request')->label('Request')->content('')->columnSpan(1),
-                            ])
-                            ->extraAttributes(['class' => 'bg-gray-50 border-b-2 border-gray-200 font-semibold text-sm']),
-                        ...$this->getBranchRows(filled($get('city_filter')) ? (int) $get('city_filter') : null),
-                        Hidden::make('selected_branches')
-                            ->default([])
-                            ->rules(['array']),
+                    ->schema([
+                        \Filament\Forms\Components\View::make('filament.resources.file-resource.components.request-appointment-branches')
+                            ->viewData(fn (): array => ['livewire' => $this]),
                     ])
                     ->collapsible(),
 
@@ -157,10 +129,120 @@ class RequestAppointment extends EditRecord
     {
         $this->form->fill([
             'city_filter' => $this->record->city_id,
-            'selected_branches' => [],
-            'select_all_branches' => false,
             'custom_emails' => [],
         ]);
+    }
+
+    public function loadBranchDistances(): void
+    {
+        if ($this->distancesLoaded || $this->distancesLoading) {
+            return;
+        }
+
+        if (! (bool) config('services.google.distance_enabled', true) || ! $this->record?->address) {
+            $this->distancesLoaded = true;
+
+            return;
+        }
+
+        $this->distancesLoading = true;
+
+        $cityFilter = filled($this->data['city_filter'] ?? null)
+            ? (int) $this->data['city_filter']
+            : (filled($this->record->city_id) ? (int) $this->record->city_id : null);
+        $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
+        $this->warmBranchDistanceCache($branches);
+
+        $sortedBranches = $branches
+            ->map(function ($branch) {
+                $distanceData = $this->calculateBranchDistanceForSorting($branch);
+                $branch->sort_distance = $distanceData['sort_value'];
+
+                return $branch;
+            })
+            ->sortBy([
+                ['sort_distance', 'asc'],
+                ['priority', 'asc'],
+            ])
+            ->values();
+
+        $this->branchTableRows = $sortedBranches
+            ->map(fn ($branch) => $this->buildBranchTableRow($branch))
+            ->all();
+
+        $this->distancesLoading = false;
+        $this->distancesLoaded = true;
+        $this->syncSelectAllState();
+    }
+
+    public function refreshBranchTable(?int $cityFilter = null): void
+    {
+        $this->distancesLoaded = false;
+        $this->distancesLoading = false;
+        $this->branchDistanceCache = [];
+        $this->prepareBranchTable($cityFilter);
+    }
+
+    public function toggleSelectAll(bool $selected): void
+    {
+        $this->selectAllBranches = $selected;
+        $this->selectedBranchIds = $selected
+            ? collect($this->branchTableRows)->pluck('id')->map(fn ($id) => (string) $id)->all()
+            : [];
+    }
+
+    public function updatedSelectedBranchIds(): void
+    {
+        $this->syncSelectAllState();
+    }
+
+    protected function syncSelectAllState(): void
+    {
+        $total = count($this->branchTableRows);
+        $selected = count($this->selectedBranchIds);
+        $this->selectAllBranches = $total > 0 && $selected === $total;
+    }
+
+    protected function prepareBranchTable(?int $cityFilter = null): void
+    {
+        $this->getFileFeeForServiceType($this->record->service_type_id);
+
+        $branches = $this->getEligibleProviderBranches($this->record, $cityFilter)
+            ->sortBy([
+                fn ($branch) => $branch->priority ?? 999,
+                fn ($branch) => $branch->status === 'Active' ? 0 : 1,
+            ])
+            ->values();
+
+        $this->branchTableRows = $branches
+            ->map(fn ($branch) => $this->buildBranchTableRow($branch))
+            ->all();
+    }
+
+    protected function buildBranchTableRow($branch): array
+    {
+        $service = $this->getBranchServiceForRecord($branch);
+        $cost = 'N/A';
+        if ($service && $service->pivot->min_cost) {
+            $cost = '€' . number_format($service->pivot->min_cost, 2);
+        }
+
+        $branch->sort_distance = $this->branchDistanceCache[$branch->id]['sort_value'] ?? 999999;
+
+        return [
+            'id' => $branch->id,
+            'branch_name' => $branch->branch_name,
+            'provider_name' => $branch->provider?->name,
+            'provider_comment' => $branch->provider?->comment,
+            'priority' => $branch->priority ?? 'N/A',
+            'cost' => $cost,
+            'communication_method' => $branch->communication_method ?? 'N/A',
+            'contact_html' => $this->getBranchContactInfo($branch),
+            'phone' => $branch->phone ?? ($branch->getPrimaryPhoneAttribute() ?? 'N/A'),
+            'address' => $branch->address ?? 'N/A',
+            'website' => $branch->website ?? 'N/A',
+            'appointment_text' => $this->formatAppointmentRequestText($branch),
+        ];
     }
 
     public function sendRequest(array $confirmationData = []): void
@@ -168,7 +250,8 @@ class RequestAppointment extends EditRecord
         $this->authorizeAccess();
         $data = $this->form->getState();
 
-        $selectedBranchIds = $data['selected_branches'] ?? [];
+        $selectedBranchIds = array_map('intval', $this->selectedBranchIds);
+        $data['selected_branches'] = $selectedBranchIds;
         $customEmails = collect($data['custom_emails'] ?? [])->pluck('email')->filter();
         if (empty($selectedBranchIds) && $customEmails->isEmpty()) {
             Notification::make()
@@ -273,127 +356,24 @@ class RequestAppointment extends EditRecord
         return 'Request Appointment';
     }
 
-    protected function getBranchRows(?int $cityFilter = null): array
-    {
-        $sortedBranches = $this->getDisplayedProviderBranchesForRequest($cityFilter);
-        $rows = [];
-        foreach ($sortedBranches as $branch) {
-            $rows[] = Grid::make(12)
-                ->schema([
-                    Checkbox::make("branch_{$branch->id}")
-                        ->label('')
-                        ->live()
-                        ->afterStateUpdated(function ($state, $set, $get) use ($branch) {
-                            $selectedBranches = $get('selected_branches') ?? [];
-                            if ($state) {
-                                if (!in_array($branch->id, $selectedBranches)) {
-                                    $selectedBranches[] = $branch->id;
-                                }
-                            } else {
-                                $selectedBranches = array_values(array_filter($selectedBranches, fn ($id) => $id != $branch->id));
-                            }
-                            $set('selected_branches', $selectedBranches);
-                            $displayedBranches = $this->getDisplayedProviderBranchesForRequest(
-                                filled($get('city_filter')) ? (int) $get('city_filter') : null
-                            );
-                            $totalBranches = $displayedBranches->count();
-                            $selectedCount = count($selectedBranches);
-                            $set('select_all_branches', $selectedCount === $totalBranches && $totalBranches > 0);
-                        })
-                        ->columnSpan(1),
-                    \Filament\Forms\Components\View::make('branch_name_' . $branch->id)
-                        ->view('filament.forms.components.branch-name-link')
-                        ->viewData([
-                            'branchName' => $branch->branch_name,
-                            'branchId' => $branch->id,
-                            'providerName' => $branch->provider?->name ?? null,
-                            'providerComment' => $branch->provider?->comment ?? null,
-                        ])
-                        ->columnSpan(2),
-                    \Filament\Forms\Components\Placeholder::make("priority_{$branch->id}")->label('')->content($branch->priority ?? 'N/A')->columnSpan(1),
-                    \Filament\Forms\Components\Placeholder::make("cost_{$branch->id}")
-                        ->label('')
-                        ->content(function () use ($branch) {
-                            $service = $this->getBranchServiceForRecord($branch);
-                            if ($service && $service->pivot->min_cost) {
-                                return '€' . number_format($service->pivot->min_cost, 2);
-                            }
-
-                            return 'N/A';
-                        })
-                        ->columnSpan(1),
-                    \Filament\Forms\Components\Placeholder::make("communication_{$branch->id}")->label('')->content($branch->communication_method ?? 'N/A')->columnSpan(1),
-                    \Filament\Forms\Components\View::make('contact_' . $branch->id)
-                        ->view('filament.forms.components.contact-info')
-                        ->viewData(['contactInfo' => $this->getBranchContactInfo($branch), 'branchId' => $branch->id])
-                        ->columnSpan(1),
-                    \Filament\Forms\Components\View::make('phone_' . $branch->id)
-                        ->view('filament.forms.components.copiable-field')
-                        ->viewData(['label' => 'phone', 'value' => $branch->phone ?? ($branch->getPrimaryPhoneAttribute() ?? 'N/A')])
-                        ->columnSpan(1),
-                    \Filament\Forms\Components\View::make('address_' . $branch->id)
-                        ->view('filament.forms.components.copiable-field')
-                        ->viewData(['label' => 'address', 'value' => $branch->address ?? 'N/A'])
-                        ->columnSpan(1),
-                    \Filament\Forms\Components\View::make('website_' . $branch->id)
-                        ->view('filament.forms.components.copiable-field')
-                        ->viewData(['label' => 'website', 'value' => $branch->website ?? 'N/A'])
-                        ->columnSpan(1),
-                    \Filament\Forms\Components\Placeholder::make('distance_' . $branch->id)->label('')->content('N/A')->columnSpan(1),
-                    \Filament\Forms\Components\View::make('request_' . $branch->id)
-                        ->view('filament.forms.components.request-appointment')
-                        ->viewData([
-                            'branch' => $branch,
-                            'record' => $this->record,
-                            'appointmentText' => $this->formatAppointmentRequestText($branch),
-                        ])
-                        ->columnSpan(1),
-                ])
-                ->extraAttributes(['class' => 'border-b border-gray-100 hover:bg-gray-50']);
-        }
-        return $rows;
-    }
-
-    protected function getDisplayedProviderBranchesForRequest($cityFilter = null, ?int $limit = null): \Illuminate\Support\Collection
-    {
-        $cacheKey = filled($cityFilter) ? (string) (int) $cityFilter : 'default';
-
-        if (isset($this->displayedBranchesCache[$cacheKey])) {
-            $cached = $this->displayedBranchesCache[$cacheKey];
-
-            return $limit ? $cached->take($limit) : $cached;
-        }
-
-        $branches = $this->getEligibleProviderBranches($this->record, $cityFilter);
-        $this->warmBranchDistanceCache($branches);
-
-        $branchesWithSortData = $branches->map(function ($branch) {
-            $distanceData = $this->calculateBranchDistanceForSorting($branch);
-            $branch->sort_distance = $distanceData['sort_value'];
-            $branch->distance_display = $distanceData['display'];
-            $branch->sort_service_type = $this->record->service_type_id ?? 999;
-            $branch->sort_status = $branch->status === 'Active' ? 1 : 2;
-
-            return $branch;
-        });
-        $sortedBranches = $branchesWithSortData->sortBy([
-            ['sort_distance', 'asc'],
-            ['sort_service_type', 'asc'],
-            ['sort_status', 'asc'],
-        ])->values();
-
-        $this->displayedBranchesCache[$cacheKey] = $sortedBranches;
-
-        return $limit ? $sortedBranches->take($limit) : $sortedBranches;
-    }
-
     protected function getEligibleProviderBranches($record, $cityId = null)
     {
         $filterCityId = filled($cityId) ? (int) $cityId : $record->city_id;
+        $serviceTypeId = $record->service_type_id;
 
         return \App\Models\ProviderBranch::query()
-            ->eligibleForFile($record->service_type_id, $record->country_id, $filterCityId)
-            ->with(['provider', 'city', 'services', 'gopContact', 'operationContact'])
+            ->eligibleForFile($serviceTypeId, $record->country_id, $filterCityId)
+            ->with([
+                'provider:id,name,comment,country_id',
+                'city:id,name',
+                'gopContact:id,address',
+                'operationContact:id,address',
+                'services' => fn ($query) => $query->when(
+                    $serviceTypeId,
+                    fn ($serviceQuery) => $serviceQuery->where('service_types.id', $serviceTypeId),
+                ),
+            ])
+            ->orderBy('priority')
             ->get();
     }
 
