@@ -690,32 +690,18 @@ class TransactionResource extends Resource
                     ->multiple(),
                 Tables\Filters\Filter::make('incomplete_only')
                     ->label('Incomplete documentation only')
-                    ->query(fn (Builder $query) => $query->where('documentation_status', '!=', 'complete')),
+                    ->toggle()
+                    ->query(fn (Builder $query) => $query->where('documentation_status', '!=', 'complete'))
+                    ->indicateUsing(fn (): array => ['incomplete_only' => 'Incomplete documentation only']),
                 Tables\Filters\SelectFilter::make('status')->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])->multiple(),
                 Tables\Filters\SelectFilter::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->multiple()->preload(),
                 Tables\Filters\Filter::make('missing_documents')
-                    ->label('Missed Documents')
-                    ->form([
-                        Forms\Components\Checkbox::make('show_missing_documents')
-                            ->label('Missing Documents')
-                            ->default(true)
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['show_missing_documents'] ?? true,
-                                fn (Builder $query): Builder => $query->where('type', 'Outflow')->whereNull('attachment_path')
-                            );
-                    })
-                    ->indicateUsing(function (array $data): array {
-                        $indicators = [];
-                        
-                        if ($data['show_missing_documents'] ?? true) {
-                            $indicators['missing_documents'] = 'Missed Documents (Outflow)';
-                        }
-                        
-                        return $indicators;
-                    }),
+                    ->label('Missing documents (Outflow)')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query
+                        ->where('type', 'Outflow')
+                        ->whereNull('attachment_path'))
+                    ->indicateUsing(fn (): array => ['missing_documents' => 'Missing documents (Outflow)']),
             ])
             ->groups([
                 Tables\Grouping\Group::make('documentation_status')

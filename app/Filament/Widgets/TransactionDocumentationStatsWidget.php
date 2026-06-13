@@ -2,28 +2,57 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\TransactionResource\Pages\ListTransactions;
 use App\Models\Transaction;
+use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Schema;
 
 class TransactionDocumentationStatsWidget extends BaseWidget
 {
+    use InteractsWithPageTable;
+
+    protected function getTablePage(): string
+    {
+        return ListTransactions::class;
+    }
+
+    protected function getPageTableQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        unset($this->tablePage);
+
+        return parent::getPageTableQuery();
+    }
+
+    protected function getCachedStats(): array
+    {
+        return $this->getStats();
+    }
+
     protected function getStats(): array
     {
-        if (! \Illuminate\Support\Facades\Schema::hasColumn('transactions', 'documentation_status')) {
+        if (! Schema::hasColumn('transactions', 'documentation_status')) {
             return [];
         }
 
-        $incomplete = Transaction::query()->where('documentation_status', '!=', 'complete')->count();
-        $missingAttachment = Transaction::query()->whereIn('documentation_status', [
-            'missing_attachment', 'incomplete',
+        $query = $this->getPageTableQuery();
+
+        $incomplete = (clone $query)->where('documentation_status', '!=', 'complete')->count();
+        $missingAttachment = (clone $query)->whereIn('documentation_status', [
+            'missing_attachment',
+            'incomplete',
         ])->count();
-        $missingPdf = Transaction::query()->where('documentation_status', 'missing_generated_pdf')->count();
-        $missingLinks = Transaction::query()->where('documentation_status', 'missing_linked_record')->count();
+        $missingPdf = (clone $query)->where('documentation_status', 'missing_generated_pdf')->count();
+        $missingLinks = (clone $query)->where('documentation_status', 'missing_linked_record')->count();
+        $total = (clone $query)->count();
 
         return [
+            Stat::make('Filtered transactions', $total)
+                ->description('Matching current table filters')
+                ->color('primary'),
             Stat::make('Incomplete documentation', $incomplete)
-                ->description('Transactions not ready for tax lawyer')
+                ->description('Not ready for tax lawyer')
                 ->color('warning'),
             Stat::make('Missing attachments', $missingAttachment)
                 ->color('danger'),
