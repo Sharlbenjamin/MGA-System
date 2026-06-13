@@ -176,8 +176,7 @@ class RequestAppointment extends Page implements HasForms
                 return $branch;
             })
             ->sortBy([
-                fn ($branch) => $branch->priority ?? 999,
-                fn ($branch) => $branch->sort_distance ?? 999999,
+                fn ($branch) => (int) ($branch->priority ?? 999),
                 fn ($branch) => $branch->status === 'Active' ? 0 : 1,
             ])
             ->values();
@@ -225,7 +224,7 @@ class RequestAppointment extends Page implements HasForms
 
         $branches = $this->getEligibleProviderBranches($this->record, $cityFilter)
             ->sortBy([
-                fn ($branch) => $branch->priority ?? 999,
+                fn ($branch) => (int) ($branch->priority ?? 999),
                 fn ($branch) => $branch->status === 'Active' ? 0 : 1,
             ])
             ->values();
