@@ -1,5 +1,5 @@
 @php
-    /** @var \App\Filament\Resources\FileResource\Pages\RequestAppointment $livewire */
+    $livewire = $getLivewire();
 @endphp
 
 <div

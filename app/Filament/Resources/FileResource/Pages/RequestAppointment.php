@@ -102,8 +102,7 @@ class RequestAppointment extends EditRecord
                 Section::make('Available Branches')
                     ->description('Select the provider branches you want to send appointment requests to')
                     ->schema([
-                        \Filament\Forms\Components\View::make('filament.resources.file-resource.components.request-appointment-branches')
-                            ->viewData(fn (): array => ['livewire' => $this]),
+                        \Filament\Forms\Components\View::make('filament.resources.file-resource.components.request-appointment-branches'),
                     ])
                     ->collapsible(),
 

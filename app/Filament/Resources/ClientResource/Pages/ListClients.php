@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use Carbon\Carbon;
 use Filament\Actions;
 use Filament\Forms;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
@@ -333,14 +334,38 @@ class ListClients extends ListRecords
                     ->modalSubmitActionLabel('Send Email')
                     ->modalWidth('4xl')
                     ->form([
+                        Forms\Components\Select::make('sender_email_type')
+                            ->label('Send From')
+                            ->options([
+                                'user' => 'User Email',
+                                'providers' => 'Providers Email',
+                                'custom' => 'Custom Email',
+                            ])
+                            ->default('user')
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Set $set, Get $get): void {
+                                $set('sender_email', $this->resolveClientDraftSenderAddress(
+                                    (string) $state,
+                                    (string) ($get('custom_sender_email') ?? ''),
+                                ));
+                            }),
                         Forms\Components\TextInput::make('sender_email')
-                            ->label('From (My Operation Email)')
-                            ->default(function (): string {
-                                $user = Auth::user();
-                                return $user?->smtp_username ?? $user?->email ?? '';
-                            })
+                            ->label('From')
+                            ->default(fn (): string => $this->resolveClientDraftSenderAddress('user'))
                             ->disabled()
                             ->dehydrated(false),
+                        Forms\Components\TextInput::make('custom_sender_email')
+                            ->label('Custom Email Address')
+                            ->email()
+                            ->required(fn (Get $get): bool => $get('sender_email_type') === 'custom')
+                            ->visible(fn (Get $get): bool => $get('sender_email_type') === 'custom')
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function ($state, Set $set, Get $get): void {
+                                if ($get('sender_email_type') === 'custom') {
+                                    $set('sender_email', (string) $state);
+                                }
+                            }),
                         Forms\Components\TextInput::make('recipient_email')
                             ->label('To (Client Operation Email)')
                             ->default(fn (Client $record): string => (string) ($record->operation_email ?? ''))
@@ -408,16 +433,26 @@ class ListClients extends ListRecords
                             return;
                         }
 
-                        $smtpUsername = $user->smtp_username ?? Config::get('mail.mailers.smtp.username');
-                        $smtpPassword = $user->smtp_password ?? Config::get('mail.mailers.smtp.password');
+                        $senderEmailType = (string) ($data['sender_email_type'] ?? 'user');
+                        $customSenderEmail = trim((string) ($data['custom_sender_email'] ?? ''));
+                        $senderConfig = $this->resolveClientDraftSenderConfig($senderEmailType, $customSenderEmail, $user);
 
-                        if ($smtpUsername && $smtpPassword) {
-                            Config::set('mail.mailers.smtp.username', $smtpUsername);
-                            Config::set('mail.mailers.smtp.password', $smtpPassword);
+                        if ($senderEmailType === 'custom' && ($senderConfig['address'] === '' || !filter_var($senderConfig['address'], FILTER_VALIDATE_EMAIL))) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Invalid custom email')
+                                ->body('Please enter a valid custom sender email address.')
+                                ->send();
+                            return;
                         }
 
-                        $fromAddress = $user->smtp_username ?: $user->email ?: (string) config('mail.from.address');
-                        $fromName = $user->name ?: (string) config('mail.from.name');
+                        if ($senderConfig['smtp_username'] && $senderConfig['smtp_password']) {
+                            Config::set('mail.mailers.smtp.username', $senderConfig['smtp_username']);
+                            Config::set('mail.mailers.smtp.password', $senderConfig['smtp_password']);
+                        }
+
+                        $fromAddress = $senderConfig['address'];
+                        $fromName = $senderConfig['name'];
                         $subject = $this->buildClientDraftSubject($draftMail->id, $record);
                         $message = $this->buildClientDraftPreview($draftMail->id, $record);
 
@@ -502,5 +537,43 @@ class ListClients extends ListRecords
             ],
             $content
         );
+    }
+
+    private function resolveClientDraftSenderAddress(string $senderEmailType, string $customSenderEmail = ''): string
+    {
+        return $this->resolveClientDraftSenderConfig($senderEmailType, $customSenderEmail)['address'];
+    }
+
+    /**
+     * @return array{address: string, name: string, smtp_username: ?string, smtp_password: ?string}
+     */
+    private function resolveClientDraftSenderConfig(string $senderEmailType, string $customSenderEmail = '', ?\App\Models\User $user = null): array
+    {
+        $user ??= \App\Models\User::find(Auth::id());
+        $systemSmtpUsername = Config::get('mail.mailers.smtp.username');
+        $systemSmtpPassword = Config::get('mail.mailers.smtp.password');
+        $providersAddress = (string) config('mail.from.address');
+        $providersName = (string) config('mail.from.name');
+
+        return match ($senderEmailType) {
+            'providers' => [
+                'address' => $providersAddress,
+                'name' => $providersName,
+                'smtp_username' => $systemSmtpUsername,
+                'smtp_password' => $systemSmtpPassword,
+            ],
+            'custom' => [
+                'address' => trim($customSenderEmail),
+                'name' => $user?->name ?: $providersName,
+                'smtp_username' => $user?->smtp_username ?? $systemSmtpUsername,
+                'smtp_password' => $user?->smtp_password ?? $systemSmtpPassword,
+            ],
+            default => [
+                'address' => $user?->smtp_username ?: $user?->email ?: $providersAddress,
+                'name' => $user?->name ?: $providersName,
+                'smtp_username' => $user?->smtp_username ?? $systemSmtpUsername,
+                'smtp_password' => $user?->smtp_password ?? $systemSmtpPassword,
+            ],
+        };
     }
 }
