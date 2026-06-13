@@ -602,29 +602,6 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('documentation_label')
                     ->label('Category')
                     ->getStateUsing(fn (Transaction $record) => $record->documentation_label),
-                Tables\Columns\TextColumn::make('client_reference')
-                    ->label('Client Reference')
-                    ->formatStateUsing(function ($record) {
-                        // For Income transactions, try to get client from invoices
-                        if ($record->type === 'Income' && $record->invoices->isNotEmpty()) {
-                            $firstInvoice = $record->invoices->first();
-                            if ($firstInvoice->file && $firstInvoice->file->patient && $firstInvoice->file->patient->client) {
-                                return $firstInvoice->file->patient->client->company_name;
-                            }
-                        }
-                        
-                        // For Outflow/Expense transactions, try to get client from bills
-                        if (in_array($record->type, ['Outflow', 'Expense']) && $record->bills->isNotEmpty()) {
-                            $firstBill = $record->bills->first();
-                            if ($firstBill->file && $firstBill->file->patient && $firstBill->file->patient->client) {
-                                return $firstBill->file->patient->client->company_name;
-                            }
-                        }
-                        
-                        return 'N/A';
-                    })
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('attachment_path')
                     ->label('Link/Text')
                     ->searchable()
@@ -659,8 +636,6 @@ class TransactionResource extends Resource
                     ->openUrlInNewTab()
                     ->icon(fn ($record) => !$record->attachment_path ? 'heroicon-o-document' : (($record->isUploadedFile() || $record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'heroicon-o-link' : 'heroicon-o-document-text'))
                     ->color(fn ($record) => !$record->attachment_path ? 'gray' : (($record->isUploadedFile() || $record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'primary' : 'gray')),
-                Tables\Columns\TextColumn::make('bank_charges')->money()->sortable(),
-                Tables\Columns\IconColumn::make('charges_covered_by_client')->label('Covered')->boolean()->sortable(),
             ])
             ->filters([
                 Tables\Filters\Filter::make('transaction_date')
@@ -714,7 +689,6 @@ class TransactionResource extends Resource
                     ->label('Payment status')
                     ->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])
                     ->multiple(),
-                Tables\Filters\SelectFilter::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->multiple()->preload(),
                 Tables\Filters\Filter::make('missing_documents')
                     ->label('Missing documents (Outflow)')
                     ->toggle()
