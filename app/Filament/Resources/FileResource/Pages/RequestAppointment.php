@@ -160,8 +160,9 @@ class RequestAppointment extends EditRecord
                 return $branch;
             })
             ->sortBy([
-                ['sort_distance', 'asc'],
-                ['priority', 'asc'],
+                fn ($branch) => $branch->priority ?? 999,
+                fn ($branch) => $branch->sort_distance ?? 999999,
+                fn ($branch) => $branch->status === 'Active' ? 0 : 1,
             ])
             ->values();
 
@@ -372,7 +373,7 @@ class RequestAppointment extends EditRecord
                     fn ($serviceQuery) => $serviceQuery->where('service_types.id', $serviceTypeId),
                 ),
             ])
-            ->orderBy('priority')
+            ->orderBy('priority', 'asc')
             ->get();
     }
 
