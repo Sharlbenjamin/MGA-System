@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\Log;
 
 class Transaction extends Model
@@ -160,11 +159,11 @@ class Transaction extends Model
         static::deleting(function ($transaction) {
             try {
                 // un pay all the invoices or bills related to this transaction
-                if ($transaction->related_type === 'Invoice' && $transaction->related) {
-                    $transaction->related->update(['status' => 'Unpaid']);
+                if ($transaction->related_type === 'Invoice' && $transaction->related_id) {
+                    Invoice::find($transaction->related_id)?->update(['status' => 'Unpaid']);
                 }
-                if ($transaction->related_type === 'Bill' && $transaction->related) {
-                    $transaction->related->update(['status' => 'Unpaid']);
+                if ($transaction->related_type === 'Bill' && $transaction->related_id) {
+                    Bill::find($transaction->related_id)?->update(['status' => 'Unpaid']);
                 }
             } catch (\Exception $e) {
                 Log::error('Error in transaction deleting event: ' . $e->getMessage(), [
@@ -191,9 +190,43 @@ class Transaction extends Model
         return $this->belongsToMany(Bill::class)->withPivot('amount_paid');
     }
 
-    public function related(): MorphTo
+    /**
+     * related_type values that point at Eloquent models (not expense category labels).
+     *
+     * @return array<int, string>
+     */
+    public static function modelRelatedTypes(): array
     {
-        return $this->morphTo();
+        return ['Client', 'Provider', 'Branch', 'Patient', 'Invoice', 'Bill', 'File'];
+    }
+
+    public function hasModelRelated(): bool
+    {
+        return $this->related_id
+            && in_array($this->related_type, self::modelRelatedTypes(), true);
+    }
+
+    public function resolveRelated(): ?Model
+    {
+        if (! $this->hasModelRelated()) {
+            return null;
+        }
+
+        return match ($this->related_type) {
+            'Client' => Client::find($this->related_id),
+            'Provider' => Provider::find($this->related_id),
+            'Branch' => ProviderBranch::find($this->related_id),
+            'Patient' => Patient::find($this->related_id),
+            'Invoice' => Invoice::find($this->related_id),
+            'Bill' => Bill::find($this->related_id),
+            'File' => File::find($this->related_id),
+            default => null,
+        };
+    }
+
+    public function getRelatedAttribute(): ?Model
+    {
+        return $this->resolveRelated();
     }
 
     /**

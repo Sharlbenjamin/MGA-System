@@ -22,12 +22,11 @@ class GenerateTrxOutPdfService
             'bills.branch.city',
             'bills.provider.country',
             'bills.provider.bankAccounts.country',
-            'related',
         ]);
 
         $provider = $this->resolveProvider($transaction);
         $branch = $transaction->bills->first()?->branch
-            ?? ($transaction->related_type === 'Branch' ? $transaction->related : null);
+            ?? ($transaction->related_type === 'Branch' ? $transaction->resolveRelated() : null);
 
         $bankAccount = $provider?->bankAccounts()->first();
 
@@ -58,7 +57,7 @@ class GenerateTrxOutPdfService
     protected function resolveProvider(Transaction $transaction): ?Provider
     {
         if ($transaction->related_type === 'Provider') {
-            return $transaction->related;
+            return $transaction->resolveRelated();
         }
 
         if ($transaction->related_type === 'Branch') {

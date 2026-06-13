@@ -18,7 +18,6 @@ class TransactionDocumentationService
             'invoices.file.patient',
             'bills.file.patient',
             'attachments',
-            'related',
             'createdByUser',
             'updatedByUser',
         ]);
@@ -80,7 +79,6 @@ class TransactionDocumentationService
             'invoices.file.patient',
             'bills.file.patient',
             'attachments',
-            'related',
         ]);
 
         $tasks = [];

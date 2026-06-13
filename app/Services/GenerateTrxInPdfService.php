@@ -17,11 +17,10 @@ class GenerateTrxInPdfService
         $transaction->load([
             'invoices.file.patient.client',
             'invoices.bankAccount.country',
-            'related',
         ]);
 
         $client = $transaction->related_type === 'Client'
-            ? $transaction->related
+            ? $transaction->resolveRelated()
             : $transaction->invoices->first()?->patient?->client;
 
         $pdf = Pdf::loadView('pdf.trx_in', [
