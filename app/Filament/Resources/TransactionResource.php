@@ -1017,9 +1017,7 @@ class TransactionResource extends Resource
 
     public static function saveUploadedDocument(Transaction $record, mixed $uploadedFile): bool
     {
-        if (is_array($uploadedFile)) {
-            $uploadedFile = $uploadedFile[0] ?? null;
-        }
+        $uploadedFile = TransactionDocumentationForm::normalizeUploadedFilePath($uploadedFile);
 
         if (! $uploadedFile) {
             Notification::make()

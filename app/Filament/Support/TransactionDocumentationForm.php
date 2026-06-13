@@ -110,12 +110,23 @@ class TransactionDocumentationForm
                 ->visible(fn () => in_array('missing_linked_bills', $pendingKeys, true)),
 
             Forms\Components\FileUpload::make('receipt_upload')
-                ->label('Upload receipt')
+                ->label(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
+                    || in_array('missing_card_receipt', $pendingKeys, true)
+                    ? 'Upload receipt'
+                    : 'Upload transaction proof')
                 ->acceptedFileTypes(['application/pdf', 'image/*'])
                 ->disk('public')
                 ->directory('transactions/receipts')
+                ->visibility('public')
+                ->maxFiles(1)
+                ->preserveFilenames()
+                ->downloadable()
+                ->openable()
+                ->required(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
+                    || in_array('missing_card_receipt', $pendingKeys, true))
                 ->visible(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
-                    || in_array('missing_card_receipt', $pendingKeys, true)),
+                    || in_array('missing_card_receipt', $pendingKeys, true)
+                    || blank($record->attachment_path)),
 
             Forms\Components\Placeholder::make('undocumented_invoices')
                 ->label('Invoices missing documents')
@@ -188,19 +199,27 @@ class TransactionDocumentationForm
             $record->bills()->sync($sync);
         }
 
-        if (! empty($data['receipt_upload'])) {
-            $path = is_array($data['receipt_upload']) ? ($data['receipt_upload'][0] ?? null) : $data['receipt_upload'];
-            if ($path) {
-                $record->attachment_path = $path;
-                $type = $record->type === 'Expense' ? 'expense_receipt' : 'card_receipt';
-                TransactionAttachment::create([
+        $path = self::normalizeUploadedFilePath($data['receipt_upload'] ?? null);
+        if ($path) {
+            $type = match (true) {
+                $record->type === 'Expense' => 'expense_receipt',
+                $record->type === 'Outflow' && $record->bills()->exists() => 'payment_proof',
+                default => 'card_receipt',
+            };
+
+            $record->attachment_path = $path;
+
+            TransactionAttachment::updateOrCreate(
+                [
                     'transaction_id' => $record->id,
                     'type' => $type,
+                ],
+                [
                     'file_path' => $path,
                     'original_name' => basename($path),
                     'uploaded_by' => Auth::id(),
-                ]);
-            }
+                ],
+            );
         }
 
         $record->updated_by = Auth::id();
@@ -263,8 +282,43 @@ class TransactionDocumentationForm
                 'bills' => $record->bills()->pluck('bills.id')->all(),
             ])
             ->form(fn (Transaction $record) => self::schema($record))
-            ->action(function (Transaction $record, array $data) {
+            ->action(function (array $data, \Livewire\Component $livewire): void {
+                if (! method_exists($livewire, 'getRecord')) {
+                    return;
+                }
+
+                $record = $livewire->getRecord();
+                if (! $record instanceof Transaction) {
+                    return;
+                }
+
                 self::apply($record, $data);
+
+                if (method_exists($livewire, 'refreshFormData')) {
+                    $livewire->refreshFormData([
+                        'attachment_path',
+                        'documentation_status',
+                        'trx_in_pdf_path',
+                        'trx_out_pdf_path',
+                    ]);
+                }
             });
+    }
+
+    public static function normalizeUploadedFilePath(mixed $upload): ?string
+    {
+        if (is_string($upload) && $upload !== '') {
+            return $upload;
+        }
+
+        if (is_array($upload)) {
+            foreach ($upload as $value) {
+                if (is_string($value) && $value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return null;
     }
 }
