@@ -3,10 +3,10 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Resources\TransactionResource\Pages\ListTransactions;
-use App\Models\Transaction;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
 
 class TransactionDocumentationStatsWidget extends BaseWidget
@@ -18,11 +18,11 @@ class TransactionDocumentationStatsWidget extends BaseWidget
         return ListTransactions::class;
     }
 
-    protected function getPageTableQuery(): \Illuminate\Database\Eloquent\Builder
+    protected function getPageTableQuery(): Builder
     {
         unset($this->tablePage);
 
-        return parent::getPageTableQuery();
+        return $this->getTablePageInstance()->getFilteredSortedTableQuery();
     }
 
     protected function getCachedStats(): array
