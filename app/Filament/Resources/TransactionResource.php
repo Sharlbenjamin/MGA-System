@@ -646,6 +646,38 @@ class TransactionResource extends Resource
                 Tables\Columns\IconColumn::make('charges_covered_by_client')->label('Covered')->boolean()->sortable(),
             ])
             ->filters([
+                Tables\Filters\Filter::make('transaction_date')
+                    ->label('Transaction date')
+                    ->form([
+                        Forms\Components\DatePicker::make('date_from')
+                            ->label('From'),
+                        Forms\Components\DatePicker::make('date_until')
+                            ->label('Until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['date_from'] ?? null,
+                                fn (Builder $query, $date): Builder => $query->whereDate('date', '>=', $date),
+                            )
+                            ->when(
+                                $data['date_until'] ?? null,
+                                fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if ($data['date_from'] ?? null) {
+                            $indicators['date_from'] = 'From ' . \Carbon\Carbon::parse($data['date_from'])->format('d/m/Y');
+                        }
+
+                        if ($data['date_until'] ?? null) {
+                            $indicators['date_until'] = 'Until ' . \Carbon\Carbon::parse($data['date_until'])->format('d/m/Y');
+                        }
+
+                        return $indicators;
+                    }),
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
                 Tables\Filters\SelectFilter::make('documentation_status')
                     ->options([
