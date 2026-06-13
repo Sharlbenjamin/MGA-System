@@ -215,7 +215,7 @@ class Transaction extends Model
         return match ($this->related_type) {
             'Client' => Client::find($this->related_id),
             'Provider' => Provider::find($this->related_id),
-            'Branch' => ProviderBranch::find($this->related_id),
+            'Branch' => ProviderBranch::with('provider')->find($this->related_id),
             'Patient' => Patient::find($this->related_id),
             'Invoice' => Invoice::find($this->related_id),
             'Bill' => Bill::find($this->related_id),
@@ -227,6 +227,28 @@ class Transaction extends Model
     public function getRelatedAttribute(): ?Model
     {
         return $this->resolveRelated();
+    }
+
+    public function getRelatedPartyLabel(): ?string
+    {
+        if (! $this->hasModelRelated()) {
+            return null;
+        }
+
+        $related = $this->resolveRelated();
+
+        if (! $related) {
+            return null;
+        }
+
+        return match ($this->related_type) {
+            'Client' => $related->company_name ?? $related->name ?? null,
+            'Provider' => $related->name ?? null,
+            'Branch' => $related->provider?->name ?? $related->name ?? $related->branch_name ?? null,
+            'Patient' => $related->name ?? null,
+            'Invoice', 'Bill', 'File' => $related->name ?? null,
+            default => null,
+        };
     }
 
     /**

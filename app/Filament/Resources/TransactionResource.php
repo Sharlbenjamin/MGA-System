@@ -549,42 +549,59 @@ class TransactionResource extends Resource
             })
             ->defaultSort('date', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable(),
-                Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')->sortable(),
-                Tables\Columns\TextColumn::make('related_type')->searchable(),
-                Tables\Columns\TextColumn::make('related_id')->numeric()->sortable(),
+                Tables\Columns\TextColumn::make('date')->date()->sortable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()
+                    ->limit(25)
+                    ->tooltip(fn (Transaction $record): ?string => $record->name),
+                Tables\Columns\TextColumn::make('related_type')
+                    ->label('Type')
+                    ->badge()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('related_party')
+                    ->label('Related to')
+                    ->getStateUsing(fn (Transaction $record): ?string => $record->getRelatedPartyLabel())
+                    ->placeholder('—')
+                    ->limit(30)
+                    ->tooltip(fn (Transaction $record): ?string => $record->getRelatedPartyLabel()),
                 Tables\Columns\TextColumn::make('amount'),
                 Tables\Columns\TextColumn::make('type')->searchable()
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('documentation_status')
+                    ->label('Documentation')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'complete' => 'Complete',
+                        'incomplete' => 'Incomplete',
+                        'missing_attachment' => 'Missing attachment',
+                        'missing_linked_record' => 'Missing linked record',
+                        'missing_generated_pdf' => 'Missing PDF',
+                        default => ucfirst(str_replace('_', ' ', $state ?? 'incomplete')),
+                    })
+                    ->color(fn (Transaction $record): string => match ($record->documentation_status) {
+                        'complete' => 'success',
+                        'incomplete' => 'warning',
+                        default => 'danger',
+                    })
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('pending_documentation_count')
+                    ->label('Missing tasks')
+                    ->badge()
+                    ->color(fn ($state) => ((int) $state) > 0 ? 'danger' : 'success')
+                    ->getStateUsing(fn (Transaction $record) => $record->pending_documentation_count),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Payment status')
+                    ->badge()
                     ->colors([
                         'Draft' => 'gray',
                         'Completed' => 'success',
                         'Pending' => 'warning',
                     ])
-                    ->default('Completed'),
-                Tables\Columns\TextColumn::make('date')->date()->sortable(),
-                Tables\Columns\TextColumn::make('direction')
-                    ->label('Direction')
-                    ->badge()
-                    ->getStateUsing(fn (Transaction $record) => $record->direction === 'in' ? 'In' : 'Out')
-                    ->color(fn (Transaction $record) => $record->direction === 'in' ? 'success' : 'warning'),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('documentation_label')
                     ->label('Category')
                     ->getStateUsing(fn (Transaction $record) => $record->documentation_label),
-                Tables\Columns\BadgeColumn::make('documentation_status')
-                    ->label('Documentation')
-                    ->colors([
-                        'success' => 'complete',
-                        'warning' => 'incomplete',
-                        'danger' => fn ($state) => in_array($state, ['missing_attachment', 'missing_linked_record', 'missing_generated_pdf'], true),
-                    ])
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('pending_documentation_count')
-                    ->label('Missing')
-                    ->badge()
-                    ->color(fn ($state) => ((int) $state) > 0 ? 'danger' : 'success')
-                    ->getStateUsing(fn (Transaction $record) => $record->pending_documentation_count),
                 Tables\Columns\TextColumn::make('client_reference')
                     ->label('Client Reference')
                     ->formatStateUsing(function ($record) {
@@ -693,7 +710,10 @@ class TransactionResource extends Resource
                     ->toggle()
                     ->query(fn (Builder $query) => $query->where('documentation_status', '!=', 'complete'))
                     ->indicateUsing(fn (): array => ['incomplete_only' => 'Incomplete documentation only']),
-                Tables\Filters\SelectFilter::make('status')->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])->multiple(),
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Payment status')
+                    ->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])
+                    ->multiple(),
                 Tables\Filters\SelectFilter::make('bank_account_id')->relationship('bankAccount', 'beneficiary_name')->multiple()->preload(),
                 Tables\Filters\Filter::make('missing_documents')
                     ->label('Missing documents (Outflow)')
