@@ -57,28 +57,6 @@ class EditTransaction extends EditRecord
                     app(GenerateTrxOutPdfService::class)->generate($this->record);
                     $this->refreshFormData(['trx_out_pdf_path', 'documentation_status']);
                 }),
-            Action::make('uploadDocument')
-                ->label('Upload Document')
-                ->icon('heroicon-o-document-arrow-up')
-                ->color('success')
-                ->modalHeading('Upload Transaction Document')
-                ->modalDescription('Upload the transaction document (PDF or image).')
-                ->modalSubmitActionLabel('Upload')
-                ->form(TransactionResource::documentUploadFormSchema())
-                ->action(function (array $data = []): void {
-                    if (empty($data['transaction_document'])) {
-                        \Filament\Notifications\Notification::make()
-                            ->danger()
-                            ->title('No document uploaded')
-                            ->body('Please upload a document first.')
-                            ->send();
-
-                        return;
-                    }
-
-                    TransactionResource::saveUploadedDocument($this->record, $data['transaction_document']);
-                    $this->refreshFormData(['attachment_path', 'documentation_status']);
-                }),
             Action::make('viewDocument')
                 ->label('View Document')
                 ->icon('heroicon-o-eye')

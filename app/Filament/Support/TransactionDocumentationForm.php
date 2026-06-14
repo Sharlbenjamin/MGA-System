@@ -36,9 +36,7 @@ class TransactionDocumentationForm
                     return "{$icon} {$task['label']}";
                 })->implode("\n");
 
-                $proofLines = collect($service->getProofPathLines($record))->implode("\n");
-
-                return "Progress: {$done} of {$total} complete\n\n{$lines}\n\nProof paths:\n{$proofLines}";
+                return "Progress: {$done} of {$total} complete\n\n{$lines}";
             })
             ->columnSpanFull();
     }
@@ -111,11 +109,10 @@ class TransactionDocumentationForm
                 ->default(fn () => $record->bills()->pluck('bills.id')->all())
                 ->visible(fn () => in_array('missing_linked_bills', $pendingKeys, true)),
 
-            Forms\Components\FileUpload::make('receipt_upload')
+            Forms\Components\FileUpload::make('attachment')
                 ->label(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
-                    || in_array('missing_card_receipt', $pendingKeys, true)
-                    ? 'Upload receipt'
-                    : 'Upload transaction proof')
+                    ? 'Expense receipt'
+                    : 'Card payment receipt')
                 ->acceptedFileTypes(['application/pdf', 'image/*'])
                 ->disk('public')
                 ->directory('transactions/receipts')
@@ -127,8 +124,8 @@ class TransactionDocumentationForm
                 ->required(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
                     || in_array('missing_card_receipt', $pendingKeys, true))
                 ->visible(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
-                    || in_array('missing_card_receipt', $pendingKeys, true)
-                    || blank($record->attachment_path)),
+                    || in_array('missing_card_receipt', $pendingKeys, true))
+                ->default(fn () => self::localAttachmentDefault($record)),
 
             Forms\Components\Placeholder::make('undocumented_invoices')
                 ->label('Invoices missing documents')
@@ -201,7 +198,7 @@ class TransactionDocumentationForm
             $record->bills()->sync($sync);
         }
 
-        $path = self::normalizeUploadedFilePath($data['receipt_upload'] ?? null);
+        $path = self::normalizeUploadedFilePath($data['attachment'] ?? null);
         if ($path) {
             $type = match (true) {
                 $record->type === 'Expense' => 'expense_receipt',
@@ -246,6 +243,19 @@ class TransactionDocumentationForm
             ->send();
     }
 
+    public static function localAttachmentDefault(?Transaction $record): ?array
+    {
+        $existingPath = $record?->attachment_path;
+
+        if (is_string($existingPath) && $existingPath !== ''
+            && ! str_starts_with($existingPath, 'http')
+            && ! str_contains($existingPath, 'drive.google.com')) {
+            return [$existingPath];
+        }
+
+        return null;
+    }
+
     public static function makeTableAction(): \Filament\Tables\Actions\Action
     {
         return \Filament\Tables\Actions\Action::make('completeDocumentation')
@@ -261,6 +271,7 @@ class TransactionDocumentationForm
                 'related_id' => $record->related_id,
                 'invoices' => $record->invoices()->pluck('invoices.id')->all(),
                 'bills' => $record->bills()->pluck('bills.id')->all(),
+                'attachment' => self::localAttachmentDefault($record),
             ])
             ->form(fn (Transaction $record) => self::schema($record))
             ->action(function (Transaction $record, array $data) {
@@ -282,6 +293,7 @@ class TransactionDocumentationForm
                 'related_id' => $record->related_id,
                 'invoices' => $record->invoices()->pluck('invoices.id')->all(),
                 'bills' => $record->bills()->pluck('bills.id')->all(),
+                'attachment' => self::localAttachmentDefault($record),
             ])
             ->form(fn (Transaction $record) => self::schema($record))
             ->action(function (array $data, \Livewire\Component $livewire): void {

@@ -106,6 +106,25 @@ class TransactionDocumentationService
 
     public function getPendingTaskSummary(Transaction $transaction): ?string
     {
+        return $this->getDocumentationColumnDescription($transaction);
+    }
+
+    public function getDocumentationColumnSummary(Transaction $transaction): string
+    {
+        $pending = collect($this->getMissingTasks($transaction))
+            ->where('status', 'pending')
+            ->pluck('label')
+            ->map(fn (string $label) => Str::limit(trim($label, '. '), 35));
+
+        if ($pending->isEmpty()) {
+            return 'Complete';
+        }
+
+        return $pending->implode('; ');
+    }
+
+    public function getDocumentationColumnDescription(Transaction $transaction): ?string
+    {
         $pending = collect($this->getMissingTasks($transaction))
             ->where('status', 'pending')
             ->pluck('label')
@@ -118,6 +137,15 @@ class TransactionDocumentationService
         return 'Still needed: ' . $pending->implode('; ');
     }
 
+    public function transactionRequiresDirectAttachment(Transaction $transaction): bool
+    {
+        if ($transaction->type === 'Expense') {
+            return true;
+        }
+
+        return $transaction->type === 'Outflow' && $transaction->bills->isEmpty();
+    }
+
     /**
      * @return array<int, string>
      */
@@ -127,10 +155,12 @@ class TransactionDocumentationService
 
         $lines = [];
 
-        if ($transaction->attachment_path) {
-            $lines[] = '✓ Transaction attachment (Link/Text)';
-        } else {
-            $lines[] = '⚠ Transaction attachment (Link/Text) — not set';
+        if ($this->transactionRequiresDirectAttachment($transaction)) {
+            if ($transaction->attachment_path) {
+                $lines[] = '✓ Transaction attachment';
+            } else {
+                $lines[] = '⚠ Transaction attachment — not set';
+            }
         }
 
         if ($transaction->attachments->isNotEmpty()) {

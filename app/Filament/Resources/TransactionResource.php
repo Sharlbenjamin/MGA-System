@@ -323,57 +323,6 @@ class TransactionResource extends Resource
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
-                Forms\Components\Section::make('Transaction Document')
-                    ->description('Upload payment proof or transaction document.')
-                    ->icon('heroicon-o-document-arrow-up')
-                    ->schema([
-                        Forms\Components\FileUpload::make('attachment_file')
-                            ->label('Bill Payment / Transaction Proof')
-                            ->disk('public')
-                            ->directory('transactions')
-                            ->visibility('public')
-                            ->acceptedFileTypes([
-                                'application/pdf',
-                                'image/*',
-                                'application/msword',
-                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                            ])
-                            ->maxSize(10240)
-                            ->helperText('Upload payment proof (PDF, image, or Word document).')
-                            ->downloadable()
-                            ->openable()
-                            ->preserveFilenames()
-                            ->maxFiles(1)
-                            ->fetchFileInformation(false)
-                            ->dehydrated(false)
-                            ->afterStateHydrated(function ($component, $state, ?Transaction $record): void {
-                                $existingPath = $record?->attachment_path;
-
-                                if (is_string($existingPath) && $existingPath !== ''
-                                    && ! str_starts_with($existingPath, 'http')
-                                    && ! str_contains($existingPath, 'drive.google.com')) {
-                                    $component->state([$existingPath]);
-
-                                    return;
-                                }
-
-                                $component->state([]);
-                            })
-                            ->afterStateUpdated(function ($state, callable $set): void {
-                                if (is_string($state)) {
-                                    $state = [$state];
-                                }
-
-                                if (is_array($state)) {
-                                    $state = $state[0] ?? null;
-                                }
-
-                                $set('attachment_path', $state ?: null);
-                            }),
-                        Forms\Components\Hidden::make('attachment_path')
-                            ->default(fn (?Transaction $record) => $record?->attachment_path),
-                    ])
-                    ->columnSpanFull(),
 
                 Forms\Components\TextInput::make('bank_charges')
                 ->numeric()
@@ -512,7 +461,7 @@ class TransactionResource extends Resource
                 Forms\Components\Placeholder::make('documentation_status_display')
                     ->label('Status')
                     ->content(fn (?Transaction $record) => $record
-                        ? app(TransactionDocumentationService::class)->getDocumentationStatusLabel($record)
+                        ? app(TransactionDocumentationService::class)->getDocumentationColumnSummary($record)
                         : '—'),
             ])
             ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction);
@@ -572,18 +521,14 @@ class TransactionResource extends Resource
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('documentation_status')
                     ->label('Documentation')
-                    ->badge()
-                    ->getStateUsing(fn (Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationStatusLabel($record))
-                    ->tooltip(fn (Transaction $record): ?string => app(TransactionDocumentationService::class)->getPendingTaskSummary($record))
+                    ->getStateUsing(fn (Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationColumnSummary($record))
+                    ->tooltip(fn (Transaction $record): ?string => app(TransactionDocumentationService::class)->getDocumentationColumnDescription($record))
+                    ->limit(40)
+                    ->wrap()
                     ->color(fn (Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationStatusColor($record))
                     ->sortable(query: function (Builder $query, string $direction): Builder {
                         return $query->orderBy('documentation_status', $direction);
                     }),
-                Tables\Columns\TextColumn::make('pending_documentation_count')
-                    ->label('Missing tasks')
-                    ->badge()
-                    ->color(fn ($state) => ((int) $state) > 0 ? 'danger' : 'success')
-                    ->getStateUsing(fn (Transaction $record) => $record->pending_documentation_count),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Payment status')
                     ->badge()
@@ -597,40 +542,6 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('documentation_label')
                     ->label('Category')
                     ->getStateUsing(fn (Transaction $record) => $record->documentation_label),
-                Tables\Columns\TextColumn::make('attachment_path')
-                    ->label('Link/Text')
-                    ->searchable()
-                    ->formatStateUsing(function ($record) {
-                        if (!$record->attachment_path) {
-                            return 'No Link/Text';
-                        }
-
-                        // Check if it's an uploaded local file
-                        if ($record->isUploadedFile()) {
-                            return 'View Uploaded File';
-                        }
-                        
-                        // Check if it's a Google Drive link
-                        if ($record->isGoogleDriveAttachment()) {
-                            return 'View Document';
-                        }
-                        
-                        // Check if it's any other URL
-                        if (filter_var($record->attachment_path, FILTER_VALIDATE_URL)) {
-                            return 'View Link';
-                        }
-                        
-                        // Return truncated text if it's not a URL
-                        return strlen($record->attachment_path) > 30 
-                            ? substr($record->attachment_path, 0, 30) . '...' 
-                            : $record->attachment_path;
-                    })
-                    ->action(function ($state, $record) {
-                        return $record->getAttachmentUrl();
-                    })
-                    ->openUrlInNewTab()
-                    ->icon(fn ($record) => !$record->attachment_path ? 'heroicon-o-document' : (($record->isUploadedFile() || $record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'heroicon-o-link' : 'heroicon-o-document-text'))
-                    ->color(fn ($record) => !$record->attachment_path ? 'gray' : (($record->isUploadedFile() || $record->isGoogleDriveAttachment() || filter_var($record->attachment_path, FILTER_VALIDATE_URL)) ? 'primary' : 'gray')),
             ])
             ->filters([
                 Tables\Filters\Filter::make('transaction_date')
@@ -724,36 +635,6 @@ class TransactionResource extends Resource
                     ->url(fn (Transaction $record) => $record->getTrxOutPdfUrl())
                     ->openUrlInNewTab()
                     ->visible(fn (Transaction $record) => (bool) $record->getTrxOutPdfUrl()),
-                Action::make('uploadDocument')
-                    ->label('Upload Document')
-                    ->icon('heroicon-o-document-arrow-up')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Upload Transaction Document')
-                    ->modalDescription('Upload the transaction document to Google Drive.')
-                    ->modalSubmitActionLabel('Upload')
-                    ->form(static::documentUploadFormSchema('transaction_document_main'))
-                    ->action(function ($record, array $data = []) {
-                        try {
-                            if (!isset($data['transaction_document_main']) || empty($data['transaction_document_main'])) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('No document uploaded')
-                                    ->body('Please upload a document first.')
-                                    ->send();
-                                return;
-                            }
-
-                            static::saveUploadedDocument($record, $data['transaction_document_main']);
-                        } catch (\Exception $e) {
-                            Log::error('Transaction upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
-                            Notification::make()
-                                ->danger()
-                                ->title('Upload error')
-                                ->body('An error occurred during upload: ' . $e->getMessage())
-                                ->send();
-                        }
-                    }),
                 Tables\Actions\EditAction::make(),
                 Action::make('finalizeTransaction')
                     ->label('Finalize Transaction')
@@ -1025,52 +906,5 @@ class TransactionResource extends Resource
             ],
             default => [],
         };
-    }
-
-    public static function documentUploadFormSchema(string $fieldName = 'transaction_document'): array
-    {
-        return [
-            Forms\Components\FileUpload::make($fieldName)
-                ->label('Upload Transaction Document')
-                ->acceptedFileTypes(['application/pdf', 'image/*'])
-                ->maxSize(10240)
-                ->required()
-                ->disk('public')
-                ->directory('transactions')
-                ->visibility('public')
-                ->helperText('Upload the transaction document (PDF or image)')
-                ->downloadable()
-                ->openable()
-                ->preserveFilenames()
-                ->maxFiles(1),
-        ];
-    }
-
-    public static function saveUploadedDocument(Transaction $record, mixed $uploadedFile): bool
-    {
-        $uploadedFile = TransactionDocumentationForm::normalizeUploadedFilePath($uploadedFile);
-
-        if (! $uploadedFile) {
-            Notification::make()
-                ->danger()
-                ->title('Invalid file data')
-                ->body('The uploaded file data is invalid.')
-                ->send();
-
-            return false;
-        }
-
-        $record->attachment_path = $uploadedFile;
-        $record->save();
-
-        app(TransactionDocumentationService::class)->syncAndRecalculate($record);
-
-        Notification::make()
-            ->success()
-            ->title('Transaction document uploaded successfully')
-            ->body('Transaction document has been uploaded.')
-            ->send();
-
-        return true;
     }
 }
