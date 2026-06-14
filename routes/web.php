@@ -11,6 +11,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\GopController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PrescriptionController;
+use App\Http\Controllers\LawyerExportController;
 use App\Http\Controllers\TaxesExportController;
 use App\Http\Controllers\HRMonthlyReportExportController;
 use App\Http\Controllers\FileCompactViewController;
@@ -77,6 +78,7 @@ Route::middleware([PasswordProtect::class, FilamentAuthenticate::class, Dispatch
 Route::middleware([FilamentAuthenticate::class])->group(function () {
     Route::get('/taxes/export', [TaxesExportController::class, 'export'])->name('taxes.export');
     Route::get('/taxes/export/zip', [TaxesExportController::class, 'exportZip'])->name('taxes.export.zip');
+    Route::get('/lawyer/export', [LawyerExportController::class, 'export'])->name('lawyer.export');
     Route::get('/files/export/zip', [FileDocumentExportController::class, 'exportZip'])->name('files.export.zip');
     Route::get('/hr/monthly-report/export', [HRMonthlyReportExportController::class, 'export'])->name('hr.monthly-report.export');
 

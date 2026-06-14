@@ -24,4 +24,26 @@ class TransactionAttachment extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
+
+    public function hasLocalDocument(): bool
+    {
+        if (! $this->file_path) {
+            return false;
+        }
+
+        return ! app(\App\Services\DocumentLinkResolver::class)->isExternalPath($this->file_path)
+            && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->file_path);
+    }
+
+    public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
+    {
+        if (! $this->hasLocalDocument()) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
+            'type' => 'transaction_attachment',
+            'id' => $this->id,
+        ]);
+    }
 }

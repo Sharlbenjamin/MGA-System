@@ -353,6 +353,75 @@ class TransactionDocumentationService
         return (bool) ($bill->bill_document_path || $bill->bill_google_link);
     }
 
+    public function canGenerateTrxIn(Transaction $transaction): bool
+    {
+        if ($transaction->type !== 'Income') {
+            return false;
+        }
+
+        $blockingKeys = [
+            'missing_linked_client',
+            'missing_linked_invoices',
+            'missing_invoice_documents',
+        ];
+
+        return ! collect($this->getMissingTasks($transaction))
+            ->where('status', 'pending')
+            ->contains(fn (array $task) => in_array($task['key'], $blockingKeys, true));
+    }
+
+    public function canGenerateTrxOut(Transaction $transaction): bool
+    {
+        if ($transaction->type !== 'Outflow' || ! $transaction->bills()->exists()) {
+            return false;
+        }
+
+        $blockingKeys = [
+            'missing_linked_provider',
+            'missing_linked_bills',
+            'missing_bill_documents',
+        ];
+
+        return ! collect($this->getMissingTasks($transaction))
+            ->where('status', 'pending')
+            ->contains(fn (array $task) => in_array($task['key'], $blockingKeys, true));
+    }
+
+    public function getTrxInSkipReason(Transaction $transaction): ?string
+    {
+        if ($transaction->type !== 'Income') {
+            return 'Not an Income transaction';
+        }
+
+        return $this->firstPendingTaskLabel($transaction, [
+            'missing_linked_client',
+            'missing_linked_invoices',
+            'missing_invoice_documents',
+        ]);
+    }
+
+    public function getTrxOutSkipReason(Transaction $transaction): ?string
+    {
+        if ($transaction->type !== 'Outflow' || ! $transaction->bills()->exists()) {
+            return 'Not a bulk bill Outflow transaction';
+        }
+
+        return $this->firstPendingTaskLabel($transaction, [
+            'missing_linked_provider',
+            'missing_linked_bills',
+            'missing_bill_documents',
+        ]);
+    }
+
+    protected function firstPendingTaskLabel(Transaction $transaction, array $keys): ?string
+    {
+        $pending = collect($this->getMissingTasks($transaction))
+            ->where('status', 'pending')
+            ->first(fn (array $task) => in_array($task['key'], $keys, true));
+
+        return $pending['label'] ?? null;
+    }
+
     public function normalizeReference(?string $value): ?string
     {
         if ($value === null) {

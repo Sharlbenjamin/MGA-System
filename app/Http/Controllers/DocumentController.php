@@ -11,6 +11,7 @@ use App\Models\Gop;
 use App\Models\MedicalReport;
 use App\Models\Prescription;
 use App\Models\Transaction;
+use App\Models\TransactionAttachment;
 
 class DocumentController extends Controller
 {
@@ -126,6 +127,10 @@ class DocumentController extends Controller
             case 'transaction_trx_out':
                 $model = Transaction::find($id);
                 return $model?->trx_out_pdf_path;
+
+            case 'transaction_attachment':
+                $model = TransactionAttachment::find($id);
+                return $model?->file_path;
                 
             default:
                 Log::warning('Unknown document type requested', [

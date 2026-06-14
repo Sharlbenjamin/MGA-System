@@ -74,25 +74,25 @@ class Transaction extends Model
         return app(\App\Services\TransactionDocumentationService::class)->getPendingTaskCount($this);
     }
 
-    public function getTrxInPdfUrl(): ?string
+    public function getTrxInPdfUrl(int $expirationMinutes = 60): ?string
     {
         if (! $this->trx_in_pdf_path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($this->trx_in_pdf_path)) {
             return null;
         }
 
-        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes(60), [
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'transaction_trx_in',
             'id' => $this->id,
         ]);
     }
 
-    public function getTrxOutPdfUrl(): ?string
+    public function getTrxOutPdfUrl(int $expirationMinutes = 60): ?string
     {
         if (! $this->trx_out_pdf_path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($this->trx_out_pdf_path)) {
             return null;
         }
 
-        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes(60), [
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'transaction_trx_out',
             'id' => $this->id,
         ]);

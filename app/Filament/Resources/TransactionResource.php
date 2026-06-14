@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Model;
 
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Services\TransactionDocumentationService;
+use App\Services\BulkTransactionPdfService;
 use Filament\Notifications\Notification;
 
 
@@ -784,6 +785,28 @@ class TransactionResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('generatePdfs')
+                        ->label('Generate PDFs')
+                        ->icon('heroicon-o-document-plus')
+                        ->requiresConfirmation()
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records): void {
+                            $result = app(BulkTransactionPdfService::class)->generateForTransactions(
+                                $records,
+                                'both',
+                                false,
+                            );
+
+                            Notification::make()
+                                ->title('PDF generation completed')
+                                ->body(sprintf(
+                                    'Generated: %d | Skipped: %d | Failed: %d',
+                                    $result->generated,
+                                    $result->skipped,
+                                    $result->failed,
+                                ))
+                                ->color($result->failed > 0 ? 'warning' : 'success')
+                                ->send();
+                        }),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
