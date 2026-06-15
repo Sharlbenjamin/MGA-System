@@ -15,7 +15,8 @@ class GenerateTrxInPdfService
     public function generate(Transaction $transaction): string
     {
         $transaction->load([
-            'invoices.file.patient.client',
+            'invoices.file.patient',
+            'invoices.patient',
             'invoices.bankAccount.country',
         ]);
 
@@ -23,8 +24,13 @@ class GenerateTrxInPdfService
             ? $transaction->resolveRelated()
             : $transaction->invoices->first()?->patient?->client;
 
-        $pdf = Pdf::loadView('pdf.trx_in', [
-            'transaction' => $transaction,
+        if (! $client) {
+            throw new \RuntimeException('Cannot generate Trx In PDF without a linked client.');
+        }
+
+        $client->loadMissing(['financialContact']);
+
+        $pdf = Pdf::loadView('pdf.client_balance', [
             'client' => $client,
             'invoices' => $transaction->invoices,
         ]);
@@ -32,7 +38,7 @@ class GenerateTrxInPdfService
         $directory = "transactions/in/{$transaction->id}";
         Storage::disk('public')->makeDirectory($directory);
 
-        $filename = 'trx_in_' . $transaction->date->format('Y-m-d') . '.pdf';
+        $filename = 'trx_in_'.$transaction->date->format('Y-m-d').'.pdf';
         $path = "{$directory}/{$filename}";
 
         Storage::disk('public')->put($path, $pdf->output());

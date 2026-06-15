@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Provider;
-use App\Models\ProviderBranch;
 use App\Models\Transaction;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use setasign\Fpdi\Fpdi;
 
 class GenerateTrxOutPdfService
 {
@@ -16,35 +15,55 @@ class GenerateTrxOutPdfService
 
     public function generate(Transaction $transaction): string
     {
-        $transaction->load([
-            'bills.file.patient',
-            'bills.file.serviceType',
-            'bills.branch.city',
-            'bills.provider.country',
-            'bills.provider.bankAccounts.country',
-        ]);
+        $transaction->load(['bills']);
 
-        $provider = $this->resolveProvider($transaction);
-        $branch = $transaction->bills->first()?->branch
-            ?? ($transaction->related_type === 'Branch' ? $transaction->resolveRelated() : null);
-
-        $bankAccount = $provider?->bankAccounts()->first();
-
-        $pdf = Pdf::loadView('pdf.trx_out', [
-            'transaction' => $transaction,
-            'provider' => $provider,
-            'branch' => $branch,
-            'bankAccount' => $bankAccount,
-            'bills' => $transaction->bills,
-        ]);
+        $billPaths = $this->resolveMergeableBillPdfPaths($transaction);
 
         $directory = "transactions/out/{$transaction->id}";
         Storage::disk('public')->makeDirectory($directory);
 
-        $filename = 'trx_out_' . $transaction->date->format('Y-m-d') . '.pdf';
+        $filename = 'trx_out_'.$transaction->date->format('Y-m-d').'.pdf';
         $path = "{$directory}/{$filename}";
+        $fullOutputPath = Storage::disk('public')->path($path);
 
-        Storage::disk('public')->put($path, $pdf->output());
+        if ($billPaths === []) {
+            Log::warning('Trx Out PDF: no mergeable bill PDFs found', [
+                'transaction_id' => $transaction->id,
+            ]);
+
+            $transaction->trx_out_pdf_path = null;
+            $transaction->saveQuietly();
+            $this->documentationService->syncAndRecalculate($transaction);
+
+            throw new \RuntimeException('No mergeable bill PDF files found for this transaction.');
+        }
+
+        $pdf = new Fpdi;
+
+        foreach ($billPaths as $billPath) {
+            try {
+                $pageCount = $pdf->setSourceFile($billPath);
+
+                for ($pageNumber = 1; $pageNumber <= $pageCount; $pageNumber++) {
+                    $templateId = $pdf->importPage($pageNumber);
+                    $size = $pdf->getTemplateSize($templateId);
+                    $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                    $pdf->useTemplate($templateId);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Trx Out PDF: skipped bill file during merge', [
+                    'transaction_id' => $transaction->id,
+                    'path' => $billPath,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($pdf->PageNo() === 0) {
+            throw new \RuntimeException('Could not merge any bill PDF pages for this transaction.');
+        }
+
+        $pdf->Output($fullOutputPath, 'F');
 
         $transaction->trx_out_pdf_path = $path;
         $transaction->saveQuietly();
@@ -54,16 +73,31 @@ class GenerateTrxOutPdfService
         return $path;
     }
 
-    protected function resolveProvider(Transaction $transaction): ?Provider
+    /**
+     * @return list<string> Absolute paths to local bill PDF files, in link order.
+     */
+    protected function resolveMergeableBillPdfPaths(Transaction $transaction): array
     {
-        if ($transaction->related_type === 'Provider') {
-            return $transaction->resolveRelated();
+        $paths = [];
+
+        foreach ($transaction->bills as $bill) {
+            if (! $bill->bill_document_path) {
+                continue;
+            }
+
+            if (! Storage::disk('public')->exists($bill->bill_document_path)) {
+                continue;
+            }
+
+            $absolutePath = Storage::disk('public')->path($bill->bill_document_path);
+
+            if (! str_ends_with(strtolower($bill->bill_document_path), '.pdf')) {
+                continue;
+            }
+
+            $paths[] = $absolutePath;
         }
 
-        if ($transaction->related_type === 'Branch') {
-            return ProviderBranch::find($transaction->related_id)?->provider;
-        }
-
-        return $transaction->bills->first()?->provider;
+        return $paths;
     }
 }

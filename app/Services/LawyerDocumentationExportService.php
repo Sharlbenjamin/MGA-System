@@ -2,13 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Bill;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class LawyerDocumentationExportService
 {
@@ -26,40 +24,88 @@ class LawyerDocumentationExportService
         [$startDate, $endDate] = TaxExportHelpers::resolvePeriodDates($year, $quarter);
         $ivaRate = $ivaPercent / 100;
 
-        $invoices = $this->paidInvoicesQuery($startDate, $endDate)->get();
-        $paidInvoiceFileIds = $invoices->pluck('file_id')->filter()->unique()->values();
+        $transactions = $this->loadPeriodTransactions($startDate, $endDate);
+        $incomeTransactions = $transactions->where('type', 'Income')->values();
+        $paymentTransactions = $transactions->whereIn('type', ['Outflow', 'Expense'])->values();
 
-        $filenameQuarter = $quarter === 'full' ? 'full' : 'Q' . $quarter;
-        $filename = "lawyer_documentation_{$year}_{$filenameQuarter}_" . now()->format('Y-m-d_H-i-s') . '.xlsx';
+        $receivableInvoices = $this->collectReceivableInvoices($incomeTransactions);
+
+        $filenameQuarter = $quarter === 'full' ? 'full' : 'Q'.$quarter;
+        $filename = "lawyer_documentation_{$year}_{$filenameQuarter}_".now()->format('Y-m-d_H-i-s').'.xlsx';
 
         return [
             'filename' => $filename,
-            'transfers' => [
-                'headings' => $this->transfersHeadings(),
-                'rows' => $this->buildTransfersRows($startDate, $endDate),
+            'transactions' => [
+                'headings' => $this->transactionsHeadings(),
+                'rows' => $this->buildTransactionsRows($transactions),
             ],
-            'payables' => [
-                'headings' => $this->payablesHeadings(),
-                'rows' => $this->buildPayablesRows($startDate, $endDate, $paidInvoiceFileIds, $nifSource),
+            'receivables_summary' => [
+                'headings' => $this->receivablesSummaryHeadings(),
+                'rows' => $this->buildReceivablesSummaryRows($incomeTransactions),
             ],
-            'receivables' => [
-                'headings' => $this->receivablesHeadings(),
-                'rows' => $this->buildReceivablesRows($invoices, $ivaPercent, $ivaRate, $nifSource),
+            'receivable_invoices' => [
+                'headings' => $this->receivableInvoicesHeadings(),
+                'rows' => $this->buildReceivableInvoiceRows($receivableInvoices, $ivaPercent, $ivaRate, $nifSource),
+            ],
+            'payments_summary' => [
+                'headings' => $this->paymentsSummaryHeadings(),
+                'rows' => $this->buildPaymentsSummaryRows($paymentTransactions),
+            ],
+            'payment_detail' => [
+                'headings' => $this->paymentDetailHeadings(),
+                'rows' => $this->buildPaymentDetailRows($paymentTransactions, $nifSource),
             ],
             'clients' => [
                 'headings' => $this->clientsHeadings(),
-                'rows' => $this->buildClientsRows($invoices),
+                'rows' => $this->buildClientsRows($receivableInvoices),
             ],
         ];
+    }
+
+    protected function loadPeriodTransactions($startDate, $endDate): Collection
+    {
+        return $this->internalBankTransactionsQuery($startDate, $endDate)
+            ->with([
+                'invoices.file.serviceType',
+                'invoices.patient.client',
+                'bills.file.patient.client',
+                'bills.file.serviceType',
+                'bills.provider',
+                'attachments',
+                'bankAccount',
+            ])
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, array{transaction: Transaction, invoice: Invoice}>
+     */
+    protected function collectReceivableInvoices(Collection $incomeTransactions): Collection
+    {
+        $items = collect();
+
+        foreach ($incomeTransactions as $transaction) {
+            foreach ($transaction->invoices as $invoice) {
+                $items->push([
+                    'transaction' => $transaction,
+                    'invoice' => $invoice,
+                ]);
+            }
+        }
+
+        return $items;
     }
 
     /**
      * @return array<int, string>
      */
-    protected function transfersHeadings(): array
+    protected function transactionsHeadings(): array
     {
         return [
             'Transaction ID',
+            'Group ID',
             'Date',
             'Type',
             'Category',
@@ -68,8 +114,8 @@ class LawyerDocumentationExportService
             'Reference',
             'Description',
             'Related Party',
-            'Linked Invoices',
-            'Linked Bills',
+            'Linked Invoice Count',
+            'Linked Bill Count',
             'Documentation Status',
             'Documentation Notes',
             'Attachment Links',
@@ -79,37 +125,32 @@ class LawyerDocumentationExportService
     /**
      * @return array<int, array<int, mixed>>
      */
-    protected function buildTransfersRows($startDate, $endDate): array
+    protected function buildTransactionsRows(Collection $transactions): array
     {
         $rows = [];
 
-        $this->internalBankTransactionsQuery($startDate, $endDate)
-            ->with(['invoices', 'bills', 'attachments', 'bankAccount'])
-            ->orderBy('date')
-            ->orderBy('id')
-            ->chunk(100, function ($transactions) use (&$rows) {
-                foreach ($transactions as $transaction) {
-                    $reference = $transaction->reference ?: $transaction->name;
-                    $description = $transaction->notes ?: $transaction->name ?: $reference;
+        foreach ($transactions as $transaction) {
+            $reference = $transaction->reference ?: $transaction->name;
+            $description = $transaction->notes ?: $transaction->name ?: $reference;
 
-                    $rows[] = [
-                        $transaction->id,
-                        $transaction->date?->format('Y-m-d'),
-                        $transaction->type,
-                        $this->documentationService->getDocumentationLabel($transaction),
-                        $this->documentationService->getDirection($transaction),
-                        round(abs((float) $transaction->amount), 2),
-                        $reference,
-                        $description,
-                        $transaction->getRelatedPartyLabel() ?? '-',
-                        $transaction->invoices->pluck('name')->implode(', ') ?: '-',
-                        $transaction->bills->pluck('name')->implode(', ') ?: '-',
-                        $this->documentationService->formatDocumentationStatusLabel($transaction->documentation_status),
-                        $this->documentationService->getPendingTaskSummary($transaction) ?? '',
-                        $this->linkResolver->transactionAllLinks($transaction),
-                    ];
-                }
-            });
+            $rows[] = [
+                $transaction->id,
+                $transaction->id,
+                $transaction->date?->format('Y-m-d'),
+                $transaction->type,
+                $this->documentationService->getDocumentationLabel($transaction),
+                $this->documentationService->getDirection($transaction),
+                round(abs((float) $transaction->amount), 2),
+                $reference,
+                $description,
+                $transaction->getRelatedPartyLabel() ?? '-',
+                $transaction->invoices->count(),
+                $transaction->bills->count(),
+                $this->documentationService->formatDocumentationStatusLabel($transaction->documentation_status),
+                $this->documentationService->getPendingTaskSummary($transaction) ?? '',
+                $this->linkResolver->transactionTabOneLinks($transaction),
+            ];
+        }
 
         return $rows;
     }
@@ -117,131 +158,45 @@ class LawyerDocumentationExportService
     /**
      * @return array<int, string>
      */
-    protected function payablesHeadings(): array
+    protected function receivablesSummaryHeadings(): array
     {
         return [
-            'Payable Type',
-            'Date',
-            'Document Number',
-            'Service',
-            'Party Name',
-            'Client Country',
-            'NIF',
-            'Patient Name',
+            'Group ID',
+            'Transaction ID',
+            'Payment Date',
+            'Client Name',
             'Amount',
-            'Status',
-            'Source',
-            'Notes',
-            'Attachment Links',
+            'Invoice Count',
+            'Invoice Numbers',
+            'Documentation Status',
+            'Trx In PDF Link',
+            'Receipt Link',
         ];
     }
 
     /**
      * @return array<int, array<int, mixed>>
      */
-    protected function buildPayablesRows($startDate, $endDate, Collection $paidInvoiceFileIds, string $nifSource): array
+    protected function buildReceivablesSummaryRows(Collection $incomeTransactions): array
     {
         $rows = [];
 
-        $bills = Bill::query()
-            ->with([
-                'file.serviceType',
-                'file.providerBranch.provider',
-                'provider',
-                'file.patient.client.financialContact.country',
-                'file.patient.client.operationContact.country',
-                'file.patient.client.gopContact.country',
-                'file.patient.client.country',
-            ])
-            ->whereBetween('bill_date', [$startDate, $endDate])
-            ->whereIn('file_id', $paidInvoiceFileIds)
-            ->orderBy('bill_date')
-            ->get();
-
-        foreach ($bills as $bill) {
-            $amount = TaxExportHelpers::resolveBillAmount($bill);
-            $exportBillAmount = $amount > 0 ? round($amount, 2) : 0;
-            $file = $bill->file;
-            $clientCountry = TaxExportHelpers::resolveClientCountryFromFile($file);
+        foreach ($incomeTransactions as $transaction) {
+            $clientName = $transaction->getRelatedPartyLabel()
+                ?? $transaction->invoices->first()?->patient?->client?->company_name
+                ?? '-';
 
             $rows[] = [
-                'Bill',
-                optional($bill->bill_date)->format('Y-m-d'),
-                $bill->name,
-                $file?->serviceType?->name ?? '-',
-                $bill->provider?->name
-                    ?? $file?->providerBranch?->provider?->name
-                    ?? '-',
-                $clientCountry,
-                TaxExportHelpers::resolveNifFromFile($file, $nifSource),
-                $file?->patient?->name ?? '-',
-                $exportBillAmount,
-                $bill->status ?? 'N/A',
-                'Bill',
-                '',
-                $this->linkResolver->billLinks($bill),
-            ];
-        }
-
-        $this->internalBankTransactionsQuery($startDate, $endDate)
-            ->where('type', 'Outflow')
-            ->with(['bills.file.patient', 'bills.file.serviceType', 'attachments'])
-            ->orderBy('date')
-            ->orderBy('id')
-            ->chunk(100, function ($transactions) use (&$rows, $nifSource) {
-                foreach ($transactions as $transaction) {
-                    $hasBills = $transaction->bills->isNotEmpty();
-                    $payableType = $hasBills ? 'Bulk Bill' : 'Card Payment';
-                    $firstBill = $transaction->bills->first();
-                    $file = $firstBill?->file;
-
-                    $rows[] = [
-                        $payableType,
-                        $transaction->date?->format('Y-m-d'),
-                        $transaction->name,
-                        $file?->serviceType?->name ?? '-',
-                        $transaction->getRelatedPartyLabel() ?? ($transaction->name ?? '-'),
-                        $file ? TaxExportHelpers::resolveClientCountryFromFile($file) : '-',
-                        $file ? TaxExportHelpers::resolveNifFromFile($file, $nifSource) : '-',
-                        $file?->patient?->name ?? '-',
-                        round(abs((float) $transaction->amount), 2),
-                        $transaction->status ?? 'N/A',
-                        'Transaction',
-                        $transaction->notes ?? '',
-                        $this->linkResolver->transactionAllLinks($transaction),
-                    ];
-                }
-            });
-
-        $expenses = DB::table('transactions')
-            ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
-            ->where('transactions.type', 'Expense')
-            ->where('bank_accounts.type', 'Internal')
-            ->whereBetween('transactions.date', [$startDate, $endDate])
-            ->orderBy('transactions.date')
-            ->select('transactions.*')
-            ->get();
-
-        foreach ($expenses as $expense) {
-            $transaction = Transaction::with('attachments')->find($expense->id);
-            if (! $transaction) {
-                continue;
-            }
-
-            $rows[] = [
-                'Expense',
-                optional($transaction->date)->format('Y-m-d'),
-                $transaction->name,
-                '-',
-                $transaction->name ?? '-',
-                '-',
-                '-',
-                '-',
+                $transaction->id,
+                $transaction->id,
+                $transaction->date?->format('Y-m-d'),
+                $clientName,
                 round(abs((float) $transaction->amount), 2),
-                $transaction->status ?? 'Expense',
-                'Transaction',
-                $transaction->notes ?? '',
-                $this->linkResolver->transactionAttachmentLinks($transaction),
+                $transaction->invoices->count(),
+                $transaction->invoices->pluck('name')->implode(', ') ?: '-',
+                $this->documentationService->formatDocumentationStatusLabel($transaction->documentation_status),
+                $this->linkResolver->trxInLink($transaction),
+                $this->linkResolver->transactionReceiptLinks($transaction),
             ];
         }
 
@@ -251,10 +206,11 @@ class LawyerDocumentationExportService
     /**
      * @return array<int, string>
      */
-    protected function receivablesHeadings(): array
+    protected function receivableInvoicesHeadings(): array
     {
         return [
-            'Record Type',
+            'Group ID',
+            'Transaction ID',
             'Invoice Date',
             'Invoice Number',
             'Service',
@@ -266,23 +222,30 @@ class LawyerDocumentationExportService
             'IVA %',
             'Total After IVA',
             'Status',
-            'Source',
-            'Notes',
-            'Linked Transaction ID(s)',
-            'Attachment Links',
+            'Invoice Attachment Links',
         ];
     }
 
     /**
+     * @param  Collection<int, array{transaction: Transaction, invoice: Invoice}>  $receivableInvoices
      * @return array<int, array<int, mixed>>
      */
-    protected function buildReceivablesRows(Collection $invoices, float $ivaPercent, float $ivaRate, string $nifSource): array
-    {
+    protected function buildReceivableInvoiceRows(
+        Collection $receivableInvoices,
+        float $ivaPercent,
+        float $ivaRate,
+        string $nifSource,
+    ): array {
         $rows = [];
 
-        $invoices->loadMissing(['file.serviceType', 'patient.client', 'transactions']);
+        foreach ($receivableInvoices as $item) {
+            /** @var Transaction $transaction */
+            $transaction = $item['transaction'];
+            /** @var Invoice $invoice */
+            $invoice = $item['invoice'];
 
-        foreach ($invoices as $invoice) {
+            $invoice->loadMissing(['file.serviceType', 'patient.client']);
+
             $fileFeeAmount = TaxExportHelpers::resolveFileFeeAmountForFile($invoice->file);
             $clientCountry = TaxExportHelpers::resolveClientCountryFromInvoice($invoice);
             $invoiceAmount = (float) ($invoice->total_amount ?? 0);
@@ -294,7 +257,8 @@ class LawyerDocumentationExportService
                 : round($invoiceAmount, 2);
 
             $rows[] = [
-                'Invoice',
+                $transaction->id,
+                $transaction->id,
                 optional($invoice->invoice_date)->format('Y-m-d'),
                 $invoice->name,
                 $invoice->file?->serviceType?->name ?? '-',
@@ -306,10 +270,144 @@ class LawyerDocumentationExportService
                 $ivaPercent,
                 $totalAfterIva,
                 $invoice->status,
-                'Invoice',
-                '',
-                $invoice->transactions->pluck('id')->implode(', ') ?: '-',
                 $this->linkResolver->invoiceLinks($invoice),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function paymentsSummaryHeadings(): array
+    {
+        return [
+            'Group ID',
+            'Transaction ID',
+            'Payment Type',
+            'Date',
+            'Party Name',
+            'Amount',
+            'Bill Count',
+            'Bill Numbers',
+            'Documentation Status',
+            'Trx Out PDF Link',
+            'Receipt Link',
+        ];
+    }
+
+    /**
+     * @return array<int, array<int, mixed>>
+     */
+    protected function buildPaymentsSummaryRows(Collection $paymentTransactions): array
+    {
+        $rows = [];
+
+        foreach ($paymentTransactions as $transaction) {
+            $hasBills = $transaction->bills->isNotEmpty();
+            $paymentType = match (true) {
+                $transaction->type === 'Expense' => 'Expense',
+                $hasBills => 'Bulk Outflow',
+                default => 'Card Payment',
+            };
+
+            $rows[] = [
+                $transaction->id,
+                $transaction->id,
+                $paymentType,
+                $transaction->date?->format('Y-m-d'),
+                $transaction->getRelatedPartyLabel() ?? ($transaction->name ?? '-'),
+                round(abs((float) $transaction->amount), 2),
+                $transaction->bills->count(),
+                $transaction->bills->pluck('name')->implode(', ') ?: '-',
+                $this->documentationService->formatDocumentationStatusLabel($transaction->documentation_status),
+                $hasBills ? $this->linkResolver->trxOutLink($transaction) : '',
+                $hasBills ? '' : $this->linkResolver->transactionReceiptLinks($transaction),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function paymentDetailHeadings(): array
+    {
+        return [
+            'Group ID',
+            'Transaction ID',
+            'Detail Type',
+            'Bill Number',
+            'Bill Date',
+            'Provider',
+            'Patient',
+            'Service',
+            'Bill Amount',
+            'Amount Paid (Pivot)',
+            'Client Name',
+            'NIF',
+            'Bill Attachment Links',
+            'Trx Out PDF Link',
+            'Receipt Link',
+        ];
+    }
+
+    /**
+     * @return array<int, array<int, mixed>>
+     */
+    protected function buildPaymentDetailRows(Collection $paymentTransactions, string $nifSource): array
+    {
+        $rows = [];
+
+        foreach ($paymentTransactions as $transaction) {
+            if ($transaction->type === 'Outflow' && $transaction->bills->isNotEmpty()) {
+                foreach ($transaction->bills as $bill) {
+                    $bill->loadMissing(['file.patient.client', 'file.serviceType', 'provider']);
+                    $file = $bill->file;
+                    $billAmount = TaxExportHelpers::resolveBillAmount($bill);
+
+                    $rows[] = [
+                        $transaction->id,
+                        $transaction->id,
+                        'Bill',
+                        $bill->name,
+                        optional($bill->bill_date)->format('Y-m-d'),
+                        $bill->provider?->name ?? '-',
+                        $file?->patient?->name ?? '-',
+                        $file?->serviceType?->name ?? '-',
+                        $billAmount > 0 ? round($billAmount, 2) : 0,
+                        round((float) ($bill->pivot->amount_paid ?? 0), 2),
+                        $file?->patient?->client?->company_name ?? '-',
+                        TaxExportHelpers::resolveNifFromFile($file, $nifSource),
+                        $this->linkResolver->billLinks($bill),
+                        $this->linkResolver->trxOutLink($transaction),
+                        '',
+                    ];
+                }
+
+                continue;
+            }
+
+            $detailType = $transaction->type === 'Expense' ? 'Expense' : 'Card Payment';
+
+            $rows[] = [
+                $transaction->id,
+                $transaction->id,
+                $detailType,
+                '-',
+                $transaction->date?->format('Y-m-d'),
+                $transaction->getRelatedPartyLabel() ?? ($transaction->name ?? '-'),
+                '-',
+                '-',
+                round(abs((float) $transaction->amount), 2),
+                round(abs((float) $transaction->amount), 2),
+                '-',
+                '-',
+                '',
+                '',
+                $this->linkResolver->transactionReceiptLinks($transaction),
             ];
         }
 
@@ -337,33 +435,41 @@ class LawyerDocumentationExportService
             'GOP Contact Country',
             'Invoice Count In Period',
             'Total Invoiced In Period',
+            'Transaction ID(s)',
         ];
     }
 
     /**
+     * @param  Collection<int, array{transaction: Transaction, invoice: Invoice}>  $receivableInvoices
      * @return array<int, array<int, mixed>>
      */
-    protected function buildClientsRows(Collection $invoices): array
+    protected function buildClientsRows(Collection $receivableInvoices): array
     {
         $clientStats = [];
 
-        foreach ($invoices as $invoice) {
+        foreach ($receivableInvoices as $item) {
+            $invoice = $item['invoice'];
+            $transaction = $item['transaction'];
             $client = $invoice->patient?->client;
+
             if (! $client) {
                 continue;
             }
 
             $clientId = $client->id;
+
             if (! isset($clientStats[$clientId])) {
                 $clientStats[$clientId] = [
                     'client' => $client,
                     'count' => 0,
                     'total' => 0.0,
+                    'transaction_ids' => [],
                 ];
             }
 
             $clientStats[$clientId]['count']++;
             $clientStats[$clientId]['total'] += (float) ($invoice->total_amount ?? 0);
+            $clientStats[$clientId]['transaction_ids'][$transaction->id] = $transaction->id;
         }
 
         $rows = [];
@@ -394,35 +500,13 @@ class LawyerDocumentationExportService
                 $client->gopContact?->country?->name ?? '',
                 $stats['count'],
                 round($stats['total'], 2),
+                implode(', ', array_values($stats['transaction_ids'])),
             ];
         }
 
         usort($rows, fn (array $a, array $b) => strcmp((string) $a[1], (string) $b[1]));
 
         return $rows;
-    }
-
-    protected function paidInvoicesQuery($startDate, $endDate): Builder
-    {
-        return Invoice::query()
-            ->with([
-                'file.serviceType',
-                'patient.country',
-                'patient.client.financialContact.country',
-                'patient.client.operationContact.country',
-                'patient.client.gopContact.country',
-                'patient.client.country',
-                'transactions',
-            ])
-            ->where('status', 'Paid')
-            ->where(function (Builder $query) use ($startDate, $endDate) {
-                $query->whereBetween('payment_date', [$startDate, $endDate])
-                    ->orWhere(function (Builder $fallbackQuery) use ($startDate, $endDate) {
-                        $fallbackQuery->whereNull('payment_date')
-                            ->whereBetween('invoice_date', [$startDate, $endDate]);
-                    });
-            })
-            ->orderByRaw('COALESCE(payment_date, invoice_date)');
     }
 
     protected function internalBankTransactionsQuery($startDate, $endDate): Builder

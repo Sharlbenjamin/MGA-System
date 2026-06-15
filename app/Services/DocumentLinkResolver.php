@@ -60,7 +60,31 @@ class DocumentLinkResolver
         return $this->joinLinks($links);
     }
 
-    public function transactionAttachmentLinks(Transaction $transaction, ?int $expirationMinutes = null): string
+    public function trxInLink(Transaction $transaction, ?int $expirationMinutes = null): string
+    {
+        if ($transaction->type !== 'Income') {
+            return '';
+        }
+
+        $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
+        $url = $transaction->getTrxInPdfUrl($minutes);
+
+        return $url ?? '';
+    }
+
+    public function trxOutLink(Transaction $transaction, ?int $expirationMinutes = null): string
+    {
+        if ($transaction->type !== 'Outflow') {
+            return '';
+        }
+
+        $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
+        $url = $transaction->getTrxOutPdfUrl($minutes);
+
+        return $url ?? '';
+    }
+
+    public function transactionReceiptLinks(Transaction $transaction, ?int $expirationMinutes = null): string
     {
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $links = [];
@@ -88,47 +112,56 @@ class DocumentLinkResolver
         return $this->joinLinks($links);
     }
 
-    public function transactionAllLinks(Transaction $transaction, ?int $expirationMinutes = null): string
+    public function transactionAttachmentLinks(Transaction $transaction, ?int $expirationMinutes = null): string
+    {
+        return $this->transactionReceiptLinks($transaction, $expirationMinutes);
+    }
+
+    /**
+     * Tab 1 scope: generated Trx In/Out PDFs plus direct transaction receipts only.
+     */
+    public function transactionTabOneLinks(Transaction $transaction, ?int $expirationMinutes = null): string
     {
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $links = [];
 
-        $attachmentLinks = $this->transactionAttachmentLinks($transaction, $minutes);
-        if ($attachmentLinks !== '') {
-            $links[] = $attachmentLinks;
-        }
-
         if ($transaction->type === 'Income') {
-            $transaction->loadMissing('invoices');
-            foreach ($transaction->invoices as $invoice) {
-                $invoiceLink = $this->invoiceLinks($invoice, $minutes);
-                if ($invoiceLink !== '') {
-                    $links[] = $invoiceLink;
-                }
-            }
-
-            $trxIn = $transaction->getTrxInPdfUrl($minutes);
-            if ($trxIn) {
+            $trxIn = $this->trxInLink($transaction, $minutes);
+            if ($trxIn !== '') {
                 $links[] = $trxIn;
             }
-        }
 
-        if ($transaction->type === 'Outflow' && $transaction->bills()->exists()) {
-            $transaction->loadMissing('bills');
-            foreach ($transaction->bills as $bill) {
-                $billLink = $this->billLinks($bill, $minutes);
-                if ($billLink !== '') {
-                    $links[] = $billLink;
-                }
+            $receipt = $this->transactionReceiptLinks($transaction, $minutes);
+            if ($receipt !== '') {
+                $links[] = $receipt;
             }
-
-            $trxOut = $transaction->getTrxOutPdfUrl($minutes);
-            if ($trxOut) {
+        } elseif ($transaction->type === 'Outflow' && $this->transactionHasBills($transaction)) {
+            $trxOut = $this->trxOutLink($transaction, $minutes);
+            if ($trxOut !== '') {
                 $links[] = $trxOut;
+            }
+        } else {
+            $receipt = $this->transactionReceiptLinks($transaction, $minutes);
+            if ($receipt !== '') {
+                $links[] = $receipt;
             }
         }
 
         return $this->joinLinks($links);
+    }
+
+    public function transactionAllLinks(Transaction $transaction, ?int $expirationMinutes = null): string
+    {
+        return $this->transactionTabOneLinks($transaction, $expirationMinutes);
+    }
+
+    protected function transactionHasBills(Transaction $transaction): bool
+    {
+        if ($transaction->relationLoaded('bills')) {
+            return $transaction->bills->isNotEmpty();
+        }
+
+        return $transaction->bills()->exists();
     }
 
     public function transactionTypedAttachmentLink(TransactionAttachment $attachment, ?int $expirationMinutes = null): ?string
@@ -165,6 +198,6 @@ class DocumentLinkResolver
             return $url;
         }
 
-        return 'https://' . ltrim($url, '/');
+        return 'https://'.ltrim($url, '/');
     }
 }
