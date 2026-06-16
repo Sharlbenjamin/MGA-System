@@ -3,10 +3,10 @@
         @php
             $breakdown = $this->breakdown;
 
-            $payableSections = [
-                ['key' => 'trx_out', 'workflow' => 'trx_out', 'label' => 'Trx Out', 'action' => 'We Generate'],
-                ['key' => 'exp', 'workflow' => 'expense', 'label' => 'Exp', 'action' => 'We Show Bill'],
-                ['key' => 'card', 'workflow' => 'card', 'label' => 'Card', 'action' => 'We Show Bill'],
+            $trxOutSections = [
+                ['key' => 'trx_out_bulk', 'workflow' => 'trx_out_bulk', 'label' => 'Trx Out Bulk'],
+                ['key' => 'trx_out_single', 'workflow' => 'trx_out_single', 'label' => 'Trx Out Single'],
+                ['key' => 'exp', 'workflow' => 'expense', 'label' => 'Trx Out Exp'],
             ];
         @endphp
 
@@ -32,28 +32,41 @@
 
                 {{-- Payables column (red) --}}
                 <div class="space-y-6">
-                    @foreach ($payableSections as $section)
-                        <div class="space-y-3">
-                            <div class="text-sm font-semibold text-gray-950 dark:text-white">
-                                {{ $section['label'] }}
-                                <span class="text-xs font-normal text-gray-500 dark:text-gray-400">
-                                    ({{ $section['action'] }})
-                                </span>
-                            </div>
-
-                            @include('filament.widgets.partials.documentation-stat-rows', [
-                                'stats' => $breakdown[$section['key']],
-                                'workflow' => $section['workflow'],
-                                'color' => 'danger',
-                            ])
+                    <div class="space-y-3">
+                        <div class="text-sm font-semibold text-gray-950 dark:text-white">
+                            Trx Out
+                            <span class="text-xs font-normal text-gray-500 dark:text-gray-400">(We Generate)</span>
                         </div>
-                    @endforeach
+
+                        <div class="space-y-2">
+                            @foreach ($trxOutSections as $section)
+                                @include('filament.widgets.partials.documentation-stat-rows', [
+                                    'stats' => $breakdown[$section['key']],
+                                    'workflow' => $section['workflow'],
+                                    'label' => $section['label'],
+                                    'color' => 'danger',
+                                ])
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="text-sm font-semibold text-gray-950 dark:text-white">
+                            Card
+                            <span class="text-xs font-normal text-gray-500 dark:text-gray-400">(We Show Bill)</span>
+                        </div>
+
+                        @include('filament.widgets.partials.documentation-stat-rows', [
+                            'stats' => $breakdown['card'],
+                            'workflow' => 'card',
+                            'color' => 'danger',
+                        ])
+                    </div>
                 </div>
             </div>
 
             <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                Click a count to filter the table. Transaction counts reflect current filters. Use
-                <strong>Documentation workflow</strong> for Trx Out Bulk.
+                Click a count to filter the table. Transaction counts reflect current filters.
             </p>
         @endif
     </x-filament::section>

@@ -8,8 +8,12 @@
     $buttonClass = 'cursor-pointer rounded px-1 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500';
 @endphp
 
-<ul class="space-y-2 border-l-2 {{ $borderClass }} pl-4">
-    <li class="text-sm text-gray-700 dark:text-gray-300">
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-l-2 {{ $borderClass }} pl-4 text-sm text-gray-700 dark:text-gray-300">
+    @if (! empty($label))
+        <span class="font-medium text-gray-950 dark:text-white">{{ $label }}</span>
+        <span class="text-gray-400 dark:text-gray-500" aria-hidden="true">·</span>
+    @endif
+    <span>
         Total
         <button
             type="button"
@@ -18,8 +22,8 @@
         >
             ({{ $stats['total'] }})
         </button>
-    </li>
-    <li class="text-sm text-gray-700 dark:text-gray-300">
+    </span>
+    <span>
         Completed
         <button
             type="button"
@@ -28,8 +32,8 @@
         >
             ({{ $stats['completed'] }})
         </button>
-    </li>
-    <li class="text-sm text-gray-700 dark:text-gray-300">
+    </span>
+    <span>
         Uncompleted
         <button
             type="button"
@@ -38,5 +42,5 @@
         >
             ({{ $stats['uncompleted'] }})
         </button>
-    </li>
-</ul>
+    </span>
+</div>

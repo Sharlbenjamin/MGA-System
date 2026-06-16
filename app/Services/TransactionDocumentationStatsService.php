@@ -10,7 +10,8 @@ class TransactionDocumentationStatsService
     {
         return [
             'trx_in' => $this->countsFor($query, fn (Builder $scoped) => $scoped->where('type', 'Income')),
-            'trx_out' => $this->countsFor($query, fn (Builder $scoped) => $scoped->where('type', 'Outflow')->has('bills')),
+            'trx_out_bulk' => $this->countsFor($query, fn (Builder $scoped) => $scoped->where('type', 'Outflow')->has('bills', '>=', 2)),
+            'trx_out_single' => $this->countsFor($query, fn (Builder $scoped) => $scoped->where('type', 'Outflow')->has('bills', '=', 1)),
             'exp' => $this->countsFor($query, fn (Builder $scoped) => $scoped->where('type', 'Expense')),
             'card' => $this->countsFor($query, fn (Builder $scoped) => $scoped->where('type', 'Outflow')->doesntHave('bills')),
         ];
@@ -20,7 +21,7 @@ class TransactionDocumentationStatsService
     {
         return match ($workflow) {
             'income' => $query->where('type', 'Income'),
-            'trx_out' => $query->where('type', 'Outflow')->has('bills'),
+            'trx_out_single' => $query->where('type', 'Outflow')->has('bills', '=', 1),
             'trx_out_bulk' => $query->where('type', 'Outflow')->has('bills', '>=', 2),
             'card' => $query->where('type', 'Outflow')->doesntHave('bills'),
             'expense' => $query->where('type', 'Expense'),

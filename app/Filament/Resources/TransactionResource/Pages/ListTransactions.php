@@ -183,12 +183,10 @@ class ListTransactions extends ListRecords
 
         if ($completion === 'completed') {
             $filters['documentation_status'] = ['values' => ['complete']];
-            unset($filters['incomplete_only']);
         } elseif ($completion === 'uncompleted') {
-            unset($filters['documentation_status']);
-            $filters['incomplete_only'] = ['isActive' => true];
+            $filters['documentation_status'] = ['values' => ['incomplete']];
         } else {
-            unset($filters['documentation_status'], $filters['incomplete_only']);
+            unset($filters['documentation_status']);
         }
 
         $this->tableFilters = $filters;

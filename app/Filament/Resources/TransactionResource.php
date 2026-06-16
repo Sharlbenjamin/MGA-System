@@ -602,7 +602,7 @@ class TransactionResource extends Resource
                     ->label('Documentation workflow')
                     ->options([
                         'income' => 'Trx In (Income)',
-                        'trx_out' => 'Trx Out (provider payments)',
+                        'trx_out_single' => 'Trx Out Single (1 bill)',
                         'trx_out_bulk' => 'Trx Out Bulk (2+ bills)',
                         'card' => 'Card (Outflow, no bills)',
                         'expense' => 'Exp (Expense)',
@@ -625,27 +625,10 @@ class TransactionResource extends Resource
                         'missing_generated_pdf' => 'Missing generated PDF',
                     ])
                     ->multiple(),
-                Tables\Filters\Filter::make('incomplete_only')
-                    ->label('Incomplete documentation only')
-                    ->toggle()
-                    ->query(fn (Builder $query) => $query->where('documentation_status', '!=', 'complete'))
-                    ->indicateUsing(fn (): array => ['incomplete_only' => 'Incomplete documentation only']),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Payment status')
                     ->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])
                     ->multiple(),
-                Tables\Filters\Filter::make('imported_only')
-                    ->label('Imported only')
-                    ->toggle()
-                    ->query(fn (Builder $query): Builder => $query->whereNotNull('import_batch_id'))
-                    ->indicateUsing(fn (): array => ['imported_only' => 'Imported only']),
-                Tables\Filters\Filter::make('missing_documents')
-                    ->label('Missing documents (Outflow)')
-                    ->toggle()
-                    ->query(fn (Builder $query): Builder => $query
-                        ->where('type', 'Outflow')
-                        ->whereNull('attachment_path'))
-                    ->indicateUsing(fn (): array => ['missing_documents' => 'Missing documents (Outflow)']),
             ])
             ->groups([
                 Tables\Grouping\Group::make('documentation_status')
