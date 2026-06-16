@@ -2,6 +2,33 @@
     <x-filament::section>
         @php
             $breakdown = $this->breakdown;
+
+            $columns = [
+                [
+                    'key' => 'trx_in',
+                    'label' => 'Trx In',
+                    'action' => 'We Generate',
+                    'color' => 'success',
+                ],
+                [
+                    'key' => 'trx_out',
+                    'label' => 'Trx Out',
+                    'action' => 'We Generate',
+                    'color' => 'danger',
+                ],
+                [
+                    'key' => 'exp',
+                    'label' => 'Exp',
+                    'action' => 'We Show Bill',
+                    'color' => 'danger',
+                ],
+                [
+                    'key' => 'card',
+                    'label' => 'Card',
+                    'action' => 'We Show Bill',
+                    'color' => 'danger',
+                ],
+            ];
         @endphp
 
         @if ($breakdown === null)
@@ -9,78 +36,52 @@
                 Documentation stats are unavailable until migrations are applied.
             </p>
         @else
-            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {{-- Trx In column (green) --}}
-                <div class="space-y-3">
-                    <div class="text-sm font-semibold text-gray-950 dark:text-white">
-                        Trx In → We Generate
-                        <span class="font-bold text-success-600 dark:text-success-400">
-                            ({{ $breakdown['trx_in']['total'] }})
-                        </span>
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                @foreach ($columns as $column)
+                    @php
+                        $stats = $breakdown[$column['key']];
+                        $countClass = $column['color'] === 'success'
+                            ? 'text-success-600 dark:text-success-400'
+                            : 'text-danger-600 dark:text-danger-400';
+                        $borderClass = $column['color'] === 'success'
+                            ? 'border-success-200 dark:border-success-800'
+                            : 'border-danger-200 dark:border-danger-800';
+                    @endphp
+
+                    <div class="space-y-3">
+                        <div class="text-sm font-semibold text-gray-950 dark:text-white">
+                            {{ $column['label'] }}
+                            <span class="text-xs font-normal text-gray-500 dark:text-gray-400">
+                                ({{ $column['action'] }})
+                            </span>
+                        </div>
+
+                        <ul class="space-y-2 border-l-2 {{ $borderClass }} pl-4">
+                            <li class="text-sm text-gray-700 dark:text-gray-300">
+                                Total
+                                <span class="font-semibold {{ $countClass }}">
+                                    ({{ $stats['total'] }})
+                                </span>
+                            </li>
+                            <li class="text-sm text-gray-700 dark:text-gray-300">
+                                Completed
+                                <span class="font-semibold {{ $countClass }}">
+                                    ({{ $stats['completed'] }})
+                                </span>
+                            </li>
+                            <li class="text-sm text-gray-700 dark:text-gray-300">
+                                Uncompleted
+                                <span class="font-semibold {{ $countClass }}">
+                                    ({{ $stats['uncompleted'] }})
+                                </span>
+                            </li>
+                        </ul>
                     </div>
-
-                    <ul class="space-y-2 border-l-2 border-success-200 pl-4 dark:border-success-800">
-                        <li class="text-sm text-gray-700 dark:text-gray-300">
-                            Trx with Generated PDF
-                            <span class="font-semibold text-success-600 dark:text-success-400">
-                                ({{ $breakdown['trx_in']['with_pdf'] }})
-                            </span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">(We Generate)</span>
-                        </li>
-                        <li class="text-sm text-gray-700 dark:text-gray-300">
-                            Trx without Generated PDF
-                            <span class="font-semibold text-success-600 dark:text-success-400">
-                                ({{ $breakdown['trx_in']['without_pdf'] }})
-                            </span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">(We Generate)</span>
-                        </li>
-                    </ul>
-                </div>
-
-                {{-- Trx Out column (red) --}}
-                <div class="space-y-3">
-                    <div class="text-sm font-semibold text-gray-950 dark:text-white">
-                        Trx Out → without documents
-                        <span class="font-bold text-danger-600 dark:text-danger-400">
-                            ({{ $breakdown['trx_out']['total_incomplete'] }})
-                        </span>
-                    </div>
-
-                    <ul class="space-y-2 border-l-2 border-danger-200 pl-4 dark:border-danger-800">
-                        <li class="text-sm text-gray-700 dark:text-gray-300">
-                            Bulk Trx Out without Generated PDF
-                            <span class="font-semibold text-danger-600 dark:text-danger-400">
-                                ({{ $breakdown['trx_out']['bulk_without_pdf'] }})
-                            </span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">(We Generate)</span>
-                        </li>
-                        <li class="text-sm text-gray-700 dark:text-gray-300">
-                            Card Trx without attachments
-                            <span class="font-semibold text-danger-600 dark:text-danger-400">
-                                ({{ $breakdown['trx_out']['card_without_attachment'] }})
-                            </span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">(We Show Bill)</span>
-                        </li>
-                        <li class="text-sm text-gray-700 dark:text-gray-300">
-                            Single Bill Trx without attachments PDF
-                            <span class="font-semibold text-danger-600 dark:text-danger-400">
-                                ({{ $breakdown['trx_out']['single_bill_without_pdf'] }})
-                            </span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">(We Show Bill)</span>
-                        </li>
-                        <li class="text-sm text-gray-700 dark:text-gray-300">
-                            Exp Trx without attachments PDF
-                            <span class="font-semibold text-danger-600 dark:text-danger-400">
-                                ({{ $breakdown['trx_out']['expense_without_attachment'] }})
-                            </span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">(We Show Bill)</span>
-                        </li>
-                    </ul>
-                </div>
+                @endforeach
             </div>
 
             <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                Counts reflect current table filters.
+                Transaction counts reflect current table filters.
             </p>
         @endif
     </x-filament::section>
