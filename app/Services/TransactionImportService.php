@@ -34,7 +34,7 @@ class TransactionImportService
         }
 
         if ($reference) {
-            $query->where(function ($q) use ($reference, $row) {
+            $query->where(function ($q) use ($reference) {
                 $q->whereRaw('LOWER(TRIM(reference)) = ?', [$reference])
                     ->orWhereRaw('LOWER(TRIM(name)) = ?', [$reference])
                     ->orWhereRaw('LOWER(TRIM(notes)) = ?', [$reference]);
@@ -107,6 +107,10 @@ class TransactionImportService
                 return Carbon::createFromTimestampUTC((int) (($value - 25569) * 86400))->startOfDay();
             }
 
+            if (is_string($value) && preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', trim($value))) {
+                return Carbon::createFromFormat('d/m/Y', trim($value))->startOfDay();
+            }
+
             return Carbon::parse($value)->startOfDay();
         } catch (\Throwable) {
             return null;
@@ -127,5 +131,89 @@ class TransactionImportService
         $cleaned = str_replace(',', '.', $cleaned);
 
         return is_numeric($cleaned) ? round(abs((float) $cleaned), 2) : null;
+    }
+
+    public function parseSignedAmount(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return round((float) $value, 2);
+        }
+
+        $cleaned = preg_replace('/[^\d.,\-]/', '', (string) $value);
+        $cleaned = str_replace(',', '.', $cleaned);
+
+        return is_numeric($cleaned) ? round((float) $cleaned, 2) : null;
+    }
+
+    public function inferTypeFromRow(array $row): string
+    {
+        $code = str_pad(trim((string) ($row['bank_code'] ?? '')), 3, '0', STR_PAD_LEFT);
+
+        $inferred = match ($code) {
+            '071', '119', '135' => 'Income',
+            '072', '136' => 'Outflow',
+            '120' => 'Expense',
+            '001' => 'Income',
+            default => null,
+        };
+
+        if ($inferred !== null) {
+            return $inferred;
+        }
+
+        $signed = $row['signed_amount'] ?? $this->parseSignedAmount($row['amount'] ?? null);
+
+        if ($signed !== null) {
+            return $signed >= 0 ? 'Income' : 'Outflow';
+        }
+
+        return 'Income';
+    }
+
+    public function defaultRelatedType(string $type): string
+    {
+        return match ($type) {
+            'Income' => 'Client',
+            'Outflow' => 'Provider',
+            'Expense' => 'Other',
+            default => 'Client',
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function normalizeImportRow(array $row): array
+    {
+        $signed = $row['signed_amount'] ?? $this->parseSignedAmount($row['amount'] ?? null);
+        $amount = $this->parseAmount($row['amount'] ?? $signed);
+        $date = $this->parseDate($row['transaction_date'] ?? null);
+        $type = $row['type'] ?? $this->inferTypeFromRow(array_merge($row, [
+            'signed_amount' => $signed,
+        ]));
+
+        $reference = trim((string) ($row['reference'] ?? ''));
+        if ($reference === '') {
+            $reference = trim((string) ($row['description'] ?? ''));
+        }
+
+        $description = trim((string) ($row['description'] ?? ''));
+
+        return [
+            'transaction_date' => $date?->format('Y-m-d'),
+            'amount' => $amount,
+            'signed_amount' => $signed,
+            'reference' => $reference !== '' ? $reference : null,
+            'description' => $description !== '' ? $description : null,
+            'bank_code' => $row['bank_code'] ?? null,
+            'value_date' => $row['value_date'] ?? null,
+            'type' => $type,
+            'related_type' => $row['related_type'] ?? $this->defaultRelatedType($type),
+            'needs_review' => ($row['bank_code'] ?? '') === '001',
+        ];
     }
 }

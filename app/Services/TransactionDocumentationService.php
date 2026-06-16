@@ -123,6 +123,16 @@ class TransactionDocumentationService
         return $pending->implode('; ');
     }
 
+    public function previewMissingTasksForNewTransaction(string $type): string
+    {
+        return match ($type) {
+            'Income' => 'Missing linked client; No invoices linked; Missing Trx In PDF',
+            'Outflow' => 'Missing linked provider; Missing card receipt (until bills linked)',
+            'Expense' => 'Missing expense receipt',
+            default => 'Incomplete documentation',
+        };
+    }
+
     public function getDocumentationColumnDescription(Transaction $transaction): ?string
     {
         $pending = collect($this->getMissingTasks($transaction))
@@ -134,7 +144,7 @@ class TransactionDocumentationService
             return null;
         }
 
-        return 'Still needed: ' . $pending->implode('; ');
+        return 'Still needed: '.$pending->implode('; ');
     }
 
     public function transactionRequiresDirectAttachment(Transaction $transaction): bool
@@ -175,7 +185,7 @@ class TransactionDocumentationService
             } elseif ($undocumented->isEmpty()) {
                 $lines[] = '✓ All linked invoices have documents';
             } else {
-                $lines[] = '⚠ ' . $undocumented->count() . ' linked invoice(s) missing documents';
+                $lines[] = '⚠ '.$undocumented->count().' linked invoice(s) missing documents';
             }
 
             $lines[] = $transaction->trx_in_pdf_path
@@ -188,7 +198,7 @@ class TransactionDocumentationService
             if ($undocumented->isEmpty()) {
                 $lines[] = '✓ All linked bills have documents';
             } else {
-                $lines[] = '⚠ ' . $undocumented->count() . ' linked bill(s) missing documents';
+                $lines[] = '⚠ '.$undocumented->count().' linked bill(s) missing documents';
             }
 
             $lines[] = $transaction->trx_out_pdf_path

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Exports\BankStatementTransactionsExport;
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\ImportBankTransactionsAction;
 use App\Filament\Widgets\TransactionDocumentationStatsWidget;
 use App\Services\BulkTransactionPdfService;
 use Carbon\Carbon;
@@ -79,7 +80,7 @@ class ListTransactions extends ListRecords
                             ->take(5)
                             ->map(fn (array $detail) => "#{$detail['transaction_id']}: {$detail['reason']}")
                             ->implode("\n");
-                        $body .= "\n\nSkipped (sample):\n" . $preview;
+                        $body .= "\n\nSkipped (sample):\n".$preview;
                     }
 
                     if ($result->failedDetails !== []) {
@@ -87,7 +88,7 @@ class ListTransactions extends ListRecords
                             ->take(5)
                             ->map(fn (array $detail) => "#{$detail['transaction_id']}: {$detail['error']}")
                             ->implode("\n");
-                        $body .= "\n\nFailed:\n" . $preview;
+                        $body .= "\n\nFailed:\n".$preview;
                     }
 
                     $notification = Notification::make()
@@ -152,17 +153,14 @@ class ListTransactions extends ListRecords
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
                 ->action(function () {
-                    $filename = 'bank-transactions-' . now()->format('Y-m-d-His') . '.xlsx';
+                    $filename = 'bank-transactions-'.now()->format('Y-m-d-His').'.xlsx';
 
                     return Excel::download(
                         new BankStatementTransactionsExport($this->getFilteredTableQuery()),
                         $filename
                     );
                 }),
-            Actions\Action::make('import')
-                ->label('Import Excel')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->url(TransactionResource::getUrl('import')),
+            ImportBankTransactionsAction::make(),
             Actions\CreateAction::make(),
         ];
     }

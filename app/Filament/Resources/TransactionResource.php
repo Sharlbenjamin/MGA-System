@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources;
 
-
 use App\Filament\Resources\TransactionResource\Pages;
-use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
 use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManager;
+use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
+use App\Filament\Support\TransactionDocumentationForm;
 use App\Models\Bill;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -13,36 +13,31 @@ use App\Models\Patient;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\Transaction;
+use App\Services\BulkTransactionPdfService;
+use App\Services\TransactionDocumentationService;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Filament\Facades\Filament;
-use Filament\Tables\Actions\Action;
-use Illuminate\Database\Eloquent\Model;
-
-use App\Filament\Support\TransactionDocumentationForm;
-use App\Services\TransactionDocumentationService;
-use App\Services\BulkTransactionPdfService;
-use Filament\Notifications\Notification;
-
 
 class TransactionResource extends Resource
 {
     protected static ?string $model = Transaction::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?string $navigationGroup = 'Finance';
+
     protected static ?string $navigationLabel = 'Bank Transactions';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationBadge(): ?string
@@ -61,8 +56,6 @@ class TransactionResource extends Resource
         return 'warning';
     }
 
-
-
     public static function form(Form $form): Form
     {
         return $form
@@ -77,12 +70,13 @@ class TransactionResource extends Resource
                     Log::info('Transaction form defaults:', [
                         'type' => $type,
                         'all_params' => $allParams,
-                        'url' => request()->url()
+                        'url' => request()->url(),
                     ]);
+
                     return $type;
                 }),
-                Forms\Components\Select::make('related_type')->options(fn ($get) => Self::relatedTypes($get('type')))->required()->searchable()->reactive()->default(fn () => request()->get('related_type')),
-                    // I want to select an invoice if realted_type is Client
+                Forms\Components\Select::make('related_type')->options(fn ($get) => self::relatedTypes($get('type')))->required()->searchable()->reactive()->default(fn () => request()->get('related_type')),
+                // I want to select an invoice if realted_type is Client
                 Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch')->searchable()->default(fn () => request()->get('related_id')),
@@ -93,7 +87,7 @@ class TransactionResource extends Resource
                     })
                     ->required()
                     ->default(fn () => request()->get('bank_account_id')),
-                
+
                 // Display provider/branch bank account details for Outflow transactions
                 Forms\Components\Section::make('Provider Bank Account Details')
                     ->description('Bank account information for the selected provider/branch (for Outflow transactions)')
@@ -105,13 +99,13 @@ class TransactionResource extends Resource
                                 $type = $get('type');
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
-                                
-                                if ($type !== 'Outflow' || !$relatedId) {
+
+                                if ($type !== 'Outflow' || ! $relatedId) {
                                     return 'Select "Outflow" as transaction type and choose a provider/branch to see bank details.';
                                 }
-                                
+
                                 $bankAccount = null;
-                                
+
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
                                     $bankAccount = $provider?->bankAccounts()->first();
@@ -119,41 +113,44 @@ class TransactionResource extends Resource
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
                                     $bankAccount = $branch?->bankAccounts()->first();
                                 }
-                                
-                                if (!$bankAccount) {
+
+                                if (! $bankAccount) {
                                     return 'No bank account found for the selected provider/branch.';
                                 }
-                                
+
                                 $bills = static::resolveBillsForPaymentReason($get);
                                 $reason = Bill::formatPaymentReasonSentence($bills);
-                                
+
                                 $details = [
-                                    'IBAN: ' . $bankAccount->iban,
-                                    'Beneficiary Name: ' . $bankAccount->beneficiary_name,
-                                    'SWIFT: ' . $bankAccount->swift,
-                                    'Country: ' . ($bankAccount->country?->name ?? 'N/A'),
-                                    'Reason: ' . $reason
+                                    'IBAN: '.$bankAccount->iban,
+                                    'Beneficiary Name: '.$bankAccount->beneficiary_name,
+                                    'SWIFT: '.$bankAccount->swift,
+                                    'Country: '.($bankAccount->country?->name ?? 'N/A'),
+                                    'Reason: '.$reason,
                                 ];
-                                
+
                                 return implode("\n", $details);
                             })
                             ->visible(fn ($get) => $get('type') === 'Outflow')
                             ->columnSpanFull(),
-                        
+
                         // Individual copiable fields for each bank detail
                         Forms\Components\TextInput::make('provider_iban_display')
                             ->label('IBAN')
                             ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
-                                
+
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
+
                                     return $provider?->bankAccounts()->first()?->iban ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
+
                                     return $branch?->bankAccounts()->first()?->iban ?? '';
                                 }
+
                                 return '';
                             })
                             ->disabled()
@@ -166,7 +163,7 @@ class TransactionResource extends Resource
                                     ->action(function (callable $get) {
                                         $relatedType = $get('related_type');
                                         $relatedId = $get('related_id');
-                                        
+
                                         $iban = '';
                                         if ($relatedType === 'Provider') {
                                             $provider = \App\Models\Provider::find($relatedId);
@@ -175,24 +172,27 @@ class TransactionResource extends Resource
                                             $branch = \App\Models\ProviderBranch::find($relatedId);
                                             $iban = $branch?->bankAccounts()->first()?->iban ?? '';
                                         }
-                                        
+
                                         return "navigator.clipboard.writeText('{$iban}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'IBAN copied to clipboard!' } })); });";
                                     })
                             ),
-                        
+
                         Forms\Components\TextInput::make('provider_beneficiary_display')
                             ->label('Beneficiary Name')
                             ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
-                                
+
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
+
                                     return $provider?->bankAccounts()->first()?->beneficiary_name ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
+
                                     return $branch?->bankAccounts()->first()?->beneficiary_name ?? '';
                                 }
+
                                 return '';
                             })
                             ->disabled()
@@ -205,7 +205,7 @@ class TransactionResource extends Resource
                                     ->action(function (callable $get) {
                                         $relatedType = $get('related_type');
                                         $relatedId = $get('related_id');
-                                        
+
                                         $beneficiary = '';
                                         if ($relatedType === 'Provider') {
                                             $provider = \App\Models\Provider::find($relatedId);
@@ -214,24 +214,27 @@ class TransactionResource extends Resource
                                             $branch = \App\Models\ProviderBranch::find($relatedId);
                                             $beneficiary = $branch?->bankAccounts()->first()?->beneficiary_name ?? '';
                                         }
-                                        
+
                                         return "navigator.clipboard.writeText('{$beneficiary}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'Beneficiary name copied to clipboard!' } })); });";
                                     })
                             ),
-                        
+
                         Forms\Components\TextInput::make('provider_swift_display')
                             ->label('SWIFT')
                             ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
-                                
+
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
+
                                     return $provider?->bankAccounts()->first()?->swift ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
+
                                     return $branch?->bankAccounts()->first()?->swift ?? '';
                                 }
+
                                 return '';
                             })
                             ->disabled()
@@ -244,7 +247,7 @@ class TransactionResource extends Resource
                                     ->action(function (callable $get) {
                                         $relatedType = $get('related_type');
                                         $relatedId = $get('related_id');
-                                        
+
                                         $swift = '';
                                         if ($relatedType === 'Provider') {
                                             $provider = \App\Models\Provider::find($relatedId);
@@ -253,24 +256,27 @@ class TransactionResource extends Resource
                                             $branch = \App\Models\ProviderBranch::find($relatedId);
                                             $swift = $branch?->bankAccounts()->first()?->swift ?? '';
                                         }
-                                        
+
                                         return "navigator.clipboard.writeText('{$swift}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'SWIFT copied to clipboard!' } })); });";
                                     })
                             ),
-                        
+
                         Forms\Components\TextInput::make('provider_country_display')
                             ->label('Country')
                             ->default(function (callable $get) {
                                 $relatedType = $get('related_type');
                                 $relatedId = $get('related_id');
-                                
+
                                 if ($relatedType === 'Provider') {
                                     $provider = \App\Models\Provider::find($relatedId);
+
                                     return $provider?->bankAccounts()->first()?->country?->name ?? '';
                                 } elseif ($relatedType === 'Branch') {
                                     $branch = \App\Models\ProviderBranch::find($relatedId);
+
                                     return $branch?->bankAccounts()->first()?->country?->name ?? '';
                                 }
+
                                 return '';
                             })
                             ->disabled()
@@ -283,7 +289,7 @@ class TransactionResource extends Resource
                                     ->action(function (callable $get) {
                                         $relatedType = $get('related_type');
                                         $relatedId = $get('related_id');
-                                        
+
                                         $country = '';
                                         if ($relatedType === 'Provider') {
                                             $provider = \App\Models\Provider::find($relatedId);
@@ -292,11 +298,11 @@ class TransactionResource extends Resource
                                             $branch = \App\Models\ProviderBranch::find($relatedId);
                                             $country = $branch?->bankAccounts()->first()?->country?->name ?? '';
                                         }
-                                        
+
                                         return "navigator.clipboard.writeText('{$country}').then(() => { window.dispatchEvent(new CustomEvent('show-notification', { detail: { message: 'Country copied to clipboard!' } })); });";
                                     })
                             ),
-                        
+
                         Forms\Components\Placeholder::make('provider_reason_display')
                             ->key('transaction_form_outflow_provider_reason')
                             ->label('Transaction Reason')
@@ -325,13 +331,13 @@ class TransactionResource extends Resource
                 Forms\Components\Textarea::make('notes')->columnSpanFull(),
 
                 Forms\Components\TextInput::make('bank_charges')
-                ->numeric()
-                ->prefix('€')
-                ->maxValue(999999.99)
-                ->default(0),
+                    ->numeric()
+                    ->prefix('€')
+                    ->maxValue(999999.99)
+                    ->default(0),
 
                 Forms\Components\Toggle::make('charges_covered_by_client')
-                ->default(false),
+                    ->default(false),
 
                 // I want to have a table to select the related invoice or bill
                 Forms\Components\Select::make('invoices')
@@ -345,7 +351,9 @@ class TransactionResource extends Resource
                     ->default(fn () => request()->get('invoice_id') ? [request()->get('invoice_id')] : [])
                     ->options(function (callable $get) {
                         $clientId = $get('related_id');
-                        if (!$clientId) return [];
+                        if (! $clientId) {
+                            return [];
+                        }
 
                         return Invoice::query()
                             ->whereHas('patient', function ($q) use ($clientId) {
@@ -357,79 +365,82 @@ class TransactionResource extends Resource
                             ->pluck('name', 'id');
                     }),
                 Forms\Components\Select::make('bills')
-                ->label('Bills')
-                ->multiple()
-                ->searchable()
-                ->preload()
-                ->live()
-                ->visible(fn ($get) => $get('related_type') === 'Provider' || $get('related_type') === 'Branch')
-                ->default(function ($record = null) {
-                    // Handle bill_ids parameter (comma-separated list from bulk action)
-                    if (request()->get('bill_ids')) {
-                        $billIds = explode(',', request()->get('bill_ids'));
-                        return array_filter($billIds); // Remove empty values
-                    }
-                    
-                    // Handle single bill_id parameter
-                    if (request()->get('bill_id')) {
-                        return [request()->get('bill_id')];
-                    }
-                    
-                    // If editing, get the currently attached bill IDs
-                    if ($record && $record->exists) {
-                        return $record->bills()->pluck('bills.id')->toArray();
-                    }
-                    
-                    return [];
-                })
-                ->options(function (callable $get, $record = null) {
-                    $relatedType = $get('related_type');
-                    $relatedId = $get('related_id');
-                    
-                    // If we're editing and have a record, include currently attached bills
-                    if ($record && $record->exists) {
-                        $attachedBillIds = $record->bills()->pluck('bills.id')->toArray();
-                        
-                        // Get all bills for the related provider/branch
-                        $allBills = collect();
-                        if ($relatedType === 'Provider') {
-                            $allBills = Bill::query()
-                                ->whereHas('file', function ($query) use ($relatedId) {
-                                    $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
-                                        $providerQuery->where('providers.id', $relatedId);
-                                    })
-                                    ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
-                                        $branchQuery->where('provider_branches.provider_id', $relatedId);
-                                    });
-                                })
-                                ->where(function ($query) use ($attachedBillIds) {
-                                    $query->whereIn('status', ['Unpaid', 'Partial'])
-                                        ->orWhereIn('id', $attachedBillIds);
-                                })
-                                ->get();
-                        } elseif ($relatedType === 'Branch') {
-                            $allBills = Bill::query()
-                                ->whereHas('file', function ($query) use ($relatedId) {
-                                    $query->where('provider_branch_id', $relatedId);
-                                })
-                                ->where(function ($query) use ($attachedBillIds) {
-                                    $query->whereIn('status', ['Unpaid', 'Partial'])
-                                        ->orWhereIn('id', $attachedBillIds);
-                                })
-                                ->get();
-                        }
-                        
-                        return $allBills->pluck('name', 'id')->toArray();
-                    }
-                    
-                    // For create mode, use the original logic
-                    if (!$relatedId) return [];
+                    ->label('Bills')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->visible(fn ($get) => $get('related_type') === 'Provider' || $get('related_type') === 'Branch')
+                    ->default(function ($record = null) {
+                        // Handle bill_ids parameter (comma-separated list from bulk action)
+                        if (request()->get('bill_ids')) {
+                            $billIds = explode(',', request()->get('bill_ids'));
 
-                    return static::getBills($relatedType, $relatedId)
-                        ->pluck('name', 'id')
-                        ->toArray();
-                }),
-            static::documentationStatusSection(),
+                            return array_filter($billIds); // Remove empty values
+                        }
+
+                        // Handle single bill_id parameter
+                        if (request()->get('bill_id')) {
+                            return [request()->get('bill_id')];
+                        }
+
+                        // If editing, get the currently attached bill IDs
+                        if ($record && $record->exists) {
+                            return $record->bills()->pluck('bills.id')->toArray();
+                        }
+
+                        return [];
+                    })
+                    ->options(function (callable $get, $record = null) {
+                        $relatedType = $get('related_type');
+                        $relatedId = $get('related_id');
+
+                        // If we're editing and have a record, include currently attached bills
+                        if ($record && $record->exists) {
+                            $attachedBillIds = $record->bills()->pluck('bills.id')->toArray();
+
+                            // Get all bills for the related provider/branch
+                            $allBills = collect();
+                            if ($relatedType === 'Provider') {
+                                $allBills = Bill::query()
+                                    ->whereHas('file', function ($query) use ($relatedId) {
+                                        $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
+                                            $providerQuery->where('providers.id', $relatedId);
+                                        })
+                                            ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
+                                                $branchQuery->where('provider_branches.provider_id', $relatedId);
+                                            });
+                                    })
+                                    ->where(function ($query) use ($attachedBillIds) {
+                                        $query->whereIn('status', ['Unpaid', 'Partial'])
+                                            ->orWhereIn('id', $attachedBillIds);
+                                    })
+                                    ->get();
+                            } elseif ($relatedType === 'Branch') {
+                                $allBills = Bill::query()
+                                    ->whereHas('file', function ($query) use ($relatedId) {
+                                        $query->where('provider_branch_id', $relatedId);
+                                    })
+                                    ->where(function ($query) use ($attachedBillIds) {
+                                        $query->whereIn('status', ['Unpaid', 'Partial'])
+                                            ->orWhereIn('id', $attachedBillIds);
+                                    })
+                                    ->get();
+                            }
+
+                            return $allBills->pluck('name', 'id')->toArray();
+                        }
+
+                        // For create mode, use the original logic
+                        if (! $relatedId) {
+                            return [];
+                        }
+
+                        return static::getBills($relatedType, $relatedId)
+                            ->pluck('name', 'id')
+                            ->toArray();
+                    }),
+                static::documentationStatusSection(),
             ]);
     }
 
@@ -452,7 +463,7 @@ class TransactionResource extends Resource
                             $icon = $task['status'] === 'done' ? '✓' : '⚠';
 
                             return "{$icon} {$task['label']}";
-                        })->prepend('Progress: ' . $done . ' of ' . count($tasks) . ' complete')->implode("\n");
+                        })->prepend('Progress: '.$done.' of '.count($tasks).' complete')->implode("\n");
                     })
                     ->columnSpanFull(),
                 Forms\Components\Placeholder::make('reference_display')
@@ -493,7 +504,7 @@ class TransactionResource extends Resource
                     && method_exists($user, 'hasAnyRole')
                     && (bool) call_user_func([$user, 'hasAnyRole'], $privilegedRoles);
 
-                if (!$canViewAllTypes) {
+                if (! $canViewAllTypes) {
                     $query->where('type', 'Outflow');
                 }
 
@@ -518,7 +529,9 @@ class TransactionResource extends Resource
                     ->tooltip(fn (Transaction $record): ?string => $record->getRelatedPartyLabel()),
                 Tables\Columns\TextColumn::make('amount'),
                 Tables\Columns\TextColumn::make('type')->searchable()
-                ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
+                    ->color(fn ($record) => match ($record->type) {
+                        'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',
+                    })->badge(),
                 Tables\Columns\TextColumn::make('documentation_status')
                     ->label('Documentation')
                     ->getStateUsing(fn (Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationColumnSummary($record))
@@ -542,6 +555,14 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('documentation_label')
                     ->label('Category')
                     ->getStateUsing(fn (Transaction $record) => $record->documentation_label),
+                Tables\Columns\IconColumn::make('import_batch_id')
+                    ->label('Imported')
+                    ->boolean()
+                    ->getStateUsing(fn (Transaction $record): bool => $record->import_batch_id !== null)
+                    ->trueIcon('heroicon-o-arrow-up-tray')
+                    ->falseIcon('')
+                    ->trueColor('info')
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 Tables\Filters\Filter::make('transaction_date')
@@ -567,11 +588,11 @@ class TransactionResource extends Resource
                         $indicators = [];
 
                         if ($data['date_from'] ?? null) {
-                            $indicators['date_from'] = 'From ' . \Carbon\Carbon::parse($data['date_from'])->format('d/m/Y');
+                            $indicators['date_from'] = 'From '.\Carbon\Carbon::parse($data['date_from'])->format('d/m/Y');
                         }
 
                         if ($data['date_until'] ?? null) {
-                            $indicators['date_until'] = 'Until ' . \Carbon\Carbon::parse($data['date_until'])->format('d/m/Y');
+                            $indicators['date_until'] = 'Until '.\Carbon\Carbon::parse($data['date_until'])->format('d/m/Y');
                         }
 
                         return $indicators;
@@ -595,6 +616,11 @@ class TransactionResource extends Resource
                     ->label('Payment status')
                     ->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])
                     ->multiple(),
+                Tables\Filters\Filter::make('imported_only')
+                    ->label('Imported only')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query->whereNotNull('import_batch_id'))
+                    ->indicateUsing(fn (): array => ['imported_only' => 'Imported only']),
                 Tables\Filters\Filter::make('missing_documents')
                     ->label('Missing documents (Outflow)')
                     ->toggle()
@@ -615,7 +641,7 @@ class TransactionResource extends Resource
                     ->date()
                     ->collapsible()
                     ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y'))
-                    ->getDescriptionFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y') . ' Balance: ' . $record->bankAccount->monthlyBalance($record->date)),
+                    ->getDescriptionFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y').' Balance: '.$record->bankAccount->monthlyBalance($record->date)),
 
             ])
             ->actions([
@@ -648,18 +674,18 @@ class TransactionResource extends Resource
                     ->action(function ($record) {
                         try {
                             $record->finalizeTransaction();
-                            
+
                             Notification::make()
                                 ->success()
                                 ->title('Transaction Finalized')
                                 ->body('Transaction has been finalized and bills have been marked as paid.')
                                 ->send();
-                                
+
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->danger()
                                 ->title('Finalization Failed')
-                                ->body('Error finalizing transaction: ' . $e->getMessage())
+                                ->body('Error finalizing transaction: '.$e->getMessage())
                                 ->send();
                         }
                     }),
@@ -706,15 +732,15 @@ class TransactionResource extends Resource
         return [
             'index' => Pages\ListTransactions::route('/'),
             'create' => Pages\CreateTransaction::route('/create'),
+            'import' => Pages\ImportTransactions::route('/import'),
             'edit' => Pages\EditTransaction::route('/{record}/edit'),
             'view' => Pages\ViewTransaction::route('/{record}'),
-            'import' => Pages\ImportTransactions::route('/import'),
         ];
     }
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return ($record->name ?? 'Unknown') . ' (' . ($record->type ?? 'Unknown') . ')';
+        return ($record->name ?? 'Unknown').' ('.($record->type ?? 'Unknown').')';
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
@@ -722,7 +748,7 @@ class TransactionResource extends Resource
         return [
             'Type' => $record->type ?? 'Unknown',
             'Related Type' => $record->related_type ?? 'Unknown',
-            'Amount' => '€' . number_format($record->amount ?? 0, 2),
+            'Amount' => '€'.number_format($record->amount ?? 0, 2),
             'Date' => $record->date?->format('d/m/Y') ?? 'Unknown',
             'Bank Account' => $record->bankAccount?->beneficiary_name ?? 'Unknown',
         ];
@@ -754,7 +780,6 @@ class TransactionResource extends Resource
     {
         return $this->hasMany(Bill::class);
     }
-
 
     /**
      * Bills for payment reference text: use the Bills multi-select (or bill_ids / bill_id from the URL),
@@ -859,9 +884,9 @@ class TransactionResource extends Resource
                     $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
                         $providerQuery->where('providers.id', $relatedId);
                     })
-                    ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
-                        $branchQuery->where('provider_branches.provider_id', $relatedId);
-                    });
+                        ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
+                            $branchQuery->where('provider_branches.provider_id', $relatedId);
+                        });
                 })
                 ->whereDoesntHave('transactions')
                 ->whereIn('status', ['Unpaid', 'Partial'])

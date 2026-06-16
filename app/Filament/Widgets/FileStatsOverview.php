@@ -25,7 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Cases created in the period → all their invoices & bills; expenses by transaction date
+        // Invoices/bills by document date in the period; expenses by transaction date
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
@@ -50,7 +50,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $expensesComparison = $this->calculateComparison($expenses, $previousExpenses);
         $outflowComparison = $this->calculateComparison($outflow, $previousOutflow);
 
-        // Chart data (bucketed by case creation date for revenue/cost, transaction date for expenses)
+        // Chart data (bucketed by invoice/bill date for revenue/cost, transaction date for expenses)
         $revenueChart = $this->getFileBasedChartData('revenue');
         $costChart = $this->getFileBasedChartData('cost');
         $expensesChart = $this->getExpensesChartData();
