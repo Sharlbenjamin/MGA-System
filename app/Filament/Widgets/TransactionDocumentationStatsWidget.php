@@ -41,4 +41,13 @@ class TransactionDocumentationStatsWidget extends Widget
             $this->getPageTableQuery()
         );
     }
+
+    public function applyDocumentationFilter(string $workflow, string $completion = 'all'): void
+    {
+        $this->dispatch(
+            'apply-transaction-documentation-filter',
+            workflow: $workflow,
+            completion: $completion,
+        )->to($this->getTablePage());
+    }
 }

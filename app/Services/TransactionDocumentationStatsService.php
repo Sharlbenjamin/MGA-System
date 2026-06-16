@@ -16,6 +16,18 @@ class TransactionDocumentationStatsService
         ];
     }
 
+    public static function applyWorkflowScope(Builder $query, ?string $workflow): Builder
+    {
+        return match ($workflow) {
+            'income' => $query->where('type', 'Income'),
+            'trx_out' => $query->where('type', 'Outflow')->has('bills'),
+            'trx_out_bulk' => $query->where('type', 'Outflow')->has('bills', '>=', 2),
+            'card' => $query->where('type', 'Outflow')->doesntHave('bills'),
+            'expense' => $query->where('type', 'Expense'),
+            default => $query,
+        };
+    }
+
     /**
      * @param  callable(Builder): Builder  $scope
      * @return array{total: int, completed: int, uncompleted: int}

@@ -15,6 +15,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
+use Livewire\Attributes\On;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ListTransactions extends ListRecords
@@ -170,5 +171,27 @@ class ListTransactions extends ListRecords
         return [
             TransactionDocumentationStatsWidget::class,
         ];
+    }
+
+    #[On('apply-transaction-documentation-filter')]
+    public function applyDocumentationFilter(string $workflow, string $completion = 'all'): void
+    {
+        $filters = $this->tableFilters ?? [];
+
+        $filters['documentation_workflow'] = ['value' => $workflow];
+        unset($filters['type']);
+
+        if ($completion === 'completed') {
+            $filters['documentation_status'] = ['values' => ['complete']];
+            unset($filters['incomplete_only']);
+        } elseif ($completion === 'uncompleted') {
+            unset($filters['documentation_status']);
+            $filters['incomplete_only'] = ['isActive' => true];
+        } else {
+            unset($filters['documentation_status'], $filters['incomplete_only']);
+        }
+
+        $this->tableFilters = $filters;
+        $this->resetTable();
     }
 }

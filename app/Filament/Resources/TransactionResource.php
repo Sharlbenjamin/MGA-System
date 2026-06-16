@@ -598,6 +598,24 @@ class TransactionResource extends Resource
                         return $indicators;
                     }),
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
+                Tables\Filters\SelectFilter::make('documentation_workflow')
+                    ->label('Documentation workflow')
+                    ->options([
+                        'income' => 'Trx In (Income)',
+                        'trx_out' => 'Trx Out (provider payments)',
+                        'trx_out_bulk' => 'Trx Out Bulk (2+ bills)',
+                        'card' => 'Card (Outflow, no bills)',
+                        'expense' => 'Exp (Expense)',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        if (! filled($value)) {
+                            return $query;
+                        }
+
+                        return \App\Services\TransactionDocumentationStatsService::applyWorkflowScope($query, $value);
+                    }),
                 Tables\Filters\SelectFilter::make('documentation_status')
                     ->options([
                         'complete' => 'Complete',
