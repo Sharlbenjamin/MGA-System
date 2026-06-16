@@ -3,10 +3,13 @@
 namespace App\Filament\Widgets\Traits;
 
 use App\Models\Bill;
+use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 
 trait HasDashboardFilters
 {
@@ -181,27 +184,37 @@ trait HasDashboardFilters
         };
     }
 
-    protected function getRevenueForPeriod(string $period = 'current'): float
+    protected function getFileIdsForPeriod(string $period = 'current'): Collection
     {
         $dateRange = $this->getDateRange();
 
-        return (float) Invoice::query()
-            ->whereBetween('invoice_date', [
+        return File::query()
+            ->whereBetween('created_at', [
                 $dateRange[$period]['start'],
                 $dateRange[$period]['end'],
             ])
+            ->pluck('id');
+    }
+
+    protected function getRevenueForFileIds(Collection $fileIds): float
+    {
+        if ($fileIds->isEmpty()) {
+            return 0.0;
+        }
+
+        return (float) Invoice::query()
+            ->whereIn('file_id', $fileIds)
             ->sum('total_amount');
     }
 
-    protected function getCostForPeriod(string $period = 'current'): float
+    protected function getCostForFileIds(Collection $fileIds): float
     {
-        $dateRange = $this->getDateRange();
+        if ($fileIds->isEmpty()) {
+            return 0.0;
+        }
 
         return (float) Bill::query()
-            ->whereBetween('bill_date', [
-                $dateRange[$period]['start'],
-                $dateRange[$period]['end'],
-            ])
+            ->whereIn('file_id', $fileIds)
             ->sum('total_amount');
     }
 
@@ -221,12 +234,13 @@ trait HasDashboardFilters
 
     protected function getFileBasedFinancials(string $period = 'current'): array
     {
-        $revenue = $this->getRevenueForPeriod($period);
-        $cost = $this->getCostForPeriod($period);
+        $fileIds = $this->getFileIdsForPeriod($period);
+        $revenue = $this->getRevenueForFileIds($fileIds);
+        $cost = $this->getCostForFileIds($fileIds);
         $expenses = $this->getExpensesForPeriod($period);
         $income = $revenue - $cost;
         $outflow = $cost + $expenses;
-        $profit = $revenue - $outflow;
+        $profit = $income;
 
         return compact('revenue', 'cost', 'expenses', 'income', 'outflow', 'profit');
     }
@@ -236,22 +250,27 @@ trait HasDashboardFilters
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
         $table = $metric === 'revenue' ? 'invoices' : 'bills';
-        $dateField = $metric === 'revenue' ? 'invoice_date' : 'bill_date';
         $amountField = 'total_amount';
 
-        $query = DB::table($table)
-            ->whereBetween($dateField, [
+        $query = DB::table('files')
+            ->join($table, "{$table}.file_id", '=', 'files.id')
+            ->whereBetween('files.created_at', [
                 $dateRange['current']['start'],
                 $dateRange['current']['end'],
             ]);
 
         if ($filters['duration'] === 'Day') {
-            return [(float) $query->sum($amountField)];
+            return $query
+                ->selectRaw('HOUR(files.created_at) as bucket, SUM(' . $table . '.' . $amountField . ') as total')
+                ->groupBy('bucket')
+                ->orderBy('bucket')
+                ->pluck('total')
+                ->toArray();
         }
 
         if ($filters['duration'] === 'Month') {
             return $query
-                ->selectRaw("DATE({$dateField}) as bucket, SUM({$amountField}) as total")
+                ->selectRaw('DATE(files.created_at) as bucket, SUM(' . $table . '.' . $amountField . ') as total')
                 ->groupBy('bucket')
                 ->orderBy('bucket')
                 ->pluck('total')
@@ -259,7 +278,7 @@ trait HasDashboardFilters
         }
 
         return $query
-            ->selectRaw("DATE_FORMAT({$dateField}, \"%Y-%m\") as bucket, SUM({$amountField}) as total")
+            ->selectRaw('DATE_FORMAT(files.created_at, "%Y-%m") as bucket, SUM(' . $table . '.' . $amountField . ') as total')
             ->groupBy('bucket')
             ->orderBy('bucket')
             ->pluck('total')
@@ -311,21 +330,14 @@ trait HasDashboardFilters
 
     protected function getProfitForFileBucket(Carbon $start, Carbon $end): float
     {
-        $revenue = (float) Invoice::query()
-            ->whereBetween('invoice_date', [$start, $end])
-            ->sum('total_amount');
+        $fileIds = File::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->pluck('id');
 
-        $cost = (float) Bill::query()
-            ->whereBetween('bill_date', [$start, $end])
-            ->sum('total_amount');
+        $revenue = $this->getRevenueForFileIds($fileIds);
+        $cost = $this->getCostForFileIds($fileIds);
 
-        $expenses = (float) Transaction::query()
-            ->where('type', 'Expense')
-            ->whereDoesntHave('bills')
-            ->whereBetween('date', [$start, $end])
-            ->sum('amount');
-
-        return $revenue - $cost - $expenses;
+        return $revenue - $cost;
     }
 
     protected function applyDateFilter($query, $dateField = 'created_at'): void
@@ -347,6 +359,7 @@ trait HasDashboardFilters
     }
 
     // Method to listen for filter changes
+    #[On('dashboard-filters-changed')]
     public function onDashboardFiltersChanged($data): void
     {
         // Store filters in session for other widgets to access

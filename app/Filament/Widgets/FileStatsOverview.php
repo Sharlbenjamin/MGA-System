@@ -25,7 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Invoices/bills by document date in the period; expenses by transaction date
+        // Cases created in the period → sum all their invoices minus all their bills
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
@@ -50,22 +50,20 @@ class FileStatsOverview extends  StatsOverviewWidget
         $expensesComparison = $this->calculateComparison($expenses, $previousExpenses);
         $outflowComparison = $this->calculateComparison($outflow, $previousOutflow);
 
-        // Chart data (bucketed by invoice/bill date for revenue/cost, transaction date for expenses)
+        // Chart data (bucketed by case creation date for revenue/cost, transaction date for expenses)
         $revenueChart = $this->getFileBasedChartData('revenue');
         $costChart = $this->getFileBasedChartData('cost');
         $expensesChart = $this->getExpensesChartData();
 
-        $incomeChart = array_map(function($revenueChart, $costChart) {
-            return $revenueChart - $costChart;
+        $incomeChart = array_map(function ($revenue, $cost) {
+            return $revenue - $cost;
         }, $revenueChart, $costChart);
-        
-        $outflowChart = array_map(function($costChart, $expensesChart) {
-            return $costChart + $expensesChart;
+
+        $outflowChart = array_map(function ($cost, $expenses) {
+            return $cost + $expenses;
         }, $costChart, $expensesChart);
-        
-        $profitChart = array_map(function($revenueChart, $outflowChart) {
-            return $revenueChart - $outflowChart;
-        }, $revenueChart, $outflowChart);
+
+        $profitChart = $incomeChart;
 
         // File statistics
         $activeFiles = File::where('status', 'Assisted')
