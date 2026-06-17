@@ -71,11 +71,6 @@ class Invoice extends Model
         static::updated(function ($invoice) {
             if ($invoice->isDirty('paid_amount')) {
                 $invoice->checkStatus();
-                // Get the first transaction if it exists
-                $transaction = $invoice->transactions()->first();
-                if ($transaction && method_exists($transaction, 'calculateBankCharges')) {
-                    $transaction->calculateBankCharges();
-                }
             }
 
             if($invoice->isDirty('status') && $invoice->status === 'Posted')

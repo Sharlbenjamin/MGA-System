@@ -290,30 +290,14 @@ class Transaction extends Model
 
     public function calculateBankCharges()
     {
-        // Sum amounts applied to invoices and bills (both use amount_paid on the pivot).
-        $totalPaidAmount = (float) $this->invoices()
-            ->withPivot('amount_paid')
-            ->get()
-            ->sum(fn ($invoice) => (float) ($invoice->pivot->amount_paid ?? 0));
-
-        $totalPaidAmount += (float) $this->bills()
-            ->withPivot('amount_paid')
-            ->get()
-            ->sum(fn ($bill) => (float) ($bill->pivot->amount_paid ?? 0));
-
-        // Update each invoice's paid_amount
+        // Sync each linked invoice's paid_amount from the pivot (bank_charges are manual only).
         $this->invoices()->each(function ($invoice) {
             $paidAmount = $invoice->pivot->amount_paid ?? 0;
             $invoice->paid_amount = $paidAmount;
             $invoice->save();
 
-            // Update invoice status based on new paid amount
             $invoice->checkStatus();
         });
-
-        // Bank charges = difference between what left the account and what was allocated to invoices/bills
-        $this->bank_charges = abs($this->amount - $totalPaidAmount);
-        $this->save();
     }
 
     public function attachInvoices(array $invoiceIds)
@@ -338,7 +322,7 @@ class Transaction extends Model
             }
         }
 
-        // Recalculate bank charges after attaching invoices
+        // Sync linked invoice payments after attaching invoices
         $this->calculateBankCharges();
         app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
@@ -357,7 +341,7 @@ class Transaction extends Model
         // Update invoice status
         $invoice->checkStatus();
 
-        // Recalculate bank charges
+        // Sync linked invoice payments
         $this->calculateBankCharges();
     }
 
@@ -384,8 +368,7 @@ class Transaction extends Model
             }
         }
 
-        // Recalculate bank charges after attaching bills
-        $this->calculateBankCharges();
+        // Recalculate documentation after attaching bills
         app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 
@@ -410,8 +393,6 @@ class Transaction extends Model
             }
         }
 
-        // Recalculate bank charges after attaching bills
-        $this->calculateBankCharges();
         app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 

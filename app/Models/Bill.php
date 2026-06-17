@@ -136,11 +136,6 @@ class Bill extends Model
         static::updated(function ($bill) {
             if ($bill->isDirty('paid_amount')) {
                 $bill->checkStatus();
-                // Get the first transaction if it exists
-                $transaction = $bill->transactions()->first();
-                if ($transaction && method_exists($transaction, 'calculateBankCharges')) {
-                    $transaction->calculateBankCharges();
-                }
             }
         });
     }
