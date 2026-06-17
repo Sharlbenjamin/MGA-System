@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support;
 
+use App\Filament\Resources\TransactionResource;
 use App\Models\Bill;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -84,18 +85,14 @@ class TransactionDocumentationForm
                 ->label('Link invoices')
                 ->multiple()
                 ->options(function () use ($record) {
-                    $clientId = $record->related_type === 'Client' ? $record->related_id : null;
-
-                    $query = Invoice::query()->with('patient');
-
-                    if ($clientId) {
-                        $query->whereHas('patient', fn ($q) => $q->where('client_id', $clientId));
+                    if ($record->related_type !== 'Client' || ! $record->related_id) {
+                        return [];
                     }
 
-                    return $query->orderByDesc('id')->limit(200)->get()
-                        ->mapWithKeys(fn (Invoice $invoice) => [
-                            $invoice->id => $invoice->name . ' — ' . ($invoice->patient?->name ?? ''),
-                        ])->all();
+                    return TransactionResource::availableInvoiceOptions(
+                        (int) $record->related_id,
+                        $record->id,
+                    );
                 })
                 ->default(fn () => $record->invoices()->pluck('invoices.id')->all())
                 ->visible(fn () => in_array('missing_linked_invoices', $pendingKeys, true)),
@@ -104,7 +101,15 @@ class TransactionDocumentationForm
                 ->label('Link bills')
                 ->multiple()
                 ->options(function () use ($record) {
-                    return Bill::query()->orderByDesc('id')->limit(200)->pluck('name', 'id')->all();
+                    if (! in_array($record->related_type, ['Provider', 'Branch'], true) || ! $record->related_id) {
+                        return [];
+                    }
+
+                    return TransactionResource::availableBillOptions(
+                        $record->related_type,
+                        (int) $record->related_id,
+                        $record->id,
+                    );
                 })
                 ->default(fn () => $record->bills()->pluck('bills.id')->all())
                 ->visible(fn () => in_array('missing_linked_bills', $pendingKeys, true)),

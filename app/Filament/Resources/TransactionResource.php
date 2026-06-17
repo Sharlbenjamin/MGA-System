@@ -336,7 +336,8 @@ class TransactionResource extends Resource
                     ->numeric()
                     ->prefix('€')
                     ->maxValue(999999.99)
-                    ->default(0),
+                    ->default(0)
+                    ->helperText('Manual only — not auto-calculated from bills.'),
 
                 Forms\Components\Toggle::make('charges_covered_by_client')
                     ->default(false),
@@ -344,27 +345,19 @@ class TransactionResource extends Resource
                 // I want to have a table to select the related invoice or bill
                 Forms\Components\Select::make('invoices')
                     ->label('Invoices')
-                    ->relationship('invoices', 'name')
                     ->multiple()
                     ->searchable()
                     ->preload()
                     ->live()
                     ->visible(fn ($get) => $get('related_type') === 'Client')
                     ->default(fn () => request()->get('invoice_id') ? [request()->get('invoice_id')] : [])
-                    ->options(function (callable $get) {
+                    ->options(function (callable $get, $record = null) {
                         $clientId = $get('related_id');
                         if (! $clientId) {
                             return [];
                         }
 
-                        return Invoice::query()
-                            ->whereHas('patient', function ($q) use ($clientId) {
-                                $q->where('client_id', $clientId);
-                            })
-                            ->where(function ($query) {
-                                $query->whereDoesntHave('transactions');
-                            })
-                            ->pluck('name', 'id');
+                        return static::availableInvoiceOptions((int) $clientId, $record?->id);
                     }),
                 Forms\Components\Select::make('bills')
                     ->label('Bills')
@@ -397,50 +390,15 @@ class TransactionResource extends Resource
                         $relatedType = $get('related_type');
                         $relatedId = $get('related_id');
 
-                        // If we're editing and have a record, include currently attached bills
-                        if ($record && $record->exists) {
-                            $attachedBillIds = $record->bills()->pluck('bills.id')->toArray();
-
-                            // Get all bills for the related provider/branch
-                            $allBills = collect();
-                            if ($relatedType === 'Provider') {
-                                $allBills = Bill::query()
-                                    ->whereHas('file', function ($query) use ($relatedId) {
-                                        $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
-                                            $providerQuery->where('providers.id', $relatedId);
-                                        })
-                                            ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
-                                                $branchQuery->where('provider_branches.provider_id', $relatedId);
-                                            });
-                                    })
-                                    ->where(function ($query) use ($attachedBillIds) {
-                                        $query->whereIn('status', ['Unpaid', 'Partial'])
-                                            ->orWhereIn('id', $attachedBillIds);
-                                    })
-                                    ->get();
-                            } elseif ($relatedType === 'Branch') {
-                                $allBills = Bill::query()
-                                    ->whereHas('file', function ($query) use ($relatedId) {
-                                        $query->where('provider_branch_id', $relatedId);
-                                    })
-                                    ->where(function ($query) use ($attachedBillIds) {
-                                        $query->whereIn('status', ['Unpaid', 'Partial'])
-                                            ->orWhereIn('id', $attachedBillIds);
-                                    })
-                                    ->get();
-                            }
-
-                            return $allBills->pluck('name', 'id')->toArray();
-                        }
-
-                        // For create mode, use the original logic
-                        if (! $relatedId) {
+                        if (! $relatedId || ! in_array($relatedType, ['Provider', 'Branch'], true)) {
                             return [];
                         }
 
-                        return static::getBills($relatedType, $relatedId)
-                            ->pluck('name', 'id')
-                            ->toArray();
+                        return static::availableBillOptions(
+                            $relatedType,
+                            (int) $relatedId,
+                            $record?->id,
+                        );
                     }),
                 static::documentationStatusSection(),
             ]);
@@ -843,7 +801,7 @@ class TransactionResource extends Resource
 
     /**
      * Bills for payment reference text: use the Bills multi-select (or bill_ids / bill_id from the URL),
-     * otherwise every unpaid or partial bill for the related provider or branch.
+     * otherwise every bill for the related provider or branch.
      *
      * @return \Illuminate\Support\Collection<int, Bill>
      */
@@ -900,7 +858,49 @@ class TransactionResource extends Resource
                 ->values();
         }
 
-        return static::allUnpaidPartialBillsForRelated($relatedType, $relatedId);
+        return static::availableBillsForRelated($relatedType, $relatedId);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function availableBillOptions(string $relatedType, ?int $relatedId, ?int $transactionId = null): array
+    {
+        if (! $relatedId || ! in_array($relatedType, ['Provider', 'Branch'], true)) {
+            return [];
+        }
+
+        $query = static::billsBaseQueryForRelated($relatedType, $relatedId);
+        static::applyAvailableForTransactionScope($query, $transactionId);
+
+        return $query->orderByDesc('id')->pluck('name', 'id')->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function availableInvoiceOptions(?int $clientId, ?int $transactionId = null): array
+    {
+        if (! $clientId) {
+            return [];
+        }
+
+        $query = Invoice::query()
+            ->whereHas('patient', fn (Builder $q) => $q->where('client_id', $clientId));
+
+        static::applyAvailableForTransactionScope($query, $transactionId);
+
+        return $query->orderByDesc('id')->pluck('name', 'id')->all();
+    }
+
+    protected static function applyAvailableForTransactionScope(Builder $query, ?int $transactionId): void
+    {
+        $query->where(function (Builder $q) use ($transactionId) {
+            $q->whereDoesntHave('transactions');
+            if ($transactionId) {
+                $q->orWhereHas('transactions', fn (Builder $t) => $t->where('transactions.id', $transactionId));
+            }
+        });
     }
 
     protected static function billsBaseQueryForRelated(string $relatedType, int $relatedId): Builder
@@ -928,40 +928,21 @@ class TransactionResource extends Resource
     /**
      * @return \Illuminate\Support\Collection<int, Bill>
      */
-    protected static function allUnpaidPartialBillsForRelated(string $relatedType, int $relatedId): \Illuminate\Support\Collection
+    protected static function availableBillsForRelated(string $relatedType, int $relatedId): \Illuminate\Support\Collection
     {
-        return static::billsBaseQueryForRelated($relatedType, $relatedId)
-            ->whereIn('status', ['Unpaid', 'Partial'])
-            ->get();
+        return static::billsBaseQueryForRelated($relatedType, $relatedId)->get();
     }
 
     public static function getBills($relatedType, $relatedId)
     {
-        $bills = collect();
-        if ($relatedType === 'Provider') {
-            $bills = Bill::query()
-                ->whereHas('file', function ($query) use ($relatedId) {
-                    $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
-                        $providerQuery->where('providers.id', $relatedId);
-                    })
-                        ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
-                            $branchQuery->where('provider_branches.provider_id', $relatedId);
-                        });
-                })
-                ->whereDoesntHave('transactions')
-                ->whereIn('status', ['Unpaid', 'Partial'])
-                ->get();
-        } elseif ($relatedType === 'Branch') {
-            $bills = Bill::query()
-                ->whereHas('file', function ($query) use ($relatedId) {
-                    $query->where('provider_branch_id', $relatedId);
-                })
-                ->whereDoesntHave('transactions')
-                ->whereIn('status', ['Unpaid', 'Partial'])
-                ->get();
+        if (! $relatedId || ! in_array($relatedType, ['Provider', 'Branch'], true)) {
+            return collect();
         }
 
-        return $bills;
+        $query = static::billsBaseQueryForRelated($relatedType, (int) $relatedId);
+        static::applyAvailableForTransactionScope($query, null);
+
+        return $query->get();
     }
 
     public static function relatedTypes($type)

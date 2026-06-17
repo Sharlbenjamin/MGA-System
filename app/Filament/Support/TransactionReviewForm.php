@@ -2,7 +2,7 @@
 
 namespace App\Filament\Support;
 
-use App\Models\Bill;
+use App\Filament\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
@@ -75,7 +75,13 @@ class TransactionReviewForm
                 ->label('Linked bills')
                 ->multiple()
                 ->searchable()
-                ->options(fn () => Bill::query()->orderByDesc('id')->limit(300)->pluck('name', 'id')->all())
+                ->options(fn () => in_array($record->related_type, ['Provider', 'Branch'], true) && $record->related_id
+                    ? TransactionResource::availableBillOptions(
+                        $record->related_type,
+                        (int) $record->related_id,
+                        $record->id,
+                    )
+                    : [])
                 ->visible(fn (Get $get): bool => in_array($get('documentation_category'), ['trx_out_single', 'trx_out_bulk'], true))
                 ->helperText(fn (Get $get): string => match ($get('documentation_category')) {
                     'trx_out_single' => 'Trx Out Single requires exactly 1 bill.',

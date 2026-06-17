@@ -8,11 +8,11 @@ use Illuminate\Console\Command;
 class FixTransactionBankCharges extends Command
 {
     protected $signature = 'transactions:fix-bank-charges
-                            {--amount=2 : Bank charge value to fix}
+                            {--amount=2 : Bank charge absolute value to fix (matches +2 and -2)}
                             {--dry-run : Preview changes without saving}
                             {--chunk=100 : Number of records per batch}';
 
-    protected $description = 'Move bank_charges back into transaction amount (e.g. fix auto-applied €2 fees)';
+    protected $description = 'Move bank_charges back into transaction amount (e.g. fix auto-applied ±€2 fees)';
 
     public function handle(): int
     {
@@ -26,16 +26,16 @@ class FixTransactionBankCharges extends Command
             return self::FAILURE;
         }
 
-        $query = Transaction::query()->where('bank_charges', $chargeAmount);
+        $query = Transaction::query()->whereRaw('ABS(bank_charges) = ?', [$chargeAmount]);
         $total = (clone $query)->count();
 
         if ($total === 0) {
-            $this->info("No transactions found with bank_charges = €{$chargeAmount}.");
+            $this->info('No transactions found with bank_charges = ±€'.number_format($chargeAmount, 2).'.');
 
             return self::SUCCESS;
         }
 
-        $this->info("Found {$total} transaction(s) with bank_charges = €".number_format($chargeAmount, 2).'.');
+        $this->info("Found {$total} transaction(s) with bank_charges = ±€".number_format($chargeAmount, 2).'.');
 
         if ($dryRun) {
             $this->warn('Dry run — no changes will be saved.');
@@ -48,7 +48,8 @@ class FixTransactionBankCharges extends Command
             foreach ($transactions as $transaction) {
                 $oldAmount = (float) $transaction->amount;
                 $oldCharges = (float) $transaction->bank_charges;
-                $newAmount = round($oldAmount + $oldCharges, 2);
+                $adjustment = abs($oldCharges);
+                $newAmount = round($oldAmount + $adjustment, 2);
 
                 $previewRows[] = [
                     $transaction->id,

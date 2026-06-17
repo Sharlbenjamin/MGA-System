@@ -288,7 +288,10 @@ class Transaction extends Model
         return $this->status === 'Completed';
     }
 
-    public function calculateBankCharges()
+    /**
+     * Sync linked invoice paid_amount from pivot. Does not modify bank_charges — manual entry only.
+     */
+    public function syncLinkedInvoicePayments()
     {
         // Sync each linked invoice's paid_amount from the pivot (bank_charges are manual only).
         $this->invoices()->each(function ($invoice) {
@@ -298,6 +301,12 @@ class Transaction extends Model
 
             $invoice->checkStatus();
         });
+    }
+
+    /** @deprecated Use syncLinkedInvoicePayments() */
+    public function calculateBankCharges(): void
+    {
+        $this->syncLinkedInvoicePayments();
     }
 
     public function attachInvoices(array $invoiceIds)
@@ -323,7 +332,7 @@ class Transaction extends Model
         }
 
         // Sync linked invoice payments after attaching invoices
-        $this->calculateBankCharges();
+        $this->syncLinkedInvoicePayments();
         app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 
@@ -342,7 +351,7 @@ class Transaction extends Model
         $invoice->checkStatus();
 
         // Sync linked invoice payments
-        $this->calculateBankCharges();
+        $this->syncLinkedInvoicePayments();
     }
 
     public function attachBills(array $billIds)
