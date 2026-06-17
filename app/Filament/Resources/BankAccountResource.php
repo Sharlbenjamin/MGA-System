@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\TransactionResource;
 use App\Filament\Resources\BankAccountResource\RelationManagers\TransactionRelationManager;
 use App\Filament\Resources\BankAccountResource\Pages;
 use App\Models\BankAccount;
@@ -86,6 +87,10 @@ class BankAccountResource extends Resource
                 Tables\Filters\SelectFilter::make('type'),
             ])
             ->actions([
+                Tables\Actions\Action::make('transactions')
+                    ->label('Transactions')
+                    ->icon('heroicon-o-banknotes')
+                    ->url(fn (BankAccount $record): string => TransactionResource::indexUrlFor($record)),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])

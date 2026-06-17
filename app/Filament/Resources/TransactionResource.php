@@ -7,6 +7,7 @@ use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManag
 use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\TransactionReviewForm;
+use App\Models\BankAccount;
 use App\Models\Bill;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -39,6 +40,18 @@ class TransactionResource extends Resource
     protected static ?string $navigationLabel = 'Bank Transactions';
 
     protected static ?int $navigationSort = 2;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
+    public static function indexUrlFor(BankAccount|int $bankAccount): string
+    {
+        $id = $bankAccount instanceof BankAccount ? $bankAccount->getKey() : $bankAccount;
+
+        return static::getUrl('index', ['bankAccount' => $id]);
+    }
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -612,12 +625,12 @@ class TransactionResource extends Resource
                     }),
                 Tables\Filters\SelectFilter::make('documentation_status')
                     ->options([
-                        'complete' => 'Complete',
+                        'unlinked' => 'Unlinked',
+                        'complete' => 'Complete (ready for taxes)',
                         'incomplete' => 'Incomplete',
                         'revised' => 'Revised',
                         'missing_attachment' => 'Missing attachment',
-                        'missing_linked_record' => 'Missing linked record',
-                        'missing_generated_pdf' => 'Missing generated PDF',
+                        'missing_generated_pdf' => 'Missing PDF',
                     ])
                     ->multiple(),
                 Tables\Filters\Filter::make('not_revised')
@@ -748,7 +761,7 @@ class TransactionResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListTransactions::route('/'),
+            'index' => Pages\ListTransactions::route('/bank-account/{bankAccount}'),
             'create' => Pages\CreateTransaction::route('/create'),
             'import' => Pages\ImportTransactions::route('/import'),
             'edit' => Pages\EditTransaction::route('/{record}/edit'),

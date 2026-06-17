@@ -12,7 +12,7 @@ class TransactionImportService
         protected TransactionDocumentationService $documentationService
     ) {}
 
-    public function isDuplicate(array $row, ?string $type = null): bool
+    public function isDuplicate(array $row, ?string $type = null, ?int $bankAccountId = null): bool
     {
         $date = $this->parseDate($row['transaction_date'] ?? $row['date'] ?? null);
         $amount = $this->parseAmount($row['amount'] ?? null);
@@ -28,6 +28,10 @@ class TransactionImportService
         $query = Transaction::query()
             ->whereDate('date', $date)
             ->where('amount', $amount);
+
+        if ($bankAccountId) {
+            $query->where('bank_account_id', $bankAccountId);
+        }
 
         if ($type) {
             $query->where('type', $type);
@@ -48,7 +52,7 @@ class TransactionImportService
      * @param  Collection<int, array<string, mixed>>  $rows
      * @return array{new: Collection, duplicates_existing: Collection, duplicates_in_file: Collection}
      */
-    public function classifyRows(Collection $rows): array
+    public function classifyRows(Collection $rows, ?int $bankAccountId = null): array
     {
         $new = collect();
         $duplicatesExisting = collect();
@@ -67,7 +71,7 @@ class TransactionImportService
 
             $seenKeys[$key] = true;
 
-            if ($this->isDuplicate($row)) {
+            if ($this->isDuplicate($row, null, $bankAccountId)) {
                 $duplicatesExisting->push($row);
 
                 continue;
@@ -203,6 +207,10 @@ class TransactionImportService
 
         $description = trim((string) ($row['description'] ?? ''));
 
+        if (TransactionDocumentationService::isCardPaymentBankText($reference, $description)) {
+            $type = 'Outflow';
+        }
+
         return [
             'transaction_date' => $date?->format('Y-m-d'),
             'amount' => $amount,
@@ -213,6 +221,7 @@ class TransactionImportService
             'value_date' => $row['value_date'] ?? null,
             'type' => $type,
             'related_type' => $row['related_type'] ?? $this->defaultRelatedType($type),
+            'is_card' => TransactionDocumentationService::isCardPaymentBankText($reference, $description),
             'needs_review' => ($row['bank_code'] ?? '') === '001',
         ];
     }

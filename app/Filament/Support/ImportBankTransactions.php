@@ -27,11 +27,11 @@ class ImportBankTransactions
      *     format: string
      * }
      */
-    public function parseUploadedFile(string $storagePath): array
+    public function parseUploadedFile(string $storagePath, ?int $bankAccountId = null): array
     {
         $fullPath = storage_path('app/'.ltrim($storagePath, '/'));
         $rawRows = TransactionExcelImporter::loadRows($fullPath);
-        $classified = $this->importService->classifyRows($rawRows);
+        $classified = $this->importService->classifyRows($rawRows, $bankAccountId);
 
         $format = \App\Imports\SantanderMovimientosImport::detect($fullPath) ? 'santander' : 'internal';
 
@@ -87,7 +87,7 @@ class ImportBankTransactions
             $count = 0;
 
             foreach ($rows as $row) {
-                if ($this->importService->isDuplicate($row, $row['type'] ?? null)) {
+                if ($this->importService->isDuplicate($row, $row['type'] ?? null, $bankAccountId)) {
                     $skipped++;
 
                     continue;

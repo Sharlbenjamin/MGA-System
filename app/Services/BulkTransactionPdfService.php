@@ -44,6 +44,7 @@ class BulkTransactionPdfService
         string $quarter,
         string $scope,
         bool $regenerateExisting = false,
+        ?int $bankAccountId = null,
     ): BulkPdfResult {
         [$startDate, $endDate] = TaxExportHelpers::resolvePeriodDates($year, $quarter);
 
@@ -51,6 +52,10 @@ class BulkTransactionPdfService
             ->whereHas('bankAccount', fn (Builder $q) => $q->where('type', 'Internal'))
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('id');
+
+        if ($bankAccountId) {
+            $query->where('bank_account_id', $bankAccountId);
+        }
 
         if ($scope === 'receivables') {
             $query->where('type', 'Income');

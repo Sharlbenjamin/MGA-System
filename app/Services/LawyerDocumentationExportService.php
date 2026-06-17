@@ -20,11 +20,12 @@ class LawyerDocumentationExportService
         string $quarter,
         float $ivaPercent,
         string $nifSource,
+        ?int $bankAccountId = null,
     ): array {
         [$startDate, $endDate] = TaxExportHelpers::resolvePeriodDates($year, $quarter);
         $ivaRate = $ivaPercent / 100;
 
-        $transactions = $this->loadPeriodTransactions($startDate, $endDate);
+        $transactions = $this->loadPeriodTransactions($startDate, $endDate, $bankAccountId);
         $incomeTransactions = $transactions->where('type', 'Income')->values();
         $paymentTransactions = $transactions->whereIn('type', ['Outflow', 'Expense'])->values();
 
@@ -62,9 +63,15 @@ class LawyerDocumentationExportService
         ];
     }
 
-    protected function loadPeriodTransactions($startDate, $endDate): Collection
+    protected function loadPeriodTransactions($startDate, $endDate, ?int $bankAccountId = null): Collection
     {
-        return $this->internalBankTransactionsQuery($startDate, $endDate)
+        $query = $this->internalBankTransactionsQuery($startDate, $endDate);
+
+        if ($bankAccountId) {
+            $query->where('bank_account_id', $bankAccountId);
+        }
+
+        return $query
             ->with([
                 'invoices.file.serviceType',
                 'invoices.patient.client',

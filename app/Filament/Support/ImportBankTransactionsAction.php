@@ -12,8 +12,17 @@ use Filament\Notifications\Notification;
 
 class ImportBankTransactionsAction
 {
-    public static function make(): Action
+    public static function make(?int $bankAccountId = null): Action
     {
+        $bankAccountField = $bankAccountId !== null
+            ? Forms\Components\Hidden::make('bank_account_id')->default($bankAccountId)
+            : Forms\Components\Select::make('bank_account_id')
+                ->label('Internal bank account')
+                ->options(fn () => BankAccount::query()->where('type', 'Internal')->pluck('beneficiary_name', 'id'))
+                ->default(fn () => ImportBankTransactions::defaultBankAccountId())
+                ->required()
+                ->searchable();
+
         return Action::make('importExcel')
             ->label('Import Excel')
             ->icon('heroicon-o-arrow-up-tray')
@@ -35,19 +44,14 @@ class ImportBankTransactionsAction
                             ->disk('local')
                             ->directory('imports/transactions')
                             ->storeFileNamesIn('excel_original_filename'),
-                        Forms\Components\Select::make('bank_account_id')
-                            ->label('Internal bank account')
-                            ->options(fn () => BankAccount::query()->where('type', 'Internal')->pluck('beneficiary_name', 'id'))
-                            ->default(fn () => ImportBankTransactions::defaultBankAccountId())
-                            ->required()
-                            ->searchable(),
+                        $bankAccountField,
                         Forms\Components\Hidden::make('rows'),
                         Forms\Components\Hidden::make('total_rows'),
                         Forms\Components\Hidden::make('skipped_existing'),
                         Forms\Components\Hidden::make('skipped_in_file'),
                         Forms\Components\Hidden::make('format'),
                     ])
-                    ->afterValidation(function (Forms\Get $get, Forms\Set $set): void {
+                    ->afterValidation(function (Forms\Get $get, Forms\Set $set) use ($bankAccountId): void {
                         $file = $get('excel_file');
                         if (is_array($file)) {
                             $file = $file[0] ?? null;
@@ -57,7 +61,8 @@ class ImportBankTransactionsAction
                             return;
                         }
 
-                        $parsed = app(ImportBankTransactions::class)->parseUploadedFile($file);
+                        $accountId = (int) ($get('bank_account_id') ?? $bankAccountId);
+                        $parsed = app(ImportBankTransactions::class)->parseUploadedFile($file, $accountId ?: null);
 
                         $set('rows', $parsed['rows']);
                         $set('total_rows', $parsed['total_rows']);
@@ -166,7 +171,7 @@ class ImportBankTransactionsAction
                     ])
                     ->visible(fn (Forms\Get $get): bool => count($get('rows') ?? []) > 0),
             ])
-            ->action(function (array $data): void {
+            ->action(function (array $data) use ($bankAccountId): void {
                 $rows = $data['rows'] ?? [];
 
                 if ($rows === []) {
@@ -192,7 +197,7 @@ class ImportBankTransactionsAction
 
                 $result = app(ImportBankTransactions::class)->createTransactions(
                     $rows,
-                    (int) $data['bank_account_id'],
+                    (int) ($data['bank_account_id'] ?? $bankAccountId),
                     (string) $filename,
                     (int) ($data['total_rows'] ?? count($rows)),
                     (int) (($data['skipped_existing'] ?? 0) + ($data['skipped_in_file'] ?? 0)),

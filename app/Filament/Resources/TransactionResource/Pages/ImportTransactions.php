@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TransactionResource\Pages;
 
+use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use Filament\Resources\Pages\Page;
 
@@ -15,6 +16,6 @@ class ImportTransactions extends Page
 
     public function mount(): void
     {
-        $this->redirect(TransactionResource::getUrl('index'));
+        $this->redirect(BankAccountResource::getUrl('index'));
     }
 }

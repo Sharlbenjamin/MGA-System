@@ -6,6 +6,7 @@ use App\Exports\BankStatementTransactionsExport;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\ImportBankTransactionsAction;
 use App\Filament\Widgets\TransactionDocumentationStatsWidget;
+use App\Models\BankAccount;
 use App\Services\BulkTransactionPdfService;
 use Carbon\Carbon;
 use Filament\Actions;
@@ -15,6 +16,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\On;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -24,8 +26,33 @@ class ListTransactions extends ListRecords
 
     protected static string $resource = TransactionResource::class;
 
+    public BankAccount $bankAccount;
+
+    public function mount(): void
+    {
+        parent::mount();
+    }
+
+    public function getTitle(): string
+    {
+        return 'Bank Transactions';
+    }
+
+    public function getSubheading(): ?string
+    {
+        return $this->bankAccount->beneficiary_name.($this->bankAccount->iban ? ' · '.$this->bankAccount->iban : '');
+    }
+
+    protected function getTableQuery(): ?Builder
+    {
+        return parent::getTableQuery()
+            ->where('bank_account_id', $this->bankAccount->id);
+    }
+
     protected function getHeaderActions(): array
     {
+        $bankAccountId = $this->bankAccount->id;
+
         return [
             Actions\Action::make('bulkGeneratePdfs')
                 ->label('Bulk Generate PDFs')
@@ -61,12 +88,13 @@ class ListTransactions extends ListRecords
                         ->label('Regenerate existing PDFs')
                         ->default(false),
                 ])
-                ->action(function (array $data): void {
+                ->action(function (array $data) use ($bankAccountId): void {
                     $result = app(BulkTransactionPdfService::class)->generateForPeriod(
                         (int) $data['year'],
                         (string) $data['quarter'],
                         (string) $data['scope'],
                         (bool) ($data['regenerate_existing'] ?? false),
+                        $bankAccountId,
                     );
 
                     $body = sprintf(
@@ -139,12 +167,13 @@ class ListTransactions extends ListRecords
                         ->default('country')
                         ->required(),
                 ])
-                ->action(function (array $data) {
+                ->action(function (array $data) use ($bankAccountId) {
                     $url = route('lawyer.export', [
                         'year' => $data['year'],
                         'quarter' => $data['quarter'],
                         'iva_percent' => $data['iva_percent'] ?? 21,
                         'nif_source' => $data['nif_source'] ?? 'country',
+                        'bank_account_id' => $bankAccountId,
                     ]);
 
                     return redirect($url);
@@ -161,8 +190,11 @@ class ListTransactions extends ListRecords
                         $filename
                     );
                 }),
-            ImportBankTransactionsAction::make(),
-            Actions\CreateAction::make(),
+            ImportBankTransactionsAction::make($bankAccountId),
+            Actions\CreateAction::make()
+                ->url(fn (): string => TransactionResource::getUrl('create', [
+                    'bank_account_id' => $bankAccountId,
+                ])),
         ];
     }
 

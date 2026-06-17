@@ -69,14 +69,76 @@ class TransactionDocumentationService
             return 'complete';
         }
 
-        if ($pending->count() > 1) {
-            return 'incomplete';
+        $linkKeys = [
+            'missing_linked_client',
+            'missing_linked_provider',
+            'missing_linked_invoices',
+            'missing_linked_bills',
+        ];
+
+        if ($this->requiresInvoiceOrBillLink($transaction) && ! $this->hasInvoiceOrBillLink($transaction)) {
+            return 'unlinked';
         }
 
-        return match ($pending->first()['key']) {
-            'missing_linked_client', 'missing_linked_provider', 'missing_linked_invoices', 'missing_linked_bills' => 'missing_linked_record',
-            'missing_trx_in_pdf', 'missing_trx_out_pdf' => 'missing_generated_pdf',
-            default => 'missing_attachment',
+        if ($pending->contains(fn (array $task) => in_array($task['key'], $linkKeys, true))) {
+            return 'unlinked';
+        }
+
+        $attachmentKeys = [
+            'missing_card_receipt',
+            'missing_expense_receipt',
+            'missing_invoice_documents',
+            'missing_bill_documents',
+        ];
+
+        if ($pending->contains(fn (array $task) => in_array($task['key'], $attachmentKeys, true))) {
+            return 'missing_attachment';
+        }
+
+        $pdfKeys = ['missing_trx_in_pdf', 'missing_trx_out_pdf'];
+
+        if ($pending->contains(fn (array $task) => in_array($task['key'], $pdfKeys, true))) {
+            return 'missing_generated_pdf';
+        }
+
+        return 'incomplete';
+    }
+
+    public static function isCardPaymentBankText(?string ...$parts): bool
+    {
+        $text = mb_strtolower(implode(' ', array_filter($parts, fn (?string $part) => filled($part))));
+
+        if ($text === '') {
+            return false;
+        }
+
+        return str_contains($text, 'tarjeta') || str_contains($text, 'tarj');
+    }
+
+    public function isCardTransaction(Transaction $transaction): bool
+    {
+        if ($transaction->type !== 'Outflow' || $transaction->bills()->exists()) {
+            return false;
+        }
+
+        return self::isCardPaymentBankText($transaction->notes, $transaction->reference);
+    }
+
+    public function requiresInvoiceOrBillLink(Transaction $transaction): bool
+    {
+        return match (true) {
+            $transaction->type === 'Income' => true,
+            $transaction->type === 'Outflow' && ! $this->isCardTransaction($transaction) => true,
+            default => false,
+        };
+    }
+
+    public function hasInvoiceOrBillLink(Transaction $transaction): bool
+    {
+        return match (true) {
+            $transaction->type === 'Income' => $transaction->invoices()->exists(),
+            $transaction->type === 'Outflow' => $transaction->bills()->exists(),
+            default => true,
         };
     }
 
@@ -90,11 +152,12 @@ class TransactionDocumentationService
     public function formatDocumentationStatusLabel(?string $status): string
     {
         return match ($status) {
-            'complete' => 'Complete',
+            'complete' => 'Complete (ready for taxes)',
             'incomplete' => 'Incomplete',
             'revised' => 'Revised',
+            'unlinked' => 'Unlinked',
             'missing_attachment' => 'Missing attachment',
-            'missing_linked_record' => 'Missing linked record',
+            'missing_linked_record' => 'Unlinked',
             'missing_generated_pdf' => 'Missing PDF',
             default => ucfirst(str_replace('_', ' ', $status ?? 'incomplete')),
         };
@@ -130,7 +193,7 @@ class TransactionDocumentationService
             ->map(fn (string $label) => Str::limit(trim($label, '. '), 35));
 
         if ($pending->isEmpty()) {
-            return 'Complete';
+            return 'Ready for taxes';
         }
 
         return $pending->implode('; ');

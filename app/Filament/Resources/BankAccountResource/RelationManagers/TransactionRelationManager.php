@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\BankAccountResource\RelationManagers;
 
+use App\Filament\Resources\TransactionResource;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Provider;
@@ -48,7 +49,13 @@ class TransactionRelationManager extends RelationManager
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()->url(fn () => route('filament.admin.resources.transactions.create')),
+                Tables\Actions\Action::make('viewAll')
+                    ->label('Open full list')
+                    ->icon('heroicon-o-banknotes')
+                    ->url(fn (): string => TransactionResource::indexUrlFor($this->getOwnerRecord())),
+                Tables\Actions\CreateAction::make()->url(fn (): string => TransactionResource::getUrl('create', [
+                    'bank_account_id' => $this->getOwnerRecord()->getKey(),
+                ])),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->url(fn ($record) => route('filament.admin.resources.transactions.edit', $record->id)),
