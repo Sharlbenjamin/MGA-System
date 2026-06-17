@@ -15,6 +15,7 @@ use App\Models\ProviderBranch;
 use App\Models\Transaction;
 use App\Services\BulkTransactionPdfService;
 use App\Services\TransactionDocumentationService;
+use App\Services\TransactionDocumentationStatsService;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -46,7 +47,7 @@ class TransactionResource extends Resource
             return null;
         }
 
-        $count = Transaction::query()->where('documentation_status', '!=', 'complete')->count();
+        $count = Transaction::query()->where('documentation_status', '!=', 'revised')->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -466,16 +467,48 @@ class TransactionResource extends Resource
                         })->prepend('Progress: '.$done.' of '.count($tasks).' complete')->implode("\n");
                     })
                     ->columnSpanFull(),
+                Forms\Components\Select::make('documentation_category')
+                    ->label('Category')
+                    ->options(TransactionDocumentationStatsService::categoryOptions())
+                    ->live()
+                    ->afterStateHydrated(function (Forms\Components\Select $component, $state, ?Transaction $record): void {
+                        if ($record?->exists) {
+                            $component->state(TransactionDocumentationStatsService::resolveCategoryKey($record));
+                        }
+                    })
+                    ->afterStateUpdated(function (?string $state, callable $set): void {
+                        match ($state) {
+                            'income' => [$set('type', 'Income'), $set('bills', [])],
+                            'expense' => [$set('type', 'Expense'), $set('bills', [])],
+                            'card' => [$set('type', 'Outflow'), $set('bills', [])],
+                            'trx_out_single', 'trx_out_bulk' => $set('type', 'Outflow'),
+                            default => null,
+                        };
+                    })
+                    ->helperText('Changing category updates transaction type and bill links on save.')
+                    ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction || $livewire instanceof Pages\CreateTransaction),
+                Forms\Components\Toggle::make('mark_as_revised')
+                    ->label('Mark as revised')
+                    ->helperText('Temporary review flag. Preserved until you turn this off or reset documentation status.')
+                    ->afterStateHydrated(function (Forms\Components\Toggle $component, $state, ?Transaction $record): void {
+                        if ($record?->exists) {
+                            $component->state($record->documentation_status === 'revised');
+                        }
+                    })
+                    ->dehydrated(true)
+                    ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction || $livewire instanceof Pages\CreateTransaction),
                 Forms\Components\Placeholder::make('reference_display')
                     ->label('Reference')
                     ->content(fn (?Transaction $record) => $record?->reference ?? '—'),
                 Forms\Components\Placeholder::make('documentation_status_display')
-                    ->label('Status')
+                    ->label('Auto status preview')
                     ->content(fn (?Transaction $record) => $record
-                        ? app(TransactionDocumentationService::class)->getDocumentationColumnSummary($record)
+                        ? app(TransactionDocumentationService::class)->formatDocumentationStatusLabel(
+                            app(TransactionDocumentationService::class)->resolveDocumentationStatus($record)
+                        )
                         : '—'),
             ])
-            ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction);
+            ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction || $livewire instanceof Pages\CreateTransaction);
     }
 
     public static function table(Table $table): Table
@@ -554,7 +587,9 @@ class TransactionResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('documentation_label')
                     ->label('Category')
-                    ->getStateUsing(fn (Transaction $record) => $record->documentation_label),
+                    ->getStateUsing(fn (Transaction $record) => TransactionDocumentationStatsService::categoryLabel(
+                        TransactionDocumentationStatsService::resolveCategoryKey($record)
+                    )),
                 Tables\Columns\IconColumn::make('import_batch_id')
                     ->label('Imported')
                     ->boolean()
@@ -620,11 +655,17 @@ class TransactionResource extends Resource
                     ->options([
                         'complete' => 'Complete',
                         'incomplete' => 'Incomplete',
+                        'revised' => 'Revised',
                         'missing_attachment' => 'Missing attachment',
                         'missing_linked_record' => 'Missing linked record',
                         'missing_generated_pdf' => 'Missing generated PDF',
                     ])
                     ->multiple(),
+                Tables\Filters\Filter::make('not_revised')
+                    ->label('Not revised')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query->where('documentation_status', '!=', 'revised'))
+                    ->indicateUsing(fn (): array => ['not_revised' => 'Not revised']),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Payment status')
                     ->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])
@@ -663,6 +704,19 @@ class TransactionResource extends Resource
                     ->openUrlInNewTab()
                     ->visible(fn (Transaction $record) => (bool) $record->getTrxOutPdfUrl()),
                 Tables\Actions\EditAction::make(),
+                Action::make('markRevised')
+                    ->label('Mark revised')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('info')
+                    ->visible(fn (Transaction $record): bool => $record->documentation_status !== 'revised')
+                    ->action(function (Transaction $record): void {
+                        $record->update(['documentation_status' => 'revised']);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Marked as revised')
+                            ->send();
+                    }),
                 Action::make('finalizeTransaction')
                     ->label('Finalize Transaction')
                     ->icon('heroicon-o-check-circle')
@@ -693,6 +747,22 @@ class TransactionResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('markRevised')
+                        ->label('Mark as revised')
+                        ->icon('heroicon-o-check-badge')
+                        ->color('info')
+                        ->requiresConfirmation()
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records): void {
+                            $records->each(fn (Transaction $record) => $record->update([
+                                'documentation_status' => 'revised',
+                            ]));
+
+                            Notification::make()
+                                ->success()
+                                ->title('Marked as revised')
+                                ->body($records->count().' transaction(s) marked as revised.')
+                                ->send();
+                        }),
                     Tables\Actions\BulkAction::make('generatePdfs')
                         ->label('Generate PDFs')
                         ->icon('heroicon-o-document-plus')

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Services\TransactionDocumentationService;
+use App\Services\TransactionDocumentationStatsService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
@@ -17,6 +18,8 @@ class CreateTransaction extends CreateRecord
     
     protected array $billsToAttach = [];
     protected array $invoicesToAttach = [];
+    protected ?string $documentationCategory = null;
+    protected bool $markAsRevised = false;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -26,6 +29,8 @@ class CreateTransaction extends CreateRecord
         // Store the bills and invoices data for afterCreate processing
         $this->billsToAttach = $data['bills'] ?? [];
         $this->invoicesToAttach = $data['invoices'] ?? [];
+        $this->documentationCategory = $data['documentation_category'] ?? null;
+        $this->markAsRevised = ! empty($data['mark_as_revised']);
         
         // Debug: Log what we're storing
         Log::info('Bills to attach:', $this->billsToAttach);
@@ -34,10 +39,12 @@ class CreateTransaction extends CreateRecord
         // Remove these fields from the data since we handle them manually
         unset($data['bills']);
         unset($data['invoices']);
+        unset($data['documentation_category']);
+        unset($data['mark_as_revised']);
 
         $data['created_by'] = Auth::id();
         $data['updated_by'] = Auth::id();
-        $data['documentation_status'] = $data['documentation_status'] ?? 'incomplete';
+        $data['documentation_status'] = $this->markAsRevised ? 'revised' : ($data['documentation_status'] ?? 'incomplete');
         
         return $data;
     }
@@ -98,6 +105,18 @@ class CreateTransaction extends CreateRecord
             'invoices_count' => $transaction->invoices()->count()
         ]);
 
-        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction);
+        $transaction = $transaction->fresh();
+
+        if ($this->documentationCategory) {
+            app(TransactionDocumentationStatsService::class)->applyCategory(
+                $transaction,
+                $this->documentationCategory,
+                $this->billsToAttach,
+            );
+        }
+
+        if (! $this->markAsRevised) {
+            app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+        }
     }
 }

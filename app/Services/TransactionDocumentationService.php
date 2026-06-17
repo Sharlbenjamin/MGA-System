@@ -49,6 +49,10 @@ class TransactionDocumentationService
 
     public function recalculateDocumentationStatus(Transaction $transaction): void
     {
+        if ($transaction->documentation_status === 'revised') {
+            return;
+        }
+
         $status = $this->resolveDocumentationStatus($transaction);
 
         if ($transaction->documentation_status !== $status) {
@@ -88,6 +92,7 @@ class TransactionDocumentationService
         return match ($status) {
             'complete' => 'Complete',
             'incomplete' => 'Incomplete',
+            'revised' => 'Revised',
             'missing_attachment' => 'Missing attachment',
             'missing_linked_record' => 'Missing linked record',
             'missing_generated_pdf' => 'Missing PDF',
@@ -97,6 +102,10 @@ class TransactionDocumentationService
 
     public function getDocumentationStatusColor(Transaction $transaction): string
     {
+        if ($transaction->documentation_status === 'revised') {
+            return 'info';
+        }
+
         return match ($this->resolveDocumentationStatus($transaction)) {
             'complete' => 'success',
             'incomplete' => 'warning',
@@ -111,6 +120,10 @@ class TransactionDocumentationService
 
     public function getDocumentationColumnSummary(Transaction $transaction): string
     {
+        if ($transaction->documentation_status === 'revised') {
+            return 'Revised';
+        }
+
         $pending = collect($this->getMissingTasks($transaction))
             ->where('status', 'pending')
             ->pluck('label')
