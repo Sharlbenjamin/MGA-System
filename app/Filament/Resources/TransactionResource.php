@@ -886,7 +886,10 @@ class TransactionResource extends Resource
         $query = static::billsBaseQueryForRelated($relatedType, $relatedId);
         static::applyAvailableForTransactionScope($query, $transactionId);
 
-        return $query->orderByDesc('id')->pluck('name', 'id')->all();
+        return $query->orderByDesc('id')->get()
+            ->mapWithKeys(fn (Bill $bill) => [
+                $bill->id => static::formatBillOptionLabel($bill),
+            ])->all();
     }
 
     /**
@@ -903,7 +906,27 @@ class TransactionResource extends Resource
 
         static::applyAvailableForTransactionScope($query, $transactionId);
 
-        return $query->orderByDesc('id')->pluck('name', 'id')->all();
+        return $query->orderByDesc('id')->get()
+            ->mapWithKeys(fn (Invoice $invoice) => [
+                $invoice->id => static::formatInvoiceOptionLabel($invoice),
+            ])->all();
+    }
+
+    public static function formatBillOptionLabel(Bill $bill): string
+    {
+        $date = $bill->bill_date ?? $bill->due_date;
+        $dateStr = $date ? $date->format('d/m/Y') : '—';
+        $amount = number_format((float) $bill->total_amount, 2);
+
+        return "{$bill->name} · {$dateStr} · €{$amount}";
+    }
+
+    public static function formatInvoiceOptionLabel(Invoice $invoice): string
+    {
+        $dateStr = $invoice->invoice_date?->format('d/m/Y') ?? '—';
+        $amount = number_format((float) $invoice->total_amount, 2);
+
+        return "{$invoice->name} · {$dateStr} · €{$amount}";
     }
 
     protected static function applyAvailableForTransactionScope(Builder $query, ?int $transactionId): void
