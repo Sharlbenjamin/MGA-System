@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionDocumentationForm;
+use App\Filament\Support\TransactionReviewForm;
 use App\Services\GenerateTrxInPdfService;
 use App\Services\GenerateTrxOutPdfService;
 use App\Services\TransactionDocumentationService;
@@ -66,6 +67,7 @@ class EditTransaction extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            TransactionReviewForm::makeHeaderAction(),
             TransactionDocumentationForm::makeHeaderAction(),
             Action::make('resetDocumentationStatus')
                 ->label('Reset documentation status')

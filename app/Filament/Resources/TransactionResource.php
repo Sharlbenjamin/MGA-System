@@ -6,6 +6,7 @@ use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManager;
 use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
 use App\Filament\Support\TransactionDocumentationForm;
+use App\Filament\Support\TransactionReviewForm;
 use App\Models\Bill;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -704,19 +705,7 @@ class TransactionResource extends Resource
                     ->openUrlInNewTab()
                     ->visible(fn (Transaction $record) => (bool) $record->getTrxOutPdfUrl()),
                 Tables\Actions\EditAction::make(),
-                Action::make('markRevised')
-                    ->label('Mark revised')
-                    ->icon('heroicon-o-check-badge')
-                    ->color('info')
-                    ->visible(fn (Transaction $record): bool => $record->documentation_status !== 'revised')
-                    ->action(function (Transaction $record): void {
-                        $record->update(['documentation_status' => 'revised']);
-
-                        Notification::make()
-                            ->success()
-                            ->title('Marked as revised')
-                            ->send();
-                    }),
+                TransactionReviewForm::makeTableAction(),
                 Action::make('finalizeTransaction')
                     ->label('Finalize Transaction')
                     ->icon('heroicon-o-check-circle')
