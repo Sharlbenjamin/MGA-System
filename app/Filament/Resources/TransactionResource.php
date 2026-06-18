@@ -27,6 +27,7 @@ use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
 class TransactionResource extends Resource
@@ -51,6 +52,15 @@ class TransactionResource extends Resource
         $id = $bankAccount instanceof BankAccount ? $bankAccount->getKey() : $bankAccount;
 
         return static::getUrl('index', ['bankAccount' => $id]);
+    }
+
+    public static function getUrl(string $name = 'index', array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?Model $tenant = null): string
+    {
+        if ($name === 'index' && ! array_key_exists('bankAccount', $parameters)) {
+            return BankAccountResource::getUrl('index', $parameters, $isAbsolute, $panel, $tenant);
+        }
+
+        return parent::getUrl($name, $parameters, $isAbsolute, $panel, $tenant);
     }
 
     protected static ?string $recordTitleAttribute = 'name';

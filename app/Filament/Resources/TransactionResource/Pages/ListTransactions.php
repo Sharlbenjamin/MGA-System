@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Exports\BankStatementTransactionsExport;
+use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\ImportBankTransactionsAction;
 use App\Filament\Widgets\TransactionDocumentationStatsWidget;
@@ -30,7 +31,25 @@ class ListTransactions extends ListRecords
 
     public function mount(): void
     {
-        parent::mount();
+        $bankAccount = request()->route('bankAccount');
+
+        if (! $bankAccount instanceof BankAccount) {
+            $bankAccount = BankAccount::query()->findOrFail($bankAccount);
+        }
+
+        $this->bankAccount = $bankAccount;
+
+        $this->authorizeAccess();
+
+        $this->loadDefaultActiveTab();
+    }
+
+    public function getBreadcrumbs(): array
+    {
+        return [
+            BankAccountResource::getUrl('index') => BankAccountResource::getBreadcrumb(),
+            '#' => $this->getTitle(),
+        ];
     }
 
     public function getTitle(): string

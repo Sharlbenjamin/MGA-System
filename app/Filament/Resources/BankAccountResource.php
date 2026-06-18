@@ -49,7 +49,8 @@ class BankAccountResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                $query->with(['client', 'provider', 'branch', 'file']);
+                $query->with(['client', 'provider', 'branch', 'file'])
+                    ->where('type', 'Internal');
             })
             ->columns([
                 Tables\Columns\TextColumn::make('type')->searchable(),
@@ -90,6 +91,7 @@ class BankAccountResource extends Resource
                 Tables\Actions\Action::make('transactions')
                     ->label('Transactions')
                     ->icon('heroicon-o-banknotes')
+                    ->visible(fn (BankAccount $record): bool => $record->type === 'Internal')
                     ->url(fn (BankAccount $record): string => TransactionResource::indexUrlFor($record)),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

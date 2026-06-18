@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TransactionResource\Pages;
 
+use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionReviewForm;
 use App\Models\Provider;
@@ -19,6 +20,15 @@ use Illuminate\Support\Facades\Storage;
 class ViewTransaction extends ViewRecord
 {
     protected static string $resource = TransactionResource::class;
+
+    public function getBreadcrumbs(): array
+    {
+        return [
+            BankAccountResource::getUrl('index') => BankAccountResource::getBreadcrumb(),
+            TransactionResource::indexUrlFor($this->record->bank_account_id) => 'Bank Transactions',
+            '#' => $this->getTitle(),
+        ];
+    }
 
     protected function getHeaderActions(): array
     {

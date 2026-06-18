@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TransactionResource\Pages;
 
+use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\TransactionReviewForm;
@@ -23,6 +24,20 @@ class EditTransaction extends EditRecord
     protected array $billsToSync = [];
 
     protected ?string $documentationCategory = null;
+
+    public function getBreadcrumbs(): array
+    {
+        return [
+            BankAccountResource::getUrl('index') => BankAccountResource::getBreadcrumb(),
+            TransactionResource::indexUrlFor($this->record->bank_account_id) => 'Bank Transactions',
+            '#' => $this->getTitle(),
+        ];
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return TransactionResource::indexUrlFor($this->record->bank_account_id);
+    }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {

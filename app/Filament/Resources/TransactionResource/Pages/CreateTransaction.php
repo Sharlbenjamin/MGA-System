@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TransactionResource\Pages;
 
+use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Services\TransactionDocumentationService;
@@ -20,6 +21,34 @@ class CreateTransaction extends CreateRecord
     protected array $invoicesToAttach = [];
     protected ?string $documentationCategory = null;
     protected bool $markAsRevised = false;
+
+    public function getBreadcrumbs(): array
+    {
+        $bankAccountId = request()->integer('bank_account_id');
+
+        $breadcrumbs = [
+            BankAccountResource::getUrl('index') => BankAccountResource::getBreadcrumb(),
+        ];
+
+        if ($bankAccountId) {
+            $breadcrumbs[TransactionResource::indexUrlFor($bankAccountId)] = 'Bank Transactions';
+        }
+
+        $breadcrumbs['#'] = $this->getTitle();
+
+        return $breadcrumbs;
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        $bankAccountId = $this->record->bank_account_id ?? request()->integer('bank_account_id');
+
+        if ($bankAccountId) {
+            return TransactionResource::indexUrlFor($bankAccountId);
+        }
+
+        return BankAccountResource::getUrl('index');
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
