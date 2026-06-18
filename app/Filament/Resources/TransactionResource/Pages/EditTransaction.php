@@ -20,10 +20,15 @@ class EditTransaction extends EditRecord
 {
     protected static string $resource = TransactionResource::class;
 
-    /** @var array<int, int|string> */
+    /** @var array<int, int> */
     protected array $billsToSync = [];
 
+    /** @var array<int, int> */
+    protected array $invoicesToSync = [];
+
     protected ?string $documentationCategory = null;
+
+    protected ?string $relatedTypeForSync = null;
 
     public function getBreadcrumbs(): array
     {
@@ -39,6 +44,14 @@ class EditTransaction extends EditRecord
         return TransactionResource::indexUrlFor($this->record->bank_account_id);
     }
 
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['invoices'] = $this->record->invoices()->pluck('invoices.id')->all();
+        $data['bills'] = $this->record->bills()->pluck('bills.id')->all();
+
+        return $data;
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['updated_by'] = Auth::id();
@@ -52,10 +65,12 @@ class EditTransaction extends EditRecord
             $data['documentation_status'] = 'incomplete';
         }
 
-        $this->billsToSync = $data['bills'] ?? [];
+        $this->relatedTypeForSync = $data['related_type'] ?? $this->record->related_type;
+        $this->billsToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
+        $this->invoicesToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? null;
 
-        unset($data['bills'], $data['documentation_category'], $data['mark_as_revised']);
+        unset($data['bills'], $data['invoices'], $data['documentation_category'], $data['mark_as_revised']);
 
         return $data;
     }
@@ -63,15 +78,21 @@ class EditTransaction extends EditRecord
     protected function afterSave(): void
     {
         $transaction = $this->record->fresh();
+        $statsService = app(TransactionDocumentationStatsService::class);
 
         if ($this->documentationCategory) {
-            app(TransactionDocumentationStatsService::class)->applyCategory(
+            $statsService->applyCategory(
                 $transaction,
                 $this->documentationCategory,
                 $this->billsToSync,
             );
-        } elseif ($this->billsToSync !== []) {
-            app(TransactionDocumentationStatsService::class)->syncBills($transaction, $this->billsToSync);
+            $transaction = $transaction->fresh();
+        } elseif (in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
+            $statsService->syncBills($transaction, $this->billsToSync);
+        }
+
+        if ($this->relatedTypeForSync === 'Client') {
+            $statsService->syncInvoices($transaction, $this->invoicesToSync);
         }
 
         if ($transaction->fresh()->documentation_status !== 'revised') {

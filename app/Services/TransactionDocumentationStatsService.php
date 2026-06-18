@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Bill;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
@@ -136,6 +137,32 @@ class TransactionDocumentationStatsService
         }
 
         $transaction->bills()->sync($sync);
+    }
+
+    /**
+     * @param  array<int, int|string>  $invoiceIds
+     */
+    public function syncInvoices(Transaction $transaction, array $invoiceIds): void
+    {
+        $sync = [];
+
+        foreach ($invoiceIds as $invoiceId) {
+            $invoice = Invoice::find($invoiceId);
+
+            if ($invoice) {
+                $sync[$invoiceId] = ['amount_paid' => $invoice->total_amount];
+            }
+        }
+
+        $transaction->invoices()->sync($sync);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function normalizeLinkIds(mixed $value): array
+    {
+        return array_values(array_filter(array_map('intval', (array) ($value ?? []))));
     }
 
     /**

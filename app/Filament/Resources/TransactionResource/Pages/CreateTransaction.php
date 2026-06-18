@@ -4,22 +4,23 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
-use App\Filament\Support\TransactionDocumentationForm;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
-use Filament\Actions;
-use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 class CreateTransaction extends CreateRecord
 {
     protected static string $resource = TransactionResource::class;
-    
+
+    /** @var array<int, int> */
     protected array $billsToAttach = [];
+
+    /** @var array<int, int> */
     protected array $invoicesToAttach = [];
+
     protected ?string $documentationCategory = null;
+
     protected bool $markAsRevised = false;
 
     public function getBreadcrumbs(): array
@@ -52,100 +53,84 @@ class CreateTransaction extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Debug: Log the incoming data
-        Log::info('CreateTransaction mutateFormDataBeforeCreate:', $data);
-        
-        // Store the bills and invoices data for afterCreate processing
-        $this->billsToAttach = $data['bills'] ?? [];
-        $this->invoicesToAttach = $data['invoices'] ?? [];
+        $this->billsToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
+        $this->invoicesToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? null;
         $this->markAsRevised = ! empty($data['mark_as_revised']);
-        
-        // Debug: Log what we're storing
-        Log::info('Bills to attach:', $this->billsToAttach);
-        Log::info('Invoices to attach:', $this->invoicesToAttach);
-        
-        // Remove these fields from the data since we handle them manually
-        unset($data['bills']);
-        unset($data['invoices']);
-        unset($data['documentation_category']);
-        unset($data['mark_as_revised']);
+
+        unset($data['bills'], $data['invoices'], $data['documentation_category'], $data['mark_as_revised']);
 
         $data['created_by'] = Auth::id();
         $data['updated_by'] = Auth::id();
         $data['documentation_status'] = $this->markAsRevised ? 'revised' : ($data['documentation_status'] ?? 'incomplete');
-        
+
         return $data;
     }
 
     protected function afterCreate(): void
     {
-        // Get the created transaction
-        $transaction = $this->record;
-        
-        // Debug: Log the transaction
-        Log::info('Transaction created:', ['id' => $transaction->id, 'name' => $transaction->name]);
-        
-        // Attach bills from form data
-        if (!empty($this->billsToAttach)) {
-            Log::info('Attaching bills from form data:', $this->billsToAttach);
-            $transaction->attachBills($this->billsToAttach);
-        }
-        
-        // Attach invoices from form data
-        if (!empty($this->invoicesToAttach)) {
-            Log::info('Attaching invoices from form data:', $this->invoicesToAttach);
-            $transaction->attachInvoices($this->invoicesToAttach);
-        }
-        
-        // Also check for bill_id, bill_ids, or invoice_id from the request (for pay bill / Should Be Paid bulk)
-        $billId = request()->get('bill_id');
-        $billIdsParam = request()->get('bill_ids');
-        $invoiceId = request()->get('invoice_id');
-        
-        // Debug: Log request parameters
-        Log::info('Request parameters:', ['bill_id' => $billId, 'invoice_id' => $invoiceId]);
-        
-        // Attach the bill if bill_id is provided (from pay bill button)
-        if ($billId && ! $transaction->bills()->where('bill_id', $billId)->exists()) {
-            Log::info('Attaching bill from request:', $billId);
-            $transaction->attachBills([$billId]);
-        }
+        $transaction = $this->record->fresh();
+        $statsService = app(TransactionDocumentationStatsService::class);
 
-        if (empty($this->billsToAttach) && $billIdsParam) {
-            $ids = array_values(array_filter(array_map('intval', explode(',', (string) $billIdsParam))));
-            foreach ($ids as $id) {
-                if ($id && ! $transaction->bills()->where('bill_id', $id)->exists()) {
-                    Log::info('Attaching bill from bill_ids request:', $id);
-                    $transaction->attachBills([$id]);
-                }
-            }
-        }
-        
-        // Attach the invoice if invoice_id is provided (from pay invoice button)
-        if ($invoiceId && !$transaction->invoices()->where('invoice_id', $invoiceId)->exists()) {
-            Log::info('Attaching invoice from request:', $invoiceId);
-            $transaction->attachInvoices([$invoiceId]);
-        }
-        
-        // Debug: Log final state
-        Log::info('Final transaction state:', [
-            'bills_count' => $transaction->bills()->count(),
-            'invoices_count' => $transaction->invoices()->count()
-        ]);
-
-        $transaction = $transaction->fresh();
+        $this->billsToAttach = $this->mergeBillIdsFromRequest($this->billsToAttach);
+        $this->invoicesToAttach = $this->mergeInvoiceIdsFromRequest($this->invoicesToAttach);
 
         if ($this->documentationCategory) {
-            app(TransactionDocumentationStatsService::class)->applyCategory(
+            $statsService->applyCategory(
                 $transaction,
                 $this->documentationCategory,
                 $this->billsToAttach,
             );
+            $transaction = $transaction->fresh();
+        } elseif (in_array($transaction->related_type, ['Provider', 'Branch'], true)) {
+            $statsService->syncBills($transaction, $this->billsToAttach);
+        }
+
+        if ($transaction->related_type === 'Client') {
+            $statsService->syncInvoices($transaction, $this->invoicesToAttach);
         }
 
         if (! $this->markAsRevised) {
             app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
         }
+    }
+
+    /**
+     * @param  array<int, int>  $billIds
+     * @return array<int, int>
+     */
+    protected function mergeBillIdsFromRequest(array $billIds): array
+    {
+        $merged = $billIds;
+
+        $billId = request()->integer('bill_id');
+        if ($billId) {
+            $merged[] = $billId;
+        }
+
+        if ($billIds === [] && request()->get('bill_ids')) {
+            $merged = array_merge(
+                $merged,
+                array_values(array_filter(array_map('intval', explode(',', (string) request()->get('bill_ids'))))),
+            );
+        }
+
+        return array_values(array_unique(array_filter($merged)));
+    }
+
+    /**
+     * @param  array<int, int>  $invoiceIds
+     * @return array<int, int>
+     */
+    protected function mergeInvoiceIdsFromRequest(array $invoiceIds): array
+    {
+        $merged = $invoiceIds;
+
+        $invoiceId = request()->integer('invoice_id');
+        if ($invoiceId) {
+            $merged[] = $invoiceId;
+        }
+
+        return array_values(array_unique(array_filter($merged)));
     }
 }
