@@ -40,6 +40,7 @@ class ImportBankTransactionsAction
                                 'application/vnd.ms-excel',
                                 'text/csv',
                             ])
+                            ->rules(['file', 'mimes:xlsx,xls,csv', 'max:10240'])
                             ->required()
                             ->disk('local')
                             ->directory('imports/transactions')
