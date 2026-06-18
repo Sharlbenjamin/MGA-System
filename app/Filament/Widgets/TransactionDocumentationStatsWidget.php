@@ -32,7 +32,7 @@ class TransactionDocumentationStatsWidget extends Widget
             return [];
         }
 
-        return ['bankAccount' => $this->bankAccountId];
+        return ['bankAccountId' => $this->bankAccountId];
     }
 
     protected function getPageTableQuery(): Builder

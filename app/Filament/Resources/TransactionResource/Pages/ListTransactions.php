@@ -29,17 +29,19 @@ class ListTransactions extends ListRecords
 
     public BankAccount $bankAccount;
 
-    public function mount(BankAccount|int|string|null $bankAccount = null): void
+    public function mount(?int $bankAccountId = null): void
     {
-        if ($bankAccount === null) {
-            $bankAccount = request()->route('bankAccount');
-        }
+        $resolved = request()->route('bankAccount');
 
-        if (! $bankAccount instanceof BankAccount) {
-            $bankAccount = BankAccount::query()->findOrFail($bankAccount);
+        if ($resolved instanceof BankAccount) {
+            $this->bankAccount = $resolved;
+        } elseif ($bankAccountId !== null) {
+            $this->bankAccount = BankAccount::query()->findOrFail($bankAccountId);
+        } elseif ($resolved !== null) {
+            $this->bankAccount = BankAccount::query()->findOrFail($resolved);
+        } else {
+            abort(404);
         }
-
-        $this->bankAccount = $bankAccount;
 
         $this->authorizeAccess();
 
