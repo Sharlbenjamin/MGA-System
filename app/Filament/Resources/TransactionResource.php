@@ -572,14 +572,6 @@ class TransactionResource extends Resource
                     ->getStateUsing(fn (Transaction $record) => TransactionDocumentationStatsService::categoryLabel(
                         TransactionDocumentationStatsService::resolveCategoryKey($record)
                     )),
-                Tables\Columns\IconColumn::make('import_batch_id')
-                    ->label('Imported')
-                    ->boolean()
-                    ->getStateUsing(fn (Transaction $record): bool => $record->import_batch_id !== null)
-                    ->trueIcon('heroicon-o-arrow-up-tray')
-                    ->falseIcon('')
-                    ->trueColor('info')
-                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 Tables\Filters\Filter::make('transaction_date')
@@ -773,7 +765,6 @@ class TransactionResource extends Resource
         return [
             'index' => Pages\ListTransactions::route('/bank-account/{bankAccount}'),
             'create' => Pages\CreateTransaction::route('/create'),
-            'import' => Pages\ImportTransactions::route('/import'),
             'edit' => Pages\EditTransaction::route('/{record}/edit'),
             'view' => Pages\ViewTransaction::route('/{record}'),
         ];

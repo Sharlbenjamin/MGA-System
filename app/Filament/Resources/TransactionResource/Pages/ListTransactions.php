@@ -5,7 +5,6 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 use App\Exports\BankStatementTransactionsExport;
 use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
-use App\Filament\Support\ImportBankTransactionsAction;
 use App\Filament\Widgets\TransactionDocumentationStatsWidget;
 use App\Models\BankAccount;
 use App\Services\BulkTransactionPdfService;
@@ -213,7 +212,6 @@ class ListTransactions extends ListRecords
                         $filename
                     );
                 }),
-            ImportBankTransactionsAction::make($bankAccountId),
             Actions\CreateAction::make()
                 ->url(fn (): string => TransactionResource::getUrl('create', [
                     'bank_account_id' => $bankAccountId,
