@@ -19,9 +19,20 @@ class TransactionDocumentationStatsWidget extends Widget
 
     protected static ?string $heading = 'Documentation overview';
 
+    public ?int $bankAccountId = null;
+
     protected function getTablePage(): string
     {
         return ListTransactions::class;
+    }
+
+    protected function getTablePageMountParameters(): array
+    {
+        if ($this->bankAccountId === null) {
+            return [];
+        }
+
+        return ['bankAccount' => $this->bankAccountId];
     }
 
     protected function getPageTableQuery(): Builder

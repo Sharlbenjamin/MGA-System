@@ -29,9 +29,11 @@ class ListTransactions extends ListRecords
 
     public BankAccount $bankAccount;
 
-    public function mount(): void
+    public function mount(BankAccount|int|string|null $bankAccount = null): void
     {
-        $bankAccount = request()->route('bankAccount');
+        if ($bankAccount === null) {
+            $bankAccount = request()->route('bankAccount');
+        }
 
         if (! $bankAccount instanceof BankAccount) {
             $bankAccount = BankAccount::query()->findOrFail($bankAccount);
@@ -220,7 +222,9 @@ class ListTransactions extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            TransactionDocumentationStatsWidget::class,
+            TransactionDocumentationStatsWidget::make([
+                'bankAccountId' => $this->bankAccount->id,
+            ]),
         ];
     }
 
