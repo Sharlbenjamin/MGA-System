@@ -69,6 +69,17 @@ class TransactionDocumentationStatsWidget extends Widget
         );
     }
 
+    public function getStatusOverviewProperty(): ?array
+    {
+        if (! Schema::hasColumn('transactions', 'documentation_status')) {
+            return null;
+        }
+
+        return app(TransactionDocumentationStatsService::class)->documentationStatusBreakdown(
+            $this->getPageTableQuery(),
+        );
+    }
+
     public function applyDocumentationFilter(
         string $category,
         string $completion = 'all',
@@ -105,5 +116,13 @@ class TransactionDocumentationStatsWidget extends Widget
     {
         $this->dispatch('clear-transaction-documentation-filter')
             ->to($this->getTablePage());
+    }
+
+    public function applyStatusFilter(string $documentationStatus): void
+    {
+        $this->dispatch(
+            'apply-transaction-status-filter',
+            documentationStatus: $documentationStatus,
+        )->to($this->getTablePage());
     }
 }

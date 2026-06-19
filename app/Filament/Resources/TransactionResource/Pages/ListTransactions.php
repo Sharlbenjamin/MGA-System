@@ -306,6 +306,35 @@ class ListTransactions extends ListRecords
         $this->resetTable();
     }
 
+    #[On('apply-transaction-status-filter')]
+    public function applyStatusFilter(string $documentationStatus): void
+    {
+        $filters = $this->tableFilters ?? [];
+
+        unset(
+            $filters['documentation_category'],
+            $filters['documentation_workflow'],
+            $filters['type'],
+            $filters['linking_status_mismatch'],
+            $filters['data_integrity_paid_invoice'],
+        );
+
+        if ($documentationStatus === 'all') {
+            unset($filters['documentation_status']);
+            $this->activeWidgetDocumentationStatus = null;
+        } else {
+            $filters['documentation_status'] = ['values' => [$documentationStatus]];
+            $this->activeWidgetDocumentationStatus = $documentationStatus;
+        }
+
+        $this->activeWidgetCategory = null;
+        $this->activeWidgetCompletion = null;
+        $this->activeWidgetDataIssue = null;
+
+        $this->tableFilters = $filters;
+        $this->resetTable();
+    }
+
     #[On('clear-transaction-documentation-filter')]
     public function clearDocumentationFilter(): void
     {

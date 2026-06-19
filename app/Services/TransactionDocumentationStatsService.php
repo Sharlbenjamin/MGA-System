@@ -6,6 +6,7 @@ use App\Models\Bill;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class TransactionDocumentationStatsService
@@ -78,7 +79,10 @@ class TransactionDocumentationStatsService
 
     public static function resolveCategoryKey(Transaction $transaction): string
     {
-        if (filled($transaction->documentation_category)) {
+        if (
+            Schema::hasColumn('transactions', 'documentation_category')
+            && filled($transaction->documentation_category)
+        ) {
             return $transaction->documentation_category;
         }
 
@@ -272,11 +276,14 @@ class TransactionDocumentationStatsService
         $result = [];
 
         foreach (self::ALL_CATEGORIES as $category) {
-            $categoryQuery = self::applyCategoryScope(clone $query, $category);
-            $stats = $this->countsForCategory($categoryQuery, $category);
+            $stats = $this->countsForCategory(clone $query, $category);
 
-            $stats['data_issues'] = $integrity->dataIssuesForCategory($bankAccountId, $category, clone $categoryQuery);
-            $stats['missing_steps'] = $this->missingStepsForCategory($categoryQuery, $category);
+            $stats['data_issues'] = $integrity->dataIssuesForCategory(
+                $bankAccountId,
+                $category,
+                self::applyCategoryScope(clone $query, $category),
+            );
+            $stats['missing_steps'] = $this->missingStepsForCategory(clone $query, $category);
 
             $result[$category] = $stats;
         }
@@ -348,6 +355,10 @@ class TransactionDocumentationStatsService
 
     public static function applyCategoryScope(Builder $query, string $category): Builder
     {
+        if (! Schema::hasColumn('transactions', 'documentation_category')) {
+            return self::applyInferredCategoryScope(clone $query, $category);
+        }
+
         return $query->where(function (Builder $scoped) use ($category): void {
             $scoped->where('documentation_category', $category)
                 ->orWhere(function (Builder $fallback) use ($category): void {
@@ -357,7 +368,7 @@ class TransactionDocumentationStatsService
         });
     }
 
-    protected static function applyInferredCategoryScope(Builder $query, string $category): void
+    public static function applyInferredCategoryScope(Builder $query, string $category): Builder
     {
         match ($category) {
             'client_payment' => $query->where('type', 'Income')->has('invoices'),
@@ -370,6 +381,45 @@ class TransactionDocumentationStatsService
             'expense_payment' => $query->where('type', 'Expense'),
             default => $query->whereRaw('0 = 1'),
         };
+
+        return $query;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function documentationStatusKeys(): array
+    {
+        return [
+            'unlinked',
+            'missing_attachment',
+            'missing_generated_pdf',
+            'incomplete',
+            'complete',
+            'revised',
+        ];
+    }
+
+    /**
+     * @return array{total: int, statuses: array<int, array{key: string, label: string, count: int}>}
+     */
+    public function documentationStatusBreakdown(Builder $query): array
+    {
+        $docService = app(TransactionDocumentationService::class);
+        $statuses = [];
+
+        foreach (self::documentationStatusKeys() as $statusKey) {
+            $statuses[] = [
+                'key' => $statusKey,
+                'label' => $docService->formatDocumentationStatusLabel($statusKey),
+                'count' => (clone $query)->where('documentation_status', $statusKey)->count(),
+            ];
+        }
+
+        return [
+            'total' => (clone $query)->count(),
+            'statuses' => $statuses,
+        ];
     }
 
     /**

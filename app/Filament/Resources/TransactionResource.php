@@ -619,6 +619,7 @@ class TransactionResource extends Resource
                 Tables\Filters\SelectFilter::make('documentation_category')
                     ->label('Category')
                     ->options(TransactionDocumentationStatsService::allCategoryOptions())
+                    ->visible(fn (): bool => \Illuminate\Support\Facades\Schema::hasColumn('transactions', 'documentation_category'))
                     ->query(function (Builder $query, array $data): Builder {
                         $value = $data['value'] ?? null;
 

@@ -18,7 +18,15 @@
                 Documentation stats are unavailable until migrations are applied.
             </p>
         @else
-            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+            @include('filament.widgets.partials.documentation-status-overview', [
+                'statusOverview' => $this->statusOverview,
+                'activeCategory' => $this->activeCategory,
+                'activeCompletion' => $this->activeCompletion,
+                'activeDocumentationStatus' => $this->activeDocumentationStatus,
+                'activeDataIssue' => $this->activeDataIssue,
+            ])
+
+            <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
                 {{-- Trx In column --}}
                 <div class="space-y-4">
                     <div class="text-sm font-semibold text-gray-950 dark:text-white">
