@@ -2,12 +2,15 @@
     <x-filament::section>
         @php
             $breakdown = $this->breakdown;
+            $categoryLabels = \App\Services\TransactionDocumentationStatsService::allCategoryOptions();
 
-            $trxOutSections = [
-                ['key' => 'trx_out_bulk', 'workflow' => 'trx_out_bulk', 'label' => 'Trx Out Bulk'],
-                ['key' => 'trx_out_single', 'workflow' => 'trx_out_single', 'label' => 'Trx Out Single'],
-                ['key' => 'exp', 'workflow' => 'expense', 'label' => 'Trx Out Exp'],
-            ];
+            $trxInCategories = ['client_payment', 'account_feed', 'refund'];
+            $trxOutCategories = ['provider_single', 'provider_bulk', 'card_provider', 'card_expense', 'expense_payment'];
+
+            $hasActiveFilter = filled($this->activeCategory)
+                || filled($this->activeCompletion)
+                || filled($this->activeDocumentationStatus)
+                || filled($this->activeDataIssue);
         @endphp
 
         @if ($breakdown === null)
@@ -16,58 +19,65 @@
             </p>
         @else
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {{-- Trx In column (green) --}}
-                <div class="space-y-3">
+                {{-- Trx In column --}}
+                <div class="space-y-4">
                     <div class="text-sm font-semibold text-gray-950 dark:text-white">
                         Trx In
-                        <span class="text-xs font-normal text-gray-500 dark:text-gray-400">(We Generate)</span>
+                        <span class="text-xs font-normal text-gray-500 dark:text-gray-400">(Receivables)</span>
                     </div>
 
-                    @include('filament.widgets.partials.documentation-stat-rows', [
-                        'stats' => $breakdown['trx_in'],
-                        'workflow' => 'income',
-                        'color' => 'success',
-                    ])
+                    @foreach ($trxInCategories as $categoryKey)
+                        @if (isset($breakdown[$categoryKey]))
+                            @include('filament.widgets.partials.documentation-category-block', [
+                                'category' => $categoryKey,
+                                'label' => $categoryLabels[$categoryKey] ?? $categoryKey,
+                                'stats' => $breakdown[$categoryKey],
+                                'color' => 'success',
+                                'activeCategory' => $this->activeCategory,
+                                'activeCompletion' => $this->activeCompletion,
+                                'activeDocumentationStatus' => $this->activeDocumentationStatus,
+                                'activeDataIssue' => $this->activeDataIssue,
+                            ])
+                        @endif
+                    @endforeach
                 </div>
 
-                {{-- Payables column (red) --}}
-                <div class="space-y-6">
-                    <div class="space-y-3">
-                        <div class="text-sm font-semibold text-gray-950 dark:text-white">
-                            Trx Out
-                            <span class="text-xs font-normal text-gray-500 dark:text-gray-400">(We Generate)</span>
-                        </div>
-
-                        <div class="space-y-2">
-                            @foreach ($trxOutSections as $section)
-                                @include('filament.widgets.partials.documentation-stat-rows', [
-                                    'stats' => $breakdown[$section['key']],
-                                    'workflow' => $section['workflow'],
-                                    'label' => $section['label'],
-                                    'color' => 'danger',
-                                ])
-                            @endforeach
-                        </div>
+                {{-- Trx Out column --}}
+                <div class="space-y-4">
+                    <div class="text-sm font-semibold text-gray-950 dark:text-white">
+                        Trx Out & Expenses
+                        <span class="text-xs font-normal text-gray-500 dark:text-gray-400">(Payables)</span>
                     </div>
 
-                    <div class="space-y-3">
-                        <div class="text-sm font-semibold text-gray-950 dark:text-white">
-                            Card
-                            <span class="text-xs font-normal text-gray-500 dark:text-gray-400">(We Show Bill)</span>
-                        </div>
-
-                        @include('filament.widgets.partials.documentation-stat-rows', [
-                            'stats' => $breakdown['card'],
-                            'workflow' => 'card',
-                            'color' => 'danger',
-                        ])
-                    </div>
+                    @foreach ($trxOutCategories as $categoryKey)
+                        @if (isset($breakdown[$categoryKey]))
+                            @include('filament.widgets.partials.documentation-category-block', [
+                                'category' => $categoryKey,
+                                'label' => $categoryLabels[$categoryKey] ?? $categoryKey,
+                                'stats' => $breakdown[$categoryKey],
+                                'color' => 'danger',
+                                'activeCategory' => $this->activeCategory,
+                                'activeCompletion' => $this->activeCompletion,
+                                'activeDocumentationStatus' => $this->activeDocumentationStatus,
+                                'activeDataIssue' => $this->activeDataIssue,
+                            ])
+                        @endif
+                    @endforeach
                 </div>
             </div>
 
-            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                Click a count to filter the table. Transaction counts reflect current filters.
-            </p>
+            <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
+                <span>Click a count to filter the table below.</span>
+                @if ($hasActiveFilter)
+                    <button
+                        type="button"
+                        class="font-medium text-primary-600 underline-offset-2 hover:underline dark:text-primary-400"
+                        wire:click="clearDocumentationFilter"
+                    >
+                        Clear filter
+                    </button>
+                @endif
+            </div>
         @endif
     </x-filament::section>
 </x-filament-widgets::widget>

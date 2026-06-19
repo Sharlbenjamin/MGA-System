@@ -8,6 +8,8 @@ use App\Filament\Resources\TransactionResource;
 use App\Filament\Widgets\TransactionDocumentationStatsWidget;
 use App\Models\BankAccount;
 use App\Services\BulkTransactionPdfService;
+use App\Services\TransactionDocumentationStatsService;
+use App\Services\TransactionIntegrityService;
 use Carbon\Carbon;
 use Filament\Actions;
 use Filament\Forms\Components\Select;
@@ -27,6 +29,14 @@ class ListTransactions extends ListRecords
     protected static string $resource = TransactionResource::class;
 
     public BankAccount $bankAccount;
+
+    public ?string $activeWidgetCategory = null;
+
+    public ?string $activeWidgetCompletion = null;
+
+    public ?string $activeWidgetDocumentationStatus = null;
+
+    public ?string $activeWidgetDataIssue = null;
 
     public function mount(?int $bankAccountId = null): void
     {
@@ -224,27 +234,87 @@ class ListTransactions extends ListRecords
         return [
             TransactionDocumentationStatsWidget::make([
                 'bankAccountId' => $this->bankAccount->id,
+                'activeCategory' => $this->activeWidgetCategory,
+                'activeCompletion' => $this->activeWidgetCompletion,
+                'activeDocumentationStatus' => $this->activeWidgetDocumentationStatus,
+                'activeDataIssue' => $this->activeWidgetDataIssue,
             ]),
         ];
     }
 
     #[On('apply-transaction-documentation-filter')]
-    public function applyDocumentationFilter(string $workflow, string $completion = 'all'): void
-    {
+    public function applyDocumentationFilter(
+        string $category,
+        string $completion = 'all',
+        ?string $documentationStatus = null,
+    ): void {
         $filters = $this->tableFilters ?? [];
 
-        $filters['documentation_workflow'] = ['value' => $workflow];
-        unset($filters['type']);
+        $filters['documentation_category'] = ['value' => $category];
+        unset($filters['type'], $filters['documentation_workflow']);
 
-        if ($completion === 'completed') {
+        if ($documentationStatus) {
+            $filters['documentation_status'] = ['values' => [$documentationStatus]];
+        } elseif ($completion === 'completed') {
             $filters['documentation_status'] = ['values' => ['complete']];
         } elseif ($completion === 'uncompleted') {
-            $filters['documentation_status'] = ['values' => ['incomplete']];
+            $filters['documentation_status'] = ['values' => TransactionDocumentationStatsService::uncompletedDocumentationStatuses()];
         } else {
             unset($filters['documentation_status']);
         }
 
+        unset(
+            $filters['linking_status_mismatch'],
+            $filters['data_integrity_paid_invoice'],
+        );
+
+        $this->activeWidgetCategory = $category;
+        $this->activeWidgetCompletion = $documentationStatus ? null : $completion;
+        $this->activeWidgetDocumentationStatus = $documentationStatus;
+        $this->activeWidgetDataIssue = null;
+
         $this->tableFilters = $filters;
+        $this->resetTable();
+    }
+
+    #[On('apply-transaction-data-integrity-filter')]
+    public function applyDataIntegrityFilter(string $issueKey, ?string $category = null): void
+    {
+        $filters = $this->tableFilters ?? [];
+
+        unset(
+            $filters['linking_status_mismatch'],
+            $filters['data_integrity_paid_invoice'],
+        );
+
+        if ($category) {
+            $filters['documentation_category'] = ['value' => $category];
+        }
+
+        match ($issueKey) {
+            'transaction_invoice_total_mismatch' => $filters['linking_status_mismatch'] = ['isActive' => true],
+            'paid_amount_mismatch' => $filters['data_integrity_paid_invoice'] = ['isActive' => true],
+            default => null,
+        };
+
+        $this->activeWidgetCategory = $category;
+        $this->activeWidgetCompletion = null;
+        $this->activeWidgetDocumentationStatus = null;
+        $this->activeWidgetDataIssue = $issueKey;
+
+        $this->tableFilters = $filters;
+        $this->resetTable();
+    }
+
+    #[On('clear-transaction-documentation-filter')]
+    public function clearDocumentationFilter(): void
+    {
+        $this->activeWidgetCategory = null;
+        $this->activeWidgetCompletion = null;
+        $this->activeWidgetDocumentationStatus = null;
+        $this->activeWidgetDataIssue = null;
+
+        $this->tableFilters = [];
         $this->resetTable();
     }
 }

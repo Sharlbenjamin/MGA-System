@@ -18,8 +18,10 @@ use App\Models\Transaction;
 use App\Services\BulkTransactionPdfService;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
+use App\Services\TransactionIntegrityService;
 use Filament\Facades\Filament;
 use Filament\Forms;
+use Filament\Forms\Get;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -89,7 +91,12 @@ class TransactionResource extends Resource
                     'Income' => 'Income',
                     'Outflow' => 'Outflow',
                     'Expense' => 'Expense',
-                ])->required()->default(function () {
+                ])->required()->live()->afterStateUpdated(function (?string $state, callable $set, Get $get): void {
+                    $default = TransactionDocumentationStatsService::defaultCategoryFor($state, $get('related_type'));
+                    if ($default) {
+                        $set('documentation_category', $default);
+                    }
+                })->default(function () {
                     $type = request()->get('type');
                     $allParams = request()->all();
                     Log::info('Transaction form defaults:', [
@@ -100,12 +107,24 @@ class TransactionResource extends Resource
 
                     return $type;
                 }),
-                Forms\Components\Select::make('related_type')->options(fn ($get) => self::relatedTypes($get('type')))->required()->searchable()->reactive()->default(fn () => request()->get('related_type')),
+                Forms\Components\Select::make('related_type')
+                    ->options(fn ($get) => self::relatedTypes($get('type')))
+                    ->required()
+                    ->searchable()
+                    ->live()
+                    ->afterStateUpdated(function (?string $state, callable $set, Get $get): void {
+                        $default = TransactionDocumentationStatsService::defaultCategoryFor($get('type'), $state);
+                        if ($default) {
+                            $set('documentation_category', $default);
+                        }
+                    })
+                    ->default(fn () => request()->get('related_type')),
                 // I want to select an invoice if realted_type is Client
                 Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Patient')->required()->options(Patient::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Patient')->searchable()->default(fn () => request()->get('related_id')),
+                static::categorySelect(),
                 Forms\Components\Select::make('bank_account_id')
                     ->relationship('bankAccount', 'beneficiary_name', function ($query) {
                         return $query->where('type', 'Internal');
@@ -449,26 +468,6 @@ class TransactionResource extends Resource
                         })->prepend('Progress: '.$done.' of '.count($tasks).' complete')->implode("\n");
                     })
                     ->columnSpanFull(),
-                Forms\Components\Select::make('documentation_category')
-                    ->label('Category')
-                    ->options(TransactionDocumentationStatsService::categoryOptions())
-                    ->live()
-                    ->afterStateHydrated(function (Forms\Components\Select $component, $state, ?Transaction $record): void {
-                        if ($record?->exists) {
-                            $component->state(TransactionDocumentationStatsService::resolveCategoryKey($record));
-                        }
-                    })
-                    ->afterStateUpdated(function (?string $state, callable $set): void {
-                        match ($state) {
-                            'income' => [$set('type', 'Income'), $set('bills', [])],
-                            'expense' => [$set('type', 'Expense'), $set('bills', [])],
-                            'card' => [$set('type', 'Outflow'), $set('bills', [])],
-                            'trx_out_single', 'trx_out_bulk' => $set('type', 'Outflow'),
-                            default => null,
-                        };
-                    })
-                    ->helperText('Changing category updates transaction type and bill links on save.')
-                    ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction || $livewire instanceof Pages\CreateTransaction),
                 Forms\Components\Toggle::make('mark_as_revised')
                     ->label('Mark as revised')
                     ->helperText('Temporary review flag. Preserved until you turn this off or reset documentation status.')
@@ -543,6 +542,13 @@ class TransactionResource extends Resource
                     ->limit(30)
                     ->tooltip(fn (Transaction $record): ?string => $record->getRelatedPartyLabel()),
                 Tables\Columns\TextColumn::make('amount'),
+                Tables\Columns\TextColumn::make('linking_status')
+                    ->label('Linking status')
+                    ->badge()
+                    ->getStateUsing(fn (Transaction $record): string => TransactionIntegrityService::linkingStatusLabel($record))
+                    ->color(fn (Transaction $record): string => TransactionIntegrityService::hasInvoiceTotalMismatch($record) ? 'warning' : 'success')
+                    ->tooltip(fn (Transaction $record): ?string => TransactionIntegrityService::invoiceTotalMismatchTooltip($record))
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('type')->searchable()
                     ->color(fn ($record) => match ($record->type) {
                         'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',
@@ -573,6 +579,9 @@ class TransactionResource extends Resource
                         TransactionDocumentationStatsService::resolveCategoryKey($record)
                     )),
             ])
+            ->recordClasses(fn (Transaction $record): ?string => TransactionIntegrityService::hasInvoiceTotalMismatch($record)
+                ? 'bg-warning-50 dark:bg-warning-950/30'
+                : null)
             ->filters([
                 Tables\Filters\Filter::make('transaction_date')
                     ->label('Transaction date')
@@ -607,15 +616,9 @@ class TransactionResource extends Resource
                         return $indicators;
                     }),
                 Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
-                Tables\Filters\SelectFilter::make('documentation_workflow')
-                    ->label('Documentation workflow')
-                    ->options([
-                        'income' => 'Trx In (Income)',
-                        'trx_out_single' => 'Trx Out Single (1 bill)',
-                        'trx_out_bulk' => 'Trx Out Bulk (2+ bills)',
-                        'card' => 'Card (Outflow, no bills)',
-                        'expense' => 'Exp (Expense)',
-                    ])
+                Tables\Filters\SelectFilter::make('documentation_category')
+                    ->label('Category')
+                    ->options(TransactionDocumentationStatsService::allCategoryOptions())
                     ->query(function (Builder $query, array $data): Builder {
                         $value = $data['value'] ?? null;
 
@@ -623,7 +626,19 @@ class TransactionResource extends Resource
                             return $query;
                         }
 
-                        return \App\Services\TransactionDocumentationStatsService::applyWorkflowScope($query, $value);
+                        return TransactionDocumentationStatsService::applyCategoryScope($query, $value);
+                    }),
+                Tables\Filters\SelectFilter::make('documentation_workflow')
+                    ->label('Documentation workflow')
+                    ->options(TransactionDocumentationStatsService::allCategoryOptions())
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        if (! filled($value)) {
+                            return $query;
+                        }
+
+                        return TransactionDocumentationStatsService::applyCategoryScope($query, $value);
                     }),
                 Tables\Filters\SelectFilter::make('documentation_status')
                     ->options([
@@ -635,6 +650,16 @@ class TransactionResource extends Resource
                         'missing_generated_pdf' => 'Missing PDF',
                     ])
                     ->multiple(),
+                Tables\Filters\Filter::make('linking_status_mismatch')
+                    ->label('Amount mismatch only')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => TransactionIntegrityService::applyInvoiceTotalMismatchScope($query))
+                    ->indicateUsing(fn (): array => ['linking_status_mismatch' => 'Amount mismatch only']),
+                Tables\Filters\Filter::make('data_integrity_paid_invoice')
+                    ->label('Paid invoice amount mismatch')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => TransactionIntegrityService::applyPaidInvoiceAmountMismatchScope($query))
+                    ->indicateUsing(fn (): array => ['data_integrity_paid_invoice' => 'Paid invoice amount mismatch']),
                 Tables\Filters\Filter::make('not_revised')
                     ->label('Not revised')
                     ->toggle()
@@ -980,6 +1005,53 @@ class TransactionResource extends Resource
         static::applyAvailableForTransactionScope($query, null);
 
         return $query->get();
+    }
+
+    public static function categorySelect(): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('documentation_category')
+            ->label('Category')
+            ->options(fn (Get $get): array => TransactionDocumentationStatsService::categoryOptionsFor(
+                $get('type'),
+                $get('related_type'),
+            ))
+            ->required()
+            ->live()
+            ->afterStateHydrated(function (Forms\Components\Select $component, $state, ?Transaction $record, Get $get): void {
+                if ($record?->exists) {
+                    $component->state(
+                        $record->documentation_category
+                            ?? TransactionDocumentationStatsService::resolveCategoryKey($record)
+                    );
+
+                    return;
+                }
+
+                if (blank($state)) {
+                    $default = TransactionDocumentationStatsService::defaultCategoryFor(
+                        $get('type'),
+                        $get('related_type'),
+                    );
+                    if ($default) {
+                        $component->state($default);
+                    }
+                }
+            })
+            ->afterStateUpdated(function (?string $state, callable $set, Get $get): void {
+                match ($state) {
+                    'client_payment', 'account_feed', 'refund' => [$set('type', 'Income'), $set('bills', [])],
+                    'expense_payment' => [$set('type', 'Expense'), $set('bills', [])],
+                    'card_provider', 'card_expense' => [$set('type', 'Outflow'), $set('bills', [])],
+                    'provider_single', 'provider_bulk' => $set('type', 'Outflow'),
+                    default => null,
+                };
+
+                $options = TransactionDocumentationStatsService::categoryOptionsFor($get('type'), $get('related_type'));
+                if ($state && ! array_key_exists($state, $options)) {
+                    $set('documentation_category', array_key_first($options));
+                }
+            })
+            ->helperText('Category drives documentation requirements. Changing it may update type and bill links on save.');
     }
 
     public static function relatedTypes($type)

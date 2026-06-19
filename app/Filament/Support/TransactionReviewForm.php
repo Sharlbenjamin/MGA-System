@@ -66,7 +66,10 @@ class TransactionReviewForm
 
             Forms\Components\Select::make('documentation_category')
                 ->label('Category')
-                ->options(TransactionDocumentationStatsService::categoryOptions())
+                ->options(fn () => TransactionDocumentationStatsService::categoryOptionsFor(
+                    $record->type,
+                    $record->related_type,
+                ))
                 ->required()
                 ->live()
                 ->helperText('Update the category if this transaction is misclassified before marking as revised.'),
@@ -82,10 +85,10 @@ class TransactionReviewForm
                         $record->id,
                     )
                     : [])
-                ->visible(fn (Get $get): bool => in_array($get('documentation_category'), ['trx_out_single', 'trx_out_bulk'], true))
+                ->visible(fn (Get $get): bool => in_array($get('documentation_category'), ['provider_single', 'provider_bulk'], true))
                 ->helperText(fn (Get $get): string => match ($get('documentation_category')) {
-                    'trx_out_single' => 'Trx Out Single requires exactly 1 bill.',
-                    'trx_out_bulk' => 'Trx Out Bulk requires 2 or more bills.',
+                    'provider_single' => 'Provider Single requires exactly 1 bill.',
+                    'provider_bulk' => 'Provider Bulk requires 2 or more bills.',
                     default => '',
                 }),
 

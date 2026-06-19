@@ -124,16 +124,29 @@ class DocumentLinkResolver
     {
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $links = [];
+        $category = TransactionDocumentationStatsService::resolveCategoryKey($transaction);
 
-        if ($transaction->type === 'Income') {
+        if ($category === 'client_payment') {
             $trxIn = $this->trxInLink($transaction, $minutes);
             if ($trxIn !== '') {
                 $links[] = $trxIn;
             }
-
+        } elseif ($category === 'provider_bulk') {
+            $trxOut = $this->trxOutLink($transaction, $minutes);
+            if ($trxOut !== '') {
+                $links[] = $trxOut;
+            }
+        } elseif (in_array($category, ['card_expense', 'expense_payment'], true)) {
             $receipt = $this->transactionReceiptLinks($transaction, $minutes);
             if ($receipt !== '') {
                 $links[] = $receipt;
+            }
+        } elseif (in_array($category, ['provider_single', 'card_provider'], true)) {
+            // Bill documents only — no generated Trx Out PDF
+        } elseif ($transaction->type === 'Income') {
+            $trxIn = $this->trxInLink($transaction, $minutes);
+            if ($trxIn !== '') {
+                $links[] = $trxIn;
             }
         } elseif ($transaction->type === 'Outflow' && $this->transactionHasBills($transaction)) {
             $trxOut = $this->trxOutLink($transaction, $minutes);

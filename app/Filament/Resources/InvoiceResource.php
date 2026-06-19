@@ -325,6 +325,13 @@ class InvoiceResource extends Resource
                         'Partial' => 'Partial',
                     ]),
 
+                Tables\Filters\Filter::make('paid_no_transaction')
+                    ->label('Paid, no transaction linked')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query
+                        ->where('status', 'Paid')
+                        ->doesntHave('transactions'))
+                    ->indicateUsing(fn (): array => ['paid_no_transaction' => 'Paid, no transaction linked']),
                 Tables\Filters\Filter::make('draft_or_posted')
                     ->form([
                         Forms\Components\Checkbox::make('show_draft_posted')

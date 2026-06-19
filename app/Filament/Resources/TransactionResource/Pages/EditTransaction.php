@@ -41,7 +41,7 @@ class EditTransaction extends EditRecord
 
     protected function getRedirectUrl(): string
     {
-        return TransactionResource::indexUrlFor($this->record->bank_account_id);
+        return static::getResource()::getUrl('edit', ['record' => $this->record]);
     }
 
     protected function mutateFormDataBeforeFill(array $data): array
@@ -70,7 +70,14 @@ class EditTransaction extends EditRecord
         $this->invoicesToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? null;
 
-        unset($data['bills'], $data['invoices'], $data['documentation_category'], $data['mark_as_revised']);
+        unset($data['bills'], $data['invoices'], $data['mark_as_revised']);
+
+        if (blank($data['documentation_category'] ?? null)) {
+            $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
+                $data['type'] ?? $this->record->type,
+                $data['related_type'] ?? $this->record->related_type,
+            ) ?? TransactionDocumentationStatsService::resolveCategoryKey($this->record);
+        }
 
         return $data;
     }

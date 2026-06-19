@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\InvoiceResource;
 use App\Filament\Resources\TransactionResource\Pages\ListTransactions;
 use App\Services\TransactionDocumentationStatsService;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
@@ -20,6 +21,14 @@ class TransactionDocumentationStatsWidget extends Widget
     protected static ?string $heading = 'Documentation overview';
 
     public ?int $bankAccountId = null;
+
+    public ?string $activeCategory = null;
+
+    public ?string $activeCompletion = null;
+
+    public ?string $activeDocumentationStatus = null;
+
+    public ?string $activeDataIssue = null;
 
     protected function getTablePage(): string
     {
@@ -48,17 +57,53 @@ class TransactionDocumentationStatsWidget extends Widget
             return null;
         }
 
-        return app(TransactionDocumentationStatsService::class)->breakdown(
-            $this->getPageTableQuery()
+        if ($this->bankAccountId === null) {
+            return app(TransactionDocumentationStatsService::class)->breakdown(
+                $this->getPageTableQuery()
+            );
+        }
+
+        return app(TransactionDocumentationStatsService::class)->breakdownForBankAccount(
+            $this->bankAccountId,
+            $this->getPageTableQuery(),
         );
     }
 
-    public function applyDocumentationFilter(string $workflow, string $completion = 'all'): void
-    {
+    public function applyDocumentationFilter(
+        string $category,
+        string $completion = 'all',
+        ?string $documentationStatus = null,
+    ): void {
         $this->dispatch(
             'apply-transaction-documentation-filter',
-            workflow: $workflow,
+            category: $category,
             completion: $completion,
+            documentationStatus: $documentationStatus,
         )->to($this->getTablePage());
+    }
+
+    public function applyDataIntegrityFilter(string $issueKey, ?string $category = null): void
+    {
+        if ($issueKey === 'paid_no_transaction') {
+            $this->redirect(InvoiceResource::getUrl('index', [
+                'tableFilters' => [
+                    'paid_no_transaction' => ['isActive' => true],
+                ],
+            ]));
+
+            return;
+        }
+
+        $this->dispatch(
+            'apply-transaction-data-integrity-filter',
+            issueKey: $issueKey,
+            category: $category,
+        )->to($this->getTablePage());
+    }
+
+    public function clearDocumentationFilter(): void
+    {
+        $this->dispatch('clear-transaction-documentation-filter')
+            ->to($this->getTablePage());
     }
 }

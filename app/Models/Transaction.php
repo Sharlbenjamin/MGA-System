@@ -25,6 +25,7 @@ class Transaction extends Model
         'status',
         'reference',
         'documentation_status',
+        'documentation_category',
         'trx_out_pdf_path',
         'trx_in_pdf_path',
         'import_batch_id',

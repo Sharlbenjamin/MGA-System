@@ -6,6 +6,7 @@ use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,6 +23,8 @@ class CreateTransaction extends CreateRecord
     protected ?string $documentationCategory = null;
 
     protected bool $markAsRevised = false;
+
+    protected bool $redirectToEditForInvoices = false;
 
     public function getBreadcrumbs(): array
     {
@@ -42,6 +45,10 @@ class CreateTransaction extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
+        if ($this->redirectToEditForInvoices || $this->invoicesToAttach !== [] || $this->billsToAttach !== []) {
+            return static::getResource()::getUrl('edit', ['record' => $this->record]);
+        }
+
         $bankAccountId = $this->record->bank_account_id ?? request()->integer('bank_account_id');
 
         if ($bankAccountId) {
@@ -57,8 +64,16 @@ class CreateTransaction extends CreateRecord
         $this->invoicesToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? null;
         $this->markAsRevised = ! empty($data['mark_as_revised']);
+        $this->redirectToEditForInvoices = $this->invoicesToAttach !== [] || $this->billsToAttach !== [];
 
-        unset($data['bills'], $data['invoices'], $data['documentation_category'], $data['mark_as_revised']);
+        unset($data['bills'], $data['invoices'], $data['mark_as_revised']);
+
+        if (blank($data['documentation_category'] ?? null)) {
+            $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
+                $data['type'] ?? null,
+                $data['related_type'] ?? null,
+            );
+        }
 
         $data['created_by'] = Auth::id();
         $data['updated_by'] = Auth::id();
@@ -86,12 +101,22 @@ class CreateTransaction extends CreateRecord
             $statsService->syncBills($transaction, $this->billsToAttach);
         }
 
-        if ($transaction->related_type === 'Client') {
+        if ($transaction->related_type === 'Client' && $this->invoicesToAttach !== []) {
+            $statsService->syncInvoicesWithInitialAmounts($transaction, $this->invoicesToAttach);
+        } elseif ($transaction->related_type === 'Client') {
             $statsService->syncInvoices($transaction, $this->invoicesToAttach);
         }
 
         if (! $this->markAsRevised) {
             app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+        }
+
+        if ($this->invoicesToAttach !== []) {
+            Notification::make()
+                ->title('Set paid amount per invoice')
+                ->body('Review and adjust paid amounts for each linked invoice in the Invoices tab.')
+                ->info()
+                ->send();
         }
     }
 

@@ -126,20 +126,30 @@ class TransactionDocumentationService
 
     public function requiresInvoiceOrBillLink(Transaction $transaction): bool
     {
-        return match (true) {
-            $transaction->type === 'Income' => true,
-            $transaction->type === 'Outflow' && ! $this->isCardTransaction($transaction) => true,
-            default => false,
-        };
+        $category = TransactionDocumentationStatsService::resolveCategoryKey($transaction);
+
+        return in_array($category, [
+            'client_payment',
+            'provider_single',
+            'provider_bulk',
+            'card_provider',
+        ], true);
     }
 
     public function hasInvoiceOrBillLink(Transaction $transaction): bool
     {
-        return match (true) {
-            $transaction->type === 'Income' => $transaction->invoices()->exists(),
-            $transaction->type === 'Outflow' => $transaction->bills()->exists(),
+        $category = TransactionDocumentationStatsService::resolveCategoryKey($transaction);
+
+        return match ($category) {
+            'client_payment' => $transaction->invoices()->exists(),
+            'provider_single', 'provider_bulk', 'card_provider' => $transaction->bills()->exists(),
             default => true,
         };
+    }
+
+    public function resolvedCategory(Transaction $transaction): string
+    {
+        return TransactionDocumentationStatsService::resolveCategoryKey($transaction);
     }
 
     public function getDocumentationStatusLabel(Transaction $transaction): string
@@ -225,11 +235,9 @@ class TransactionDocumentationService
 
     public function transactionRequiresDirectAttachment(Transaction $transaction): bool
     {
-        if ($transaction->type === 'Expense') {
-            return true;
-        }
+        $category = $this->resolvedCategory($transaction);
 
-        return $transaction->type === 'Outflow' && $transaction->bills->isEmpty();
+        return in_array($category, ['card_expense', 'expense_payment'], true);
     }
 
     /**
@@ -296,17 +304,30 @@ class TransactionDocumentationService
             'attachments',
         ]);
 
-        $tasks = [];
+        $category = $this->resolvedCategory($transaction);
 
-        if ($transaction->type === 'Income') {
-            $tasks = array_merge($tasks, $this->incomeTasks($transaction));
-        } elseif ($transaction->type === 'Outflow') {
-            $tasks = array_merge($tasks, $this->outflowTasks($transaction));
-        } elseif ($transaction->type === 'Expense') {
-            $tasks = array_merge($tasks, $this->expenseTasks($transaction));
-        }
+        return match ($category) {
+            'account_feed', 'refund' => [],
+            'client_payment' => $this->clientPaymentTasks($transaction),
+            'provider_single', 'card_provider' => $this->providerBillTasks($transaction, requireTrxOutPdf: false),
+            'provider_bulk' => $this->providerBillTasks($transaction, requireTrxOutPdf: true),
+            'card_expense' => $this->receiptTasks($transaction, 'card_receipt', 'Missing card payment receipt.'),
+            'expense_payment' => $this->receiptTasks($transaction, 'expense_receipt', 'Missing expense receipt/invoice.'),
+            default => $this->legacyTasksForType($transaction),
+        };
+    }
 
-        return $tasks;
+    /**
+     * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
+     */
+    protected function legacyTasksForType(Transaction $transaction): array
+    {
+        return match ($transaction->type) {
+            'Income' => $this->clientPaymentTasks($transaction),
+            'Outflow' => $this->outflowTasks($transaction),
+            'Expense' => $this->expenseTasks($transaction),
+            default => [],
+        };
     }
 
     public function getPendingTaskCount(Transaction $transaction): int
@@ -316,13 +337,9 @@ class TransactionDocumentationService
 
     public function getDocumentationLabel(Transaction $transaction): string
     {
-        return match (true) {
-            $transaction->type === 'Income' => 'Client Payment / Transfer In',
-            $transaction->type === 'Expense' => 'Expense',
-            $transaction->type === 'Outflow' && $transaction->bills()->exists() => 'Provider Payment / Bulk Transfer Out',
-            $transaction->type === 'Outflow' => 'Card Payment',
-            default => $transaction->type ?? 'Unknown',
-        };
+        return TransactionDocumentationStatsService::categoryLabel(
+            $this->resolvedCategory($transaction)
+        );
     }
 
     public function getDirection(Transaction $transaction): string
@@ -333,11 +350,11 @@ class TransactionDocumentationService
     /**
      * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
      */
-    protected function incomeTasks(Transaction $transaction): array
+    protected function clientPaymentTasks(Transaction $transaction): array
     {
         $tasks = [];
 
-        $hasClient = $transaction->related_type === 'Client' && $transaction->related_id;
+        $hasClient = in_array($transaction->related_type, ['Client', 'Patient'], true) && $transaction->related_id;
         $tasks[] = $this->task(
             'missing_linked_client',
             'Missing linked client.',
@@ -370,6 +387,72 @@ class TransactionDocumentationService
         );
 
         return $tasks;
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
+     */
+    protected function providerBillTasks(Transaction $transaction, bool $requireTrxOutPdf): array
+    {
+        $hasProvider = in_array($transaction->related_type, ['Provider', 'Branch'], true) && $transaction->related_id;
+        $tasks = [];
+        $tasks[] = $this->task(
+            'missing_linked_provider',
+            'Missing linked provider.',
+            $hasProvider ? 'done' : 'pending',
+            'link_provider'
+        );
+
+        $billCount = $transaction->bills->count();
+        $tasks[] = $this->task(
+            'missing_linked_bills',
+            'No bills linked to this transfer.',
+            $billCount > 0 ? 'done' : 'pending',
+            'link_bills'
+        );
+
+        $undocumentedBills = $transaction->bills->filter(fn (Bill $bill) => ! $this->billHasDocument($bill));
+        $tasks[] = $this->task(
+            'missing_bill_documents',
+            'One or more linked bills are missing attachments.',
+            $undocumentedBills->isEmpty() || $billCount === 0 ? 'done' : 'pending',
+            'bill_documents',
+            ['bill_ids' => $undocumentedBills->pluck('id')->all()]
+        );
+
+        if ($requireTrxOutPdf) {
+            $tasks[] = $this->task(
+                'missing_trx_out_pdf',
+                'Missing generated Trx Out PDF.',
+                $transaction->trx_out_pdf_path ? 'done' : 'pending',
+                'generate_trx_out_pdf'
+            );
+        }
+
+        return $tasks;
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, status: string, fix_type: string}>
+     */
+    protected function receiptTasks(Transaction $transaction, string $type, string $label): array
+    {
+        return [
+            $this->task(
+                $type === 'card_receipt' ? 'missing_card_receipt' : 'missing_expense_receipt',
+                $label,
+                $this->hasReceiptAttachment($transaction, $type) ? 'done' : 'pending',
+                'upload_receipt'
+            ),
+        ];
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
+     */
+    protected function incomeTasks(Transaction $transaction): array
+    {
+        return $this->clientPaymentTasks($transaction);
     }
 
     /**
@@ -471,7 +554,7 @@ class TransactionDocumentationService
 
     public function canGenerateTrxIn(Transaction $transaction): bool
     {
-        if ($transaction->type !== 'Income') {
+        if ($this->resolvedCategory($transaction) !== 'client_payment') {
             return false;
         }
 
@@ -488,7 +571,7 @@ class TransactionDocumentationService
 
     public function canGenerateTrxOut(Transaction $transaction): bool
     {
-        if ($transaction->type !== 'Outflow' || ! $transaction->bills()->exists()) {
+        if ($this->resolvedCategory($transaction) !== 'provider_bulk') {
             return false;
         }
 
@@ -505,8 +588,8 @@ class TransactionDocumentationService
 
     public function getTrxInSkipReason(Transaction $transaction): ?string
     {
-        if ($transaction->type !== 'Income') {
-            return 'Not an Income transaction';
+        if ($this->resolvedCategory($transaction) !== 'client_payment') {
+            return 'Not a Client Payment transaction';
         }
 
         return $this->firstPendingTaskLabel($transaction, [
@@ -518,8 +601,8 @@ class TransactionDocumentationService
 
     public function getTrxOutSkipReason(Transaction $transaction): ?string
     {
-        if ($transaction->type !== 'Outflow' || ! $transaction->bills()->exists()) {
-            return 'Not a bulk bill Outflow transaction';
+        if ($this->resolvedCategory($transaction) !== 'provider_bulk') {
+            return 'Not a Provider Bulk transaction';
         }
 
         return $this->firstPendingTaskLabel($transaction, [
