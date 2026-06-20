@@ -13,7 +13,7 @@ class TransactionDocumentationStatsService
 {
     public const INCOME_CATEGORIES = ['client_payment', 'account_feed', 'refund'];
 
-    public const OUTFLOW_CATEGORIES = ['provider_single', 'provider_bulk', 'card_provider', 'card_expense'];
+    public const OUTFLOW_CATEGORIES = ['provider_single', 'provider_bulk', 'card_provider', 'card_expense', 'patient_refund', 'capital_return'];
 
     public const EXPENSE_CATEGORIES = ['expense_payment'];
 
@@ -26,6 +26,8 @@ class TransactionDocumentationStatsService
         'card_provider',
         'card_expense',
         'expense_payment',
+        'patient_refund',
+        'capital_return',
     ];
 
     /**
@@ -42,6 +44,8 @@ class TransactionDocumentationStatsService
             'card_provider' => 'Card Payment (Provider)',
             'card_expense' => 'Card Payment (Expense)',
             'expense_payment' => 'Expenses Payment',
+            'patient_refund' => 'Patient Refund',
+            'capital_return' => 'Capital / Owner Return',
         ];
     }
 
@@ -56,9 +60,7 @@ class TransactionDocumentationStatsService
             'Income' => in_array($relatedType, ['Client', 'Patient'], true)
                 ? array_intersect_key($all, array_flip(self::INCOME_CATEGORIES))
                 : array_intersect_key($all, array_flip(self::INCOME_CATEGORIES)),
-            'Outflow' => in_array($relatedType, ['Provider', 'Branch'], true)
-                ? array_intersect_key($all, array_flip(self::OUTFLOW_CATEGORIES))
-                : array_intersect_key($all, array_flip(['card_expense'])),
+            'Outflow' => array_intersect_key($all, array_flip(self::OUTFLOW_CATEGORIES)),
             'Expense' => array_intersect_key($all, array_flip(self::EXPENSE_CATEGORIES)),
             default => [],
         };
@@ -138,6 +140,7 @@ class TransactionDocumentationStatsService
             'card_provider' => $this->applySimpleCategory($transaction, 'Outflow', detachBills: false),
             'provider_single' => $this->applyBillCategory($transaction, 1, 1, $billIds),
             'provider_bulk' => $this->applyBillCategory($transaction, 2, null, $billIds),
+            'patient_refund', 'capital_return' => $this->applySimpleCategory($transaction, 'Outflow', detachBills: true),
         };
 
         $transaction->save();
@@ -378,6 +381,8 @@ class TransactionDocumentationStatsService
             'provider_bulk' => $query->where('type', 'Outflow')->has('bills', '>=', 2),
             'card_expense' => $query->where('type', 'Outflow')->doesntHave('bills'),
             'card_provider' => $query->where('type', 'Outflow')->doesntHave('bills'),
+            'patient_refund' => $query->where('type', 'Outflow')->where('related_type', 'Patient'),
+            'capital_return' => $query->where('type', 'Outflow')->where('related_type', 'Other'),
             'expense_payment' => $query->where('type', 'Expense'),
             default => $query->whereRaw('0 = 1'),
         };

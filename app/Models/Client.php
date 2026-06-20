@@ -13,17 +13,19 @@ use Illuminate\Support\Facades\Log;
 use App\Traits\HasContacts;
 use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Support\ClientEmailRecipients;
 use App\Traits\LogsActivity;
 
 class Client extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
-    protected $fillable = ['company_name','type','status','initials','country_id','niv_number','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','address','signed_contract_draft','comment',];
+    protected $fillable = ['company_name','type','status','initials','country_id','niv_number','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','invoice_cc_emails','address','signed_contract_draft','comment',];
 
     protected $casts = [
         'id' => 'integer',
         'country_id' => 'integer',
+        'invoice_cc_emails' => 'array',
     ];
 
     public function getNameAttribute()
@@ -177,7 +179,32 @@ class Client extends Model
         return $this->email;
     }
 
+    public function getInvoiceRecipientEmail(): ?string
+    {
+        return $this->getOutstandingBalanceRecipientEmail();
+    }
 
+    /**
+     * @return array<int, string>
+     */
+    public function getInvoiceCcEmails(): array
+    {
+        return ClientEmailRecipients::normalizeList(is_array($this->invoice_cc_emails) ? $this->invoice_cc_emails : []);
+    }
+
+    /**
+     * @param  array<int, string|null>  $emails
+     * @return array<int, string>
+     */
+    public function getValidatedEmailList(array $emails, ?string $excludeTo = null): array
+    {
+        $excludeTo ??= $this->getInvoiceRecipientEmail();
+
+        return ClientEmailRecipients::validateList(
+            array_merge($this->getInvoiceCcEmails(), $emails),
+            $excludeTo,
+        )['valid'];
+    }
 
 
 

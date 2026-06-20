@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use App\Exports\ClientBalanceExport;
+use App\Support\ClientEmailRecipients;
 use Maatwebsite\Excel\Facades\Excel;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
@@ -351,7 +352,8 @@ class InvoiceRelationManager extends RelationManager
                             TextInput::make('cc_emails')
                                 ->label('CC Emails')
                                 ->placeholder('finance@example.com, manager@example.com')
-                                ->helperText('Separate multiple emails with commas.'),
+                                ->helperText('Separate multiple emails with commas. Pre-filled from the client\'s Invoice CC list.')
+                                ->default(fn () => implode(', ', $client->getInvoiceCcEmails())),
                         ];
                     })
                     ->action(function ($data) {
@@ -380,18 +382,17 @@ class InvoiceRelationManager extends RelationManager
                         }
 
                         $data = is_array($data) ? $data : [];
-                        $ccEmails = collect(explode(',', (string) ($data['cc_emails'] ?? '')))
-                            ->map(fn ($email) => trim($email))
-                            ->filter()
-                            ->unique()
-                            ->values();
+                        $ccValidation = ClientEmailRecipients::validateList(
+                            ClientEmailRecipients::parseCommaSeparated($data['cc_emails'] ?? null),
+                            $recipientEmail,
+                        );
+                        $ccEmails = collect($ccValidation['valid']);
 
-                        $invalidEmails = $ccEmails->filter(fn ($email) => !filter_var($email, FILTER_VALIDATE_EMAIL));
-                        if ($invalidEmails->isNotEmpty()) {
+                        if ($ccValidation['invalid'] !== []) {
                             Notification::make()
                                 ->danger()
                                 ->title('Invalid CC email(s)')
-                                ->body('Please check: ' . $invalidEmails->implode(', '))
+                                ->body('Please check: '.implode(', ', $ccValidation['invalid']))
                                 ->send();
                             return;
                         }

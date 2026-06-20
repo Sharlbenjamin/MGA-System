@@ -3,9 +3,15 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TransactionsWithoutDocumentsResource\Pages;
+use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\TransactionDocumentationForm;
 use App\Models\Transaction;
-use Filament\Forms;
+use App\Services\GenerateTrxInPdfService;
+use App\Services\GenerateTrxOutPdfService;
+use App\Services\TransactionDocumentationService;
+use App\Services\TransactionDocumentationStatsService;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -16,15 +22,20 @@ class TransactionsWithoutDocumentsResource extends Resource
     protected static ?string $model = Transaction::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
+
     protected static ?string $navigationGroup = 'Workflow';
-    protected static ?int $navigationSort = 10;
-    protected static ?string $navigationLabel = 'Transaction without documents';
-    protected static ?string $modelLabel = 'Transaction without documents';
-    protected static ?string $pluralModelLabel = 'Transactions without documents';
+
+    protected static ?int $navigationSort = 6;
+
+    protected static ?string $navigationLabel = 'Transactions missing documents';
+
+    protected static ?string $modelLabel = 'Transaction missing documents';
+
+    protected static ?string $pluralModelLabel = 'Transactions missing documents';
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereNull('attachment_path')->orWhere('attachment_path', '')->count();
+        return (string) TransactionDocumentationService::scopeWithPendingDocumentTasks(Transaction::query())->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -34,341 +45,146 @@ class TransactionsWithoutDocumentsResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Select::make('bank_account_id')
-                    ->relationship('bankAccount', 'beneficiary_name')
-                    ->required(),
-                Forms\Components\Select::make('related_type')
-                    ->options([
-                        'Client' => 'Client',
-                        'Patient' => 'Patient',
-                        'Provider' => 'Provider',
-                        'Branch' => 'Branch',
-                    ])
-                    ->required(),
-                Forms\Components\TextInput::make('amount')
-                    ->numeric()
-                    ->required(),
-                Forms\Components\Select::make('type')
-                    ->options([
-                        'Income' => 'Income',
-                        'Outflow' => 'Outflow',
-                        'Expense' => 'Expense',
-                    ])
-                    ->required(),
-                Forms\Components\DatePicker::make('date')
-                    ->required(),
-                Forms\Components\Textarea::make('notes')
-                    ->maxLength(65535)
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('attachment_path')
-                    ->label('Link or Text')
-                    ->maxLength(1000),
-            ]);
+        return $form->schema([]);
     }
 
     public static function table(Table $table): Table
     {
+        $docService = app(TransactionDocumentationService::class);
+
         return $table
-            ->modifyQueryUsing(function (Builder $query) {
-                return $query->whereNull('attachment_path')
-                    ->orWhere('attachment_path', '')
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                return TransactionDocumentationService::scopeWithPendingDocumentTasks($query)
                     ->with([
-                        'bankAccount', 
-                        'invoices.file.patient.client', 
-                        'bills.file.patient.client'
+                        'bankAccount',
+                        'invoices.file.patient.client',
+                        'bills.file.patient.client',
                     ]);
             })
+            ->defaultSort('date', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')
-                    ->label('Bank Account')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('provider_or_client')
-                    ->label('Provider / Client')
-                    ->getStateUsing(function (Transaction $record) {
-                        // Try to use the morphTo relationship first
-                        if ($record->relationLoaded('related') && $record->related) {
-                            $related = $record->related;
-                            
-                            if ($record->related_type === 'Provider') {
-                                return $related->name ?? 'N/A';
-                            }
-                            
-                            if ($record->related_type === 'Branch') {
-                                // Load provider if not already loaded
-                                if (!$related->relationLoaded('provider')) {
-                                    $related->load('provider');
-                                }
-                                if ($related->provider) {
-                                    return $related->provider->name ?? 'N/A';
-                                }
-                                return $related->name ?? $related->branch_name ?? 'N/A';
-                            }
-                            
-                            if ($record->related_type === 'Client') {
-                                return $related->company_name ?? $related->name ?? 'N/A';
-                            }
-                            
-                            if ($record->related_type === 'Patient') {
-                                return $related->name ?? 'N/A';
-                            }
-                        }
-                        
-                        // Fallback: manually resolve if relationship not loaded
-                        if (!$record->related_type || !$record->related_id) {
-                            return 'N/A';
-                        }
-                        
-                        try {
-                            switch ($record->related_type) {
-                                case 'Client':
-                                    $related = \App\Models\Client::find($record->related_id);
-                                    return $related ? ($related->company_name ?? $related->name ?? 'N/A') : 'N/A';
-                                    
-                                case 'Provider':
-                                    $related = \App\Models\Provider::find($record->related_id);
-                                    return $related ? ($related->name ?? 'N/A') : 'N/A';
-                                    
-                                case 'Branch':
-                                    $related = \App\Models\ProviderBranch::with('provider')->find($record->related_id);
-                                    if ($related && $related->provider) {
-                                        return $related->provider->name ?? 'N/A';
-                                    }
-                                    return $related ? ($related->name ?? $related->branch_name ?? 'N/A') : 'N/A';
-                                    
-                                case 'Patient':
-                                    $related = \App\Models\Patient::find($record->related_id);
-                                    return $related ? ($related->name ?? 'N/A') : 'N/A';
-                                    
-                                default:
-                                    return 'N/A';
-                            }
-                        } catch (\Exception $e) {
-                            return 'Error: ' . $e->getMessage();
-                        }
-                    })
-                    ->searchable(true, function (Builder $query, string $search): void {
-                        static::applyRelatedPartySearchConstraint($query, $search);
-                    })
-                    ->sortable(false),
-                Tables\Columns\TextColumn::make('related_type')
+                Tables\Columns\TextColumn::make('date')->date()->sortable(),
+                Tables\Columns\TextColumn::make('amount')->money('EUR')->sortable(),
+                Tables\Columns\TextColumn::make('type')->badge(),
+                Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')->label('Bank account'),
+                Tables\Columns\TextColumn::make('notes')
+                    ->label('Comment')
+                    ->limit(25)
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('documentation_category')
+                    ->label('Category')
+                    ->formatStateUsing(fn (?string $state, Transaction $record): string => TransactionDocumentationStatsService::categoryLabel(
+                        TransactionDocumentationStatsService::resolveCategoryKey($record)
+                    )),
+                Tables\Columns\TextColumn::make('documentation_status')
+                    ->label('Documentation')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'Client' => 'success',
-                        'Patient' => 'info',
-                        'Provider' => 'warning',
-                        'Branch' => 'warning',
+                        'missing_attachment' => 'warning',
+                        'missing_generated_pdf' => 'danger',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('amount')
-                    ->money('EUR')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('type')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Income' => 'success',
-                        'Outflow' => 'danger',
-                        'Expense' => 'warning',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('date')
-                    ->date()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('missing_items')
+                    ->label('Missing items')
+                    ->getStateUsing(fn (Transaction $record): string => implode('; ', $docService->pendingDocumentTaskLabels($record)))
+                    ->wrap()
+                    ->limit(60),
+                Tables\Columns\IconColumn::make('trx_in_pdf')
+                    ->label('Trx In PDF')
+                    ->boolean()
+                    ->getStateUsing(fn (Transaction $record): bool => filled($record->trx_in_pdf_path))
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
+                Tables\Columns\IconColumn::make('trx_out_pdf')
+                    ->label('Trx Out PDF')
+                    ->boolean()
+                    ->getStateUsing(fn (Transaction $record): bool => filled($record->trx_out_pdf_path))
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
+                Tables\Columns\IconColumn::make('receipt')
+                    ->label('Receipt')
+                    ->boolean()
+                    ->getStateUsing(fn (Transaction $record): bool => filled($record->attachment_path))
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('documentation_filter')
+                    ->label('Missing docs filter')
+                    ->options([
+                        'all' => 'All missing docs',
+                        'missing_generated_pdf' => 'Missing generated PDF only',
+                        'missing_attachment' => 'Missing attachment only',
+                    ])
+                    ->default('all')
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['value'] ?? 'all') {
+                            'missing_generated_pdf' => $query->where('documentation_status', 'missing_generated_pdf'),
+                            'missing_attachment' => $query->where('documentation_status', 'missing_attachment'),
+                            default => $query,
+                        };
+                    }),
                 Tables\Filters\SelectFilter::make('type')
                     ->options([
                         'Income' => 'Income',
                         'Outflow' => 'Outflow',
                         'Expense' => 'Expense',
                     ]),
-                Tables\Filters\SelectFilter::make('related_type')
-                    ->options([
-                        'Client' => 'Client',
-                        'Patient' => 'Patient',
-                        'Provider' => 'Provider',
-                        'Branch' => 'Branch',
-                    ]),
+                Tables\Filters\SelectFilter::make('bank_account_id')
+                    ->relationship('bankAccount', 'beneficiary_name')
+                    ->label('Bank account')
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
+                TransactionDocumentationForm::makeTableAction(),
                 Tables\Actions\Action::make('edit_transaction')
-                    ->url(fn (Transaction $record): string => route('filament.admin.resources.transactions.edit', $record))
-                    ->icon('heroicon-o-pencil')
-                    ->label('Edit Transaction')
-                    ->color('primary'),
-                Tables\Actions\Action::make('upload_document')
-                    ->label('Upload Document')
-                    ->icon('heroicon-o-document-arrow-up')
-                    ->color('success')
+                    ->label('Edit transaction')
+                    ->icon('heroicon-o-pencil-square')
+                    ->url(fn (Transaction $record): string => TransactionResource::getUrl('edit', ['record' => $record])),
+                Tables\Actions\Action::make('generate_trx_in_pdf')
+                    ->label('Generate Trx In PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->visible(fn (Transaction $record): bool => collect($docService->getMissingTasks($record))
+                        ->contains(fn (array $task): bool => $task['key'] === 'missing_trx_in_pdf' && $task['status'] === 'pending'))
                     ->requiresConfirmation()
-                    ->modalHeading('Upload Transaction Document')
-                    ->modalDescription('Upload the transaction document to Google Drive.')
-                    ->modalSubmitActionLabel('Upload')
-                    ->form([
-                        Forms\Components\FileUpload::make('transaction_document')
-                            ->label('Upload Transaction Document')
-                            ->acceptedFileTypes(['application/pdf', 'image/*'])
-                            ->maxSize(10240) // 10MB
-                            ->required()
-                            ->disk('public')
-                            ->directory('transactions')
-                            ->visibility('public')
-                            ->helperText('Upload the transaction document (PDF or image)')
-                            ->storeFileNamesIn('original_filename')
-                            ->downloadable()
-                            ->openable()
-                            ->preserveFilenames()
-                            ->maxFiles(1),
-                    ])
-                    ->action(function ($record, array $data = []) {
-                        try {
-                            if (!isset($data['transaction_document']) || empty($data['transaction_document'])) {
-                                \Filament\Notifications\Notification::make()
-                                    ->danger()
-                                    ->title('No document uploaded')
-                                    ->body('Please upload a document first.')
-                                    ->send();
-                                return;
-                            }
+                    ->action(function (Transaction $record) use ($docService): void {
+                        if (! $docService->canGenerateTrxIn($record)) {
+                            Notification::make()->warning()->title('Cannot generate Trx In PDF')->body($docService->getTrxInSkipReason($record))->send();
 
-                            // Handle the uploaded file properly
-                            $uploadedFile = $data['transaction_document'];
-                            
-                            // Log the uploaded file data for debugging
-                            \Illuminate\Support\Facades\Log::info('Transaction upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
-                            
-                            // If it's an array (multiple files), take the first one
-                            if (is_array($uploadedFile)) {
-                                $uploadedFile = $uploadedFile[0] ?? null;
-                            }
-                            
-                            if (!$uploadedFile) {
-                                \Filament\Notifications\Notification::make()
-                                    ->danger()
-                                    ->title('Invalid file data')
-                                    ->body('The uploaded file data is invalid.')
-                                    ->send();
-                                return;
-                            }
-
-                            // Handle the uploaded file properly using Storage facade
-                            try {
-                                // Get the file content using Storage facade
-                                $content = \Illuminate\Support\Facades\Storage::disk('public')->get($uploadedFile);
-                                
-                                if ($content === false) {
-                                    \Illuminate\Support\Facades\Log::error('Transaction file not found in storage:', ['path' => $uploadedFile]);
-                                    \Filament\Notifications\Notification::make()
-                                        ->danger()
-                                        ->title('File not found')
-                                        ->body('The uploaded file could not be found in storage.')
-                                        ->send();
-                                    return;
-                                }
-                                
-                                // Generate the proper filename format
-                                $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
-                                $fileName = 'Transaction ' . $record->name . ' - ' . $record->date->format('Y-m-d') . '.' . $originalExtension;
-                                \Illuminate\Support\Facades\Log::info('Transaction file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
-                                
-                                // Here you would upload to Google Drive
-                                // For now, we'll just update the transaction with the file path
-                                $record->attachment_path = $uploadedFile;
-                                $record->save();
-                                
-                                \Filament\Notifications\Notification::make()
-                                    ->success()
-                                    ->title('Transaction document uploaded successfully')
-                                    ->body('Transaction document has been uploaded.')
-                                    ->send();
-                                    
-                            } catch (\Exception $e) {
-                                \Illuminate\Support\Facades\Log::error('Transaction file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
-                                \Filament\Notifications\Notification::make()
-                                    ->danger()
-                                    ->title('File access error')
-                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
-                                    ->send();
-                                return;
-                            }
-                        } catch (\Exception $e) {
-                            \Illuminate\Support\Facades\Log::error('Transaction upload error:', ['error' => $e->getMessage(), 'record' => $record->id]);
-                            \Filament\Notifications\Notification::make()
-                                ->danger()
-                                ->title('Upload error')
-                                ->body('An error occurred during upload: ' . $e->getMessage())
-                                ->send();
+                            return;
                         }
+
+                        app(GenerateTrxInPdfService::class)->generate($record);
+                        $docService->syncAndRecalculate($record->fresh());
+                        Notification::make()->success()->title('Trx In PDF generated')->send();
                     }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\Action::make('generate_trx_out_pdf')
+                    ->label('Generate Trx Out PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->visible(fn (Transaction $record): bool => collect($docService->getMissingTasks($record))
+                        ->contains(fn (array $task): bool => $task['key'] === 'missing_trx_out_pdf' && $task['status'] === 'pending'))
+                    ->requiresConfirmation()
+                    ->action(function (Transaction $record) use ($docService): void {
+                        if (! $docService->canGenerateTrxOut($record)) {
+                            Notification::make()->warning()->title('Cannot generate Trx Out PDF')->body($docService->getTrxOutSkipReason($record))->send();
+
+                            return;
+                        }
+
+                        app(GenerateTrxOutPdfService::class)->generate($record);
+                        $docService->syncAndRecalculate($record->fresh());
+                        Notification::make()->success()->title('Trx Out PDF generated')->send();
+                    }),
             ]);
-    }
-
-    /**
-     * Global search for the computed "Provider / Client" column (not a database column).
-     */
-    protected static function applyRelatedPartySearchConstraint(Builder $query, string $search): void
-    {
-        $like = '%' . addcslashes($search, '%_\\') . '%';
-
-        $query->where(function (Builder $q) use ($like): void {
-            $q->where(function (Builder $sub) use ($like): void {
-                $sub->where('transactions.related_type', 'Provider')
-                    ->whereExists(function ($exists) use ($like): void {
-                        $exists->selectRaw('1')
-                            ->from('providers')
-                            ->whereColumn('providers.id', 'transactions.related_id')
-                            ->where('providers.name', 'like', $like);
-                    });
-            })
-                ->orWhere(function (Builder $sub) use ($like): void {
-                    $sub->where('transactions.related_type', 'Branch')
-                        ->whereExists(function ($exists) use ($like): void {
-                            $exists->selectRaw('1')
-                                ->from('provider_branches')
-                                ->leftJoin('providers', 'providers.id', '=', 'provider_branches.provider_id')
-                                ->whereColumn('provider_branches.id', 'transactions.related_id')
-                                ->where(function ($w) use ($like): void {
-                                    $w->where('providers.name', 'like', $like)
-                                        ->orWhere('provider_branches.branch_name', 'like', $like);
-                                });
-                        });
-                })
-                ->orWhere(function (Builder $sub) use ($like): void {
-                    $sub->where('transactions.related_type', 'Client')
-                        ->whereExists(function ($exists) use ($like): void {
-                            $exists->selectRaw('1')
-                                ->from('clients')
-                                ->whereColumn('clients.id', 'transactions.related_id')
-                                ->where('clients.company_name', 'like', $like);
-                        });
-                })
-                ->orWhere(function (Builder $sub) use ($like): void {
-                    $sub->where('transactions.related_type', 'Patient')
-                        ->whereExists(function ($exists) use ($like): void {
-                            $exists->selectRaw('1')
-                                ->from('patients')
-                                ->whereColumn('patients.id', 'transactions.related_id')
-                                ->where('patients.name', 'like', $like);
-                        });
-                });
-        });
     }
 
     public static function getPages(): array
@@ -377,4 +193,4 @@ class TransactionsWithoutDocumentsResource extends Resource
             'index' => Pages\ListTransactionsWithoutDocuments::route('/'),
         ];
     }
-} 
+}

@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TagsInput;
 use Filament\Tables\Columns\TextColumn;
 use App\Filament\Resources\ClientResource\RelationManagers\LeadsRelationManager;
 use App\Filament\RelationManagers\ActivityLogRelationManager;
@@ -77,6 +78,12 @@ class ClientResource extends Resource
                     ->email()
                     ->nullable(),
                 TextInput::make('operation_email')->label('Operation Email')->email()->nullable(),
+                TagsInput::make('invoice_cc_emails')
+                    ->label('Invoice CC emails')
+                    ->placeholder('Add email and press Enter')
+                    ->splitKeys(['Tab', ',', ' '])
+                    ->nestedRecursiveRules(['email'])
+                    ->helperText('These addresses are CC\'d when sending invoices and outstanding balance emails.'),
                 Textarea::make('address')
                     ->label('Client Address')
                     ->rows(2)
@@ -108,6 +115,10 @@ class ClientResource extends Resource
                 TextColumn::make('company_name')->sortable()->searchable(),
                 TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
                 TextColumn::make('operation_email')->label('Operation Email')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('invoice_cc_emails')
+                    ->label('Invoice CC emails')
+                    ->formatStateUsing(fn (?array $state): string => filled($state) ? implode(', ', $state) : '—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('address')->label('Client Address')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                 ->badge()->color(fn (string $state): string => match ($state) {

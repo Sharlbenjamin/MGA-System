@@ -8,6 +8,10 @@
             $invoice = null;
         }
     }
+
+    $client = $invoice?->file?->patient?->client;
+    $toEmail = $client?->getInvoiceRecipientEmail();
+    $ccEmails = $client ? $client->getValidatedEmailList([]) : [];
     
     if ($invoice) {
         $gopTotal = $invoice->file->gops()->where('type', 'In')->sum('amount');
@@ -36,6 +40,14 @@
     <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
         <div class="space-y-2">
             <div>
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">To:</span>
+                <div class="text-sm text-gray-900 dark:text-gray-100 mt-1">{{ $toEmail ?? 'No recipient configured' }}</div>
+            </div>
+            <div>
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">CC:</span>
+                <div class="text-sm text-gray-900 dark:text-gray-100 mt-1">{{ $ccEmails !== [] ? implode(', ', $ccEmails) : 'None' }}</div>
+            </div>
+            <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Subject:</span>
                 <div class="text-sm text-gray-900 dark:text-gray-100 mt-1">{{ $subject }}</div>
             </div>
@@ -46,4 +58,3 @@
         </div>
     </div>
 </div>
-

@@ -5,11 +5,11 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 use App\Exports\BankStatementTransactionsExport;
 use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\ImportBankTransactionsAction;
 use App\Filament\Widgets\TransactionDocumentationStatsWidget;
 use App\Models\BankAccount;
 use App\Services\BulkTransactionPdfService;
 use App\Services\TransactionDocumentationStatsService;
-use App\Services\TransactionIntegrityService;
 use Carbon\Carbon;
 use Filament\Actions;
 use Filament\Forms\Components\Select;
@@ -86,6 +86,8 @@ class ListTransactions extends ListRecords
         $bankAccountId = $this->bankAccount->id;
 
         return [
+            ImportBankTransactionsAction::make($bankAccountId),
+            ImportBankTransactionsAction::downloadTemplateAction(),
             Actions\Action::make('bulkGeneratePdfs')
                 ->label('Bulk Generate PDFs')
                 ->icon('heroicon-o-document-plus')

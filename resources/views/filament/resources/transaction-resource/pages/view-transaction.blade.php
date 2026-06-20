@@ -217,7 +217,7 @@
                 
                 @if($this->record->notes)
                 <div class="md:col-span-2 lg:col-span-3">
-                    <label class="text-sm font-medium text-gray-500">Notes</label>
+                    <label class="text-sm font-medium text-gray-500">Comment</label>
                     <div class="text-sm">{{ $this->record->notes }}</div>
                 </div>
                 @endif

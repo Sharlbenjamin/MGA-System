@@ -80,16 +80,12 @@ class AdminPanelProvider extends PanelProvider
                 PrescriptionResource::class,
                 DrugResource::class,
                 BranchAvailabilityResource::class,
-                // Stages Resources
-                \App\Filament\Resources\FilesWithoutGopResource::class,
-                \App\Filament\Resources\GopWithoutDocsResource::class,
-                \App\Filament\Resources\FilesWithoutBillsResource::class,
-                \App\Filament\Resources\FilesWithoutInvoicesResource::class,
-                \App\Filament\Resources\FilesWithoutMRResource::class,
+                // Workflow pipeline (6 items)
+                \App\Filament\Resources\AssistedFileChecklistResource::class,
+                \App\Filament\Resources\InvoiceChecklistResource::class,
                 \App\Filament\Resources\BillsWithoutDocumentsResource::class,
-                \App\Filament\Resources\InvoicesWithoutDocsResource::class,
-                \App\Filament\Resources\BillWithoutTransactionResource::class,
-                \App\Filament\Resources\InvoicesWithoutTransactionResource::class,
+                \App\Filament\Resources\TransactionsOutWithoutBillsResource::class,
+                \App\Filament\Resources\TransactionsInWithoutInvoicesResource::class,
                 \App\Filament\Resources\TransactionsWithoutDocumentsResource::class,
             ])
 

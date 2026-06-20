@@ -123,7 +123,7 @@ class TransactionResource extends Resource
                 Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider')->searchable()->default(fn () => request()->get('related_id')),
                 Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch')->searchable()->default(fn () => request()->get('related_id')),
-                Forms\Components\Select::make('related_id')->label('Patient')->required()->options(Patient::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Patient')->searchable()->default(fn () => request()->get('related_id')),
+                Forms\Components\Select::make('related_id')->label('Patient')->required(fn (Get $get): bool => $get('type') === 'Income')->options(Patient::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Patient')->searchable()->default(fn () => request()->get('related_id')),
                 static::categorySelect(),
                 Forms\Components\Select::make('bank_account_id')
                     ->relationship('bankAccount', 'beneficiary_name', function ($query) {
@@ -372,7 +372,7 @@ class TransactionResource extends Resource
                 Forms\Components\TextInput::make('name')->required()->maxLength(255)->default(fn () => request()->get('name')),
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
-                Forms\Components\Textarea::make('notes')->columnSpanFull(),
+                Forms\Components\Textarea::make('notes')->label('Comment')->columnSpanFull(),
 
                 Forms\Components\TextInput::make('bank_charges')
                     ->numeric()
@@ -531,6 +531,12 @@ class TransactionResource extends Resource
                     ->searchable()
                     ->limit(25)
                     ->tooltip(fn (Transaction $record): ?string => $record->name),
+                Tables\Columns\TextColumn::make('notes')
+                    ->label('Comment')
+                    ->searchable()
+                    ->limit(20)
+                    ->tooltip(fn (Transaction $record): ?string => $record->notes)
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('related_type')
                     ->label('Type')
                     ->badge()
@@ -1044,6 +1050,8 @@ class TransactionResource extends Resource
                     'expense_payment' => [$set('type', 'Expense'), $set('bills', [])],
                     'card_provider', 'card_expense' => [$set('type', 'Outflow'), $set('bills', [])],
                     'provider_single', 'provider_bulk' => $set('type', 'Outflow'),
+                    'patient_refund' => [$set('type', 'Outflow'), $set('related_type', 'Patient'), $set('bills', [])],
+                    'capital_return' => [$set('type', 'Outflow'), $set('related_type', 'Other'), $set('bills', [])],
                     default => null,
                 };
 
@@ -1065,6 +1073,8 @@ class TransactionResource extends Resource
             'Outflow' => [
                 'Provider' => 'Provider',
                 'Branch' => 'Branch',
+                'Patient' => 'Patient',
+                'Other' => 'Other',
             ],
             'Expense' => [
                 'Lawyer' => 'Lawyer',

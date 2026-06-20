@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Bill;
 use App\Models\Invoice;
 use App\Models\Transaction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class TransactionDocumentationService
@@ -313,6 +314,8 @@ class TransactionDocumentationService
             'provider_bulk' => $this->providerBillTasks($transaction, requireTrxOutPdf: true),
             'card_expense' => $this->receiptTasks($transaction, 'card_receipt', 'Missing card payment receipt.'),
             'expense_payment' => $this->receiptTasks($transaction, 'expense_receipt', 'Missing expense receipt/invoice.'),
+            'patient_refund' => $this->receiptTasks($transaction, 'expense_receipt', 'Missing patient refund transfer proof.'),
+            'capital_return' => $this->receiptTasks($transaction, 'expense_receipt', 'Missing capital return transfer proof.'),
             default => $this->legacyTasksForType($transaction),
         };
     }
@@ -630,5 +633,50 @@ class TransactionDocumentationService
         $normalized = Str::lower(trim($value));
 
         return $normalized === '' ? null : $normalized;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function documentTaskKeys(): array
+    {
+        return [
+            'missing_card_receipt',
+            'missing_expense_receipt',
+            'missing_invoice_documents',
+            'missing_bill_documents',
+            'missing_trx_in_pdf',
+            'missing_trx_out_pdf',
+        ];
+    }
+
+    public function hasPendingDocumentTasks(Transaction $transaction): bool
+    {
+        return collect($this->getMissingTasks($transaction))
+            ->where('status', 'pending')
+            ->contains(fn (array $task): bool => in_array($task['key'], self::documentTaskKeys(), true));
+    }
+
+    public static function scopeWithPendingDocumentTasks(Builder $query): Builder
+    {
+        return $query->whereIn('documentation_status', [
+            'missing_attachment',
+            'missing_generated_pdf',
+            'incomplete',
+        ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function pendingDocumentTaskLabels(Transaction $transaction): array
+    {
+        return collect($this->getMissingTasks($transaction))
+            ->where('status', 'pending')
+            ->filter(fn (array $task): bool => in_array($task['key'], self::documentTaskKeys(), true))
+            ->pluck('label')
+            ->map(fn (string $label): string => trim($label, '. '))
+            ->values()
+            ->all();
     }
 }

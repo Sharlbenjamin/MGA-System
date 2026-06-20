@@ -48,7 +48,67 @@ class TransactionIntegrityService
 
     public static function linkingStatusLabel(Transaction $transaction): string
     {
-        return self::hasInvoiceTotalMismatch($transaction) ? 'Amount mismatch' : 'OK';
+        if (self::hasInvoiceTotalMismatch($transaction)) {
+            return 'Amount mismatch';
+        }
+
+        if ($transaction->type === 'Income' && ! $transaction->relationLoaded('invoices')) {
+            $transaction->load('invoices');
+        }
+
+        if ($transaction->type === 'Income' && $transaction->invoices->isEmpty()) {
+            return 'Unlinked';
+        }
+
+        return 'OK';
+    }
+
+    public static function linkingIssueLabel(Transaction $transaction): string
+    {
+        return self::linkingStatusLabel($transaction);
+    }
+
+    public static function invoicesTotalFor(Transaction $transaction): float
+    {
+        if (! $transaction->relationLoaded('invoices')) {
+            $transaction->load('invoices');
+        }
+
+        return (float) $transaction->invoices->sum('total_amount');
+    }
+
+    public static function scopeIncomeUnlinkedOnly(Builder $query): Builder
+    {
+        return $query
+            ->where('type', 'Income')
+            ->doesntHave('invoices')
+            ->where(function (Builder $categoryQuery): void {
+                TransactionDocumentationStatsService::applyCategoryScope($categoryQuery, 'client_payment');
+            });
+    }
+
+    public static function scopeIncomeLinkIssues(Builder $query): Builder
+    {
+        return $query->where('type', 'Income')->where(function (Builder $scoped): void {
+            $scoped->where(fn (Builder $unlinked): Builder => self::scopeIncomeUnlinkedOnly($unlinked))
+                ->orWhere(fn (Builder $mismatch): Builder => self::applyInvoiceTotalMismatchScope($mismatch));
+        });
+    }
+
+    public static function scopeOutflowWithoutBills(Builder $query): Builder
+    {
+        return $query
+            ->where('type', 'Outflow')
+            ->doesntHave('bills')
+            ->whereNot(fn (Builder $excluded): Builder => TransactionDocumentationStatsService::applyCategoryScope($excluded, 'patient_refund'))
+            ->whereNot(fn (Builder $excluded): Builder => TransactionDocumentationStatsService::applyCategoryScope($excluded, 'capital_return'))
+            ->where(function (Builder $scoped): void {
+                foreach (['provider_single', 'provider_bulk', 'card_provider'] as $category) {
+                    $scoped->orWhere(function (Builder $categoryQuery) use ($category): void {
+                        TransactionDocumentationStatsService::applyCategoryScope($categoryQuery, $category);
+                    });
+                }
+            });
     }
 
     public function scopedInvoicesForBankAccount(int $bankAccountId): Builder

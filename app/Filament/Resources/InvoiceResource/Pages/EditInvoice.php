@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Mail\SendInvoiceToClient;
+use App\Support\ClientEmailRecipients;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\UploadInvoiceToGoogleDrive;
@@ -200,6 +201,34 @@ class EditInvoice extends EditRecord
                             return null;
                         }),
                     
+                    Forms\Components\Placeholder::make('recipient_preview')
+                        ->label('To')
+                        ->content(function (): string {
+                            $client = $this->record->file?->patient?->client;
+
+                            return $client?->getInvoiceRecipientEmail() ?? 'No recipient configured';
+                        }),
+
+                    Forms\Components\Placeholder::make('cc_preview')
+                        ->label('CC (from client)')
+                        ->content(function (): string {
+                            $client = $this->record->file?->patient?->client;
+
+                            if (! $client) {
+                                return 'None';
+                            }
+
+                            $cc = $client->getValidatedEmailList([]);
+
+                            return $cc !== [] ? implode(', ', $cc) : 'None';
+                        }),
+
+                    Forms\Components\TagsInput::make('extra_cc_emails')
+                        ->label('Extra CC (this send only)')
+                        ->placeholder('Add email and press Enter')
+                        ->splitKeys(['Tab', ',', ' '])
+                        ->nestedRecursiveRules(['email']),
+
                     Forms\Components\View::make('email_preview')
                         ->view('filament.forms.components.invoice-email-preview')
                         ->viewData([
@@ -409,17 +438,37 @@ class EditInvoice extends EditRecord
                         ],
                     ]);
                     
-                    // Get recipient email from client
-                    $recipientEmail = $client->email ?? null;
+                    // Get recipient email from client (financial contact aware)
+                    $recipientEmail = $client->getInvoiceRecipientEmail();
                     
                     if (!$recipientEmail) {
                         Notification::make()
                             ->title('No Email Found')
-                            ->body('The client does not have an email address configured.')
+                            ->body('The client does not have a financial email address configured.')
                             ->danger()
                             ->send();
                         return;
                     }
+
+                    $extraCc = is_array($data['extra_cc_emails'] ?? null)
+                        ? $data['extra_cc_emails']
+                        : [];
+                    $ccValidation = ClientEmailRecipients::validateList(
+                        array_merge($client->getInvoiceCcEmails(), $extraCc),
+                        $recipientEmail,
+                    );
+
+                    if ($ccValidation['invalid'] !== []) {
+                        Notification::make()
+                            ->title('Invalid CC email(s)')
+                            ->body('Please check: '.implode(', ', $ccValidation['invalid']))
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    $ccEmails = $ccValidation['valid'];
                     
                         // Send email
                         try {
@@ -437,19 +486,24 @@ class EditInvoice extends EditRecord
                             Log::info('Sending email', [
                                 'mailer' => $mailer,
                                 'recipient' => $recipientEmail,
+                                'cc' => $ccEmails,
                                 'attachments_array' => $attachmentsArray,
                             ]);
                             
-                            Mail::mailer($mailer)->to($recipientEmail)->send(
-                                new SendInvoiceToClient($invoice, $attachmentsArray, $emailBody)
-                            );
+                            $mail = Mail::mailer($mailer)->to($recipientEmail);
+
+                            if ($ccEmails !== []) {
+                                $mail->cc($ccEmails);
+                            }
+
+                            $mail->send(new SendInvoiceToClient($invoice, $attachmentsArray, $emailBody));
 
                             $invoice->update(['status' => 'Sent']);
                             $this->record->refresh();
                             
                             Notification::make()
                                 ->title('Invoice Sent')
-                                ->body('Invoice has been sent to the client and status updated to Sent.')
+                                ->body('Invoice has been sent to '.$recipientEmail.($ccEmails !== [] ? ' with CC recipients.' : '.'))
                                 ->success()
                                 ->send();
                         } catch (\Exception $e) {
