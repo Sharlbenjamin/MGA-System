@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ShouldBePaidResource\Pages;
 use App\Filament\Resources\BillResource\Pages\EditBill;
+use App\Filament\Resources\TransactionResource;
 use App\Models\Bill;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -15,10 +16,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Grouping\Group;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class ShouldBePaidResource extends Resource
 {
@@ -232,56 +231,37 @@ class ShouldBePaidResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-                Tables\Actions\BulkAction::make('create_payment')
-                    ->label('Create Payment Transaction')
+                Tables\Actions\BulkAction::make('create_draft_payment')
+                    ->label('Create draft payment')
                     ->icon('heroicon-o-currency-euro')
                     ->color('success')
                     ->action(function ($records) {
-                        Log::info('Bulk action function called', [
-                            'records_count' => $records ? $records->count() : 0,
-                            'records_null' => $records === null
-                        ]);
-                        
-                        // Check if records is null or empty
-                        if (!$records || $records->isEmpty()) {
+                        if (! $records || $records->isEmpty()) {
                             return redirect()->route('filament.admin.resources.transactions.create');
                         }
-                        
-                        // Get the first bill to determine the provider
+
                         $firstBill = $records->first();
-                        if (!$firstBill) {
+                        if (! $firstBill) {
                             return redirect()->route('filament.admin.resources.transactions.create');
                         }
-                        
-                        $labels = collect(Bill::compactPaymentReasonLabels($records));
-                        if ($labels->count() > 3) {
-                            $name = 'Payment for ' . $labels->take(3)->implode(', ') . ' and ' . ($labels->count() - 3) . ' more';
-                        } else {
-                            $name = Bill::formatPaymentReasonSentence($records);
-                        }
-                        
-                        // Create URL with pre-filled parameters
+
+                        $billCount = $records->count();
                         $params = [
                             'type' => 'Outflow',
-                            'related_type' => 'Provider',
-                            'related_id' => $firstBill->provider_id,
-                            'amount' => $records->sum(function ($bill) {
-                                return $bill->total_amount - $bill->paid_amount;
-                            }),
+                            'related_type' => $firstBill->branch_id ? 'Branch' : 'Provider',
+                            'related_id' => $firstBill->branch_id ?? $firstBill->provider_id,
+                            'amount' => $records->sum(fn (Bill $bill) => $bill->total_amount - $bill->paid_amount),
                             'date' => now()->format('Y-m-d'),
-                            'name' => $name,
-                            'bill_ids' => $records->pluck('id')->implode(',')
+                            'bill_ids' => $records->pluck('id')->implode(','),
+                            'status' => 'Draft',
+                            'documentation_category' => $billCount >= 2 ? 'provider_bulk' : 'provider_single',
                         ];
-                        
-                        $baseUrl = route('filament.admin.resources.transactions.create');
-                        $url = $baseUrl . '?' . http_build_query($params);
-                        
-                        Log::info('Transaction create URL:', [
-                            'url' => $url,
-                            'params' => $params
-                        ]);
-                        
-                        return redirect()->away($url);
+
+                        if ($firstBill->bank_account_id) {
+                            $params['bank_account_id'] = $firstBill->bank_account_id;
+                        }
+
+                        return redirect()->away(TransactionResource::getUrl('create', $params));
                     }),
             ]);
     }

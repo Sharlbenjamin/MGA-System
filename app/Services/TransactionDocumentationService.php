@@ -50,10 +50,6 @@ class TransactionDocumentationService
 
     public function recalculateDocumentationStatus(Transaction $transaction): void
     {
-        if ($transaction->documentation_status === 'revised') {
-            return;
-        }
-
         $status = $this->resolveDocumentationStatus($transaction);
 
         if ($transaction->documentation_status !== $status) {
@@ -165,7 +161,6 @@ class TransactionDocumentationService
         return match ($status) {
             'complete' => 'Complete (ready for taxes)',
             'incomplete' => 'Incomplete',
-            'revised' => 'Revised',
             'unlinked' => 'Unlinked',
             'missing_attachment' => 'Missing attachment',
             'missing_linked_record' => 'Unlinked',
@@ -176,10 +171,6 @@ class TransactionDocumentationService
 
     public function getDocumentationStatusColor(Transaction $transaction): string
     {
-        if ($transaction->documentation_status === 'revised') {
-            return 'info';
-        }
-
         return match ($this->resolveDocumentationStatus($transaction)) {
             'complete' => 'success',
             'incomplete' => 'warning',
@@ -194,10 +185,6 @@ class TransactionDocumentationService
 
     public function getDocumentationColumnSummary(Transaction $transaction): string
     {
-        if ($transaction->documentation_status === 'revised') {
-            return 'Revised';
-        }
-
         $pending = collect($this->getMissingTasks($transaction))
             ->where('status', 'pending')
             ->pluck('label')
@@ -553,6 +540,84 @@ class TransactionDocumentationService
     public function billHasDocument(Bill $bill): bool
     {
         return (bool) ($bill->bill_document_path || $bill->bill_google_link);
+    }
+
+    public function supportsTrxInPdfGeneration(Transaction $transaction): bool
+    {
+        return $this->resolvedCategory($transaction) === 'client_payment';
+    }
+
+    public function supportsTrxOutPdfGeneration(Transaction $transaction): bool
+    {
+        return $this->resolvedCategory($transaction) === 'provider_bulk';
+    }
+
+    public function undocumentedBillsSummary(Transaction $transaction): string
+    {
+        $transaction->loadMissing('bills');
+
+        return $transaction->bills
+            ->filter(fn (Bill $bill) => ! $this->billHasDocument($bill))
+            ->map(fn (Bill $bill) => $bill->name.' — edit bill to upload document')
+            ->implode("\n");
+    }
+
+    public function undocumentedInvoicesSummary(Transaction $transaction): string
+    {
+        $transaction->loadMissing('invoices');
+
+        return $transaction->invoices
+            ->filter(fn (Invoice $invoice) => ! $this->invoiceHasDocument($invoice))
+            ->map(fn (Invoice $invoice) => $invoice->name.' — edit invoice to upload document')
+            ->implode("\n");
+    }
+
+    public function getTrxInBlockedMessage(Transaction $transaction): ?string
+    {
+        if (! $this->supportsTrxInPdfGeneration($transaction) || $this->canGenerateTrxIn($transaction)) {
+            return null;
+        }
+
+        return $this->appendDocumentSummary(
+            $this->getTrxInSkipReason($transaction) ?? 'Cannot generate Trx In PDF yet.',
+            $transaction,
+            'missing_invoice_documents',
+        );
+    }
+
+    public function getTrxOutBlockedMessage(Transaction $transaction): ?string
+    {
+        if (! $this->supportsTrxOutPdfGeneration($transaction) || $this->canGenerateTrxOut($transaction)) {
+            return null;
+        }
+
+        return $this->appendDocumentSummary(
+            $this->getTrxOutSkipReason($transaction) ?? 'Cannot generate Trx Out PDF yet.',
+            $transaction,
+            'missing_bill_documents',
+        );
+    }
+
+    protected function appendDocumentSummary(string $reason, Transaction $transaction, string $documentTaskKey): string
+    {
+        $pendingKeys = collect($this->getMissingTasks($transaction))
+            ->where('status', 'pending')
+            ->pluck('key')
+            ->all();
+
+        if (! in_array($documentTaskKey, $pendingKeys, true)) {
+            return $reason;
+        }
+
+        $summary = $documentTaskKey === 'missing_bill_documents'
+            ? $this->undocumentedBillsSummary($transaction)
+            : $this->undocumentedInvoicesSummary($transaction);
+
+        if ($summary === '') {
+            return $reason;
+        }
+
+        return $reason."\n\n".$summary;
     }
 
     public function canGenerateTrxIn(Transaction $transaction): bool

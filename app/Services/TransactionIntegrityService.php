@@ -8,6 +8,16 @@ use Illuminate\Database\Eloquent\Builder;
 
 class TransactionIntegrityService
 {
+    public static function effectiveIncomeAmountFor(Transaction $transaction): float
+    {
+        return (float) $transaction->amount + (float) ($transaction->bank_charges ?? 0);
+    }
+
+    public static function invoiceAmountDifferenceFor(Transaction $transaction): float
+    {
+        return self::effectiveIncomeAmountFor($transaction) - self::invoicesTotalFor($transaction);
+    }
+
     public static function hasInvoiceTotalMismatch(Transaction $transaction): bool
     {
         if ($transaction->type !== 'Income') {
@@ -22,13 +32,13 @@ class TransactionIntegrityService
             return false;
         }
 
-        $invoiceTotal = (float) $transaction->invoices->sum('total_amount');
+        $invoiceTotal = self::invoicesTotalFor($transaction);
 
         if ($invoiceTotal <= 0) {
             return false;
         }
 
-        return abs((float) $transaction->amount - $invoiceTotal) >= 0.01;
+        return abs(self::invoiceAmountDifferenceFor($transaction)) >= 0.01;
     }
 
     public static function invoiceTotalMismatchTooltip(Transaction $transaction): ?string
@@ -37,11 +47,14 @@ class TransactionIntegrityService
             return null;
         }
 
-        $invoiceTotal = (float) $transaction->invoices->sum('total_amount');
+        $invoiceTotal = self::invoicesTotalFor($transaction);
+        $effectiveAmount = self::effectiveIncomeAmountFor($transaction);
 
         return sprintf(
-            'Transaction €%s · Invoices total €%s',
+            'Transaction €%s (amount €%s + bank charges €%s) · Invoices total €%s',
+            number_format($effectiveAmount, 2),
             number_format((float) $transaction->amount, 2),
+            number_format((float) ($transaction->bank_charges ?? 0), 2),
             number_format($invoiceTotal, 2),
         );
     }
@@ -172,12 +185,7 @@ class TransactionIntegrityService
         return (clone $query)
             ->where('type', 'Income')
             ->whereHas('invoices')
-            ->whereRaw('ABS(transactions.amount - (
-                SELECT COALESCE(SUM(invoices.total_amount), 0)
-                FROM invoice_transaction
-                JOIN invoices ON invoices.id = invoice_transaction.invoice_id
-                WHERE invoice_transaction.transaction_id = transactions.id
-            )) >= 0.01')
+            ->whereRaw(self::invoiceTotalMismatchSql())
             ->count();
     }
 
@@ -186,12 +194,17 @@ class TransactionIntegrityService
         return $query
             ->where('type', 'Income')
             ->whereHas('invoices')
-            ->whereRaw('ABS(transactions.amount - (
+            ->whereRaw(self::invoiceTotalMismatchSql());
+    }
+
+    protected static function invoiceTotalMismatchSql(): string
+    {
+        return 'ABS((transactions.amount + COALESCE(transactions.bank_charges, 0)) - (
                 SELECT COALESCE(SUM(invoices.total_amount), 0)
                 FROM invoice_transaction
                 JOIN invoices ON invoices.id = invoice_transaction.invoice_id
                 WHERE invoice_transaction.transaction_id = transactions.id
-            )) >= 0.01');
+            )) >= 0.01';
     }
 
     public static function applyPaidInvoiceAmountMismatchScope(Builder $query): Builder

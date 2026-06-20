@@ -6,7 +6,6 @@ use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManager;
 use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
 use App\Filament\Support\TransactionDocumentationForm;
-use App\Filament\Support\TransactionReviewForm;
 use App\Models\BankAccount;
 use App\Models\Bill;
 use App\Models\Client;
@@ -73,7 +72,7 @@ class TransactionResource extends Resource
             return null;
         }
 
-        $count = Transaction::query()->where('documentation_status', '!=', 'revised')->count();
+        $count = Transaction::query()->where('documentation_status', '!=', 'complete')->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -368,7 +367,35 @@ class TransactionResource extends Resource
                     ])
                     ->visible(fn ($get) => $get('type') === 'Outflow' && in_array($get('related_type'), ['Provider', 'Branch']))
                     ->collapsible()
-                    ->collapsed(false),
+                    ->collapsed(false)
+                    ->hiddenOn('edit'),
+                Forms\Components\Select::make('status')
+                    ->label('Payment status')
+                    ->options([
+                        'Completed' => 'Completed',
+                        'Draft' => 'Draft (awaiting bank)',
+                        'Pending' => 'Pending',
+                    ])
+                    ->default(fn () => request()->get('status', 'Completed'))
+                    ->required()
+                    ->helperText(fn (Get $get): ?string => $get('status') === 'Draft'
+                        ? 'Draft — awaiting bank statement confirmation. Bills will not be marked paid until you finalize.'
+                        : null)
+                    ->visible(fn ($livewire) => $livewire instanceof Pages\CreateTransaction),
+                Forms\Components\Placeholder::make('draft_payment_notice')
+                    ->label('Draft payment')
+                    ->content('This is a draft payment awaiting bank statement confirmation. Enter the transaction name manually or update it after import.')
+                    ->visible(fn (Get $get, $livewire): bool => $livewire instanceof Pages\CreateTransaction && $get('status') === 'Draft')
+                    ->columnSpanFull(),
+                Forms\Components\Placeholder::make('payment_status_display')
+                    ->label('Payment status')
+                    ->content(fn (?Transaction $record): string => match ($record?->status) {
+                        'Draft' => 'Draft (awaiting bank) — bills are not marked paid until you confirm payment.',
+                        'Pending' => 'Pending',
+                        default => 'Completed',
+                    })
+                    ->visible(fn ($livewire, ?Transaction $record): bool => $livewire instanceof Pages\EditTransaction && $record?->status === 'Draft')
+                    ->columnSpanFull(),
                 Forms\Components\TextInput::make('name')->required()->maxLength(255)->default(fn () => request()->get('name')),
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
@@ -468,16 +495,6 @@ class TransactionResource extends Resource
                         })->prepend('Progress: '.$done.' of '.count($tasks).' complete')->implode("\n");
                     })
                     ->columnSpanFull(),
-                Forms\Components\Toggle::make('mark_as_revised')
-                    ->label('Mark as revised')
-                    ->helperText('Temporary review flag. Preserved until you turn this off or reset documentation status.')
-                    ->afterStateHydrated(function (Forms\Components\Toggle $component, $state, ?Transaction $record): void {
-                        if ($record?->exists) {
-                            $component->state($record->documentation_status === 'revised');
-                        }
-                    })
-                    ->dehydrated(true)
-                    ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction || $livewire instanceof Pages\CreateTransaction),
                 Forms\Components\Placeholder::make('reference_display')
                     ->label('Reference')
                     ->content(fn (?Transaction $record) => $record?->reference ?? '—'),
@@ -571,14 +588,17 @@ class TransactionResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Payment status')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'Draft' => 'Draft (awaiting bank)',
+                        default => $state ?? '—',
+                    })
                     ->badge()
                     ->colors([
                         'Draft' => 'gray',
                         'Completed' => 'success',
                         'Pending' => 'warning',
                     ])
-                    ->placeholder('—')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->placeholder('—'),
                 Tables\Columns\TextColumn::make('documentation_label')
                     ->label('Category')
                     ->getStateUsing(fn (Transaction $record) => TransactionDocumentationStatsService::categoryLabel(
@@ -652,7 +672,6 @@ class TransactionResource extends Resource
                         'unlinked' => 'Unlinked',
                         'complete' => 'Complete (ready for taxes)',
                         'incomplete' => 'Incomplete',
-                        'revised' => 'Revised',
                         'missing_attachment' => 'Missing attachment',
                         'missing_generated_pdf' => 'Missing PDF',
                     ])
@@ -667,11 +686,6 @@ class TransactionResource extends Resource
                     ->toggle()
                     ->query(fn (Builder $query): Builder => TransactionIntegrityService::applyPaidInvoiceAmountMismatchScope($query))
                     ->indicateUsing(fn (): array => ['data_integrity_paid_invoice' => 'Paid invoice amount mismatch']),
-                Tables\Filters\Filter::make('not_revised')
-                    ->label('Not revised')
-                    ->toggle()
-                    ->query(fn (Builder $query): Builder => $query->where('documentation_status', '!=', 'revised'))
-                    ->indicateUsing(fn (): array => ['not_revised' => 'Not revised']),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Payment status')
                     ->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])
@@ -710,15 +724,14 @@ class TransactionResource extends Resource
                     ->openUrlInNewTab()
                     ->visible(fn (Transaction $record) => (bool) $record->getTrxOutPdfUrl()),
                 Tables\Actions\EditAction::make(),
-                TransactionReviewForm::makeTableAction(),
                 Action::make('finalizeTransaction')
-                    ->label('Finalize Transaction')
+                    ->label('Confirm payment (finalize)')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Finalize Transaction')
-                    ->modalDescription('This will mark all attached bills as paid and complete the transaction. This action cannot be undone.')
-                    ->modalSubmitActionLabel('Finalize')
+                    ->modalHeading('Confirm payment')
+                    ->modalDescription('This will mark all attached bills as paid and complete the transaction. Use after the bank statement confirms the payment.')
+                    ->modalSubmitActionLabel('Confirm payment')
                     ->visible(fn ($record) => $record->status === 'Draft')
                     ->action(function ($record) {
                         try {
@@ -726,8 +739,8 @@ class TransactionResource extends Resource
 
                             Notification::make()
                                 ->success()
-                                ->title('Transaction Finalized')
-                                ->body('Transaction has been finalized and bills have been marked as paid.')
+                                ->title('Payment confirmed')
+                                ->body('Transaction finalized and bills marked as paid.')
                                 ->send();
 
                         } catch (\Exception $e) {
@@ -741,22 +754,6 @@ class TransactionResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('markRevised')
-                        ->label('Mark as revised')
-                        ->icon('heroicon-o-check-badge')
-                        ->color('info')
-                        ->requiresConfirmation()
-                        ->action(function (\Illuminate\Database\Eloquent\Collection $records): void {
-                            $records->each(fn (Transaction $record) => $record->update([
-                                'documentation_status' => 'revised',
-                            ]));
-
-                            Notification::make()
-                                ->success()
-                                ->title('Marked as revised')
-                                ->body($records->count().' transaction(s) marked as revised.')
-                                ->send();
-                        }),
                     Tables\Actions\BulkAction::make('generatePdfs')
                         ->label('Generate PDFs')
                         ->icon('heroicon-o-document-plus')
@@ -1024,6 +1021,7 @@ class TransactionResource extends Resource
             ))
             ->required()
             ->live()
+            ->default(fn () => request()->get('documentation_category'))
             ->afterStateHydrated(function (Forms\Components\Select $component, $state, ?Transaction $record, Get $get): void {
                 if ($record?->exists) {
                     $component->state(

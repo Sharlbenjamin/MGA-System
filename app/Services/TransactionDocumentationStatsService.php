@@ -81,10 +81,7 @@ class TransactionDocumentationStatsService
 
     public static function resolveCategoryKey(Transaction $transaction): string
     {
-        if (
-            Schema::hasColumn('transactions', 'documentation_category')
-            && filled($transaction->documentation_category)
-        ) {
+        if (filled($transaction->documentation_category)) {
             return $transaction->documentation_category;
         }
 
@@ -401,7 +398,6 @@ class TransactionDocumentationStatsService
             'missing_generated_pdf',
             'incomplete',
             'complete',
-            'revised',
         ];
     }
 

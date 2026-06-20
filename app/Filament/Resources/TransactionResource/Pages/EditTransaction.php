@@ -5,7 +5,6 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionDocumentationForm;
-use App\Filament\Support\TransactionReviewForm;
 use App\Services\GenerateTrxInPdfService;
 use App\Services\GenerateTrxOutPdfService;
 use App\Services\TransactionDocumentationService;
@@ -56,21 +55,12 @@ class EditTransaction extends EditRecord
     {
         $data['updated_by'] = Auth::id();
 
-        $markAsRevised = ! empty($data['mark_as_revised']);
-        $wasRevised = $this->record->documentation_status === 'revised';
-
-        if ($markAsRevised) {
-            $data['documentation_status'] = 'revised';
-        } elseif ($wasRevised) {
-            $data['documentation_status'] = 'incomplete';
-        }
-
         $this->relatedTypeForSync = $data['related_type'] ?? $this->record->related_type;
         $this->billsToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
         $this->invoicesToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? null;
 
-        unset($data['bills'], $data['invoices'], $data['mark_as_revised']);
+        unset($data['bills'], $data['invoices']);
 
         if (blank($data['documentation_category'] ?? null)) {
             $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
@@ -102,32 +92,66 @@ class EditTransaction extends EditRecord
             $statsService->syncInvoices($transaction, $this->invoicesToSync);
         }
 
-        if ($transaction->fresh()->documentation_status !== 'revised') {
-            app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
-        }
+        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
     }
 
     protected function getHeaderActions(): array
     {
-        return [
-            TransactionReviewForm::makeHeaderAction(),
-            TransactionDocumentationForm::makeHeaderAction(),
-            Action::make('resetDocumentationStatus')
-                ->label('Reset documentation status')
-                ->icon('heroicon-o-arrow-path')
-                ->color('gray')
-                ->visible(fn () => $this->record->documentation_status === 'revised')
-                ->requiresConfirmation()
-                ->modalDescription('Recalculate documentation status from the checklist. This clears the revised review mark.')
-                ->action(function (): void {
-                    $this->record->update(['documentation_status' => 'incomplete']);
-                    app(TransactionDocumentationService::class)->syncAndRecalculate($this->record->fresh());
-                    $this->refreshFormData(['documentation_status', 'mark_as_revised']);
+        $docService = app(TransactionDocumentationService::class);
 
-                    Notification::make()
-                        ->success()
-                        ->title('Documentation status recalculated')
-                        ->send();
+        return [
+            TransactionDocumentationForm::makeHeaderAction(),
+            Action::make('trxInPdfBlocked')
+                ->label(fn (): string => 'Trx In PDF: '.($docService->getTrxInSkipReason($this->record) ?? 'Not ready'))
+                ->icon('heroicon-o-exclamation-triangle')
+                ->color('warning')
+                ->visible(fn (): bool => (bool) $docService->getTrxInBlockedMessage($this->record))
+                ->modalHeading('Trx In PDF not ready')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Close')
+                ->modalContent(fn (): \Illuminate\Contracts\View\View => view('filament.modals.plain-text', [
+                    'text' => $docService->getTrxInBlockedMessage($this->record),
+                ])),
+            Action::make('generateTrxInPdf')
+                ->label(fn (): string => $this->record->trx_in_pdf_path ? 'Regenerate Trx In PDF' : 'Generate Trx In PDF')
+                ->icon('heroicon-o-arrow-path')
+                ->visible(fn (): bool => $docService->canGenerateTrxIn($this->record))
+                ->action(function () use ($docService): void {
+                    if (! $docService->canGenerateTrxIn($this->record)) {
+                        Notification::make()->warning()->title('Cannot generate Trx In PDF')->body($docService->getTrxInSkipReason($this->record))->send();
+
+                        return;
+                    }
+
+                    app(GenerateTrxInPdfService::class)->generate($this->record);
+                    $docService->syncAndRecalculate($this->record->fresh());
+                    $this->refreshFormData(['trx_in_pdf_path', 'documentation_status']);
+                }),
+            Action::make('trxOutPdfBlocked')
+                ->label(fn (): string => 'Trx Out PDF: '.($docService->getTrxOutSkipReason($this->record) ?? 'Not ready'))
+                ->icon('heroicon-o-exclamation-triangle')
+                ->color('warning')
+                ->visible(fn (): bool => (bool) $docService->getTrxOutBlockedMessage($this->record))
+                ->modalHeading('Trx Out PDF not ready')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Close')
+                ->modalContent(fn (): \Illuminate\Contracts\View\View => view('filament.modals.plain-text', [
+                    'text' => $docService->getTrxOutBlockedMessage($this->record),
+                ])),
+            Action::make('generateTrxOutPdf')
+                ->label(fn (): string => $this->record->trx_out_pdf_path ? 'Regenerate Trx Out PDF' : 'Generate Trx Out PDF')
+                ->icon('heroicon-o-arrow-path')
+                ->visible(fn (): bool => $docService->canGenerateTrxOut($this->record))
+                ->action(function () use ($docService): void {
+                    if (! $docService->canGenerateTrxOut($this->record)) {
+                        Notification::make()->warning()->title('Cannot generate Trx Out PDF')->body($docService->getTrxOutSkipReason($this->record))->send();
+
+                        return;
+                    }
+
+                    app(GenerateTrxOutPdfService::class)->generate($this->record);
+                    $docService->syncAndRecalculate($this->record->fresh());
+                    $this->refreshFormData(['trx_out_pdf_path', 'documentation_status']);
                 }),
             Action::make('viewTrxInPdf')
                 ->label('View Trx In PDF')
@@ -143,21 +167,32 @@ class EditTransaction extends EditRecord
                 ->url(fn () => $this->record->getTrxOutPdfUrl())
                 ->openUrlInNewTab()
                 ->visible(fn () => (bool) $this->record->getTrxOutPdfUrl()),
-            Action::make('regenerateTrxInPdf')
-                ->label('Regenerate Trx In PDF')
-                ->icon('heroicon-o-arrow-path')
-                ->visible(fn () => $this->record->type === 'Income')
-                ->action(function () {
-                    app(GenerateTrxInPdfService::class)->generate($this->record);
-                    $this->refreshFormData(['trx_in_pdf_path', 'documentation_status']);
-                }),
-            Action::make('regenerateTrxOutPdf')
-                ->label('Regenerate Trx Out PDF')
-                ->icon('heroicon-o-arrow-path')
-                ->visible(fn () => $this->record->type === 'Outflow' && $this->record->bills()->exists())
-                ->action(function () {
-                    app(GenerateTrxOutPdfService::class)->generate($this->record);
-                    $this->refreshFormData(['trx_out_pdf_path', 'documentation_status']);
+            Action::make('finalizeTransaction')
+                ->label('Confirm payment (finalize)')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('Confirm payment')
+                ->modalDescription('Mark attached bills as paid and complete this transaction. Use after the bank statement confirms the payment.')
+                ->modalSubmitActionLabel('Confirm payment')
+                ->visible(fn () => $this->record->status === 'Draft')
+                ->action(function (): void {
+                    try {
+                        $this->record->finalizeTransaction();
+                        $this->refreshFormData(['status', 'documentation_status']);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Payment confirmed')
+                            ->body('Transaction finalized and bills marked as paid.')
+                            ->send();
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Finalization failed')
+                            ->body($e->getMessage())
+                            ->send();
+                    }
                 }),
             Action::make('viewDocument')
                 ->label('View Document')

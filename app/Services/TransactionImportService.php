@@ -153,9 +153,7 @@ class TransactionImportService
 
                     $transaction = $transaction->fresh();
 
-                    if (! $this->isMarkRevised($row)) {
-                        $docService->syncAndRecalculate($transaction);
-                    }
+                    $docService->syncAndRecalculate($transaction);
 
                     $imported++;
                 });
@@ -348,7 +346,7 @@ class TransactionImportService
             'charges_covered_by_client' => $this->parseBoolean($row['charges_covered_by_client'] ?? null),
             'status' => filled($row['payment_status'] ?? null) ? (string) $row['payment_status'] : 'Completed',
             'documentation_category' => $category,
-            'documentation_status' => $this->isMarkRevised($row) ? 'revised' : 'incomplete',
+            'documentation_status' => 'incomplete',
             'import_batch_id' => $batchId,
             'created_by' => $userId,
             'updated_by' => $userId,
@@ -610,13 +608,6 @@ class TransactionImportService
         return $reference !== '' ? $reference : null;
     }
 
-    /**
-     * @param  array<string, mixed>  $row
-     */
-    protected function isMarkRevised(array $row): bool
-    {
-        return $this->parseBoolean($row['mark_revised'] ?? null);
-    }
 
     protected function parseDecimal(mixed $value): ?float
     {

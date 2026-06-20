@@ -35,7 +35,6 @@ class TransactionImportColumnMap
         'bill_names',
         'bill_amounts_paid',
         'receipt_url',
-        'mark_revised',
     ];
 
     /**
@@ -126,8 +125,6 @@ class TransactionImportColumnMap
 
         'receipt_url' => 'receipt_url',
         'attachment' => 'receipt_url',
-
-        'mark_revised' => 'mark_revised',
     ];
 
     /**

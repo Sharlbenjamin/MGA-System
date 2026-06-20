@@ -22,7 +22,7 @@ class CreateTransaction extends CreateRecord
 
     protected ?string $documentationCategory = null;
 
-    protected bool $markAsRevised = false;
+    protected bool $isDraftPayment = false;
 
     protected bool $redirectToEditForInvoices = false;
 
@@ -45,7 +45,7 @@ class CreateTransaction extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        if ($this->redirectToEditForInvoices || $this->invoicesToAttach !== [] || $this->billsToAttach !== []) {
+        if ($this->redirectToEditForInvoices || $this->invoicesToAttach !== [] || $this->billsToAttach !== [] || $this->isDraftPayment) {
             return static::getResource()::getUrl('edit', ['record' => $this->record]);
         }
 
@@ -62,11 +62,10 @@ class CreateTransaction extends CreateRecord
     {
         $this->billsToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
         $this->invoicesToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
-        $this->documentationCategory = $data['documentation_category'] ?? null;
-        $this->markAsRevised = ! empty($data['mark_as_revised']);
+        $this->documentationCategory = $data['documentation_category'] ?? request()->get('documentation_category');
         $this->redirectToEditForInvoices = $this->invoicesToAttach !== [] || $this->billsToAttach !== [];
 
-        unset($data['bills'], $data['invoices'], $data['mark_as_revised']);
+        unset($data['bills'], $data['invoices']);
 
         if (blank($data['documentation_category'] ?? null)) {
             $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
@@ -75,9 +74,13 @@ class CreateTransaction extends CreateRecord
             );
         }
 
+        $requestedStatus = request()->get('status') ?? $data['status'] ?? 'Completed';
+        $data['status'] = $requestedStatus === 'Draft' ? 'Draft' : ($data['status'] ?? 'Completed');
+        $this->isDraftPayment = $data['status'] === 'Draft';
+
         $data['created_by'] = Auth::id();
         $data['updated_by'] = Auth::id();
-        $data['documentation_status'] = $this->markAsRevised ? 'revised' : ($data['documentation_status'] ?? 'incomplete');
+        $data['documentation_status'] = 'incomplete';
 
         return $data;
     }
@@ -98,7 +101,11 @@ class CreateTransaction extends CreateRecord
             );
             $transaction = $transaction->fresh();
         } elseif (in_array($transaction->related_type, ['Provider', 'Branch'], true)) {
-            $statsService->syncBills($transaction, $this->billsToAttach);
+            if ($this->isDraftPayment && $this->billsToAttach !== []) {
+                $transaction->attachBillsForDraft($this->billsToAttach);
+            } else {
+                $statsService->syncBills($transaction, $this->billsToAttach);
+            }
         }
 
         if ($transaction->related_type === 'Client' && $this->invoicesToAttach !== []) {
@@ -107,11 +114,15 @@ class CreateTransaction extends CreateRecord
             $statsService->syncInvoices($transaction, $this->invoicesToAttach);
         }
 
-        if (! $this->markAsRevised) {
-            app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
-        }
+        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
 
-        if ($this->invoicesToAttach !== []) {
+        if ($this->isDraftPayment) {
+            Notification::make()
+                ->title('Draft payment created')
+                ->body('Bills are linked but not marked paid until you confirm the bank statement and finalize.')
+                ->info()
+                ->send();
+        } elseif ($this->invoicesToAttach !== []) {
             Notification::make()
                 ->title('Set paid amount per invoice')
                 ->body('Review and adjust paid amounts for each linked invoice in the Invoices tab.')

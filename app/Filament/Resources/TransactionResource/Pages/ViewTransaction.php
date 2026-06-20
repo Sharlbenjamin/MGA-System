@@ -4,7 +4,6 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
-use App\Filament\Support\TransactionReviewForm;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\Transaction;
@@ -34,7 +33,6 @@ class ViewTransaction extends ViewRecord
     {
         return [
             Actions\EditAction::make(),
-            TransactionReviewForm::makeHeaderAction(),
             Action::make('viewTrxInPdf')
                 ->label('View Trx In PDF')
                 ->icon('heroicon-o-document-text')

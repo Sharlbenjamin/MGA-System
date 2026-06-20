@@ -60,9 +60,14 @@ class TransactionsInWithoutInvoicesResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('amount')
-                    ->label('Transaction amount')
+                    ->label('Amount (net)')
                     ->money('EUR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('bank_charges')
+                    ->label('Bank charges')
+                    ->money('EUR')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('invoices_total')
                     ->label('Invoices total')
                     ->getStateUsing(fn (Transaction $record): string => $record->invoices()->exists()
@@ -75,7 +80,7 @@ class TransactionsInWithoutInvoicesResource extends Resource
                             return '—';
                         }
 
-                        $diff = (float) $record->amount - TransactionIntegrityService::invoicesTotalFor($record);
+                        $diff = TransactionIntegrityService::invoiceAmountDifferenceFor($record);
 
                         return '€'.number_format($diff, 2);
                     })

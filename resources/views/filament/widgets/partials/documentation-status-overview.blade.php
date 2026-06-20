@@ -32,9 +32,7 @@
                     ? 'text-gray-400 dark:text-gray-500'
                     : (in_array($status['key'], ['complete'], true)
                         ? 'text-success-600 dark:text-success-400'
-                        : (in_array($status['key'], ['revised'], true)
-                            ? 'text-info-600 dark:text-info-400'
-                            : 'text-warning-600 dark:text-warning-400'));
+                        : 'text-warning-600 dark:text-warning-400');
             @endphp
             <span class="{{ $isZero ? 'text-gray-400 dark:text-gray-500' : '' }}">
                 {{ $status['label'] }}

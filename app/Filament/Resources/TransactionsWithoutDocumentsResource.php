@@ -152,8 +152,9 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ->label('Generate Trx In PDF')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
-                    ->visible(fn (Transaction $record): bool => collect($docService->getMissingTasks($record))
-                        ->contains(fn (array $task): bool => $task['key'] === 'missing_trx_in_pdf' && $task['status'] === 'pending'))
+                    ->visible(fn (Transaction $record): bool => $docService->canGenerateTrxIn($record)
+                        && collect($docService->getMissingTasks($record))
+                            ->contains(fn (array $task): bool => $task['key'] === 'missing_trx_in_pdf' && $task['status'] === 'pending'))
                     ->requiresConfirmation()
                     ->action(function (Transaction $record) use ($docService): void {
                         if (! $docService->canGenerateTrxIn($record)) {
@@ -170,8 +171,9 @@ class TransactionsWithoutDocumentsResource extends Resource
                     ->label('Generate Trx Out PDF')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
-                    ->visible(fn (Transaction $record): bool => collect($docService->getMissingTasks($record))
-                        ->contains(fn (array $task): bool => $task['key'] === 'missing_trx_out_pdf' && $task['status'] === 'pending'))
+                    ->visible(fn (Transaction $record): bool => $docService->canGenerateTrxOut($record)
+                        && collect($docService->getMissingTasks($record))
+                            ->contains(fn (array $task): bool => $task['key'] === 'missing_trx_out_pdf' && $task['status'] === 'pending'))
                     ->requiresConfirmation()
                     ->action(function (Transaction $record) use ($docService): void {
                         if (! $docService->canGenerateTrxOut($record)) {
