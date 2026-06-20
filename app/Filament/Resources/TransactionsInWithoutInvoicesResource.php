@@ -69,9 +69,9 @@ class TransactionsInWithoutInvoicesResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('invoices_total')
-                    ->label('Invoices total')
+                    ->label('Linked paid')
                     ->getStateUsing(fn (Transaction $record): string => $record->invoices()->exists()
-                        ? '€'.number_format(TransactionIntegrityService::invoicesTotalFor($record), 2)
+                        ? '€'.number_format(TransactionIntegrityService::invoicesPaidTotalFor($record), 2)
                         : '—'),
                 Tables\Columns\TextColumn::make('difference')
                     ->label('Difference')

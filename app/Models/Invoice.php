@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToOneThrough;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Traits\LogsActivity;
+use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
 {
@@ -161,7 +162,27 @@ class Invoice extends Model
 
     public function getRemaining_AmountAttribute(): float
     {
-        return $this->total_amount - ($this->paid_amount ?? 0);
+        return $this->remainingBalance();
+    }
+
+    public function totalPaidFromTransactions(): float
+    {
+        return (float) DB::table('invoice_transaction')
+            ->where('invoice_id', $this->id)
+            ->sum('amount_paid');
+    }
+
+    public function remainingBalance(): float
+    {
+        $remaining = (float) $this->total_amount - $this->totalPaidFromTransactions();
+
+        return max(0, round($remaining, 2));
+    }
+
+    public function recalculatePaidAmountFromTransactions(): void
+    {
+        $this->paid_amount = $this->totalPaidFromTransactions();
+        $this->checkStatus();
     }
 
     public function getIsPaidAttribute(): bool

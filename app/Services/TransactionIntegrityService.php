@@ -15,7 +15,7 @@ class TransactionIntegrityService
 
     public static function invoiceAmountDifferenceFor(Transaction $transaction): float
     {
-        return self::effectiveIncomeAmountFor($transaction) - self::invoicesTotalFor($transaction);
+        return self::effectiveIncomeAmountFor($transaction) - self::invoicesPaidTotalFor($transaction);
     }
 
     public static function hasInvoiceTotalMismatch(Transaction $transaction): bool
@@ -32,9 +32,9 @@ class TransactionIntegrityService
             return false;
         }
 
-        $invoiceTotal = self::invoicesTotalFor($transaction);
+        $linkedPaid = self::invoicesPaidTotalFor($transaction);
 
-        if ($invoiceTotal <= 0) {
+        if ($linkedPaid <= 0) {
             return false;
         }
 
@@ -47,15 +47,15 @@ class TransactionIntegrityService
             return null;
         }
 
-        $invoiceTotal = self::invoicesTotalFor($transaction);
+        $linkedPaid = self::invoicesPaidTotalFor($transaction);
         $effectiveAmount = self::effectiveIncomeAmountFor($transaction);
 
         return sprintf(
-            'Transaction €%s (amount €%s + bank charges €%s) · Invoices total €%s',
+            'Transaction €%s (amount €%s + bank charges €%s) · Linked paid €%s',
             number_format($effectiveAmount, 2),
             number_format((float) $transaction->amount, 2),
             number_format((float) ($transaction->bank_charges ?? 0), 2),
-            number_format($invoiceTotal, 2),
+            number_format($linkedPaid, 2),
         );
     }
 
@@ -81,13 +81,21 @@ class TransactionIntegrityService
         return self::linkingStatusLabel($transaction);
     }
 
-    public static function invoicesTotalFor(Transaction $transaction): float
+    public static function invoicesPaidTotalFor(Transaction $transaction): float
     {
         if (! $transaction->relationLoaded('invoices')) {
             $transaction->load('invoices');
         }
 
-        return (float) $transaction->invoices->sum('total_amount');
+        return (float) $transaction->invoices->sum(
+            fn (Invoice $invoice): float => (float) ($invoice->pivot->amount_paid ?? 0)
+        );
+    }
+
+    /** @deprecated Use invoicesPaidTotalFor() for linking checks */
+    public static function invoicesTotalFor(Transaction $transaction): float
+    {
+        return self::invoicesPaidTotalFor($transaction);
     }
 
     public static function scopeIncomeUnlinkedOnly(Builder $query): Builder
@@ -200,9 +208,8 @@ class TransactionIntegrityService
     protected static function invoiceTotalMismatchSql(): string
     {
         return 'ABS((transactions.amount + COALESCE(transactions.bank_charges, 0)) - (
-                SELECT COALESCE(SUM(invoices.total_amount), 0)
+                SELECT COALESCE(SUM(invoice_transaction.amount_paid), 0)
                 FROM invoice_transaction
-                JOIN invoices ON invoices.id = invoice_transaction.invoice_id
                 WHERE invoice_transaction.transaction_id = transactions.id
             )) >= 0.01';
     }

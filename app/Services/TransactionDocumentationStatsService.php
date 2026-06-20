@@ -202,17 +202,7 @@ class TransactionDocumentationStatsService
      */
     public function syncInvoices(Transaction $transaction, array $invoiceIds): void
     {
-        $sync = [];
-
-        foreach ($invoiceIds as $invoiceId) {
-            $invoice = Invoice::find($invoiceId);
-
-            if ($invoice) {
-                $sync[$invoiceId] = ['amount_paid' => $invoice->total_amount];
-            }
-        }
-
-        $transaction->invoices()->sync($sync);
+        $this->applyInvoiceSync($transaction, $invoiceIds, prefillWhenTotalsMatch: false);
     }
 
     /**
@@ -220,29 +210,81 @@ class TransactionDocumentationStatsService
      */
     public function syncInvoicesWithInitialAmounts(Transaction $transaction, array $invoiceIds): void
     {
-        $invoices = Invoice::query()->whereIn('id', $invoiceIds)->get();
-        $sumTotals = (float) $invoices->sum('total_amount');
-        $matchTotal = abs($sumTotals - (float) $transaction->amount) < 0.01;
+        $this->applyInvoiceSync($transaction, $invoiceIds, prefillWhenTotalsMatch: true);
+    }
+
+    /**
+     * @param  array<int, int|string>  $invoiceIds
+     * @return array<int, array{amount_paid: float}>
+     */
+    public function resolveInvoiceSyncAmounts(Transaction $transaction, array $invoiceIds, bool $prefillWhenTotalsMatch = false): array
+    {
+        $invoiceIds = self::normalizeLinkIds($invoiceIds);
+        $invoices = Invoice::query()->whereIn('id', $invoiceIds)->get()->keyBy('id');
+        $existing = $transaction->exists
+            ? $transaction->invoices()->get()->keyBy('id')
+            : collect();
 
         $sync = [];
 
         foreach ($invoiceIds as $invoiceId) {
-            $invoice = $invoices->firstWhere('id', (int) $invoiceId);
+            $invoice = $invoices->get($invoiceId);
 
-            if ($invoice) {
+            if (! $invoice) {
+                continue;
+            }
+
+            if ($existing->has($invoiceId)) {
                 $sync[$invoiceId] = [
-                    'amount_paid' => $matchTotal ? (float) $invoice->total_amount : 0,
+                    'amount_paid' => (float) ($existing[$invoiceId]->pivot->amount_paid ?? 0),
+                ];
+
+                continue;
+            }
+
+            if (! $prefillWhenTotalsMatch) {
+                $sync[$invoiceId] = [
+                    'amount_paid' => min($invoice->remainingBalance(), (float) $invoice->total_amount),
                 ];
             }
         }
 
+        if ($prefillWhenTotalsMatch) {
+            $sumRemaining = (float) $invoices->sum(fn (Invoice $invoice): float => $invoice->remainingBalance());
+            $matchTotal = abs(
+                $sumRemaining - TransactionIntegrityService::effectiveIncomeAmountFor($transaction)
+            ) < 0.01;
+
+            foreach ($invoiceIds as $invoiceId) {
+                if ($existing->has($invoiceId)) {
+                    continue;
+                }
+
+                $invoice = $invoices->get($invoiceId);
+
+                if (! $invoice) {
+                    continue;
+                }
+
+                $sync[$invoiceId] = [
+                    'amount_paid' => $matchTotal ? $invoice->remainingBalance() : 0,
+                ];
+            }
+        }
+
+        return $sync;
+    }
+
+    /**
+     * @param  array<int, int|string>  $invoiceIds
+     */
+    protected function applyInvoiceSync(Transaction $transaction, array $invoiceIds, bool $prefillWhenTotalsMatch): void
+    {
+        $sync = $this->resolveInvoiceSyncAmounts($transaction, $invoiceIds, $prefillWhenTotalsMatch);
         $transaction->invoices()->sync($sync);
 
-        foreach ($invoices as $invoice) {
-            $paidAmount = $sync[$invoice->id]['amount_paid'] ?? 0;
-            $invoice->paid_amount = $paidAmount;
-            $invoice->save();
-            $invoice->checkStatus();
+        foreach (Invoice::query()->whereIn('id', array_keys($sync))->get() as $invoice) {
+            $invoice->recalculatePaidAmountFromTransactions();
         }
     }
 

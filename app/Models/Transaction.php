@@ -294,13 +294,8 @@ class Transaction extends Model
      */
     public function syncLinkedInvoicePayments()
     {
-        // Sync each linked invoice's paid_amount from the pivot (bank_charges are manual only).
         $this->invoices()->each(function ($invoice) {
-            $paidAmount = $invoice->pivot->amount_paid ?? 0;
-            $invoice->paid_amount = $paidAmount;
-            $invoice->save();
-
-            $invoice->checkStatus();
+            $invoice->recalculatePaidAmountFromTransactions();
         });
     }
 
@@ -317,17 +312,11 @@ class Transaction extends Model
             if ($invoice) {
                 // Check if the invoice is already attached
                 if (!$this->invoices()->where('invoice_id', $invoice->id)->exists()) {
-                    // Attach with the full invoice amount as paid_amount
                     $this->invoices()->attach($invoice->id, [
-                        'amount_paid' => $invoice->total_amount
+                        'amount_paid' => min($invoice->remainingBalance(), (float) $invoice->total_amount),
                     ]);
 
-                    // Update invoice paid_amount
-                    $invoice->paid_amount = $invoice->total_amount;
-                    $invoice->save();
-
-                    // Update invoice status
-                    $invoice->checkStatus();
+                    $invoice->recalculatePaidAmountFromTransactions();
                 }
             }
         }
@@ -344,15 +333,7 @@ class Transaction extends Model
             'amount_paid' => $amount
         ]);
 
-        // Update the invoice's paid_amount
-        $invoice->paid_amount = $amount;
-        $invoice->save();
-
-        // Update invoice status
-        $invoice->checkStatus();
-
-        // Sync linked invoice payments
-        $this->syncLinkedInvoicePayments();
+        $invoice->recalculatePaidAmountFromTransactions();
     }
 
     public function attachBills(array $billIds)

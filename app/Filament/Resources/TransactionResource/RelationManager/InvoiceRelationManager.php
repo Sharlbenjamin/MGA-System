@@ -9,7 +9,6 @@ use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceRelationManager extends RelationManager
@@ -32,7 +31,11 @@ class InvoiceRelationManager extends RelationManager
                 $query->select(
                     'invoices.*',
                     'invoice_transaction.amount_paid',
-                    DB::raw('(invoices.total_amount - COALESCE(invoice_transaction.amount_paid, 0)) as remaining_amount')
+                    DB::raw('(invoices.total_amount - COALESCE((
+                        SELECT SUM(it.amount_paid)
+                        FROM invoice_transaction it
+                        WHERE it.invoice_id = invoices.id
+                    ), 0)) as remaining_amount')
                 )
             )
             ->columns([
@@ -66,36 +69,35 @@ class InvoiceRelationManager extends RelationManager
                             })
                     )
                     ->afterStateUpdated(function (Model $record, $state) {
-                        $total = $record->total_amount;
-                        $paid = floatval($state);
+                        $paid = round(floatval($state), 2);
+                        $currentPivot = (float) DB::table('invoice_transaction')
+                            ->where('invoice_id', $record->id)
+                            ->where('transaction_id', $this->ownerRecord->id)
+                            ->value('amount_paid');
+                        $maxAllowed = round((float) $record->total_amount - ((float) $record->totalPaidFromTransactions() - $currentPivot), 2);
+                        $paid = min($paid, max(0, $maxAllowed));
 
-                        $status = match (true) {
-                            $paid >= $total => 'Paid',
-                            $paid > 0 && $paid < $total => 'Partial',
-                            default => 'Unpaid',
-                        };
-
-                        // Update the pivot table
                         DB::table('invoice_transaction')
                             ->where('invoice_id', $record->id)
                             ->where('transaction_id', $this->ownerRecord->id)
                             ->update(['amount_paid' => $paid]);
 
-                        // Update the invoice status
-                        $record->status = $status;
-                        $record->save();
-
-                        // Refresh the record to get updated values
+                        $record->recalculatePaidAmountFromTransactions();
                         $record->refresh();
                     }),
 
                 TextColumn::make('remaining_amount')
+                    ->label('Invoice remaining')
                     ->money('EUR')
                     ->summarize(
                         Sum::make()
                             ->query(function ($query) {
                                 return $query instanceof Builder
-                                    ? $query->selectRaw('SUM(invoices.total_amount - transactions.amount)')
+                                    ? $query->selectRaw('SUM(invoices.total_amount - COALESCE((
+                                        SELECT SUM(it.amount_paid)
+                                        FROM invoice_transaction it
+                                        WHERE it.invoice_id = invoices.id
+                                    ), 0))')
                                     : $query->selectRaw('SUM(remaining_amount)');
                             })
                             ->money('EUR')

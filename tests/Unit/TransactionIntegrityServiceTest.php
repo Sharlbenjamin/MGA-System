@@ -24,7 +24,7 @@ class TransactionIntegrityServiceTest extends TestCase
     }
 
     #[Test]
-    public function invoice_amount_difference_uses_amount_plus_bank_charges(): void
+    public function invoice_amount_difference_uses_pivot_amount_paid_not_invoice_total(): void
     {
         $transaction = new Transaction([
             'type' => 'Income',
@@ -32,16 +32,33 @@ class TransactionIntegrityServiceTest extends TestCase
             'bank_charges' => 5,
         ]);
 
-        $transaction->setRelation('invoices', collect([
-            new Invoice(['total_amount' => 105]),
-        ]));
+        $invoice = new Invoice(['total_amount' => 500]);
+        $invoice->pivot = (object) ['amount_paid' => 105];
+        $transaction->setRelation('invoices', collect([$invoice]));
 
         $this->assertSame(0.0, TransactionIntegrityService::invoiceAmountDifferenceFor($transaction));
         $this->assertFalse(TransactionIntegrityService::hasInvoiceTotalMismatch($transaction));
     }
 
     #[Test]
-    public function invoice_amount_difference_detects_mismatch_when_bank_charges_ignored_would_false_positive(): void
+    public function partial_invoice_link_does_not_mismatch_when_pivot_matches_transaction(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Income',
+            'amount' => 600,
+            'bank_charges' => 0,
+        ]);
+
+        $invoice = new Invoice(['total_amount' => 1000]);
+        $invoice->pivot = (object) ['amount_paid' => 600];
+        $transaction->setRelation('invoices', collect([$invoice]));
+
+        $this->assertSame(600.0, TransactionIntegrityService::invoicesPaidTotalFor($transaction));
+        $this->assertFalse(TransactionIntegrityService::hasInvoiceTotalMismatch($transaction));
+    }
+
+    #[Test]
+    public function invoice_amount_difference_detects_mismatch_when_pivot_does_not_match_effective_amount(): void
     {
         $transaction = new Transaction([
             'type' => 'Income',
@@ -49,9 +66,9 @@ class TransactionIntegrityServiceTest extends TestCase
             'bank_charges' => 5,
         ]);
 
-        $transaction->setRelation('invoices', collect([
-            new Invoice(['total_amount' => 100]),
-        ]));
+        $invoice = new Invoice(['total_amount' => 100]);
+        $invoice->pivot = (object) ['amount_paid' => 100];
+        $transaction->setRelation('invoices', collect([$invoice]));
 
         $this->assertTrue(TransactionIntegrityService::hasInvoiceTotalMismatch($transaction));
         $this->assertSame(5.0, TransactionIntegrityService::invoiceAmountDifferenceFor($transaction));

@@ -914,7 +914,7 @@ class TransactionResource extends Resource
         }
 
         $query = static::billsBaseQueryForRelated($relatedType, $relatedId);
-        static::applyAvailableForTransactionScope($query, $transactionId);
+        static::applyAvailableBillForTransactionScope($query, $transactionId);
 
         return $query->orderByDesc('id')->get()
             ->mapWithKeys(fn (Bill $bill) => [
@@ -934,7 +934,7 @@ class TransactionResource extends Resource
         $query = Invoice::query()
             ->whereHas('patient', fn (Builder $q) => $q->where('client_id', $clientId));
 
-        static::applyAvailableForTransactionScope($query, $transactionId);
+        static::applyAvailableInvoiceForTransactionScope($query, $transactionId);
 
         return $query->orderByDesc('id')->get()
             ->mapWithKeys(fn (Invoice $invoice) => [
@@ -955,11 +955,13 @@ class TransactionResource extends Resource
     {
         $dateStr = $invoice->invoice_date?->format('d/m/Y') ?? '—';
         $amount = number_format((float) $invoice->total_amount, 2);
+        $remaining = number_format($invoice->remainingBalance(), 2);
+        $status = $invoice->status ?: 'Unpaid';
 
-        return "{$invoice->name} · {$dateStr} · €{$amount}";
+        return "{$invoice->name} · {$dateStr} · €{$amount} · {$status} · €{$remaining} left";
     }
 
-    protected static function applyAvailableForTransactionScope(Builder $query, ?int $transactionId): void
+    protected static function applyAvailableBillForTransactionScope(Builder $query, ?int $transactionId): void
     {
         $query->where(function (Builder $q) use ($transactionId) {
             $q->whereDoesntHave('transactions');
@@ -967,6 +969,27 @@ class TransactionResource extends Resource
                 $q->orWhereHas('transactions', fn (Builder $t) => $t->where('transactions.id', $transactionId));
             }
         });
+    }
+
+    protected static function applyAvailableInvoiceForTransactionScope(Builder $query, ?int $transactionId): void
+    {
+        $query->where(function (Builder $q) use ($transactionId) {
+            $q->whereRaw('invoices.total_amount - COALESCE((
+                SELECT SUM(it.amount_paid)
+                FROM invoice_transaction it
+                WHERE it.invoice_id = invoices.id
+            ), 0) >= 0.01');
+
+            if ($transactionId) {
+                $q->orWhereHas('transactions', fn (Builder $t) => $t->where('transactions.id', $transactionId));
+            }
+        });
+    }
+
+    /** @deprecated Use applyAvailableBillForTransactionScope or applyAvailableInvoiceForTransactionScope */
+    protected static function applyAvailableForTransactionScope(Builder $query, ?int $transactionId): void
+    {
+        static::applyAvailableBillForTransactionScope($query, $transactionId);
     }
 
     protected static function billsBaseQueryForRelated(string $relatedType, int $relatedId): Builder

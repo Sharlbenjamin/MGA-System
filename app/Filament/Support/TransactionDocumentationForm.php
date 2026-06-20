@@ -13,6 +13,7 @@ use App\Models\TransactionAttachment;
 use App\Services\GenerateTrxInPdfService;
 use App\Services\GenerateTrxOutPdfService;
 use App\Services\TransactionDocumentationService;
+use App\Services\TransactionDocumentationStatsService;
 use Filament\Forms;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
@@ -182,14 +183,8 @@ class TransactionDocumentationForm
         }
 
         if (! empty($data['invoices'])) {
-            $sync = [];
-            foreach ($data['invoices'] as $invoiceId) {
-                $invoice = Invoice::find($invoiceId);
-                if ($invoice) {
-                    $sync[$invoiceId] = ['amount_paid' => $invoice->total_amount];
-                }
-            }
-            $record->invoices()->sync($sync);
+            app(TransactionDocumentationStatsService::class)
+                ->syncInvoicesWithInitialAmounts($record, $data['invoices']);
         }
 
         if (! empty($data['bills'])) {
