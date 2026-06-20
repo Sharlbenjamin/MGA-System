@@ -181,8 +181,36 @@ class Invoice extends Model
 
     public function recalculatePaidAmountFromTransactions(): void
     {
-        $this->paid_amount = $this->totalPaidFromTransactions();
-        $this->checkStatus();
+        $paidAmount = round($this->totalPaidFromTransactions(), 2);
+        $totalAmount = (float) $this->total_amount;
+
+        $status = match (true) {
+            $paidAmount >= $totalAmount => 'Paid',
+            $paidAmount > 0 => 'Partial',
+            default => 'Unpaid',
+        };
+
+        $paymentDate = $this->payment_date;
+        if ($status === 'Unpaid') {
+            $paymentDate = null;
+        } elseif ($this->status !== $status || round((float) $this->paid_amount, 2) !== $paidAmount) {
+            $transaction = $this->transactions()->first();
+            $paymentDate = $transaction?->date ?? now();
+        }
+
+        if (
+            round((float) $this->paid_amount, 2) === $paidAmount
+            && $this->status === $status
+            && $this->payment_date == $paymentDate
+        ) {
+            return;
+        }
+
+        $this->forceFill([
+            'paid_amount' => $paidAmount,
+            'status' => $status,
+            'payment_date' => $paymentDate,
+        ])->save();
     }
 
     public function getIsPaidAttribute(): bool

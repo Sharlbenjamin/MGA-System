@@ -68,22 +68,19 @@ class InvoiceRelationManager extends RelationManager
                                     : $query->selectRaw('SUM(amount_paid)');
                             })
                     )
-                    ->afterStateUpdated(function (Model $record, $state) {
+                    ->updateStateUsing(function (Model $record, $state): float {
                         $paid = round(floatval($state), 2);
-                        $currentPivot = (float) DB::table('invoice_transaction')
+                        $currentPivot = (float) ($record->amount_paid ?? 0);
+                        $totalPaid = (float) DB::table('invoice_transaction')
                             ->where('invoice_id', $record->id)
-                            ->where('transaction_id', $this->ownerRecord->id)
-                            ->value('amount_paid');
-                        $maxAllowed = round((float) $record->total_amount - ((float) $record->totalPaidFromTransactions() - $currentPivot), 2);
+                            ->sum('amount_paid');
+                        $maxAllowed = round((float) $record->total_amount - ($totalPaid - $currentPivot), 2);
                         $paid = min($paid, max(0, $maxAllowed));
 
-                        DB::table('invoice_transaction')
-                            ->where('invoice_id', $record->id)
-                            ->where('transaction_id', $this->ownerRecord->id)
-                            ->update(['amount_paid' => $paid]);
+                        $this->ownerRecord->updateInvoicePaidAmount($record, $paid);
+                        $this->resetTable();
 
-                        $record->recalculatePaidAmountFromTransactions();
-                        $record->refresh();
+                        return $paid;
                     }),
 
                 TextColumn::make('remaining_amount')
@@ -113,7 +110,6 @@ class InvoiceRelationManager extends RelationManager
                     }),
             ])
             ->defaultSort('name')
-            ->paginated(false)
-            ->poll('10s');
+            ->paginated(false);
     }
 }
