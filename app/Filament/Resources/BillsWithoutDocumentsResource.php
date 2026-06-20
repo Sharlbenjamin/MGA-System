@@ -30,7 +30,12 @@ class BillsWithoutDocumentsResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::whereNull('bill_google_link')->orWhere('bill_google_link', '')->count();
+        return (string) static::getModel()::query()
+            ->where(function (Builder $query) {
+                $query->whereNull('bill_google_link')
+                    ->orWhere('bill_google_link', '');
+            })
+            ->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -79,15 +84,10 @@ class BillsWithoutDocumentsResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                $query->whereNull('bill_google_link')->orWhere('bill_google_link', '');
-                
-                // Add debugging to see what records are being loaded
-                Log::info('BillsWithoutDocuments query executed', [
-                    'sql' => $query->toSql(),
-                    'bindings' => $query->getBindings()
-                ]);
-                
-                return $query;
+                return $query->where(function (Builder $query) {
+                    $query->whereNull('bill_google_link')
+                        ->orWhere('bill_google_link', '');
+                });
             })
             ->columns([
                 Tables\Columns\TextColumn::make('file.mga_reference')
@@ -131,6 +131,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('due_date', 'asc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
@@ -146,72 +147,6 @@ class BillsWithoutDocumentsResource extends Resource
                     ->url(fn (Bill $record): string => route('filament.admin.resources.files.edit', $record->file))
                     ->icon('heroicon-o-eye')
                     ->label('View File'),
-                Action::make('test_modal')
-                    ->label('Test Modal')
-                    ->icon('heroicon-o-exclamation-triangle')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalHeading(fn (Bill $record): string => "Test Modal for {$record->file->mga_reference}")
-                    ->modalDescription(fn (Bill $record): string => "This is a test modal for record ID: {$record->id}")
-                    ->modalSubmitActionLabel('Test')
-                    ->action(function (Bill $record) {
-                        // Get the fresh record to ensure we have the latest data
-                        $freshRecord = Bill::with(['file.patient'])->find($record->id);
-                        
-                        if (!$freshRecord) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Record not found')
-                                ->body('The record could not be found.')
-                                ->send();
-                            return;
-                        }
-                        
-                        Log::info('Test modal action triggered for record:', [
-                            'record_id' => $freshRecord->id,
-                            'file_reference' => $freshRecord->file->mga_reference,
-                            'patient_name' => $freshRecord->file->patient->name ?? 'N/A'
-                        ]);
-                        
-                        Notification::make()
-                            ->success()
-                            ->title('Test Modal Working')
-                            ->body("Modal for record {$freshRecord->id} - File: {$freshRecord->file->mga_reference} - Patient: {$freshRecord->file->patient->name}")
-                            ->send();
-                    }),
-                Action::make('debug_record')
-                    ->label('Debug Record')
-                    ->icon('heroicon-o-information-circle')
-                    ->color('info')
-                    ->requiresConfirmation()
-                    ->modalHeading('Debug Information')
-                    ->modalDescription(fn (Bill $record): string => "Record ID: {$record->id}\nFile Reference: {$record->file->mga_reference}\nPatient: {$record->file->patient->name}")
-                    ->modalSubmitActionLabel('OK')
-                    ->action(function (Bill $record) {
-                        // Get the fresh record to ensure we have the latest data
-                        $freshRecord = Bill::with(['file.patient'])->find($record->id);
-                        
-                        if (!$freshRecord) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Record not found')
-                                ->body('The record could not be found.')
-                                ->send();
-                            return;
-                        }
-                        
-                        Log::info('Debug action triggered for record:', [
-                            'record_id' => $freshRecord->id,
-                            'file_reference' => $freshRecord->file->mga_reference,
-                            'patient_name' => $freshRecord->file->patient->name ?? 'N/A'
-                        ]);
-                        
-                        Notification::make()
-                            ->info()
-                            ->title('Debug Info')
-                            ->body("Record ID: {$freshRecord->id} - File: {$freshRecord->file->mga_reference} - Patient: {$freshRecord->file->patient->name}")
-                            ->send();
-                    }),
                 Action::make('upload_bill_doc')
                     ->label('Upload Bill Document')
                     ->icon('heroicon-o-document-arrow-up')
@@ -226,9 +161,11 @@ class BillsWithoutDocumentsResource extends Resource
                         Forms\Components\Select::make('selected_bill_id')
                             ->label('Select Bill to Upload')
                             ->options(function () {
-                                // Get all bills without documents
-                                $bills = \App\Models\Bill::whereNull('bill_google_link')
-                                    ->orWhere('bill_google_link', '')
+                                $bills = Bill::query()
+                                    ->where(function (Builder $query) {
+                                        $query->whereNull('bill_google_link')
+                                            ->orWhere('bill_google_link', '');
+                                    })
                                     ->with(['file.patient', 'provider', 'branch'])
                                     ->get();
                                 
