@@ -78,7 +78,7 @@ class ListTransactions extends ListRecords
     protected function getTableQuery(): ?Builder
     {
         return parent::getTableQuery()
-            ->where('bank_account_id', $this->bankAccount->id);
+            ->where('transactions.bank_account_id', $this->bankAccount->id);
     }
 
     protected function getHeaderActions(): array

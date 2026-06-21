@@ -540,7 +540,7 @@ class TransactionResource extends Resource
                     && (bool) call_user_func([$user, 'hasAnyRole'], $privilegedRoles);
 
                 if (! $canViewAllTypes) {
-                    $query->where('type', 'Outflow');
+                    $query->where('transactions.type', 'Outflow');
                 }
 
                 return $query;
@@ -551,19 +551,31 @@ class TransactionResource extends Resource
                     ->date()
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('transactions.date', $direction)),
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(
+                        'transactions.name',
+                        'like',
+                        "%{$search}%",
+                    ))
                     ->limit(25)
                     ->tooltip(fn (Transaction $record): ?string => $record->name),
                 Tables\Columns\TextColumn::make('notes')
                     ->label('Comment')
-                    ->searchable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(
+                        'transactions.notes',
+                        'like',
+                        "%{$search}%",
+                    ))
                     ->limit(20)
                     ->tooltip(fn (Transaction $record): ?string => $record->notes)
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('related_type')
                     ->label('Type')
                     ->badge()
-                    ->searchable(),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(
+                        'transactions.related_type',
+                        'like',
+                        "%{$search}%",
+                    )),
                 Tables\Columns\TextColumn::make('related_party')
                     ->label('Related to')
                     ->getStateUsing(fn (Transaction $record): ?string => $record->related_party_label ?? $record->getRelatedPartyLabel())
@@ -590,7 +602,12 @@ class TransactionResource extends Resource
                     ->badge()
                     ->color(fn (?string $state): string => TransactionDocumentationService::colorForStatusKey($state))
                     ->sortable(),
-                Tables\Columns\TextColumn::make('type')->searchable()
+                Tables\Columns\TextColumn::make('type')
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(
+                        'transactions.type',
+                        'like',
+                        "%{$search}%",
+                    ))
                     ->color(fn ($record) => match ($record->type) {
                         'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',
                     })->badge(),
