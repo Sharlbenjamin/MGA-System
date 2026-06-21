@@ -754,6 +754,46 @@ class TransactionResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\BulkAction::make('updateProvider')
+                        ->label('Update provider')
+                        ->icon('heroicon-o-building-office')
+                        ->form([
+                            Forms\Components\Select::make('related_type')
+                                ->label('Link as')
+                                ->options([
+                                    'Provider' => 'Provider',
+                                    'Branch' => 'Branch',
+                                ])
+                                ->default('Provider')
+                                ->required()
+                                ->live(),
+                            Forms\Components\Select::make('related_id')
+                                ->label(fn (Get $get): string => $get('related_type') === 'Branch' ? 'Branch' : 'Provider')
+                                ->options(fn (Get $get): array => match ($get('related_type')) {
+                                    'Branch' => ProviderBranch::query()->orderBy('branch_name')->pluck('branch_name', 'id')->all(),
+                                    default => Provider::query()->orderBy('name')->pluck('name', 'id')->all(),
+                                })
+                                ->searchable()
+                                ->required(),
+                        ])
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data): void {
+                            $relatedType = $data['related_type'];
+                            $relatedId = (int) $data['related_id'];
+
+                            foreach ($records as $transaction) {
+                                $transaction->update([
+                                    'related_type' => $relatedType,
+                                    'related_id' => $relatedId,
+                                ]);
+                            }
+
+                            Notification::make()
+                                ->success()
+                                ->title('Provider updated')
+                                ->body('Updated '.$records->count().' transaction(s).')
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                     Tables\Actions\BulkAction::make('generatePdfs')
                         ->label('Generate PDFs')
                         ->icon('heroicon-o-document-plus')
