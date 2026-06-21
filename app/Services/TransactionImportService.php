@@ -76,9 +76,9 @@ class TransactionImportService
      *     preview_rows: array<int, array<string, mixed>>
      * }
      */
-    public function preview(Collection $rows, int $bankAccountId): array
+    public function preview(Collection $rows, int $bankAccountId, bool $skipInFileDuplicates = true): array
     {
-        $classified = $this->classifyRows($rows, $bankAccountId);
+        $classified = $this->classifyRows($rows, $bankAccountId, $skipInFileDuplicates);
 
         $errors = [];
 
@@ -122,9 +122,10 @@ class TransactionImportService
         string $filename,
         ?int $userId = null,
         bool $metadataOnly = false,
+        bool $skipInFileDuplicates = true,
     ): array {
         $userId ??= Auth::id();
-        $classified = $this->classifyRows($rows, $bankAccountId);
+        $classified = $this->classifyRows($rows, $bankAccountId, $skipInFileDuplicates);
 
         $batch = TransactionImportBatch::query()->create([
             'filename' => $filename,
@@ -188,7 +189,7 @@ class TransactionImportService
      *     invalid: Collection<int, array<string, mixed>>
      * }
      */
-    public function classifyRows(Collection $rows, int $bankAccountId): array
+    public function classifyRows(Collection $rows, int $bankAccountId, bool $skipInFileDuplicates = true): array
     {
         $new = collect();
         $duplicatesExisting = collect();
@@ -208,7 +209,7 @@ class TransactionImportService
 
             $key = $this->rowFingerprint($row);
 
-            if (isset($seenKeys[$key])) {
+            if ($skipInFileDuplicates && isset($seenKeys[$key])) {
                 $duplicatesInFile->push($row);
 
                 continue;

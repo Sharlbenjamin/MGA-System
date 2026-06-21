@@ -15,6 +15,7 @@ class ImportTrxOutTransactions extends Command
                             {file : Absolute path to TRX Out .xlsx export}
                             {bankAccount? : Bank account ID (optional with --preview)}
                             {--preview : Parse and classify only; skip DB write}
+                            {--allow-in-file-duplicates : Import every parsed row, even when date/amount/reference match another row in the file}
                             {--force-type= : Force all rows to Outflow or Expense}
                             {--force-category= : Force documentation_category on all rows}';
 
@@ -86,8 +87,10 @@ class ImportTrxOutTransactions extends Command
             $this->warn("{$formulaCategoryRows} row(s) had unevaluated Excel category formulas; categories were inferred from bank Item text.");
         }
 
+        $allowInFileDuplicates = (bool) $this->option('allow-in-file-duplicates');
+
         $preview = $bankAccountId !== null
-            ? $importService->preview($rows, (int) $bankAccountId)
+            ? $importService->preview($rows, (int) $bankAccountId, skipInFileDuplicates: ! $allowInFileDuplicates)
             : $this->offlinePreview($rows);
 
         $this->newLine();
@@ -149,6 +152,7 @@ class ImportTrxOutTransactions extends Command
             basename($path),
             null,
             metadataOnly: true,
+            skipInFileDuplicates: ! $allowInFileDuplicates,
         );
 
         $this->newLine();
