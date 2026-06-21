@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Log;
 
 class Transaction extends Model
 {
+    /** @var array<int, array<int, int>> */
+    protected static array $invoiceIdsToRecalculateAfterDelete = [];
+
     protected $fillable = [
         'name',
         'bank_account_id',
@@ -157,9 +160,14 @@ class Transaction extends Model
         });
 
 
-        static::deleting(function ($transaction) {
+        static::deleting(function (Transaction $transaction) {
             try {
-                // un pay all the invoices or bills related to this transaction
+                $invoiceIds = $transaction->invoices()->pluck('invoices.id')->all();
+
+                if ($invoiceIds !== []) {
+                    static::$invoiceIdsToRecalculateAfterDelete[$transaction->id] = $invoiceIds;
+                }
+
                 if ($transaction->related_type === 'Invoice' && $transaction->related_id) {
                     Invoice::find($transaction->related_id)?->update(['status' => 'Unpaid']);
                 }
@@ -171,6 +179,26 @@ class Transaction extends Model
                     'transaction_id' => $transaction->id,
                     'related_type' => $transaction->related_type,
                     'related_id' => $transaction->related_id
+                ]);
+            }
+        });
+
+        static::deleted(function (Transaction $transaction) {
+            $invoiceIds = static::$invoiceIdsToRecalculateAfterDelete[$transaction->id] ?? [];
+            unset(static::$invoiceIdsToRecalculateAfterDelete[$transaction->id]);
+
+            if ($invoiceIds === []) {
+                return;
+            }
+
+            try {
+                foreach (Invoice::query()->whereIn('id', $invoiceIds)->get() as $invoice) {
+                    $invoice->recalculatePaidAmountFromTransactions();
+                }
+            } catch (\Exception $e) {
+                Log::error('Error recalculating invoices after transaction delete: ' . $e->getMessage(), [
+                    'transaction_id' => $transaction->id,
+                    'invoice_ids' => $invoiceIds,
                 ]);
             }
         });

@@ -117,6 +117,8 @@ class EditTransaction extends EditRecord
                     ->persistent()
                     ->send();
 
+                $this->refreshFormAfterSideEffects();
+
                 return;
             }
         } elseif ($billsChanged && in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
@@ -132,6 +134,16 @@ class EditTransaction extends EditRecord
         if ($needsRecalculate) {
             app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
         }
+
+        $this->refreshFormAfterSideEffects();
+    }
+
+    protected function refreshFormAfterSideEffects(): void
+    {
+        $this->record = $this->record->fresh();
+        $this->record->load(['invoices', 'bills']);
+        $this->fillForm();
+        $this->dispatch('refreshRelation');
     }
 
     protected function getHeaderActions(): array

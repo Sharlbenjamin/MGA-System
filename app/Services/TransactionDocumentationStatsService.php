@@ -281,10 +281,17 @@ class TransactionDocumentationStatsService
      */
     protected function applyInvoiceSync(Transaction $transaction, array $invoiceIds, bool $prefillWhenTotalsMatch): void
     {
+        $previousIds = $transaction->invoices()->pluck('invoices.id')->all();
         $sync = $this->resolveInvoiceSyncAmounts($transaction, $invoiceIds, $prefillWhenTotalsMatch);
         $transaction->invoices()->sync($sync);
 
-        foreach (Invoice::query()->whereIn('id', array_keys($sync))->get() as $invoice) {
+        $affectedIds = array_values(array_unique([...$previousIds, ...array_keys($sync)]));
+
+        if ($affectedIds === []) {
+            return;
+        }
+
+        foreach (Invoice::query()->whereIn('id', $affectedIds)->get() as $invoice) {
             $invoice->recalculatePaidAmountFromTransactions();
         }
     }

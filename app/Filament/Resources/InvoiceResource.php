@@ -10,6 +10,7 @@ use App\Models\Comment;
 use App\Models\Invoice;
 use App\Models\Patient;
 use Illuminate\Support\HtmlString;
+use App\Services\InvoiceSettlementIntegrityService;
 use App\Services\UploadInvoiceToGoogleDrive;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -33,6 +34,17 @@ class InvoiceResource extends Resource
     protected static ?string $navigationGroup = 'Ops';
     protected static ?string $recordTitleAttribute = 'name';
 
+    public static function getNavigationBadge(): ?string
+    {
+        $count = InvoiceSettlementIntegrityService::settlementIssueCount();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'danger';
+    }
 
     public static function form(Form $form): Form
     {
@@ -306,6 +318,15 @@ class InvoiceResource extends Resource
                     ->money('EUR')
                     ->sortable()
                     ->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
+                Tables\Columns\TextColumn::make('paid_from_transactions')
+                    ->label('Paid from transactions')
+                    ->state(fn (Invoice $record): float => InvoiceSettlementIntegrityService::pivotSumFor($record))
+                    ->money('EUR')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('linked_transactions_count')
+                    ->label('Linked transactions')
+                    ->counts('transactions')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('remaining_amount')
                     ->state(fn (Invoice $record) => $record->total_amount - $record->paid_amount)
                     ->money('EUR')
@@ -325,13 +346,16 @@ class InvoiceResource extends Resource
                         'Partial' => 'Partial',
                     ]),
 
-                Tables\Filters\Filter::make('paid_no_transaction')
-                    ->label('Paid, no transaction linked')
+                Tables\Filters\Filter::make('settlement_issue')
+                    ->label('Settlement issue')
                     ->toggle()
-                    ->query(fn (Builder $query): Builder => $query
-                        ->where('status', 'Paid')
-                        ->doesntHave('transactions'))
-                    ->indicateUsing(fn (): array => ['paid_no_transaction' => 'Paid, no transaction linked']),
+                    ->query(fn (Builder $query): Builder => InvoiceSettlementIntegrityService::applyIssuesScope($query))
+                    ->indicateUsing(fn (): array => ['settlement_issue' => 'Settlement issue']),
+                Tables\Filters\Filter::make('paid_no_transaction')
+                    ->label('Paid/Partial, no transaction linked')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => InvoiceSettlementIntegrityService::applyNoTransactionLinkScope($query))
+                    ->indicateUsing(fn (): array => ['paid_no_transaction' => 'Paid/Partial, no transaction linked']),
                 Tables\Filters\Filter::make('draft_or_posted')
                     ->form([
                         Forms\Components\Checkbox::make('show_draft_posted')
