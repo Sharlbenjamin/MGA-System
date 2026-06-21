@@ -66,7 +66,7 @@ class InvoiceUnlinkRecalculationTest extends TestCase
         );
 
         $this->assertSame(
-            'no_transaction_link',
+            InvoiceSettlementIntegrityService::ISSUE_NO_TRANSACTION_LINK,
             InvoiceSettlementIntegrityService::describeIssue($invoice, 0.0),
         );
     }
@@ -77,14 +77,51 @@ class InvoiceUnlinkRecalculationTest extends TestCase
         $invoice = Mockery::mock(Invoice::class)->makePartial();
         $invoice->status = 'Paid';
         $invoice->paid_amount = 500;
+        $invoice->total_amount = 500;
 
         $invoice->shouldReceive('transactions')->andReturn(
             tap(Mockery::mock(), fn ($relation) => $relation->shouldReceive('exists')->andReturn(true))
         );
 
         $this->assertSame(
-            'amount_mismatch',
+            InvoiceSettlementIntegrityService::ISSUE_AMOUNT_MISMATCH,
             InvoiceSettlementIntegrityService::describeIssue($invoice, 100.0),
+        );
+    }
+
+    #[Test]
+    public function describe_issue_detects_status_understates_when_fully_paid_but_not_marked_paid(): void
+    {
+        $invoice = Mockery::mock(Invoice::class)->makePartial();
+        $invoice->status = 'Unpaid';
+        $invoice->paid_amount = 1000;
+        $invoice->total_amount = 1000;
+
+        $invoice->shouldReceive('transactions')->andReturn(
+            tap(Mockery::mock(), fn ($relation) => $relation->shouldReceive('exists')->andReturn(true))
+        );
+
+        $this->assertSame(
+            InvoiceSettlementIntegrityService::ISSUE_STATUS_UNDERSTATES,
+            InvoiceSettlementIntegrityService::describeIssue($invoice, 1000.0),
+        );
+    }
+
+    #[Test]
+    public function describe_issue_detects_status_overstates_when_marked_paid_but_not_fully_paid(): void
+    {
+        $invoice = Mockery::mock(Invoice::class)->makePartial();
+        $invoice->status = 'Paid';
+        $invoice->paid_amount = 400;
+        $invoice->total_amount = 1000;
+
+        $invoice->shouldReceive('transactions')->andReturn(
+            tap(Mockery::mock(), fn ($relation) => $relation->shouldReceive('exists')->andReturn(true))
+        );
+
+        $this->assertSame(
+            InvoiceSettlementIntegrityService::ISSUE_STATUS_OVERSTATES,
+            InvoiceSettlementIntegrityService::describeIssue($invoice, 400.0),
         );
     }
 

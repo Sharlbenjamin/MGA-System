@@ -5,13 +5,35 @@ namespace App\Services;
 use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class InvoiceSettlementIntegrityService
 {
     public const SETTLED_STATUSES = ['Paid', 'Partial'];
 
     public const AMOUNT_TOLERANCE = 0.01;
+
+    public const ISSUE_NO_TRANSACTION_LINK = 'no_transaction_link';
+
+    public const ISSUE_AMOUNT_MISMATCH = 'amount_mismatch';
+
+    public const ISSUE_STATUS_UNDERSTATES = 'status_understates';
+
+    public const ISSUE_STATUS_OVERSTATES = 'status_overstates';
+
+    public static function issueTypeLabels(): array
+    {
+        return [
+            self::ISSUE_NO_TRANSACTION_LINK => 'Paid/Partial, no transaction link',
+            self::ISSUE_AMOUNT_MISMATCH => 'Stored paid amount ≠ transaction total',
+            self::ISSUE_STATUS_UNDERSTATES => 'Not marked Paid but fully paid',
+            self::ISSUE_STATUS_OVERSTATES => 'Marked Paid but not fully paid',
+        ];
+    }
+
+    public static function issueTypeLabel(string $issueType): string
+    {
+        return self::issueTypeLabels()[$issueType] ?? ucfirst(str_replace('_', ' ', $issueType));
+    }
 
     public static function pivotSumSubquerySql(): string
     {
@@ -20,17 +42,17 @@ class InvoiceSettlementIntegrityService
 
     public static function applyIssuesScope(Builder $query): Builder
     {
-        return $query->where(function (Builder $issues): void {
+        $pivotSum = self::pivotSumSubquerySql();
+
+        return $query->where(function (Builder $issues) use ($pivotSum): void {
             $issues
-                ->where(function (Builder $noLink): void {
-                    $noLink
-                        ->whereIn('status', self::SETTLED_STATUSES)
-                        ->doesntHave('transactions');
-                })
+                ->where(fn (Builder $noLink): Builder => self::applyNoTransactionLinkScope($noLink))
                 ->orWhereRaw(
-                    'ABS(invoices.paid_amount - '.self::pivotSumSubquerySql().') > ?',
+                    'ABS(invoices.paid_amount - '.$pivotSum.') > ?',
                     [self::AMOUNT_TOLERANCE],
-                );
+                )
+                ->orWhere(fn (Builder $understates): Builder => self::applyStatusUnderstatesScope($understates))
+                ->orWhere(fn (Builder $overstates): Builder => self::applyStatusOverstatesScope($overstates));
         });
     }
 
@@ -39,6 +61,53 @@ class InvoiceSettlementIntegrityService
         return $query
             ->whereIn('status', self::SETTLED_STATUSES)
             ->doesntHave('transactions');
+    }
+
+    public static function applyAmountMismatchScope(Builder $query): Builder
+    {
+        return $query->whereRaw(
+            'ABS(invoices.paid_amount - '.self::pivotSumSubquerySql().') > ?',
+            [self::AMOUNT_TOLERANCE],
+        );
+    }
+
+    public static function applyStatusUnderstatesScope(Builder $query): Builder
+    {
+        $pivotSum = self::pivotSumSubquerySql();
+
+        return $query
+            ->where('status', '!=', 'Paid')
+            ->where('total_amount', '>', 0)
+            ->where(function (Builder $fullyPaid) use ($pivotSum): void {
+                $fullyPaid
+                    ->whereRaw("{$pivotSum} >= invoices.total_amount - ?", [self::AMOUNT_TOLERANCE])
+                    ->orWhereRaw('invoices.paid_amount >= invoices.total_amount - ?', [self::AMOUNT_TOLERANCE]);
+            });
+    }
+
+    public static function applyStatusOverstatesScope(Builder $query): Builder
+    {
+        $pivotSum = self::pivotSumSubquerySql();
+
+        return $query
+            ->where('status', 'Paid')
+            ->where('total_amount', '>', 0)
+            ->where(function (Builder $notFullyPaid) use ($pivotSum): void {
+                $notFullyPaid
+                    ->whereRaw("{$pivotSum} < invoices.total_amount - ?", [self::AMOUNT_TOLERANCE])
+                    ->orWhereRaw('invoices.paid_amount < invoices.total_amount - ?', [self::AMOUNT_TOLERANCE]);
+            });
+    }
+
+    public static function applyIssueTypeScope(Builder $query, string $issueType): Builder
+    {
+        return match ($issueType) {
+            self::ISSUE_NO_TRANSACTION_LINK => self::applyNoTransactionLinkScope($query),
+            self::ISSUE_AMOUNT_MISMATCH => self::applyAmountMismatchScope($query),
+            self::ISSUE_STATUS_UNDERSTATES => self::applyStatusUnderstatesScope($query),
+            self::ISSUE_STATUS_OVERSTATES => self::applyStatusOverstatesScope($query),
+            default => $query,
+        };
     }
 
     public static function settlementIssueCount(): int
@@ -69,14 +138,31 @@ class InvoiceSettlementIntegrityService
     public static function describeIssue(Invoice $invoice, ?float $pivotSum = null): string
     {
         $pivotSum ??= $invoice->totalPaidFromTransactions();
-        $hasLinks = $invoice->transactions()->exists();
+        $paidAmount = round((float) $invoice->paid_amount, 2);
+        $pivotSum = round($pivotSum, 2);
+        $totalAmount = round((float) $invoice->total_amount, 2);
+        $hasLinks = $invoice->relationLoaded('transactions')
+            ? $invoice->transactions->isNotEmpty()
+            : $invoice->transactions()->exists();
 
         if (! $hasLinks && in_array($invoice->status, self::SETTLED_STATUSES, true)) {
-            return 'no_transaction_link';
+            return self::ISSUE_NO_TRANSACTION_LINK;
         }
 
-        if (abs((float) $invoice->paid_amount - $pivotSum) > self::AMOUNT_TOLERANCE) {
-            return 'amount_mismatch';
+        if (abs($paidAmount - $pivotSum) > self::AMOUNT_TOLERANCE) {
+            return self::ISSUE_AMOUNT_MISMATCH;
+        }
+
+        if ($invoice->status === 'Paid' && $totalAmount > 0) {
+            if ($pivotSum < $totalAmount - self::AMOUNT_TOLERANCE || $paidAmount < $totalAmount - self::AMOUNT_TOLERANCE) {
+                return self::ISSUE_STATUS_OVERSTATES;
+            }
+        }
+
+        if ($invoice->status !== 'Paid' && $totalAmount > 0) {
+            if ($pivotSum >= $totalAmount - self::AMOUNT_TOLERANCE || $paidAmount >= $totalAmount - self::AMOUNT_TOLERANCE) {
+                return self::ISSUE_STATUS_UNDERSTATES;
+            }
         }
 
         return 'unknown';
@@ -84,6 +170,10 @@ class InvoiceSettlementIntegrityService
 
     public static function pivotSumFor(Invoice $invoice): float
     {
+        if (isset($invoice->pivot_paid_sum)) {
+            return round((float) $invoice->pivot_paid_sum, 2);
+        }
+
         return round($invoice->totalPaidFromTransactions(), 2);
     }
 
