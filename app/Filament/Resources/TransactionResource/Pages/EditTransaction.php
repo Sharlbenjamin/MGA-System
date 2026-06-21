@@ -14,6 +14,7 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class EditTransaction extends EditRecord
 {
@@ -25,7 +26,15 @@ class EditTransaction extends EditRecord
     /** @var array<int, int> */
     protected array $invoicesToSync = [];
 
+    /** @var array<int, int> */
+    protected array $previousBillsToSync = [];
+
+    /** @var array<int, int> */
+    protected array $previousInvoicesToSync = [];
+
     protected ?string $documentationCategory = null;
+
+    protected ?string $previousDocumentationCategory = null;
 
     protected ?string $relatedTypeForSync = null;
 
@@ -55,6 +64,15 @@ class EditTransaction extends EditRecord
     {
         $data['updated_by'] = Auth::id();
 
+        $this->previousDocumentationCategory = $this->record->documentation_category
+            ?? TransactionDocumentationStatsService::resolveCategoryKey($this->record);
+        $this->previousBillsToSync = TransactionDocumentationStatsService::normalizeLinkIds(
+            $this->record->bills()->pluck('bills.id')->all(),
+        );
+        $this->previousInvoicesToSync = TransactionDocumentationStatsService::normalizeLinkIds(
+            $this->record->invoices()->pluck('invoices.id')->all(),
+        );
+
         $this->relatedTypeForSync = $data['related_type'] ?? $this->record->related_type;
         $this->billsToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
         $this->invoicesToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
@@ -77,22 +95,43 @@ class EditTransaction extends EditRecord
         $transaction = $this->record->fresh();
         $statsService = app(TransactionDocumentationStatsService::class);
 
-        if ($this->documentationCategory) {
-            $statsService->applyCategory(
-                $transaction,
-                $this->documentationCategory,
-                $this->billsToSync,
-            );
-            $transaction = $transaction->fresh();
-        } elseif (in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
+        $categoryChanged = $this->documentationCategory !== $this->previousDocumentationCategory;
+        $billsChanged = $this->billsToSync !== $this->previousBillsToSync;
+        $invoicesChanged = $this->invoicesToSync !== $this->previousInvoicesToSync;
+
+        $needsRecalculate = false;
+
+        if ($categoryChanged && filled($this->documentationCategory)) {
+            try {
+                $statsService->applyCategory(
+                    $transaction,
+                    $this->documentationCategory,
+                    $this->billsToSync,
+                );
+                $transaction = $transaction->fresh();
+            } catch (ValidationException $exception) {
+                Notification::make()
+                    ->danger()
+                    ->title('Category could not be applied')
+                    ->body(collect($exception->errors())->flatten()->first() ?? 'Validation failed.')
+                    ->persistent()
+                    ->send();
+
+                return;
+            }
+        } elseif ($billsChanged && in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
             $statsService->syncBills($transaction, $this->billsToSync);
+            $needsRecalculate = true;
         }
 
-        if ($this->relatedTypeForSync === 'Client') {
+        if ($invoicesChanged && $this->relatedTypeForSync === 'Client') {
             $statsService->syncInvoices($transaction, $this->invoicesToSync);
+            $needsRecalculate = true;
         }
 
-        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+        if ($needsRecalculate) {
+            app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+        }
     }
 
     protected function getHeaderActions(): array

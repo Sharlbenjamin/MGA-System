@@ -108,5 +108,5 @@
         @endif
     </x-filament::section>
 
-    <x-filament::section.loading-section wire:loading.delay.longer wire:target="applyDocumentationFilter,applyDataIntegrityFilter,applyStatusFilter,clearDocumentationFilter" />
+    <x-filament::loading-section wire:loading.delay.longer wire:target="applyDocumentationFilter,applyDataIntegrityFilter,applyStatusFilter,clearDocumentationFilter" />
 </x-filament-widgets::widget>
