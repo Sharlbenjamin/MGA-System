@@ -5,6 +5,7 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionDocumentationForm;
+use App\Filament\Support\TransactionEditPageRefresh;
 use App\Services\GenerateTrxInPdfService;
 use App\Services\GenerateTrxOutPdfService;
 use App\Services\TransactionDocumentationService;
@@ -115,27 +116,28 @@ class EditTransaction extends EditRecord
         }
 
         if ($needsRecalculate) {
-            app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+            $transaction = $transaction->fresh();
         }
+
+        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
 
         $this->refreshFormAfterSideEffects();
     }
 
-    protected function refreshFormAfterSideEffects(): void
+    public function refreshRecordOnPage(): void
     {
-        $this->record = $this->record->fresh(['bills']);
+        $this->record = $this->record->fresh(['bills', 'invoices', 'attachments']);
 
-        $this->refreshFormData([
-            'documentation_status',
-            'documentation_category',
-            'type',
-            'related_type',
-            'related_id',
-            'reference',
-            'status',
-        ]);
+        $this->refreshFormData(TransactionEditPageRefresh::FORM_FIELDS);
 
         $this->data['bills'] = $this->record->bills->pluck('id')->all();
+
+        $this->dispatch('$refresh');
+    }
+
+    protected function refreshFormAfterSideEffects(): void
+    {
+        $this->refreshRecordOnPage();
     }
 
     protected function getHeaderActions(): array
@@ -168,7 +170,7 @@ class EditTransaction extends EditRecord
 
                     app(GenerateTrxInPdfService::class)->generate($this->record);
                     $docService->syncAndRecalculate($this->record->fresh());
-                    $this->refreshFormData(['trx_in_pdf_path', 'documentation_status']);
+                    $this->refreshRecordOnPage();
                 }),
             Action::make('trxOutPdfBlocked')
                 ->label(fn (): string => 'Trx Out PDF: '.($docService->getTrxOutSkipReason($this->record) ?? 'Not ready'))
@@ -194,7 +196,7 @@ class EditTransaction extends EditRecord
 
                     app(GenerateTrxOutPdfService::class)->generate($this->record);
                     $docService->syncAndRecalculate($this->record->fresh());
-                    $this->refreshFormData(['trx_out_pdf_path', 'documentation_status']);
+                    $this->refreshRecordOnPage();
                 }),
             Action::make('viewTrxInPdf')
                 ->label('View Trx In PDF')
@@ -222,7 +224,8 @@ class EditTransaction extends EditRecord
                 ->action(function (): void {
                     try {
                         $this->record->finalizeTransaction();
-                        $this->refreshFormData(['status', 'documentation_status']);
+                        app(TransactionDocumentationService::class)->syncAndRecalculate($this->record->fresh());
+                        $this->refreshRecordOnPage();
 
                         Notification::make()
                             ->success()

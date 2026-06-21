@@ -739,9 +739,10 @@ class TransactionResource extends Resource
                     ->modalDescription('This will mark all attached bills as paid and complete the transaction. Use after the bank statement confirms the payment.')
                     ->modalSubmitActionLabel('Confirm payment')
                     ->visible(fn ($record) => $record->status === 'Draft')
-                    ->action(function ($record) {
+                    ->action(function (Transaction $record, \Livewire\Component $livewire): void {
                         try {
                             $record->finalizeTransaction();
+                            app(TransactionDocumentationService::class)->syncAndRecalculate($record->fresh());
 
                             Notification::make()
                                 ->success()
@@ -749,6 +750,7 @@ class TransactionResource extends Resource
                                 ->body('Transaction finalized and bills marked as paid.')
                                 ->send();
 
+                            $livewire->dispatch('refresh-transaction-documentation-stats');
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->danger()

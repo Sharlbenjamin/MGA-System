@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TransactionResource\RelationManager;
 
+use App\Filament\Support\TransactionEditPageRefresh;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -83,8 +84,12 @@ class BillRelationManager extends RelationManager
                         $record->status = $status;
                         $record->save();
 
-                        // Refresh the record to get updated values
                         $record->refresh();
+
+                        app(\App\Services\TransactionDocumentationService::class)
+                            ->syncAndRecalculate($this->ownerRecord->fresh());
+
+                        TransactionEditPageRefresh::refresh($this->getLivewire());
                     }),
                 TextColumn::make('remaining_amount')
                     ->money('EUR')

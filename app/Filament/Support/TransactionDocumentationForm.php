@@ -3,6 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\TransactionEditPageRefresh;
 use App\Models\Bill;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -274,8 +275,10 @@ class TransactionDocumentationForm
                 'attachment' => self::localAttachmentDefault($record),
             ])
             ->form(fn (Transaction $record) => self::schema($record))
-            ->action(function (Transaction $record, array $data) {
+            ->action(function (Transaction $record, array $data, \Livewire\Component $livewire): void {
                 self::apply($record, $data);
+
+                $livewire->dispatch('refresh-transaction-documentation-stats');
             });
     }
 
@@ -308,14 +311,7 @@ class TransactionDocumentationForm
 
                 self::apply($record, $data);
 
-                if (method_exists($livewire, 'refreshFormData')) {
-                    $livewire->refreshFormData([
-                        'attachment_path',
-                        'documentation_status',
-                        'trx_in_pdf_path',
-                        'trx_out_pdf_path',
-                    ]);
-                }
+                TransactionEditPageRefresh::refresh($livewire);
             });
     }
 

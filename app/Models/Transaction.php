@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Log;
+use App\Services\TransactionDocumentationStatsService;
 
 class Transaction extends Model
 {
@@ -111,6 +112,10 @@ class Transaction extends Model
 
         static::updated(function ($transaction) {
             try {
+                if ($transaction->bank_account_id) {
+                    TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+                }
+
                 if ($transaction->bankAccount) {
                     $transaction->bankAccount->calculateBalance();
                 }
@@ -136,6 +141,10 @@ class Transaction extends Model
 
         static::created(function ($transaction) {
             try {
+                if ($transaction->bank_account_id) {
+                    TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+                }
+
                 if ($transaction->bankAccount) {
                     $transaction->bankAccount->calculateBalance();
                 }
@@ -184,6 +193,10 @@ class Transaction extends Model
         });
 
         static::deleted(function (Transaction $transaction) {
+            if ($transaction->bank_account_id) {
+                TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+            }
+
             $invoiceIds = static::$invoiceIdsToRecalculateAfterDelete[$transaction->id] ?? [];
             unset(static::$invoiceIdsToRecalculateAfterDelete[$transaction->id]);
 

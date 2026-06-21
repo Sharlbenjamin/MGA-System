@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TransactionResource\RelationManager;
 
 use App\Filament\Resources\TransactionResource\Pages\EditTransaction;
+use App\Filament\Support\TransactionEditPageRefresh;
 use App\Filament\Support\TransactionInvoiceLinkForm;
 use App\Models\Invoice;
 use Filament\Forms\Form;
@@ -117,6 +118,8 @@ class InvoiceRelationManager extends RelationManager
                             (int) $data['invoice_id'],
                             (float) $data['amount_paid'],
                         );
+
+                        TransactionEditPageRefresh::refresh($this->getLivewire());
                     }),
             ])
             ->actions([
@@ -134,6 +137,8 @@ class InvoiceRelationManager extends RelationManager
                             $record,
                             (float) $data['amount_paid'],
                         );
+
+                        TransactionEditPageRefresh::refresh($this->getLivewire());
                     }),
                 Tables\Actions\Action::make('delete')
                     ->label('Delete')
@@ -144,6 +149,8 @@ class InvoiceRelationManager extends RelationManager
                     ->modalDescription('This unlinks the invoice from this transaction and recalculates its paid status.')
                     ->action(function (Invoice $record): void {
                         TransactionInvoiceLinkForm::detachInvoice($this->ownerRecord, $record);
+
+                        TransactionEditPageRefresh::refresh($this->getLivewire());
                     }),
             ])
             ->defaultSort('name')

@@ -9,6 +9,7 @@ use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
+use Livewire\Attributes\On;
 
 class TransactionDocumentationStatsWidget extends Widget
 {
@@ -31,6 +32,12 @@ class TransactionDocumentationStatsWidget extends Widget
     public ?string $activeDocumentationStatus = null;
 
     public ?string $activeDataIssue = null;
+
+    #[On('refresh-transaction-documentation-stats')]
+    public function refreshDocumentationStats(): void
+    {
+        //
+    }
 
     protected function getTablePage(): string
     {
