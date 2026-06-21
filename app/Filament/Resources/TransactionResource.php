@@ -503,7 +503,7 @@ class TransactionResource extends Resource
                     ->label('Auto status preview')
                     ->content(fn (?Transaction $record) => $record
                         ? app(TransactionDocumentationService::class)->formatDocumentationStatusLabel(
-                            app(TransactionDocumentationService::class)->resolveDocumentationStatus($record)
+                            $record->documentation_status ?? 'incomplete'
                         )
                         : '—'),
             ])
@@ -759,7 +759,6 @@ class TransactionResource extends Resource
                     ->action(function (Transaction $record, \Livewire\Component $livewire): void {
                         try {
                             $record->finalizeTransaction();
-                            app(TransactionDocumentationService::class)->syncAndRecalculate($record->fresh());
 
                             Notification::make()
                                 ->success()

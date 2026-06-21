@@ -261,7 +261,7 @@ class TransactionDocumentationForm
             ->label('Complete documentation')
             ->icon('heroicon-o-clipboard-document-check')
             ->color('warning')
-            ->visible(fn (Transaction $record) => app(TransactionDocumentationService::class)->resolveDocumentationStatus($record) !== 'complete')
+            ->visible(fn (Transaction $record) => ($record->documentation_status ?? 'incomplete') !== 'complete')
             ->modalHeading('Complete documentation')
             ->modalDescription('Resolve missing links, attachments, and PDFs in one place.')
             ->modalSubmitActionLabel('Save & update')
@@ -286,7 +286,7 @@ class TransactionDocumentationForm
             ->label('Complete documentation')
             ->icon('heroicon-o-clipboard-document-check')
             ->color('warning')
-            ->visible(fn (Transaction $record) => app(TransactionDocumentationService::class)->resolveDocumentationStatus($record) !== 'complete')
+            ->visible(fn (Transaction $record) => ($record->documentation_status ?? 'incomplete') !== 'complete')
             ->modalHeading('Complete documentation')
             ->modalSubmitActionLabel('Save & update')
             ->fillForm(fn (Transaction $record) => [

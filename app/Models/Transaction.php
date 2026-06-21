@@ -364,7 +364,6 @@ class Transaction extends Model
 
         // Sync linked invoice payments after attaching invoices
         $this->syncLinkedInvoicePayments();
-        app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 
     public function updateInvoicePaidAmount(Invoice $invoice, float $amount)
@@ -399,9 +398,6 @@ class Transaction extends Model
                 }
             }
         }
-
-        // Recalculate documentation after attaching bills
-        app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 
     /**
@@ -424,8 +420,6 @@ class Transaction extends Model
                 }
             }
         }
-
-        app(\App\Services\TransactionDocumentationService::class)->syncAndRecalculate($this);
     }
 
     /**

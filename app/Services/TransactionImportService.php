@@ -9,6 +9,7 @@ use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\Transaction;
 use App\Models\TransactionImportBatch;
+use App\Services\TransactionDocumentationService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -146,15 +147,25 @@ class TransactionImportService
         foreach ($classified['new'] as $row) {
             try {
                 DB::transaction(function () use ($row, $bankAccountId, $batch, $userId, $statsService, $docService, $metadataOnly, &$imported): void {
-                    $transaction = $this->createTransactionFromRow($row, $bankAccountId, $batch->id, $userId, $metadataOnly);
+                    $transaction = null;
 
-                    if (! $metadataOnly) {
-                        $this->applyOptionalLinks($transaction, $row, $statsService);
-                    }
+                    TransactionDocumentationService::withoutObserverSync(function () use (
+                        $row,
+                        $bankAccountId,
+                        $batch,
+                        $userId,
+                        $statsService,
+                        $metadataOnly,
+                        &$transaction,
+                    ): void {
+                        $transaction = $this->createTransactionFromRow($row, $bankAccountId, $batch->id, $userId, $metadataOnly);
 
-                    $transaction = $transaction->fresh();
+                        if (! $metadataOnly) {
+                            $this->applyOptionalLinks($transaction, $row, $statsService);
+                        }
+                    });
 
-                    $docService->syncAndRecalculate($transaction);
+                    $docService->syncAndRecalculate($transaction->fresh());
 
                     $imported++;
                 });

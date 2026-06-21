@@ -10,9 +10,89 @@ use Illuminate\Support\Str;
 
 class TransactionDocumentationService
 {
+    /** @var list<string> */
+    public const DOCUMENTATION_SYNC_ATTRIBUTES = [
+        'type',
+        'related_type',
+        'related_id',
+        'documentation_category',
+        'attachment_path',
+        'trx_in_pdf_path',
+        'trx_out_pdf_path',
+        'name',
+        'notes',
+        'status',
+    ];
+
     private static bool $isSyncing = false;
 
     private static ?int $syncingTransactionId = null;
+
+    private static bool $suppressObserverSync = false;
+
+    /** @var array<int, true> */
+    private static array $deferredSyncTransactionIds = [];
+
+    /** @var array<int, array{key: string, tasks: array<int, array<string, mixed>>}> */
+    private static array $missingTasksCache = [];
+
+    public static function withoutObserverSync(callable $callback): mixed
+    {
+        self::$suppressObserverSync = true;
+
+        try {
+            return $callback();
+        } finally {
+            self::$suppressObserverSync = false;
+        }
+    }
+
+    public static function deferSyncFor(int $transactionId): void
+    {
+        self::$deferredSyncTransactionIds[$transactionId] = true;
+    }
+
+    public static function clearDeferredSync(int $transactionId): void
+    {
+        unset(self::$deferredSyncTransactionIds[$transactionId]);
+    }
+
+    public static function shouldObserverSync(Transaction $transaction): bool
+    {
+        if (self::$suppressObserverSync) {
+            return false;
+        }
+
+        if (isset(self::$deferredSyncTransactionIds[$transaction->id])) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static function shouldSyncDocumentation(Transaction $transaction): bool
+    {
+        if ($transaction->wasRecentlyCreated) {
+            return true;
+        }
+
+        foreach (self::DOCUMENTATION_SYNC_ATTRIBUTES as $attribute) {
+            if ($transaction->wasChanged($attribute)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function forgetMissingTasksCache(?Transaction $transaction = null): void
+    {
+        if ($transaction?->id) {
+            unset(self::$missingTasksCache[$transaction->id]);
+        } else {
+            self::$missingTasksCache = [];
+        }
+    }
 
     public function syncAndRecalculate(Transaction $transaction): Transaction
     {
@@ -24,18 +104,20 @@ class TransactionDocumentationService
         self::$syncingTransactionId = $transaction->id;
 
         try {
+            $this->forgetMissingTasksCache($transaction);
+
+            $previousStatus = $transaction->documentation_status;
+
             $this->syncDerivedFields($transaction);
             $this->recalculateDocumentationStatus($transaction);
 
-            $transaction = $transaction->fresh([
-                'invoices.file.patient',
-                'bills.file.patient',
-                'attachments',
-                'createdByUser',
-                'updatedByUser',
-            ]);
+            $transaction->refresh();
+            $transaction->load(['invoices', 'bills', 'attachments']);
 
-            if ($transaction?->bank_account_id) {
+            if (
+                $previousStatus !== $transaction->documentation_status
+                && $transaction->bank_account_id
+            ) {
                 TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
             }
 
@@ -173,6 +255,10 @@ class TransactionDocumentationService
 
     public function getDocumentationStatusLabel(Transaction $transaction): string
     {
+        if (filled($transaction->documentation_status)) {
+            return $this->formatDocumentationStatusLabel($transaction->documentation_status);
+        }
+
         return $this->formatDocumentationStatusLabel(
             $this->resolveDocumentationStatus($transaction)
         );
@@ -313,11 +399,34 @@ class TransactionDocumentationService
      */
     public function getMissingTasks(Transaction $transaction): array
     {
-        $transaction->loadMissing([
-            'invoices.file.patient',
-            'bills.file.patient',
-            'attachments',
-        ]);
+        $cacheKey = $this->missingTasksCacheKey($transaction);
+
+        if ($transaction->id && isset(self::$missingTasksCache[$transaction->id])) {
+            $cached = self::$missingTasksCache[$transaction->id];
+
+            if ($cached['key'] === $cacheKey) {
+                return $cached['tasks'];
+            }
+        }
+
+        $tasks = $this->computeMissingTasks($transaction);
+
+        if ($transaction->id) {
+            self::$missingTasksCache[$transaction->id] = [
+                'key' => $cacheKey,
+                'tasks' => $tasks,
+            ];
+        }
+
+        return $tasks;
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
+     */
+    protected function computeMissingTasks(Transaction $transaction): array
+    {
+        $transaction->loadMissing(['invoices', 'bills', 'attachments']);
 
         $category = $this->resolvedCategory($transaction);
 
@@ -332,6 +441,20 @@ class TransactionDocumentationService
             'capital_return' => $this->receiptTasks($transaction, 'expense_receipt', 'Missing capital return transfer proof.'),
             default => $this->legacyTasksForType($transaction),
         };
+    }
+
+    protected function missingTasksCacheKey(Transaction $transaction): string
+    {
+        return implode('|', [
+            $transaction->id ?? 'new',
+            $transaction->updated_at?->timestamp ?? 0,
+            $transaction->documentation_category ?? '',
+            $transaction->related_type ?? '',
+            (string) ($transaction->related_id ?? ''),
+            $transaction->attachment_path ?? '',
+            $transaction->trx_in_pdf_path ?? '',
+            $transaction->trx_out_pdf_path ?? '',
+        ]);
     }
 
     /**

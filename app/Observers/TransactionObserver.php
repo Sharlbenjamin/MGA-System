@@ -13,7 +13,15 @@ class TransactionObserver
 
     public function saved(Transaction $transaction): void
     {
+        if (! TransactionDocumentationService::shouldObserverSync($transaction)) {
+            return;
+        }
+
         if (! $transaction->wasRecentlyCreated && ! $transaction->wasChanged()) {
+            return;
+        }
+
+        if (! TransactionDocumentationService::shouldSyncDocumentation($transaction)) {
             return;
         }
 

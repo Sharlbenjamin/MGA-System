@@ -7,6 +7,7 @@ use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionInvoiceLinkForm;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
+use App\Services\TransactionSettlementService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
@@ -88,32 +89,33 @@ class CreateTransaction extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $transaction = $this->record->fresh();
-        $statsService = app(TransactionDocumentationStatsService::class);
+        TransactionDocumentationService::withoutObserverSync(function (): void {
+            $transaction = $this->record->fresh();
+            $statsService = app(TransactionDocumentationStatsService::class);
 
-        $this->billsToAttach = $this->mergeBillIdsFromRequest($this->billsToAttach);
-        $this->invoiceLinksToAttach = $this->mergeInvoiceLinksFromRequest($this->invoiceLinksToAttach);
+            $this->billsToAttach = $this->mergeBillIdsFromRequest($this->billsToAttach);
+            $this->invoiceLinksToAttach = $this->mergeInvoiceLinksFromRequest($this->invoiceLinksToAttach);
 
-        if ($this->documentationCategory) {
-            $statsService->applyCategory(
-                $transaction,
-                $this->documentationCategory,
-                $this->billsToAttach,
-            );
-            $transaction = $transaction->fresh();
-        } elseif (in_array($transaction->related_type, ['Provider', 'Branch'], true)) {
-            if ($this->isDraftPayment && $this->billsToAttach !== []) {
-                $transaction->attachBillsForDraft($this->billsToAttach);
-            } else {
-                $statsService->syncBills($transaction, $this->billsToAttach);
+            if ($this->documentationCategory) {
+                $statsService->applyCategory(
+                    $transaction,
+                    $this->documentationCategory,
+                    $this->billsToAttach,
+                );
+            } elseif (in_array($transaction->related_type, ['Provider', 'Branch'], true)) {
+                if ($this->isDraftPayment && $this->billsToAttach !== []) {
+                    $transaction->attachBillsForDraft($this->billsToAttach);
+                } else {
+                    $statsService->syncBills($transaction, $this->billsToAttach);
+                }
             }
-        }
 
-        if ($transaction->related_type === 'Client' && $this->invoiceLinksToAttach !== []) {
-            TransactionInvoiceLinkForm::attachLinksFromCreate($transaction, $this->invoiceLinksToAttach);
-        }
+            if ($transaction->related_type === 'Client' && $this->invoiceLinksToAttach !== []) {
+                TransactionInvoiceLinkForm::attachLinksFromCreate($transaction, $this->invoiceLinksToAttach);
+            }
+        });
 
-        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+        app(TransactionSettlementService::class)->syncDocumentation($this->record->fresh());
 
         if ($this->isDraftPayment) {
             Notification::make()

@@ -199,7 +199,7 @@ class TransactionInvoiceLinkForm
         ];
     }
 
-    public static function attachInvoice(Transaction $transaction, int $invoiceId, float $amountPaid, bool $notify = true): void
+    public static function attachInvoice(Transaction $transaction, int $invoiceId, float $amountPaid, bool $notify = true, bool $sync = true): void
     {
         $invoice = Invoice::find($invoiceId);
 
@@ -229,7 +229,9 @@ class TransactionInvoiceLinkForm
             $invoice->recalculatePaidAmountFromTransactions();
         }
 
-        app(TransactionSettlementService::class)->syncDocumentation($transaction->fresh());
+        if ($sync) {
+            app(TransactionSettlementService::class)->syncDocumentation($transaction->fresh());
+        }
 
         if ($notify) {
             Notification::make()
@@ -294,6 +296,7 @@ class TransactionInvoiceLinkForm
                 $invoiceId,
                 (float) ($link['amount_paid'] ?? 0),
                 notify: false,
+                sync: false,
             );
             $count++;
         }

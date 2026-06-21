@@ -10,6 +10,7 @@ use App\Services\GenerateTrxInPdfService;
 use App\Services\GenerateTrxOutPdfService;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
+use App\Services\TransactionSettlementService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -77,39 +78,64 @@ class EditTransaction extends EditRecord
             ) ?? TransactionDocumentationStatsService::resolveCategoryKey($this->record);
         }
 
+        $nextCategory = $data['documentation_category'] ?? $this->previousDocumentationCategory;
+        $nextBills = $this->billsToSync;
+        $categoryWillChange = $nextCategory !== $this->previousDocumentationCategory;
+        $billsWillChange = $nextBills !== $this->previousBillsToSync;
+
+        if ($categoryWillChange || $billsWillChange) {
+            TransactionDocumentationService::deferSyncFor($this->record->id);
+        }
+
         return $data;
     }
 
     protected function afterSave(): void
     {
-        $transaction = $this->record->fresh();
-        $statsService = app(TransactionDocumentationStatsService::class);
+        $runSettlement = false;
+        $abortAfterSave = false;
 
-        $categoryChanged = $this->documentationCategory !== $this->previousDocumentationCategory;
-        $billsChanged = $this->billsToSync !== $this->previousBillsToSync;
+        TransactionDocumentationService::withoutObserverSync(function () use (&$runSettlement, &$abortAfterSave): void {
+            $transaction = $this->record->fresh();
+            $statsService = app(TransactionDocumentationStatsService::class);
 
-        if ($categoryChanged && filled($this->documentationCategory)) {
-            try {
-                $statsService->applyCategory(
-                    $transaction,
-                    $this->documentationCategory,
-                    $this->billsToSync,
-                );
-                $transaction = $transaction->fresh();
-            } catch (ValidationException $exception) {
-                Notification::make()
-                    ->danger()
-                    ->title('Category could not be applied')
-                    ->body(collect($exception->errors())->flatten()->first() ?? 'Validation failed.')
-                    ->persistent()
-                    ->send();
+            $categoryChanged = $this->documentationCategory !== $this->previousDocumentationCategory;
+            $billsChanged = $this->billsToSync !== $this->previousBillsToSync;
 
-                $this->refreshFormAfterSideEffects();
+            if ($categoryChanged && filled($this->documentationCategory)) {
+                try {
+                    $statsService->applyCategory(
+                        $transaction,
+                        $this->documentationCategory,
+                        $this->billsToSync,
+                    );
+                    $runSettlement = true;
+                } catch (ValidationException $exception) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Category could not be applied')
+                        ->body(collect($exception->errors())->flatten()->first() ?? 'Validation failed.')
+                        ->persistent()
+                        ->send();
 
-                return;
+                    $abortAfterSave = true;
+                }
+            } elseif ($billsChanged && in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
+                $statsService->syncBills($transaction, $this->billsToSync);
+                $runSettlement = true;
             }
-        } elseif ($billsChanged && in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
-            $statsService->syncBills($transaction, $this->billsToSync);
+        });
+
+        TransactionDocumentationService::clearDeferredSync($this->record->id);
+
+        if ($abortAfterSave) {
+            $this->refreshFormAfterSideEffects();
+
+            return;
+        }
+
+        if ($runSettlement) {
+            app(TransactionSettlementService::class)->syncDocumentation($this->record->fresh());
         }
 
         $this->refreshFormAfterSideEffects();

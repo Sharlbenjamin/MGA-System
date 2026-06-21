@@ -14,9 +14,7 @@ use App\Models\ProviderBranch;
 use App\Models\Patient;
 use App\Models\Task;
 use App\Models\Transaction;
-use App\Models\TransactionAttachment;
 use App\Observers\TaskObserver;
-use App\Observers\TransactionAttachmentObserver;
 use App\Observers\TransactionObserver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -52,7 +50,6 @@ class AppServiceProvider extends ServiceProvider
 
         Task::observe(TaskObserver::class);
         Transaction::observe(TransactionObserver::class);
-        TransactionAttachment::observe(TransactionAttachmentObserver::class);
 
         $this->registerPerfLogging();
     }

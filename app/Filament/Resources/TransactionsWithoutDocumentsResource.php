@@ -164,7 +164,6 @@ class TransactionsWithoutDocumentsResource extends Resource
                         }
 
                         app(GenerateTrxInPdfService::class)->generate($record);
-                        $docService->syncAndRecalculate($record->fresh());
                         Notification::make()->success()->title('Trx In PDF generated')->send();
                     }),
                 Tables\Actions\Action::make('generate_trx_out_pdf')
@@ -183,7 +182,6 @@ class TransactionsWithoutDocumentsResource extends Resource
                         }
 
                         app(GenerateTrxOutPdfService::class)->generate($record);
-                        $docService->syncAndRecalculate($record->fresh());
                         Notification::make()->success()->title('Trx Out PDF generated')->send();
                     }),
             ]);
