@@ -15,13 +15,19 @@ class TransactionDocumentationService
         $this->syncDerivedFields($transaction);
         $this->recalculateDocumentationStatus($transaction);
 
-        return $transaction->fresh([
+        $transaction = $transaction->fresh([
             'invoices.file.patient',
             'bills.file.patient',
             'attachments',
             'createdByUser',
             'updatedByUser',
         ]);
+
+        if ($transaction?->bank_account_id) {
+            TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+        }
+
+        return $transaction;
     }
 
     public function syncDerivedFields(Transaction $transaction): void
@@ -171,7 +177,12 @@ class TransactionDocumentationService
 
     public function getDocumentationStatusColor(Transaction $transaction): string
     {
-        return match ($this->resolveDocumentationStatus($transaction)) {
+        return self::colorForStatusKey($transaction->documentation_status ?? 'incomplete');
+    }
+
+    public static function colorForStatusKey(?string $status): string
+    {
+        return match ($status) {
             'complete' => 'success',
             'incomplete' => 'warning',
             default => 'danger',

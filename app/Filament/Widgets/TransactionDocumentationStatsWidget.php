@@ -14,6 +14,8 @@ class TransactionDocumentationStatsWidget extends Widget
 {
     use InteractsWithPageTable;
 
+    protected static bool $isLazy = true;
+
     protected static string $view = 'filament.widgets.transaction-documentation-breakdown';
 
     protected int|string|array $columnSpan = 'full';
@@ -65,7 +67,6 @@ class TransactionDocumentationStatsWidget extends Widget
 
         return app(TransactionDocumentationStatsService::class)->breakdownForBankAccount(
             $this->bankAccountId,
-            $this->getPageTableQuery(),
         );
     }
 
@@ -75,9 +76,43 @@ class TransactionDocumentationStatsWidget extends Widget
             return null;
         }
 
+        if ($this->bankAccountId !== null) {
+            return app(TransactionDocumentationStatsService::class)->documentationStatusBreakdownForBankAccount(
+                $this->bankAccountId,
+            );
+        }
+
         return app(TransactionDocumentationStatsService::class)->documentationStatusBreakdown(
             $this->getPageTableQuery(),
         );
+    }
+
+    public function getActiveFilterLabelProperty(): ?string
+    {
+        $parts = [];
+
+        if (filled($this->activeCategory)) {
+            $parts[] = TransactionDocumentationStatsService::categoryLabel($this->activeCategory);
+        }
+
+        if (filled($this->activeDocumentationStatus)) {
+            $parts[] = app(\App\Services\TransactionDocumentationService::class)
+                ->formatDocumentationStatusLabel($this->activeDocumentationStatus);
+        } elseif ($this->activeCompletion === 'completed') {
+            $parts[] = 'Completed';
+        } elseif ($this->activeCompletion === 'uncompleted') {
+            $parts[] = 'Uncompleted';
+        }
+
+        if (filled($this->activeDataIssue)) {
+            $parts[] = match ($this->activeDataIssue) {
+                'transaction_invoice_total_mismatch' => 'Amount mismatch',
+                'paid_amount_mismatch' => 'Paid invoice mismatch',
+                default => str_replace('_', ' ', $this->activeDataIssue),
+            };
+        }
+
+        return $parts !== [] ? implode(' · ', $parts) : null;
     }
 
     public function applyDocumentationFilter(

@@ -1,47 +1,47 @@
 @php
-    $countClass = $color === 'success'
-        ? 'text-success-600 dark:text-success-400'
-        : 'text-danger-600 dark:text-danger-400';
-    $borderClass = $color === 'success'
-        ? 'border-success-200 dark:border-success-800'
-        : 'border-danger-200 dark:border-danger-800';
-    $buttonClass = 'cursor-pointer rounded px-1 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500';
+    $chipBase = 'inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold tabular-nums transition focus:outline-none focus:ring-2 focus:ring-primary-500';
     $activeRing = 'ring-2 ring-primary-500 ring-offset-1 dark:ring-offset-gray-900';
+    $countTone = $color === 'success'
+        ? 'bg-success-100 text-success-800 hover:bg-success-200 dark:bg-success-900/50 dark:text-success-200 dark:hover:bg-success-900'
+        : 'bg-danger-100 text-danger-800 hover:bg-danger-200 dark:bg-danger-900/50 dark:text-danger-200 dark:hover:bg-danger-900';
+    $mutedTone = 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700';
 @endphp
 
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-l-2 {{ $borderClass }} pl-4 text-sm text-gray-700 dark:text-gray-300">
-    @if (! empty($label))
-        <span class="font-medium text-gray-950 dark:text-white">{{ $label }}</span>
-        <span class="text-gray-400 dark:text-gray-500" aria-hidden="true">·</span>
-    @endif
-    <span>
-        Total
+<div class="space-y-3 px-4 py-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="text-sm font-semibold text-gray-950 dark:text-white">{{ $label }}</div>
+        <div class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $percent }}% complete</div>
+    </div>
+
+    <div class="h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div class="{{ $progressClass }} h-full rounded-full transition-all duration-500" style="width: {{ $percent }}%"></div>
+    </div>
+
+    <div class="text-xs text-gray-500 dark:text-gray-400">
+        {{ $stats['completed'] }} / {{ $stats['total'] }} completed
+    </div>
+
+    <div class="flex flex-wrap gap-2">
         <button
             type="button"
-            class="{{ $buttonClass }} font-semibold {{ $countClass }} {{ ($activeCategory ?? null) === $workflow && ($activeCompletion ?? null) === 'all' && blank($activeDocumentationStatus ?? null) ? $activeRing : '' }}"
+            class="{{ $chipBase }} {{ $countTone }} {{ ($activeCategory ?? null) === $workflow && ($activeCompletion ?? null) === 'all' && blank($activeDocumentationStatus ?? null) ? $activeRing : '' }}"
             wire:click="applyDocumentationFilter('{{ $workflow }}', 'all')"
         >
-            ({{ $stats['total'] }})
+            Total {{ $stats['total'] }}
         </button>
-    </span>
-    <span>
-        Completed
         <button
             type="button"
-            class="{{ $buttonClass }} font-semibold {{ $countClass }} {{ ($activeCategory ?? null) === $workflow && ($activeCompletion ?? null) === 'completed' ? $activeRing : '' }}"
+            class="{{ $chipBase }} {{ $countTone }} {{ ($activeCategory ?? null) === $workflow && ($activeCompletion ?? null) === 'completed' ? $activeRing : '' }}"
             wire:click="applyDocumentationFilter('{{ $workflow }}', 'completed')"
         >
-            ({{ $stats['completed'] }})
+            Done {{ $stats['completed'] }}
         </button>
-    </span>
-    <span>
-        Uncompleted
         <button
             type="button"
-            class="{{ $buttonClass }} font-semibold {{ $countClass }} {{ ($activeCategory ?? null) === $workflow && ($activeCompletion ?? null) === 'uncompleted' && blank($activeDocumentationStatus ?? null) ? $activeRing : '' }}"
+            class="{{ $chipBase }} {{ $mutedTone }} {{ ($activeCategory ?? null) === $workflow && ($activeCompletion ?? null) === 'uncompleted' && blank($activeDocumentationStatus ?? null) ? $activeRing : '' }}"
             wire:click="applyDocumentationFilter('{{ $workflow }}', 'uncompleted')"
         >
-            ({{ $stats['uncompleted'] }})
+            Todo {{ $stats['uncompleted'] }}
         </button>
-    </span>
+    </div>
 </div>

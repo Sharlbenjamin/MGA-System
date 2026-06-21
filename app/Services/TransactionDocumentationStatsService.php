@@ -6,6 +6,7 @@ use App\Models\Bill;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -312,22 +313,145 @@ class TransactionDocumentationStatsService
      */
     public function breakdownForBankAccount(int $bankAccountId, ?Builder $baseQuery = null): array
     {
-        $query = $baseQuery ?? Transaction::query()->where('bank_account_id', $bankAccountId);
+        if ($baseQuery !== null) {
+            return $this->computeBreakdownFromQuery($bankAccountId, $baseQuery);
+        }
+
+        return Cache::remember(
+            self::breakdownCacheKey($bankAccountId),
+            300,
+            fn (): array => $this->computeBreakdownFromQuery(
+                $bankAccountId,
+                Transaction::query()->where('bank_account_id', $bankAccountId),
+            ),
+        );
+    }
+
+    public static function forgetBankAccountCache(int $bankAccountId): void
+    {
+        Cache::forget(self::breakdownCacheKey($bankAccountId));
+        Cache::forget(self::statusCacheKey($bankAccountId));
+    }
+
+    protected static function breakdownCacheKey(int $bankAccountId): string
+    {
+        return "txn_doc_stats:breakdown:{$bankAccountId}";
+    }
+
+    protected static function statusCacheKey(int $bankAccountId): string
+    {
+        return "txn_doc_stats:status:{$bankAccountId}";
+    }
+
+    /**
+     * @return array{total: int, statuses: array<int, array{key: string, label: string, count: int}>}
+     */
+    public function documentationStatusBreakdownForBankAccount(int $bankAccountId): array
+    {
+        return Cache::remember(
+            self::statusCacheKey($bankAccountId),
+            300,
+            fn (): array => $this->documentationStatusBreakdown(
+                Transaction::query()->where('bank_account_id', $bankAccountId),
+            ),
+        );
+    }
+
+    /**
+     * @return array<string, array{total: int, completed: int, uncompleted: int, data_issues: array, missing_steps: array}>
+     */
+    protected function computeBreakdownFromQuery(int $bankAccountId, Builder $baseQuery): array
+    {
+        $matrix = $this->fetchCategoryStatusMatrix($bankAccountId, $baseQuery);
         $integrity = app(TransactionIntegrityService::class);
 
+        $dataIssuesByCategory = [
+            'client_payment' => $integrity->dataIssuesForCategory(
+                $bankAccountId,
+                'client_payment',
+                self::applyCategoryScope(clone $baseQuery, 'client_payment'),
+            ),
+        ];
+
+        return self::buildBreakdownFromAggregates($matrix, $dataIssuesByCategory);
+    }
+
+    /**
+     * @return array<string, array<string, int>>
+     */
+    public function fetchCategoryStatusMatrix(int $bankAccountId, Builder $baseQuery): array
+    {
+        $matrix = array_fill_keys(self::ALL_CATEGORIES, []);
+
+        $explicitCounts = (clone $baseQuery)
+            ->whereNotNull('documentation_category')
+            ->selectRaw('documentation_category as category, documentation_status, COUNT(*) as aggregate')
+            ->groupBy('documentation_category', 'documentation_status')
+            ->get();
+
+        foreach ($explicitCounts as $row) {
+            $category = (string) $row->category;
+
+            if (! array_key_exists($category, $matrix)) {
+                continue;
+            }
+
+            $matrix[$category][(string) $row->documentation_status] = (int) $row->aggregate;
+        }
+
+        $nullCategoryBase = (clone $baseQuery)->whereNull('documentation_category');
+
+        foreach (self::ALL_CATEGORIES as $category) {
+            $scoped = self::applyInferredCategoryScope(clone $nullCategoryBase, $category);
+            $statusCounts = $scoped
+                ->selectRaw('documentation_status, COUNT(*) as aggregate')
+                ->groupBy('documentation_status')
+                ->pluck('aggregate', 'documentation_status');
+
+            foreach ($statusCounts as $status => $count) {
+                $matrix[$category][(string) $status] = ($matrix[$category][(string) $status] ?? 0) + (int) $count;
+            }
+        }
+
+        return $matrix;
+    }
+
+    /**
+     * @param  array<string, array<string, int>>  $matrix
+     * @param  array<string, array<int, array{key: string, label: string, count: int}>>  $dataIssuesByCategory
+     * @return array<string, array{total: int, completed: int, uncompleted: int, data_issues: array, missing_steps: array}>
+     */
+    public static function buildBreakdownFromAggregates(array $matrix, array $dataIssuesByCategory = []): array
+    {
+        $docService = app(TransactionDocumentationService::class);
+        $stepKeys = ['unlinked', 'missing_attachment', 'missing_generated_pdf', 'incomplete'];
         $result = [];
 
         foreach (self::ALL_CATEGORIES as $category) {
-            $stats = $this->countsForCategory(clone $query, $category);
+            $statusCounts = $matrix[$category] ?? [];
+            $total = (int) array_sum($statusCounts);
+            $completed = (int) ($statusCounts['complete'] ?? 0);
+            $missingSteps = [];
 
-            $stats['data_issues'] = $integrity->dataIssuesForCategory(
-                $bankAccountId,
-                $category,
-                self::applyCategoryScope(clone $query, $category),
-            );
-            $stats['missing_steps'] = $this->missingStepsForCategory(clone $query, $category);
+            foreach ($stepKeys as $statusKey) {
+                $count = (int) ($statusCounts[$statusKey] ?? 0);
 
-            $result[$category] = $stats;
+                if ($count > 0) {
+                    $missingSteps[] = [
+                        'key' => $statusKey,
+                        'label' => $docService->formatDocumentationStatusLabel($statusKey),
+                        'count' => $count,
+                    ];
+                }
+            }
+
+            $result[$category] = [
+                'total' => $total,
+                'completed' => $completed,
+                'uncompleted' => $total - $completed,
+                'data_issues' => $dataIssuesByCategory[$category] ?? [],
+                'missing_steps' => $missingSteps,
+            ];
         }
 
         return $result;
@@ -449,18 +573,23 @@ class TransactionDocumentationStatsService
     public function documentationStatusBreakdown(Builder $query): array
     {
         $docService = app(TransactionDocumentationService::class);
+        $statusCounts = (clone $query)
+            ->selectRaw('documentation_status, COUNT(*) as aggregate')
+            ->groupBy('documentation_status')
+            ->pluck('aggregate', 'documentation_status');
+
         $statuses = [];
 
         foreach (self::documentationStatusKeys() as $statusKey) {
             $statuses[] = [
                 'key' => $statusKey,
                 'label' => $docService->formatDocumentationStatusLabel($statusKey),
-                'count' => (clone $query)->where('documentation_status', $statusKey)->count(),
+                'count' => (int) ($statusCounts[$statusKey] ?? 0),
             ];
         }
 
         return [
-            'total' => (clone $query)->count(),
+            'total' => (int) array_sum($statusCounts->all()),
             'statuses' => $statuses,
         ];
     }

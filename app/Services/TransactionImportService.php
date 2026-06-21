@@ -171,6 +171,8 @@ class TransactionImportService
             'notes' => $errors !== [] ? implode("\n", array_slice($errors, 0, 20)) : null,
         ]);
 
+        TransactionDocumentationStatsService::forgetBankAccountCache($bankAccountId);
+
         return [
             'batch_id' => $batch->id,
             'imported' => $imported,

@@ -45,7 +45,8 @@ class TrxOutStatementNormalizer
             return collect();
         }
 
-        $columnMap = $this->mapHeaders(is_array($rows->first()) ? $rows->first() : []);
+        $headerRow = is_array($rows->first()) ? $rows->first() : [];
+        $columnMap = $this->mapHeaders($headerRow);
 
         return $rows->slice(1)
             ->values()
@@ -60,12 +61,25 @@ class TrxOutStatementNormalizer
      */
     protected function mapHeaders(array $headerRow): array
     {
+        $hasValueDateColumn = collect($headerRow)
+            ->contains(fn (mixed $header): bool => Str::lower(trim((string) $header)) === 'value date');
+
         $map = [];
 
         foreach ($headerRow as $index => $header) {
             $key = Str::lower(trim((string) $header));
 
-            if ($key === '' || ! isset(self::HEADER_MAP[$key])) {
+            if ($key === '') {
+                continue;
+            }
+
+            if ($key === 'date') {
+                $map[$index] = $hasValueDateColumn ? '_skip_date_formula' : 'transaction_date';
+
+                continue;
+            }
+
+            if (! isset(self::HEADER_MAP[$key])) {
                 continue;
             }
 
@@ -223,21 +237,17 @@ class TrxOutStatementNormalizer
             return null;
         }
 
-        if (is_numeric($value) && (float) $value > 40000) {
-            try {
-                return Carbon::instance(
-                    \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)
-                )->format('Y-m-d');
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
         try {
             if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', trim((string) $value), $matches)) {
                 $year = strlen($matches[3]) === 2 ? '20'.$matches[3] : $matches[3];
 
                 return sprintf('%04d-%02d-%02d', (int) $year, (int) $matches[2], (int) $matches[1]);
+            }
+
+            if (is_numeric($value) && (float) $value > 40000) {
+                return Carbon::instance(
+                    \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)
+                )->format('Y-m-d');
             }
 
             return Carbon::parse($value)->format('Y-m-d');

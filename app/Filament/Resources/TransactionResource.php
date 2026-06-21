@@ -28,6 +28,7 @@ use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
@@ -513,10 +514,13 @@ class TransactionResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query): Builder {
+                $query->select('transactions.*');
+                static::applyRelatedPartyLabelSelect($query);
+
                 $query->with([
                     'bankAccount',
-                    'invoices.file.patient.client',
-                    'bills.file.patient.client',
+                    'invoices',
+                    'bills',
                 ]);
 
                 $user = Filament::auth()->user();
@@ -560,32 +564,34 @@ class TransactionResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('related_party')
                     ->label('Related to')
-                    ->getStateUsing(fn (Transaction $record): ?string => $record->getRelatedPartyLabel())
+                    ->getStateUsing(fn (Transaction $record): ?string => $record->related_party_label ?? $record->getRelatedPartyLabel())
                     ->placeholder('—')
                     ->limit(30)
-                    ->tooltip(fn (Transaction $record): ?string => $record->getRelatedPartyLabel()),
+                    ->tooltip(fn (Transaction $record): ?string => $record->related_party_label ?? $record->getRelatedPartyLabel()),
                 Tables\Columns\TextColumn::make('amount'),
                 Tables\Columns\TextColumn::make('linking_status')
                     ->label('Linking status')
                     ->badge()
-                    ->getStateUsing(fn (Transaction $record): string => TransactionIntegrityService::linkingStatusLabel($record))
-                    ->color(fn (Transaction $record): string => TransactionIntegrityService::hasInvoiceTotalMismatch($record) ? 'warning' : 'success')
-                    ->tooltip(fn (Transaction $record): ?string => TransactionIntegrityService::invoiceTotalMismatchTooltip($record))
+                    ->getStateUsing(fn (Transaction $record): string => $record->type === 'Income'
+                        ? TransactionIntegrityService::linkingStatusLabel($record)
+                        : '—')
+                    ->color(fn (Transaction $record): string => $record->type === 'Income' && TransactionIntegrityService::hasInvoiceTotalMismatch($record)
+                        ? 'warning'
+                        : 'success')
+                    ->tooltip(fn (Transaction $record): ?string => $record->type === 'Income'
+                        ? TransactionIntegrityService::invoiceTotalMismatchTooltip($record)
+                        : null)
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('documentation_status')
+                    ->label('Documentation')
+                    ->formatStateUsing(fn (?string $state): string => app(TransactionDocumentationService::class)->formatDocumentationStatusLabel($state))
+                    ->badge()
+                    ->color(fn (?string $state): string => TransactionDocumentationService::colorForStatusKey($state))
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('type')->searchable()
                     ->color(fn ($record) => match ($record->type) {
                         'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',
                     })->badge(),
-                Tables\Columns\TextColumn::make('documentation_status')
-                    ->label('Documentation')
-                    ->getStateUsing(fn (Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationColumnSummary($record))
-                    ->tooltip(fn (Transaction $record): ?string => app(TransactionDocumentationService::class)->getDocumentationColumnDescription($record))
-                    ->limit(40)
-                    ->wrap()
-                    ->color(fn (Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationStatusColor($record))
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query->orderBy('documentation_status', $direction);
-                    }),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Payment status')
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
@@ -702,9 +708,7 @@ class TransactionResource extends Resource
                     ->label('Month')
                     ->date()
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y'))
-                    ->getDescriptionFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y').' Balance: '.$record->bankAccount->monthlyBalance($record->date)),
-
+                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y')),
             ])
             ->actions([
                 TransactionDocumentationForm::makeTableAction(),
@@ -980,6 +984,33 @@ class TransactionResource extends Resource
             ->mapWithKeys(fn (Invoice $invoice) => [
                 $invoice->id => static::formatInvoiceOptionLabel($invoice),
             ])->all();
+    }
+
+    public static function applyRelatedPartyLabelSelect(Builder $query): Builder
+    {
+        if (collect($query->getQuery()->joins ?? [])->contains(fn ($join): bool => ($join->table ?? null) === 'clients')) {
+            return $query;
+        }
+
+        return $query
+            ->leftJoin('clients', function ($join): void {
+                $join->on('transactions.related_id', '=', 'clients.id')
+                    ->where('transactions.related_type', '=', 'Client');
+            })
+            ->leftJoin('providers', function ($join): void {
+                $join->on('transactions.related_id', '=', 'providers.id')
+                    ->where('transactions.related_type', '=', 'Provider');
+            })
+            ->leftJoin('provider_branches', function ($join): void {
+                $join->on('transactions.related_id', '=', 'provider_branches.id')
+                    ->where('transactions.related_type', '=', 'Branch');
+            })
+            ->leftJoin('providers as branch_providers', 'provider_branches.provider_id', '=', 'branch_providers.id')
+            ->leftJoin('patients', function ($join): void {
+                $join->on('transactions.related_id', '=', 'patients.id')
+                    ->where('transactions.related_type', '=', 'Patient');
+            })
+            ->addSelect(DB::raw("COALESCE(NULLIF(clients.company_name, ''), clients.name, providers.name, branch_providers.name, provider_branches.branch_name, patients.name) as related_party_label"));
     }
 
     public static function formatBillOptionLabel(Bill $bill): string
