@@ -5,7 +5,7 @@ namespace App\Filament\Support;
 use App\Filament\Resources\TransactionResource;
 use App\Models\Invoice;
 use App\Models\Transaction;
-use App\Services\TransactionDocumentationService;
+use App\Services\TransactionSettlementService;
 use Filament\Forms;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
@@ -229,7 +229,7 @@ class TransactionInvoiceLinkForm
             $invoice->recalculatePaidAmountFromTransactions();
         }
 
-        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+        app(TransactionSettlementService::class)->syncDocumentation($transaction->fresh());
 
         if ($notify) {
             Notification::make()
@@ -254,7 +254,7 @@ class TransactionInvoiceLinkForm
         );
 
         $transaction->updateInvoicePaidAmount($invoice, $amountPaid);
-        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+        app(TransactionSettlementService::class)->syncDocumentation($transaction->fresh());
 
         Notification::make()
             ->success()
@@ -266,7 +266,7 @@ class TransactionInvoiceLinkForm
     {
         $transaction->invoices()->detach($invoice->id);
         $invoice->recalculatePaidAmountFromTransactions();
-        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
+        app(TransactionSettlementService::class)->syncDocumentation($transaction->fresh());
 
         Notification::make()
             ->success()

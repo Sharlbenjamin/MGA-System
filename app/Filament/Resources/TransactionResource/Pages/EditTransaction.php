@@ -42,9 +42,9 @@ class EditTransaction extends EditRecord
         ];
     }
 
-    protected function getRedirectUrl(): string
+    protected function getRedirectUrl(): ?string
     {
-        return static::getResource()::getUrl('edit', ['record' => $this->record]);
+        return null;
     }
 
     protected function mutateFormDataBeforeFill(array $data): array
@@ -88,8 +88,6 @@ class EditTransaction extends EditRecord
         $categoryChanged = $this->documentationCategory !== $this->previousDocumentationCategory;
         $billsChanged = $this->billsToSync !== $this->previousBillsToSync;
 
-        $needsRecalculate = false;
-
         if ($categoryChanged && filled($this->documentationCategory)) {
             try {
                 $statsService->applyCategory(
@@ -112,14 +110,7 @@ class EditTransaction extends EditRecord
             }
         } elseif ($billsChanged && in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
             $statsService->syncBills($transaction, $this->billsToSync);
-            $needsRecalculate = true;
         }
-
-        if ($needsRecalculate) {
-            $transaction = $transaction->fresh();
-        }
-
-        app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
 
         $this->refreshFormAfterSideEffects();
     }
@@ -131,8 +122,6 @@ class EditTransaction extends EditRecord
         $this->refreshFormData(TransactionEditPageRefresh::FORM_FIELDS);
 
         $this->data['bills'] = $this->record->bills->pluck('id')->all();
-
-        $this->dispatch('$refresh');
     }
 
     protected function refreshFormAfterSideEffects(): void
@@ -169,7 +158,7 @@ class EditTransaction extends EditRecord
                     }
 
                     app(GenerateTrxInPdfService::class)->generate($this->record);
-                    $docService->syncAndRecalculate($this->record->fresh());
+                    $this->record = $this->record->fresh();
                     $this->refreshRecordOnPage();
                 }),
             Action::make('trxOutPdfBlocked')
@@ -195,7 +184,7 @@ class EditTransaction extends EditRecord
                     }
 
                     app(GenerateTrxOutPdfService::class)->generate($this->record);
-                    $docService->syncAndRecalculate($this->record->fresh());
+                    $this->record = $this->record->fresh();
                     $this->refreshRecordOnPage();
                 }),
             Action::make('viewTrxInPdf')
@@ -224,7 +213,7 @@ class EditTransaction extends EditRecord
                 ->action(function (): void {
                     try {
                         $this->record->finalizeTransaction();
-                        app(TransactionDocumentationService::class)->syncAndRecalculate($this->record->fresh());
+                        $this->record = $this->record->fresh();
                         $this->refreshRecordOnPage();
 
                         Notification::make()

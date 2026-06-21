@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TransactionResource\RelationManager;
 
 use App\Filament\Support\TransactionEditPageRefresh;
+use App\Services\TransactionSettlementService;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -86,8 +87,8 @@ class BillRelationManager extends RelationManager
 
                         $record->refresh();
 
-                        app(\App\Services\TransactionDocumentationService::class)
-                            ->syncAndRecalculate($this->ownerRecord->fresh());
+                        app(TransactionSettlementService::class)
+                            ->syncDocumentation($this->ownerRecord->fresh());
 
                         TransactionEditPageRefresh::refresh($this->getLivewire());
                     }),

@@ -10,24 +10,40 @@ use Illuminate\Support\Str;
 
 class TransactionDocumentationService
 {
+    private static bool $isSyncing = false;
+
+    private static ?int $syncingTransactionId = null;
+
     public function syncAndRecalculate(Transaction $transaction): Transaction
     {
-        $this->syncDerivedFields($transaction);
-        $this->recalculateDocumentationStatus($transaction);
-
-        $transaction = $transaction->fresh([
-            'invoices.file.patient',
-            'bills.file.patient',
-            'attachments',
-            'createdByUser',
-            'updatedByUser',
-        ]);
-
-        if ($transaction?->bank_account_id) {
-            TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+        if (self::$isSyncing && self::$syncingTransactionId === $transaction->id) {
+            return $transaction;
         }
 
-        return $transaction;
+        self::$isSyncing = true;
+        self::$syncingTransactionId = $transaction->id;
+
+        try {
+            $this->syncDerivedFields($transaction);
+            $this->recalculateDocumentationStatus($transaction);
+
+            $transaction = $transaction->fresh([
+                'invoices.file.patient',
+                'bills.file.patient',
+                'attachments',
+                'createdByUser',
+                'updatedByUser',
+            ]);
+
+            if ($transaction?->bank_account_id) {
+                TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+            }
+
+            return $transaction;
+        } finally {
+            self::$isSyncing = false;
+            self::$syncingTransactionId = null;
+        }
     }
 
     public function syncDerivedFields(Transaction $transaction): void

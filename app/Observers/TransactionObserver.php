@@ -13,8 +13,10 @@ class TransactionObserver
 
     public function saved(Transaction $transaction): void
     {
-        if ($transaction->wasRecentlyCreated || $transaction->wasChanged()) {
-            $this->documentationService->syncAndRecalculate($transaction);
+        if (! $transaction->wasRecentlyCreated && ! $transaction->wasChanged()) {
+            return;
         }
+
+        $this->documentationService->syncAndRecalculate($transaction);
     }
 }

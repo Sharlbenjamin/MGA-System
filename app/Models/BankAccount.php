@@ -123,19 +123,25 @@ class BankAccount extends Model
 
     // Calculations   Calculations    Calculations    Calculations    Calculations    Calculations   Calculations  Calculations
 
-    public static function boot()
+    /** @var array<int, bool> */
+    private static array $calculatingBalance = [];
+
+    public function calculateBalance(): void
     {
-        parent::boot();
-        static::updating(function ($model) {
-            $model->calculateBalance();
-        });
-    }
-    public function calculateBalance()
-    {
-        $totalIncome = $this->transactions()->where('type', 'Income')->sum('amount');
-        $totalOutflow = $this->transactions()->whereIn('type', ['Outflow', 'Expense'])->sum('amount');
-        $this->balance = $totalIncome - $totalOutflow;
-        $this->saveQuietly();
+        if (self::$calculatingBalance[$this->id] ?? false) {
+            return;
+        }
+
+        self::$calculatingBalance[$this->id] = true;
+
+        try {
+            $totalIncome = $this->transactions()->where('type', 'Income')->sum('amount');
+            $totalOutflow = $this->transactions()->whereIn('type', ['Outflow', 'Expense'])->sum('amount');
+            $this->balance = $totalIncome - $totalOutflow;
+            $this->saveQuietly();
+        } finally {
+            unset(self::$calculatingBalance[$this->id]);
+        }
     }
 
     public function monthlyBalance($month)

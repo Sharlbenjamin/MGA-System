@@ -235,8 +235,6 @@ class TransactionDocumentationForm
             app(GenerateTrxOutPdfService::class)->generate($record);
         }
 
-        app(TransactionDocumentationService::class)->syncAndRecalculate($record->fresh());
-
         Notification::make()
             ->success()
             ->title('Documentation updated')

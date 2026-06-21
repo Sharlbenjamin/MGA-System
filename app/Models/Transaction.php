@@ -116,7 +116,7 @@ class Transaction extends Model
                     TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
                 }
 
-                if ($transaction->bankAccount) {
+                if ($transaction->wasChanged(['amount', 'type', 'date', 'bank_account_id']) && $transaction->bankAccount) {
                     $transaction->bankAccount->calculateBalance();
                 }
             } catch (\Exception $e) {
