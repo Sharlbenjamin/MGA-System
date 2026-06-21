@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\TransactionInvoiceLinkForm;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
 use Filament\Notifications\Notification;
@@ -17,14 +18,14 @@ class CreateTransaction extends CreateRecord
     /** @var array<int, int> */
     protected array $billsToAttach = [];
 
-    /** @var array<int, int> */
-    protected array $invoicesToAttach = [];
+    /** @var array<int, array{invoice_id: int, amount_paid: float}> */
+    protected array $invoiceLinksToAttach = [];
 
     protected ?string $documentationCategory = null;
 
     protected bool $isDraftPayment = false;
 
-    protected bool $redirectToEditForInvoices = false;
+    protected bool $redirectToEditAfterCreate = false;
 
     public function getBreadcrumbs(): array
     {
@@ -45,7 +46,7 @@ class CreateTransaction extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        if ($this->redirectToEditForInvoices || $this->invoicesToAttach !== [] || $this->billsToAttach !== [] || $this->isDraftPayment) {
+        if ($this->redirectToEditAfterCreate || $this->invoiceLinksToAttach !== [] || $this->billsToAttach !== [] || $this->isDraftPayment) {
             return static::getResource()::getUrl('edit', ['record' => $this->record]);
         }
 
@@ -61,11 +62,11 @@ class CreateTransaction extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $this->billsToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
-        $this->invoicesToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
+        $this->invoiceLinksToAttach = $this->normalizeInvoiceLinks($data['invoice_links'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? request()->get('documentation_category');
-        $this->redirectToEditForInvoices = $this->invoicesToAttach !== [] || $this->billsToAttach !== [];
+        $this->redirectToEditAfterCreate = $this->invoiceLinksToAttach !== [] || $this->billsToAttach !== [];
 
-        unset($data['bills'], $data['invoices']);
+        unset($data['bills'], $data['invoice_links']);
 
         if (blank($data['documentation_category'] ?? null)) {
             $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
@@ -91,7 +92,7 @@ class CreateTransaction extends CreateRecord
         $statsService = app(TransactionDocumentationStatsService::class);
 
         $this->billsToAttach = $this->mergeBillIdsFromRequest($this->billsToAttach);
-        $this->invoicesToAttach = $this->mergeInvoiceIdsFromRequest($this->invoicesToAttach);
+        $this->invoiceLinksToAttach = $this->mergeInvoiceLinksFromRequest($this->invoiceLinksToAttach);
 
         if ($this->documentationCategory) {
             $statsService->applyCategory(
@@ -108,10 +109,8 @@ class CreateTransaction extends CreateRecord
             }
         }
 
-        if ($transaction->related_type === 'Client' && $this->invoicesToAttach !== []) {
-            $statsService->syncInvoicesWithInitialAmounts($transaction, $this->invoicesToAttach);
-        } elseif ($transaction->related_type === 'Client') {
-            $statsService->syncInvoices($transaction, $this->invoicesToAttach);
+        if ($transaction->related_type === 'Client' && $this->invoiceLinksToAttach !== []) {
+            TransactionInvoiceLinkForm::attachLinksFromCreate($transaction, $this->invoiceLinksToAttach);
         }
 
         app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
@@ -122,13 +121,31 @@ class CreateTransaction extends CreateRecord
                 ->body('Bills are linked but not marked paid until you confirm the bank statement and finalize.')
                 ->info()
                 ->send();
-        } elseif ($this->invoicesToAttach !== []) {
-            Notification::make()
-                ->title('Set paid amount per invoice')
-                ->body('Review and adjust paid amounts for each linked invoice in the Invoices tab.')
-                ->info()
-                ->send();
         }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $links
+     * @return array<int, array{invoice_id: int, amount_paid: float}>
+     */
+    protected function normalizeInvoiceLinks(array $links): array
+    {
+        $normalized = [];
+
+        foreach ($links as $link) {
+            $invoiceId = (int) ($link['invoice_id'] ?? 0);
+
+            if (! $invoiceId) {
+                continue;
+            }
+
+            $normalized[] = [
+                'invoice_id' => $invoiceId,
+                'amount_paid' => (float) ($link['amount_paid'] ?? 0),
+            ];
+        }
+
+        return $normalized;
     }
 
     /**
@@ -155,18 +172,17 @@ class CreateTransaction extends CreateRecord
     }
 
     /**
-     * @param  array<int, int>  $invoiceIds
-     * @return array<int, int>
+     * @param  array<int, array{invoice_id: int, amount_paid: float}>  $links
+     * @return array<int, array{invoice_id: int, amount_paid: float}>
      */
-    protected function mergeInvoiceIdsFromRequest(array $invoiceIds): array
+    protected function mergeInvoiceLinksFromRequest(array $links): array
     {
-        $merged = $invoiceIds;
-
         $invoiceId = request()->integer('invoice_id');
-        if ($invoiceId) {
-            $merged[] = $invoiceId;
+
+        if ($invoiceId && collect($links)->doesntContain('invoice_id', $invoiceId)) {
+            $links[] = ['invoice_id' => $invoiceId, 'amount_paid' => 0];
         }
 
-        return array_values(array_unique(array_filter($merged)));
+        return $links;
     }
 }

@@ -24,13 +24,7 @@ class EditTransaction extends EditRecord
     protected array $billsToSync = [];
 
     /** @var array<int, int> */
-    protected array $invoicesToSync = [];
-
-    /** @var array<int, int> */
     protected array $previousBillsToSync = [];
-
-    /** @var array<int, int> */
-    protected array $previousInvoicesToSync = [];
 
     protected ?string $documentationCategory = null;
 
@@ -54,7 +48,6 @@ class EditTransaction extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['invoices'] = $this->record->invoices()->pluck('invoices.id')->all();
         $data['bills'] = $this->record->bills()->pluck('bills.id')->all();
 
         return $data;
@@ -69,16 +62,12 @@ class EditTransaction extends EditRecord
         $this->previousBillsToSync = TransactionDocumentationStatsService::normalizeLinkIds(
             $this->record->bills()->pluck('bills.id')->all(),
         );
-        $this->previousInvoicesToSync = TransactionDocumentationStatsService::normalizeLinkIds(
-            $this->record->invoices()->pluck('invoices.id')->all(),
-        );
 
         $this->relatedTypeForSync = $data['related_type'] ?? $this->record->related_type;
         $this->billsToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
-        $this->invoicesToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['invoices'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? null;
 
-        unset($data['bills'], $data['invoices']);
+        unset($data['bills']);
 
         if (blank($data['documentation_category'] ?? null)) {
             $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
@@ -97,7 +86,6 @@ class EditTransaction extends EditRecord
 
         $categoryChanged = $this->documentationCategory !== $this->previousDocumentationCategory;
         $billsChanged = $this->billsToSync !== $this->previousBillsToSync;
-        $invoicesChanged = $this->invoicesToSync !== $this->previousInvoicesToSync;
 
         $needsRecalculate = false;
 
@@ -126,11 +114,6 @@ class EditTransaction extends EditRecord
             $needsRecalculate = true;
         }
 
-        if ($invoicesChanged && $this->relatedTypeForSync === 'Client') {
-            $statsService->syncInvoices($transaction, $this->invoicesToSync);
-            $needsRecalculate = true;
-        }
-
         if ($needsRecalculate) {
             app(TransactionDocumentationService::class)->syncAndRecalculate($transaction->fresh());
         }
@@ -140,10 +123,19 @@ class EditTransaction extends EditRecord
 
     protected function refreshFormAfterSideEffects(): void
     {
-        $this->record = $this->record->fresh();
-        $this->record->load(['invoices', 'bills']);
-        $this->fillForm();
-        $this->dispatch('refreshRelation');
+        $this->record = $this->record->fresh(['bills']);
+
+        $this->refreshFormData([
+            'documentation_status',
+            'documentation_category',
+            'type',
+            'related_type',
+            'related_id',
+            'reference',
+            'status',
+        ]);
+
+        $this->data['bills'] = $this->record->bills->pluck('id')->all();
     }
 
     protected function getHeaderActions(): array

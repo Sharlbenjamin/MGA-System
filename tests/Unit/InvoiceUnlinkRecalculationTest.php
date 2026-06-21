@@ -125,6 +125,69 @@ class InvoiceUnlinkRecalculationTest extends TestCase
         );
     }
 
+    #[Test]
+    public function describe_issue_prioritizes_linked_zero_payment_when_pivot_is_zero_but_stored_paid_is_set(): void
+    {
+        $invoice = Mockery::mock(Invoice::class)->makePartial();
+        $invoice->status = 'Unpaid';
+        $invoice->paid_amount = 500;
+        $invoice->total_amount = 500;
+
+        $invoice->shouldReceive('transactions')->andReturn(
+            tap(Mockery::mock(), fn ($relation) => $relation->shouldReceive('exists')->andReturn(true))
+        );
+
+        $this->assertSame(
+            InvoiceSettlementIntegrityService::ISSUE_LINKED_ZERO_PAYMENT,
+            InvoiceSettlementIntegrityService::describeIssue($invoice, 0.0),
+        );
+    }
+
+    #[Test]
+    public function describe_issue_detects_linked_zero_payment_when_stored_and_pivot_are_both_zero(): void
+    {
+        $invoice = Mockery::mock(Invoice::class)->makePartial();
+        $invoice->status = 'Unpaid';
+        $invoice->paid_amount = 0;
+        $invoice->total_amount = 500;
+
+        $invoice->shouldReceive('transactions')->andReturn(
+            tap(Mockery::mock(), fn ($relation) => $relation->shouldReceive('exists')->andReturn(true))
+        );
+
+        $this->assertSame(
+            InvoiceSettlementIntegrityService::ISSUE_LINKED_ZERO_PAYMENT,
+            InvoiceSettlementIntegrityService::describeIssue($invoice, 0.0),
+        );
+    }
+
+    #[Test]
+    public function describe_issue_detects_over_allocated_payments(): void
+    {
+        $invoice = Mockery::mock(Invoice::class)->makePartial();
+        $invoice->status = 'Paid';
+        $invoice->paid_amount = 600;
+        $invoice->total_amount = 500;
+
+        $invoice->shouldReceive('transactions')->andReturn(
+            tap(Mockery::mock(), fn ($relation) => $relation->shouldReceive('exists')->andReturn(true))
+        );
+
+        $this->assertSame(
+            InvoiceSettlementIntegrityService::ISSUE_OVER_ALLOCATED,
+            InvoiceSettlementIntegrityService::describeIssue($invoice, 600.0),
+        );
+    }
+
+    #[Test]
+    public function stored_pivot_mismatch_returns_absolute_difference(): void
+    {
+        $invoice = Mockery::mock(Invoice::class)->makePartial();
+        $invoice->paid_amount = 500;
+
+        $this->assertSame(400.0, InvoiceSettlementIntegrityService::storedPivotMismatchFor($invoice, 100.0));
+    }
+
     private function settlementStatusFor(float $paidAmount, float $totalAmount): string
     {
         return match (true) {

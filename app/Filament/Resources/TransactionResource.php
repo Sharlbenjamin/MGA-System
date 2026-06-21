@@ -6,6 +6,7 @@ use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManager;
 use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
 use App\Filament\Support\TransactionDocumentationForm;
+use App\Filament\Support\TransactionInvoiceLinkForm;
 use App\Models\BankAccount;
 use App\Models\Bill;
 use App\Models\Client;
@@ -412,23 +413,22 @@ class TransactionResource extends Resource
                 Forms\Components\Toggle::make('charges_covered_by_client')
                     ->default(false),
 
-                // I want to have a table to select the related invoice or bill
-                Forms\Components\Select::make('invoices')
+                Forms\Components\Repeater::make('invoice_links')
                     ->label('Invoices')
-                    ->multiple()
-                    ->searchable()
-                    ->preload()
-                    ->live()
-                    ->visible(fn ($get) => $get('related_type') === 'Client')
-                    ->default(fn () => request()->get('invoice_id') ? [request()->get('invoice_id')] : [])
-                    ->options(function (callable $get, $record = null) {
-                        $clientId = $get('related_id');
-                        if (! $clientId) {
+                    ->addActionLabel('Add invoice')
+                    ->schema(TransactionInvoiceLinkForm::createRepeaterSchema())
+                    ->default(function (): array {
+                        $invoiceId = request()->integer('invoice_id');
+
+                        if (! $invoiceId) {
                             return [];
                         }
 
-                        return static::availableInvoiceOptions((int) $clientId, $record?->id);
-                    }),
+                        return [['invoice_id' => $invoiceId, 'amount_paid' => null]];
+                    })
+                    ->visible(fn ($get, $livewire) => $get('related_type') === 'Client'
+                        && $livewire instanceof Pages\CreateTransaction)
+                    ->columnSpanFull(),
                 Forms\Components\Select::make('bills')
                     ->label('Bills')
                     ->multiple()

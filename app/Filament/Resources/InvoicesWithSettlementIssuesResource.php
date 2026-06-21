@@ -46,7 +46,7 @@ class InvoicesWithSettlementIssuesResource extends Resource
     {
         $pivotSum = InvoiceSettlementIntegrityService::pivotSumSubquerySql();
 
-        return parent::getEloquentQuery()
+        return InvoiceSettlementIntegrityService::applyIssuesScope(parent::getEloquentQuery())
             ->with(['patient.client', 'file', 'transactions'])
             ->select('invoices.*')
             ->selectRaw("{$pivotSum} as pivot_paid_sum")
@@ -61,7 +61,6 @@ class InvoicesWithSettlementIssuesResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => InvoiceSettlementIntegrityService::applyIssuesScope($query))
             ->defaultSort('invoice_date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('issue_type')
@@ -77,6 +76,8 @@ class InvoicesWithSettlementIssuesResource extends Resource
                         InvoiceSettlementIntegrityService::ISSUE_AMOUNT_MISMATCH => 'warning',
                         InvoiceSettlementIntegrityService::ISSUE_STATUS_UNDERSTATES => 'info',
                         InvoiceSettlementIntegrityService::ISSUE_STATUS_OVERSTATES => 'warning',
+                        InvoiceSettlementIntegrityService::ISSUE_LINKED_ZERO_PAYMENT => 'danger',
+                        InvoiceSettlementIntegrityService::ISSUE_OVER_ALLOCATED => 'danger',
                         default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('name')
@@ -109,8 +110,16 @@ class InvoicesWithSettlementIssuesResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('pivot_paid_sum')
                     ->label('Paid from transactions')
+                    ->state(fn (Invoice $record): float => InvoiceSettlementIntegrityService::pivotSumFor($record))
                     ->money('EUR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('stored_pivot_mismatch')
+                    ->label('Mismatch')
+                    ->state(fn (Invoice $record): float => InvoiceSettlementIntegrityService::storedPivotMismatchFor($record))
+                    ->money('EUR')
+                    ->color(fn (Invoice $record): string => InvoiceSettlementIntegrityService::storedPivotMismatchFor($record) > InvoiceSettlementIntegrityService::AMOUNT_TOLERANCE
+                        ? 'danger'
+                        : 'success'),
                 Tables\Columns\TextColumn::make('linked_transaction_count')
                     ->label('Linked transactions')
                     ->sortable(),

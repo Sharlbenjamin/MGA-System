@@ -20,13 +20,19 @@ class InvoiceSettlementIntegrityService
 
     public const ISSUE_STATUS_OVERSTATES = 'status_overstates';
 
+    public const ISSUE_LINKED_ZERO_PAYMENT = 'linked_zero_payment';
+
+    public const ISSUE_OVER_ALLOCATED = 'over_allocated';
+
     public static function issueTypeLabels(): array
     {
         return [
             self::ISSUE_NO_TRANSACTION_LINK => 'Paid/Partial, no transaction link',
             self::ISSUE_AMOUNT_MISMATCH => 'Stored paid amount ≠ transaction total',
-            self::ISSUE_STATUS_UNDERSTATES => 'Not marked Paid but fully paid',
+            self::ISSUE_STATUS_UNDERSTATES => 'Not marked Paid but fully paid via transactions',
             self::ISSUE_STATUS_OVERSTATES => 'Marked Paid but not fully paid',
+            self::ISSUE_LINKED_ZERO_PAYMENT => 'Linked but zero payment recorded',
+            self::ISSUE_OVER_ALLOCATED => 'Transaction payments exceed invoice total',
         ];
     }
 
@@ -47,12 +53,11 @@ class InvoiceSettlementIntegrityService
         return $query->where(function (Builder $issues) use ($pivotSum): void {
             $issues
                 ->where(fn (Builder $noLink): Builder => self::applyNoTransactionLinkScope($noLink))
-                ->orWhereRaw(
-                    'ABS(invoices.paid_amount - '.$pivotSum.') > ?',
-                    [self::AMOUNT_TOLERANCE],
-                )
+                ->orWhere(fn (Builder $mismatch): Builder => self::applyAmountMismatchScope($mismatch))
                 ->orWhere(fn (Builder $understates): Builder => self::applyStatusUnderstatesScope($understates))
-                ->orWhere(fn (Builder $overstates): Builder => self::applyStatusOverstatesScope($overstates));
+                ->orWhere(fn (Builder $overstates): Builder => self::applyStatusOverstatesScope($overstates))
+                ->orWhere(fn (Builder $zeroPayment): Builder => self::applyLinkedZeroPaymentScope($zeroPayment))
+                ->orWhere(fn (Builder $overAllocated): Builder => self::applyOverAllocatedScope($overAllocated));
         });
     }
 
@@ -78,11 +83,7 @@ class InvoiceSettlementIntegrityService
         return $query
             ->where('status', '!=', 'Paid')
             ->where('total_amount', '>', 0)
-            ->where(function (Builder $fullyPaid) use ($pivotSum): void {
-                $fullyPaid
-                    ->whereRaw("{$pivotSum} >= invoices.total_amount - ?", [self::AMOUNT_TOLERANCE])
-                    ->orWhereRaw('invoices.paid_amount >= invoices.total_amount - ?', [self::AMOUNT_TOLERANCE]);
-            });
+            ->whereRaw("{$pivotSum} >= invoices.total_amount - ?", [self::AMOUNT_TOLERANCE]);
     }
 
     public static function applyStatusOverstatesScope(Builder $query): Builder
@@ -99,6 +100,25 @@ class InvoiceSettlementIntegrityService
             });
     }
 
+    public static function applyLinkedZeroPaymentScope(Builder $query): Builder
+    {
+        $pivotSum = self::pivotSumSubquerySql();
+
+        return $query
+            ->where('total_amount', '>', 0)
+            ->whereHas('transactions')
+            ->whereRaw("{$pivotSum} < ?", [self::AMOUNT_TOLERANCE]);
+    }
+
+    public static function applyOverAllocatedScope(Builder $query): Builder
+    {
+        $pivotSum = self::pivotSumSubquerySql();
+
+        return $query
+            ->where('total_amount', '>', 0)
+            ->whereRaw("{$pivotSum} > invoices.total_amount + ?", [self::AMOUNT_TOLERANCE]);
+    }
+
     public static function applyIssueTypeScope(Builder $query, string $issueType): Builder
     {
         return match ($issueType) {
@@ -106,6 +126,8 @@ class InvoiceSettlementIntegrityService
             self::ISSUE_AMOUNT_MISMATCH => self::applyAmountMismatchScope($query),
             self::ISSUE_STATUS_UNDERSTATES => self::applyStatusUnderstatesScope($query),
             self::ISSUE_STATUS_OVERSTATES => self::applyStatusOverstatesScope($query),
+            self::ISSUE_LINKED_ZERO_PAYMENT => self::applyLinkedZeroPaymentScope($query),
+            self::ISSUE_OVER_ALLOCATED => self::applyOverAllocatedScope($query),
             default => $query,
         };
     }
@@ -137,7 +159,7 @@ class InvoiceSettlementIntegrityService
 
     public static function describeIssue(Invoice $invoice, ?float $pivotSum = null): string
     {
-        $pivotSum ??= $invoice->totalPaidFromTransactions();
+        $pivotSum ??= self::pivotSumFor($invoice);
         $paidAmount = round((float) $invoice->paid_amount, 2);
         $pivotSum = round($pivotSum, 2);
         $totalAmount = round((float) $invoice->total_amount, 2);
@@ -147,6 +169,14 @@ class InvoiceSettlementIntegrityService
 
         if (! $hasLinks && in_array($invoice->status, self::SETTLED_STATUSES, true)) {
             return self::ISSUE_NO_TRANSACTION_LINK;
+        }
+
+        if ($totalAmount > 0 && $pivotSum > $totalAmount + self::AMOUNT_TOLERANCE) {
+            return self::ISSUE_OVER_ALLOCATED;
+        }
+
+        if ($totalAmount > 0 && $hasLinks && $pivotSum < self::AMOUNT_TOLERANCE) {
+            return self::ISSUE_LINKED_ZERO_PAYMENT;
         }
 
         if (abs($paidAmount - $pivotSum) > self::AMOUNT_TOLERANCE) {
@@ -160,7 +190,7 @@ class InvoiceSettlementIntegrityService
         }
 
         if ($invoice->status !== 'Paid' && $totalAmount > 0) {
-            if ($pivotSum >= $totalAmount - self::AMOUNT_TOLERANCE || $paidAmount >= $totalAmount - self::AMOUNT_TOLERANCE) {
+            if ($pivotSum >= $totalAmount - self::AMOUNT_TOLERANCE) {
                 return self::ISSUE_STATUS_UNDERSTATES;
             }
         }
@@ -175,6 +205,13 @@ class InvoiceSettlementIntegrityService
         }
 
         return round($invoice->totalPaidFromTransactions(), 2);
+    }
+
+    public static function storedPivotMismatchFor(Invoice $invoice, ?float $pivotSum = null): float
+    {
+        $pivotSum ??= self::pivotSumFor($invoice);
+
+        return round(abs(round((float) $invoice->paid_amount, 2) - $pivotSum), 2);
     }
 
     public static function recalculateIssue(Invoice $invoice): Invoice
