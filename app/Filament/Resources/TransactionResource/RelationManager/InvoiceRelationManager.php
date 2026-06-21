@@ -50,8 +50,7 @@ class InvoiceRelationManager extends RelationManager
             )
             ->columns([
                 TextColumn::make('name')
-                    ->label('Invoice')
-                    ->description(fn (Invoice $record): string => ($record->invoice_date?->format('d/m/Y') ?? '—').' · '.$record->status)
+                    ->label('Invoice number')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('total_amount')
@@ -94,6 +93,8 @@ class InvoiceRelationManager extends RelationManager
                             ->money('EUR')
                     ),
                 TextColumn::make('status')
+                    ->label('Status')
+                    ->description(fn (Invoice $record): string => $record->invoice_date?->format('d/m/Y') ?? '—')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Paid' => 'success',
