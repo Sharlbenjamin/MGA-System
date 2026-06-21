@@ -210,7 +210,7 @@ class Invoice extends Model
             'paid_amount' => $paidAmount,
             'status' => $status,
             'payment_date' => $paymentDate,
-        ])->save();
+        ])->saveQuietly();
     }
 
     public function getIsPaidAttribute(): bool

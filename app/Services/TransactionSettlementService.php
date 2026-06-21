@@ -19,4 +19,9 @@ class TransactionSettlementService
     {
         return $this->documentationService->syncAndRecalculate($transaction);
     }
+
+    public function syncAfterPivotChange(Transaction $transaction): Transaction
+    {
+        return $this->documentationService->syncAfterPivotChange($transaction);
+    }
 }

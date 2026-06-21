@@ -96,6 +96,19 @@ class TransactionDocumentationService
 
     public function syncAndRecalculate(Transaction $transaction): Transaction
     {
+        return $this->runDocumentationSync($transaction, deriveReference: true);
+    }
+
+    /**
+     * Pivot-only changes (invoice/bill link, paid amount) — skip reference derivation.
+     */
+    public function syncAfterPivotChange(Transaction $transaction): Transaction
+    {
+        return $this->runDocumentationSync($transaction, deriveReference: false);
+    }
+
+    protected function runDocumentationSync(Transaction $transaction, bool $deriveReference): Transaction
+    {
         if (self::$isSyncing && self::$syncingTransactionId === $transaction->id) {
             return $transaction;
         }
@@ -108,7 +121,10 @@ class TransactionDocumentationService
 
             $previousStatus = $transaction->documentation_status;
 
-            $this->syncDerivedFields($transaction);
+            if ($deriveReference) {
+                $this->syncDerivedFields($transaction);
+            }
+
             $this->recalculateDocumentationStatus($transaction);
 
             $transaction->refresh();
@@ -448,13 +464,26 @@ class TransactionDocumentationService
         return implode('|', [
             $transaction->id ?? 'new',
             $transaction->updated_at?->timestamp ?? 0,
+            $transaction->documentation_status ?? '',
             $transaction->documentation_category ?? '',
             $transaction->related_type ?? '',
             (string) ($transaction->related_id ?? ''),
             $transaction->attachment_path ?? '',
             $transaction->trx_in_pdf_path ?? '',
             $transaction->trx_out_pdf_path ?? '',
+            (string) $this->relationCountForCache($transaction, 'invoices'),
+            (string) $this->relationCountForCache($transaction, 'bills'),
+            (string) $this->relationCountForCache($transaction, 'attachments'),
         ]);
+    }
+
+    protected function relationCountForCache(Transaction $transaction, string $relation): int
+    {
+        if ($transaction->relationLoaded($relation)) {
+            return $transaction->{$relation}->count();
+        }
+
+        return (int) $transaction->{$relation}()->count();
     }
 
     /**

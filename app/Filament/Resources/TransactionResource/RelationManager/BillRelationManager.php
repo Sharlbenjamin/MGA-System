@@ -88,9 +88,9 @@ class BillRelationManager extends RelationManager
                         $record->refresh();
 
                         app(TransactionSettlementService::class)
-                            ->syncDocumentation($this->ownerRecord->fresh());
+                            ->syncAfterPivotChange($this->ownerRecord->fresh());
 
-                        TransactionEditPageRefresh::refresh($this->getLivewire());
+                        TransactionEditPageRefresh::refresh($this);
                     }),
                 TextColumn::make('remaining_amount')
                     ->money('EUR')

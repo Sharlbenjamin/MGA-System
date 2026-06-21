@@ -230,7 +230,7 @@ class TransactionInvoiceLinkForm
         }
 
         if ($sync) {
-            app(TransactionSettlementService::class)->syncDocumentation($transaction->fresh());
+            app(TransactionSettlementService::class)->syncAfterPivotChange($transaction->fresh());
         }
 
         if ($notify) {
@@ -256,7 +256,7 @@ class TransactionInvoiceLinkForm
         );
 
         $transaction->updateInvoicePaidAmount($invoice, $amountPaid);
-        app(TransactionSettlementService::class)->syncDocumentation($transaction->fresh());
+        app(TransactionSettlementService::class)->syncAfterPivotChange($transaction->fresh());
 
         Notification::make()
             ->success()
@@ -268,7 +268,7 @@ class TransactionInvoiceLinkForm
     {
         $transaction->invoices()->detach($invoice->id);
         $invoice->recalculatePaidAmountFromTransactions();
-        app(TransactionSettlementService::class)->syncDocumentation($transaction->fresh());
+        app(TransactionSettlementService::class)->syncAfterPivotChange($transaction->fresh());
 
         Notification::make()
             ->success()

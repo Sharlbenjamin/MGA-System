@@ -17,6 +17,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\On;
 
 class EditTransaction extends EditRecord
 {
@@ -141,18 +142,23 @@ class EditTransaction extends EditRecord
         $this->refreshFormAfterSideEffects();
     }
 
-    public function refreshRecordOnPage(): void
+    #[On('refresh-transaction-edit-record')]
+    public function refreshRecordOnPage(bool $full = false): void
     {
         $this->record = $this->record->fresh(['bills', 'invoices', 'attachments']);
 
-        $this->refreshFormData(TransactionEditPageRefresh::FORM_FIELDS);
+        $this->refreshFormData(
+            $full
+                ? TransactionEditPageRefresh::FORM_FIELDS
+                : TransactionEditPageRefresh::DOCUMENTATION_FIELDS,
+        );
 
         $this->data['bills'] = $this->record->bills->pluck('id')->all();
     }
 
     protected function refreshFormAfterSideEffects(): void
     {
-        $this->refreshRecordOnPage();
+        $this->refreshRecordOnPage(full: true);
     }
 
     protected function getHeaderActions(): array
@@ -185,7 +191,7 @@ class EditTransaction extends EditRecord
 
                     app(GenerateTrxInPdfService::class)->generate($this->record);
                     $this->record = $this->record->fresh();
-                    $this->refreshRecordOnPage();
+                    $this->refreshRecordOnPage(full: true);
                 }),
             Action::make('trxOutPdfBlocked')
                 ->label(fn (): string => 'Trx Out PDF: '.($docService->getTrxOutSkipReason($this->record) ?? 'Not ready'))
@@ -211,7 +217,7 @@ class EditTransaction extends EditRecord
 
                     app(GenerateTrxOutPdfService::class)->generate($this->record);
                     $this->record = $this->record->fresh();
-                    $this->refreshRecordOnPage();
+                    $this->refreshRecordOnPage(full: true);
                 }),
             Action::make('viewTrxInPdf')
                 ->label('View Trx In PDF')
@@ -240,7 +246,7 @@ class EditTransaction extends EditRecord
                     try {
                         $this->record->finalizeTransaction();
                         $this->record = $this->record->fresh();
-                        $this->refreshRecordOnPage();
+                        $this->refreshRecordOnPage(full: true);
 
                         Notification::make()
                             ->success()

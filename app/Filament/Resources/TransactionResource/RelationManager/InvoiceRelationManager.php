@@ -37,17 +37,17 @@ class InvoiceRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('name')
-            ->modifyQueryUsing(fn (Builder $query) =>
+            ->modifyQueryUsing(function (Builder $query): void {
                 $query->select(
                     'invoices.*',
                     'invoice_transaction.amount_paid',
-                    DB::raw('(invoices.total_amount - COALESCE((
-                        SELECT SUM(it.amount_paid)
-                        FROM invoice_transaction it
-                        WHERE it.invoice_id = invoices.id
-                    ), 0)) as remaining_amount')
-                )
-            )
+                )->selectSub(
+                    DB::table('invoice_transaction')
+                        ->selectRaw('COALESCE(SUM(amount_paid), 0)')
+                        ->whereColumn('invoice_id', 'invoices.id'),
+                    'invoice_total_paid',
+                );
+            })
             ->columns([
                 TextColumn::make('name')
                     ->label('Invoice number')
@@ -56,42 +56,21 @@ class InvoiceRelationManager extends RelationManager
                 TextColumn::make('total_amount')
                     ->label('Original amount')
                     ->money('EUR')
-                    ->summarize(
-                        Sum::make()
-                            ->query(function ($query) {
-                                return $query instanceof Builder
-                                    ? $query->select('invoices.total_amount')
-                                    : $query->selectRaw('SUM(invoices.total_amount)');
-                            })
-                            ->money('EUR')
-                    ),
+                    ->summarize(Sum::make()->money('EUR')),
                 TextColumn::make('amount_paid')
                     ->label('Paid on this transaction')
                     ->money('EUR')
                     ->summarize(
                         Sum::make()
-                            ->query(function ($query) {
-                                return $query instanceof Builder
-                                    ? $query->select('invoice_transaction.amount_paid')
-                                    : $query->selectRaw('SUM(amount_paid)');
-                            })
+                            ->query(fn ($query) => $query->selectRaw('SUM(invoice_transaction.amount_paid)'))
                     ),
-                TextColumn::make('remaining_amount')
+                TextColumn::make('invoice_remaining')
                     ->label('Invoice remaining')
                     ->money('EUR')
-                    ->summarize(
-                        Sum::make()
-                            ->query(function ($query) {
-                                return $query instanceof Builder
-                                    ? $query->selectRaw('SUM(invoices.total_amount - COALESCE((
-                                        SELECT SUM(it.amount_paid)
-                                        FROM invoice_transaction it
-                                        WHERE it.invoice_id = invoices.id
-                                    ), 0))')
-                                    : $query->selectRaw('SUM(remaining_amount)');
-                            })
-                            ->money('EUR')
-                    ),
+                    ->getStateUsing(fn (Invoice $record): float => max(
+                        0,
+                        round((float) $record->total_amount - (float) ($record->invoice_total_paid ?? 0), 2),
+                    )),
                 TextColumn::make('status')
                     ->label('Status')
                     ->description(fn (Invoice $record): string => $record->invoice_date?->format('d/m/Y') ?? '—')
@@ -120,7 +99,7 @@ class InvoiceRelationManager extends RelationManager
                             (float) $data['amount_paid'],
                         );
 
-                        TransactionEditPageRefresh::refresh($this->getLivewire());
+                        TransactionEditPageRefresh::refresh($this);
                     }),
             ])
             ->actions([
@@ -139,7 +118,7 @@ class InvoiceRelationManager extends RelationManager
                             (float) $data['amount_paid'],
                         );
 
-                        TransactionEditPageRefresh::refresh($this->getLivewire());
+                        TransactionEditPageRefresh::refresh($this);
                     }),
                 Tables\Actions\Action::make('delete')
                     ->label('Delete')
@@ -151,7 +130,7 @@ class InvoiceRelationManager extends RelationManager
                     ->action(function (Invoice $record): void {
                         TransactionInvoiceLinkForm::detachInvoice($this->ownerRecord, $record);
 
-                        TransactionEditPageRefresh::refresh($this->getLivewire());
+                        TransactionEditPageRefresh::refresh($this);
                     }),
             ])
             ->defaultSort('name')
