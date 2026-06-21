@@ -545,9 +545,11 @@ class TransactionResource extends Resource
 
                 return $query;
             })
-            ->defaultSort('date', 'desc')
+            ->defaultSort('transactions.date', 'desc')
             ->columns([
-                Tables\Columns\TextColumn::make('date')->date()->sortable(),
+                Tables\Columns\TextColumn::make('date')
+                    ->date()
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('transactions.date', $direction)),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->limit(25)
@@ -627,11 +629,11 @@ class TransactionResource extends Resource
                         return $query
                             ->when(
                                 $data['date_from'] ?? null,
-                                fn (Builder $query, $date): Builder => $query->whereDate('date', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('transactions.date', '>=', $date),
                             )
                             ->when(
                                 $data['date_until'] ?? null,
-                                fn (Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('transactions.date', '<=', $date),
                             );
                     })
                     ->indicateUsing(function (array $data): array {
@@ -1010,7 +1012,7 @@ class TransactionResource extends Resource
                 $join->on('transactions.related_id', '=', 'patients.id')
                     ->where('transactions.related_type', '=', 'Patient');
             })
-            ->addSelect(DB::raw("COALESCE(NULLIF(clients.company_name, ''), clients.name, providers.name, branch_providers.name, provider_branches.branch_name, patients.name) as related_party_label"));
+            ->addSelect(DB::raw("COALESCE(NULLIF(clients.company_name, ''), providers.name, branch_providers.name, provider_branches.branch_name, patients.name) as related_party_label"));
     }
 
     public static function formatBillOptionLabel(Bill $bill): string
