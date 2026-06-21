@@ -181,7 +181,7 @@ class InvoicesWithSettlementIssuesResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Recalculate invoice settlement')
                     ->modalDescription('Update paid amount and status from linked transaction payments.')
-                    ->action(function (Invoice $record): void {
+                    ->action(function (Invoice $record, \Livewire\Component $livewire): void {
                         $fresh = InvoiceSettlementIntegrityService::recalculateIssue($record);
 
                         Notification::make()
@@ -189,6 +189,8 @@ class InvoicesWithSettlementIssuesResource extends Resource
                             ->title('Invoice recalculated')
                             ->body("{$fresh->name} is now {$fresh->status}.")
                             ->send();
+
+                        $livewire->dispatch('refresh-invoice-settlement-stats');
                     }),
             ]);
     }

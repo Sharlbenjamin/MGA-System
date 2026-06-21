@@ -137,6 +137,20 @@ class InvoiceSettlementIntegrityService
         return self::issuesQuery()->count();
     }
 
+    /**
+     * @return array<string, int>
+     */
+    public static function issueTypeCounts(): array
+    {
+        $counts = [];
+
+        foreach (array_keys(self::issueTypeLabels()) as $issueType) {
+            $counts[$issueType] = self::applyIssueTypeScope(Invoice::query(), $issueType)->count();
+        }
+
+        return $counts;
+    }
+
     public static function issuesQuery(): Builder
     {
         return self::applyIssuesScope(Invoice::query());
