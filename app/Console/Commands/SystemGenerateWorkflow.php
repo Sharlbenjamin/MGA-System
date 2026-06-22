@@ -37,7 +37,7 @@ class SystemGenerateWorkflow extends Command
 
         try {
             // Run the generator script
-            $result = Process::run("php {$scriptPath}");
+            $result = Process::run(['php', $scriptPath]);
             
             if ($result->successful()) {
                 $this->info('✅ System Workflow documentation generated successfully!');
