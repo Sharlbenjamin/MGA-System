@@ -338,6 +338,7 @@ class TransactionDocumentationStatsService
     {
         Cache::forget(self::breakdownCacheKey($bankAccountId));
         Cache::forget(self::statusCacheKey($bankAccountId));
+        Cache::forget(self::summaryCacheKey($bankAccountId));
     }
 
     protected static function breakdownCacheKey(int $bankAccountId): string
@@ -622,5 +623,70 @@ class TransactionDocumentationStatsService
     public static function uncompletedDocumentationStatuses(): array
     {
         return ['incomplete', 'unlinked', 'missing_attachment', 'missing_generated_pdf'];
+    }
+
+    /**
+     * Documentation statuses that represent work-in-progress (excluding unlinked).
+     *
+     * @return array<int, string>
+     */
+    public static function incompleteDocumentationStatuses(): array
+    {
+        return ['incomplete', 'missing_attachment', 'missing_generated_pdf'];
+    }
+
+    /**
+     * @return array{total: int, done: int, unlinked: int, incomplete: int}
+     */
+    public function countDocumentationSummary(Builder $query): array
+    {
+        $total = (clone $query)->count();
+        $done = (clone $query)->where('documentation_status', 'complete')->count();
+        $unlinked = (clone $query)->where('documentation_status', 'unlinked')->count();
+        $incomplete = (clone $query)
+            ->whereIn('documentation_status', self::incompleteDocumentationStatuses())
+            ->count();
+
+        return [
+            'total' => $total,
+            'done' => $done,
+            'unlinked' => $unlinked,
+            'incomplete' => $incomplete,
+        ];
+    }
+
+    /**
+     * @return array{all: array{total: int, done: int, unlinked: int, incomplete: int}, income: array{total: int, done: int, unlinked: int, incomplete: int}, outflow: array{total: int, done: int, unlinked: int, incomplete: int}}
+     */
+    public function simpleSummary(Builder $query): array
+    {
+        return [
+            'all' => $this->countDocumentationSummary(clone $query),
+            'income' => $this->countDocumentationSummary(
+                (clone $query)->where('transactions.type', 'Income'),
+            ),
+            'outflow' => $this->countDocumentationSummary(
+                (clone $query)->whereIn('transactions.type', ['Outflow', 'Expense']),
+            ),
+        ];
+    }
+
+    /**
+     * @return array{all: array{total: int, done: int, unlinked: int, incomplete: int}, income: array{total: int, done: int, unlinked: int, incomplete: int}, outflow: array{total: int, done: int, unlinked: int, incomplete: int}}
+     */
+    public function simpleSummaryForBankAccount(int $bankAccountId): array
+    {
+        return Cache::remember(
+            self::summaryCacheKey($bankAccountId),
+            300,
+            fn (): array => $this->simpleSummary(
+                Transaction::query()->where('bank_account_id', $bankAccountId),
+            ),
+        );
+    }
+
+    protected static function summaryCacheKey(int $bankAccountId): string
+    {
+        return "txn_doc_stats:summary:{$bankAccountId}";
     }
 }
