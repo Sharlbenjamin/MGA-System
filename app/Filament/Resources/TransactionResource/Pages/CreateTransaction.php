@@ -26,8 +26,6 @@ class CreateTransaction extends CreateRecord
 
     protected bool $isDraftPayment = false;
 
-    protected bool $redirectToEditAfterCreate = false;
-
     public function getBreadcrumbs(): array
     {
         $bankAccountId = request()->integer('bank_account_id');
@@ -47,17 +45,7 @@ class CreateTransaction extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        if ($this->redirectToEditAfterCreate || $this->invoiceLinksToAttach !== [] || $this->billsToAttach !== [] || $this->isDraftPayment) {
-            return static::getResource()::getUrl('edit', ['record' => $this->record]);
-        }
-
-        $bankAccountId = $this->record->bank_account_id ?? request()->integer('bank_account_id');
-
-        if ($bankAccountId) {
-            return TransactionResource::indexUrlFor($bankAccountId);
-        }
-
-        return BankAccountResource::getUrl('index');
+        return static::getResource()::getUrl('edit', ['record' => $this->record]);
     }
 
     protected function mutateFormDataBeforeCreate(array $data): array
@@ -65,7 +53,6 @@ class CreateTransaction extends CreateRecord
         $this->billsToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
         $this->invoiceLinksToAttach = $this->normalizeInvoiceLinks($data['invoice_links'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? request()->get('documentation_category');
-        $this->redirectToEditAfterCreate = $this->invoiceLinksToAttach !== [] || $this->billsToAttach !== [];
 
         unset($data['bills'], $data['invoice_links']);
 
