@@ -640,18 +640,18 @@ class TransactionDocumentationStatsService
      */
     public function countDocumentationSummary(Builder $query): array
     {
-        $total = (clone $query)->count();
-        $done = (clone $query)->where('documentation_status', 'complete')->count();
-        $unlinked = (clone $query)->where('documentation_status', 'unlinked')->count();
-        $incomplete = (clone $query)
-            ->whereIn('documentation_status', self::incompleteDocumentationStatuses())
-            ->count();
+        $row = (clone $query)->selectRaw("
+            COUNT(*) as total,
+            SUM(CASE WHEN documentation_status = 'complete' THEN 1 ELSE 0 END) as done,
+            SUM(CASE WHEN documentation_status = 'unlinked' THEN 1 ELSE 0 END) as unlinked,
+            SUM(CASE WHEN documentation_status IN ('incomplete', 'missing_attachment', 'missing_generated_pdf') THEN 1 ELSE 0 END) as incomplete
+        ")->first();
 
         return [
-            'total' => $total,
-            'done' => $done,
-            'unlinked' => $unlinked,
-            'incomplete' => $incomplete,
+            'total' => (int) ($row->total ?? 0),
+            'done' => (int) ($row->done ?? 0),
+            'unlinked' => (int) ($row->unlinked ?? 0),
+            'incomplete' => (int) ($row->incomplete ?? 0),
         ];
     }
 
@@ -660,14 +660,40 @@ class TransactionDocumentationStatsService
      */
     public function simpleSummary(Builder $query): array
     {
+        $row = (clone $query)->selectRaw("
+            COUNT(*) as all_total,
+            SUM(CASE WHEN documentation_status = 'complete' THEN 1 ELSE 0 END) as all_done,
+            SUM(CASE WHEN documentation_status = 'unlinked' THEN 1 ELSE 0 END) as all_unlinked,
+            SUM(CASE WHEN documentation_status IN ('incomplete', 'missing_attachment', 'missing_generated_pdf') THEN 1 ELSE 0 END) as all_incomplete,
+            SUM(CASE WHEN type = 'Income' THEN 1 ELSE 0 END) as income_total,
+            SUM(CASE WHEN type = 'Income' AND documentation_status = 'complete' THEN 1 ELSE 0 END) as income_done,
+            SUM(CASE WHEN type = 'Income' AND documentation_status = 'unlinked' THEN 1 ELSE 0 END) as income_unlinked,
+            SUM(CASE WHEN type = 'Income' AND documentation_status IN ('incomplete', 'missing_attachment', 'missing_generated_pdf') THEN 1 ELSE 0 END) as income_incomplete,
+            SUM(CASE WHEN type IN ('Outflow', 'Expense') THEN 1 ELSE 0 END) as outflow_total,
+            SUM(CASE WHEN type IN ('Outflow', 'Expense') AND documentation_status = 'complete' THEN 1 ELSE 0 END) as outflow_done,
+            SUM(CASE WHEN type IN ('Outflow', 'Expense') AND documentation_status = 'unlinked' THEN 1 ELSE 0 END) as outflow_unlinked,
+            SUM(CASE WHEN type IN ('Outflow', 'Expense') AND documentation_status IN ('incomplete', 'missing_attachment', 'missing_generated_pdf') THEN 1 ELSE 0 END) as outflow_incomplete
+        ")->first();
+
         return [
-            'all' => $this->countDocumentationSummary(clone $query),
-            'income' => $this->countDocumentationSummary(
-                (clone $query)->where('transactions.type', 'Income'),
-            ),
-            'outflow' => $this->countDocumentationSummary(
-                (clone $query)->whereIn('transactions.type', ['Outflow', 'Expense']),
-            ),
+            'all' => [
+                'total' => (int) ($row->all_total ?? 0),
+                'done' => (int) ($row->all_done ?? 0),
+                'unlinked' => (int) ($row->all_unlinked ?? 0),
+                'incomplete' => (int) ($row->all_incomplete ?? 0),
+            ],
+            'income' => [
+                'total' => (int) ($row->income_total ?? 0),
+                'done' => (int) ($row->income_done ?? 0),
+                'unlinked' => (int) ($row->income_unlinked ?? 0),
+                'incomplete' => (int) ($row->income_incomplete ?? 0),
+            ],
+            'outflow' => [
+                'total' => (int) ($row->outflow_total ?? 0),
+                'done' => (int) ($row->outflow_done ?? 0),
+                'unlinked' => (int) ($row->outflow_unlinked ?? 0),
+                'incomplete' => (int) ($row->outflow_incomplete ?? 0),
+            ],
         ];
     }
 

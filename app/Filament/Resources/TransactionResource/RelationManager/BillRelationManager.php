@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 
 class BillRelationManager extends RelationManager
 {
+    protected static bool $isLazy = true;
+
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return $ownerRecord->type === 'Outflow' || $ownerRecord->type === 'Expense';
@@ -111,6 +113,8 @@ class BillRelationManager extends RelationManager
                         'Unpaid' => 'danger',
                         default => 'secondary',
                     }),
-            ]);
+            ])
+            ->defaultPaginationPageOption(10)
+            ->paginated([10, 25, 50]);
     }
 }

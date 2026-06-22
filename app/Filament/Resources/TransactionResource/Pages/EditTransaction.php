@@ -35,6 +35,16 @@ class EditTransaction extends EditRecord
 
     protected ?string $relatedTypeForSync = null;
 
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        $this->record->loadMissing([
+            'bills.file',
+            'invoices',
+        ]);
+    }
+
     public function getBreadcrumbs(): array
     {
         return [
@@ -150,6 +160,7 @@ class EditTransaction extends EditRecord
     public function refreshRecordOnPage(bool $full = false): void
     {
         $this->record = $this->record->fresh();
+        $this->record->loadMissing(['bills.file', 'invoices']);
 
         $this->refreshFormData(
             $full
@@ -318,9 +329,9 @@ class EditTransaction extends EditRecord
                 ->label('View Bill')
                 ->icon('heroicon-o-document-text')
                 ->color('primary')
-                ->visible(fn () => $this->record->bills()->exists())
+                ->visible(fn () => $this->record->bills->isNotEmpty())
                 ->action(function () {
-                    $bill = $this->record->bills()->first();
+                    $bill = $this->record->bills->first();
                     if ($bill) {
                         return redirect()->route('filament.admin.resources.bills.edit', $bill);
                     }
@@ -329,9 +340,9 @@ class EditTransaction extends EditRecord
                 ->label('View File')
                 ->icon('heroicon-o-folder')
                 ->color('success')
-                ->visible(fn () => $this->record->bills()->exists() && $this->record->bills()->first()->file)
+                ->visible(fn () => ($bill = $this->record->bills->first()) && $bill->file)
                 ->action(function () {
-                    $bill = $this->record->bills()->first();
+                    $bill = $this->record->bills->first();
                     if ($bill && $bill->file) {
                         return redirect()->route('filament.admin.resources.files.edit', $bill->file);
                     }

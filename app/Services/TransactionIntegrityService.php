@@ -18,27 +18,45 @@ class TransactionIntegrityService
         return self::effectiveIncomeAmountFor($transaction) - self::invoicesPaidTotalFor($transaction);
     }
 
+    public static function linkedInvoicesCountFor(Transaction $transaction): int
+    {
+        if (isset($transaction->linked_invoices_count)) {
+            return (int) $transaction->linked_invoices_count;
+        }
+
+        if ($transaction->relationLoaded('invoices')) {
+            return $transaction->invoices->count();
+        }
+
+        return (int) $transaction->invoices()->count();
+    }
+
+    public static function linkedInvoicesPaidTotalFor(Transaction $transaction): float
+    {
+        if (isset($transaction->linked_invoices_paid_sum)) {
+            return (float) $transaction->linked_invoices_paid_sum;
+        }
+
+        return self::invoicesPaidTotalFor($transaction);
+    }
+
     public static function hasInvoiceTotalMismatch(Transaction $transaction): bool
     {
         if ($transaction->type !== 'Income') {
             return false;
         }
 
-        if (! $transaction->relationLoaded('invoices')) {
-            $transaction->load('invoices');
-        }
-
-        if ($transaction->invoices->isEmpty()) {
+        if (self::linkedInvoicesCountFor($transaction) === 0) {
             return false;
         }
 
-        $linkedPaid = self::invoicesPaidTotalFor($transaction);
+        $linkedPaid = self::linkedInvoicesPaidTotalFor($transaction);
 
         if ($linkedPaid <= 0) {
             return false;
         }
 
-        return abs(self::invoiceAmountDifferenceFor($transaction)) >= 0.01;
+        return abs(self::effectiveIncomeAmountFor($transaction) - $linkedPaid) >= 0.01;
     }
 
     public static function invoiceTotalMismatchTooltip(Transaction $transaction): ?string
@@ -47,7 +65,7 @@ class TransactionIntegrityService
             return null;
         }
 
-        $linkedPaid = self::invoicesPaidTotalFor($transaction);
+        $linkedPaid = self::linkedInvoicesPaidTotalFor($transaction);
         $effectiveAmount = self::effectiveIncomeAmountFor($transaction);
 
         return sprintf(
@@ -65,11 +83,7 @@ class TransactionIntegrityService
             return 'Amount mismatch';
         }
 
-        if ($transaction->type === 'Income' && ! $transaction->relationLoaded('invoices')) {
-            $transaction->load('invoices');
-        }
-
-        if ($transaction->type === 'Income' && $transaction->invoices->isEmpty()) {
+        if ($transaction->type === 'Income' && self::linkedInvoicesCountFor($transaction) === 0) {
             return 'Unlinked';
         }
 

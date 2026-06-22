@@ -654,13 +654,23 @@ class TransactionResource extends Resource
     /**
      * @return array<int, string>
      */
-    public static function searchInvoiceOptions(?int $clientId, ?int $transactionId, ?string $search, int $limit = 50): array
-    {
+    public static function searchInvoiceOptions(
+        ?int $clientId,
+        ?int $transactionId = null,
+        ?string $search = null,
+        int $limit = 50,
+    ): array {
         if (! $clientId) {
             return [];
         }
 
         $query = Invoice::query()
+            ->select('invoices.*')
+            ->selectRaw('(invoices.total_amount - COALESCE((
+                SELECT SUM(it.amount_paid)
+                FROM invoice_transaction it
+                WHERE it.invoice_id = invoices.id
+            ), 0)) as invoice_remaining_balance')
             ->whereHas('patient', fn (Builder $q) => $q->where('client_id', $clientId));
 
         static::applyAvailableInvoiceForTransactionScope($query, $transactionId);
@@ -673,7 +683,10 @@ class TransactionResource extends Resource
             ->limit($limit)
             ->get()
             ->mapWithKeys(fn (Invoice $invoice) => [
-                $invoice->id => static::formatInvoiceOptionLabel($invoice),
+                $invoice->id => static::formatInvoiceOptionLabel(
+                    $invoice,
+                    (float) ($invoice->invoice_remaining_balance ?? 0),
+                ),
             ])
             ->all();
     }
@@ -684,11 +697,10 @@ class TransactionResource extends Resource
             ->modifyQueryUsing(function (Builder $query): Builder {
                 $query->select('transactions.*');
                 static::applyRelatedPartyLabelSelect($query);
+                static::applyLinkingStatusSelect($query);
 
                 $query->with([
                     'bankAccount',
-                    'invoices',
-                    'bills',
                 ]);
 
                 $user = Filament::auth()->user();
@@ -973,6 +985,8 @@ class TransactionResource extends Resource
                         }
                     }),
             ])
+            ->defaultPaginationPageOption(25)
+            ->paginated([10, 25, 50, 100])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('updateProvider')
@@ -1183,24 +1197,39 @@ class TransactionResource extends Resource
             ])->all();
     }
 
+    public static function invoiceOptionLabel(int $invoiceId, ?int $clientId = null, ?int $transactionId = null): ?string
+    {
+        $query = Invoice::query()
+            ->select('invoices.*')
+            ->selectRaw('(invoices.total_amount - COALESCE((
+                SELECT SUM(it.amount_paid)
+                FROM invoice_transaction it
+                WHERE it.invoice_id = invoices.id
+            ), 0)) as invoice_remaining_balance')
+            ->whereKey($invoiceId);
+
+        if ($clientId) {
+            $query->whereHas('patient', fn (Builder $q) => $q->where('client_id', $clientId));
+        }
+
+        $invoice = $query->first();
+
+        if (! $invoice) {
+            return null;
+        }
+
+        return static::formatInvoiceOptionLabel(
+            $invoice,
+            (float) ($invoice->invoice_remaining_balance ?? 0),
+        );
+    }
+
     /**
      * @return array<int, string>
      */
     public static function availableInvoiceOptions(?int $clientId, ?int $transactionId = null): array
     {
-        if (! $clientId) {
-            return [];
-        }
-
-        $query = Invoice::query()
-            ->whereHas('patient', fn (Builder $q) => $q->where('client_id', $clientId));
-
-        static::applyAvailableInvoiceForTransactionScope($query, $transactionId);
-
-        return $query->orderByDesc('id')->get()
-            ->mapWithKeys(fn (Invoice $invoice) => [
-                $invoice->id => static::formatInvoiceOptionLabel($invoice),
-            ])->all();
+        return static::searchInvoiceOptions($clientId ?? 0, $transactionId, null, 100);
     }
 
     public static function applyRelatedPartyLabelSelect(Builder $query): Builder
@@ -1230,6 +1259,19 @@ class TransactionResource extends Resource
             ->addSelect(DB::raw("COALESCE(NULLIF(clients.company_name, ''), providers.name, branch_providers.name, provider_branches.branch_name, patients.name) as related_party_label"));
     }
 
+    public static function applyLinkingStatusSelect(Builder $query): Builder
+    {
+        if (collect($query->getQuery()->columns ?? [])->contains(fn ($column): bool => is_string($column) && str_contains($column, 'linked_invoices_count'))) {
+            return $query;
+        }
+
+        return $query
+            ->addSelect([
+                DB::raw('(SELECT COUNT(*) FROM invoice_transaction WHERE invoice_transaction.transaction_id = transactions.id) as linked_invoices_count'),
+                DB::raw('(SELECT COALESCE(SUM(invoice_transaction.amount_paid), 0) FROM invoice_transaction WHERE invoice_transaction.transaction_id = transactions.id) as linked_invoices_paid_sum'),
+            ]);
+    }
+
     public static function formatBillOptionLabel(Bill $bill): string
     {
         $date = $bill->bill_date ?? $bill->due_date;
@@ -1239,11 +1281,11 @@ class TransactionResource extends Resource
         return "{$bill->name} · {$dateStr} · €{$amount}";
     }
 
-    public static function formatInvoiceOptionLabel(Invoice $invoice): string
+    public static function formatInvoiceOptionLabel(Invoice $invoice, ?float $remainingBalance = null): string
     {
         $dateStr = $invoice->invoice_date?->format('d/m/Y') ?? '—';
         $amount = number_format((float) $invoice->total_amount, 2);
-        $remaining = number_format($invoice->remainingBalance(), 2);
+        $remaining = number_format($remainingBalance ?? $invoice->remainingBalance(), 2);
         $status = $invoice->status ?: 'Unpaid';
 
         return "{$invoice->name} · {$dateStr} · €{$amount} · {$status} · €{$remaining} left";

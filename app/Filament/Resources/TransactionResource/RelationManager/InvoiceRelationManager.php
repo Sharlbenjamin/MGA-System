@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceRelationManager extends RelationManager
 {
+    protected static bool $isLazy = true;
+
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return $ownerRecord->type === 'Income'
@@ -134,6 +136,7 @@ class InvoiceRelationManager extends RelationManager
                     }),
             ])
             ->defaultSort('name')
-            ->paginated(false);
+            ->defaultPaginationPageOption(10)
+            ->paginated([10, 25, 50]);
     }
 }

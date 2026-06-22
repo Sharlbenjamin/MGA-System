@@ -15,24 +15,63 @@ class TransactionInvoiceLinkForm
 {
     /**
      * @param  array<int, int>  $excludeIds
-     * @return array<int, string>
+     * @return array<int, Forms\Components\Component>
      */
-    public static function invoiceOptionsForTransaction(Transaction $transaction, array $excludeIds = []): array
-    {
-        if ($transaction->related_type !== 'Client' || ! $transaction->related_id) {
-            return [];
-        }
+    public static function invoiceSelectField(
+        Transaction $transaction,
+        array $excludeIds = [],
+        ?callable $clientIdResolver = null,
+    ): Forms\Components\Select {
+        return Forms\Components\Select::make('invoice_id')
+            ->label('Invoice')
+            ->searchable()
+            ->preload(false)
+            ->required()
+            ->live()
+            ->getSearchResultsUsing(function (string $search) use ($transaction, $excludeIds, $clientIdResolver): array {
+                $clientId = $clientIdResolver
+                    ? (int) $clientIdResolver()
+                    : (int) ($transaction->related_id ?? 0);
 
-        $options = TransactionResource::availableInvoiceOptions(
-            (int) $transaction->related_id,
-            $transaction->id,
-        );
+                if (! $clientId) {
+                    return [];
+                }
 
-        foreach ($excludeIds as $excludeId) {
-            unset($options[$excludeId]);
-        }
+                $options = TransactionResource::searchInvoiceOptions(
+                    $clientId,
+                    $transaction->id,
+                    $search,
+                );
 
-        return $options;
+                foreach ($excludeIds as $excludeId) {
+                    unset($options[$excludeId]);
+                }
+
+                return $options;
+            })
+            ->getOptionLabelUsing(function ($value) use ($transaction, $clientIdResolver): ?string {
+                if (! $value) {
+                    return null;
+                }
+
+                $clientId = $clientIdResolver
+                    ? (int) $clientIdResolver()
+                    : (int) ($transaction->related_id ?? 0);
+
+                return TransactionResource::invoiceOptionLabel((int) $value, $clientId ?: null, $transaction->id)
+                    ?? Invoice::query()->whereKey($value)->value('name');
+            })
+            ->afterStateUpdated(function (?string $state, callable $set) use ($transaction): void {
+                if (! $state) {
+                    return;
+                }
+
+                $invoice = Invoice::find((int) $state);
+
+                if ($invoice) {
+                    $set('amount_paid', self::defaultPaidAmountForInvoice($invoice, $transaction));
+                }
+            });
     }
 
     public static function defaultPaidAmountForInvoice(Invoice $invoice, Transaction $transaction): float
@@ -66,23 +105,7 @@ class TransactionInvoiceLinkForm
     public static function attachFormSchema(Transaction $transaction, array $excludeIds = []): array
     {
         return [
-            Forms\Components\Select::make('invoice_id')
-                ->label('Invoice')
-                ->options(fn (): array => self::invoiceOptionsForTransaction($transaction, $excludeIds))
-                ->searchable()
-                ->required()
-                ->live()
-                ->afterStateUpdated(function (?string $state, callable $set) use ($transaction): void {
-                    if (! $state) {
-                        return;
-                    }
-
-                    $invoice = Invoice::find((int) $state);
-
-                    if ($invoice) {
-                        $set('amount_paid', self::defaultPaidAmountForInvoice($invoice, $transaction));
-                    }
-                }),
+            self::invoiceSelectField($transaction, $excludeIds),
             Forms\Components\TextInput::make('amount_paid')
                 ->label('Paid amount')
                 ->numeric()
@@ -135,7 +158,12 @@ class TransactionInvoiceLinkForm
         return [
             Forms\Components\Select::make('invoice_id')
                 ->label('Invoice')
-                ->options(function (Get $get, $livewire): array {
+                ->searchable()
+                ->preload(false)
+                ->required()
+                ->live()
+                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                ->getSearchResultsUsing(function (string $search, Get $get): array {
                     $clientId = (int) ($get('../../related_id') ?? 0);
 
                     if (! $clientId) {
@@ -154,7 +182,7 @@ class TransactionInvoiceLinkForm
                         fn (int $id): bool => $id !== $currentId,
                     ));
 
-                    $options = TransactionResource::availableInvoiceOptions($clientId, null);
+                    $options = TransactionResource::searchInvoiceOptions($clientId, null, $search);
 
                     foreach ($exclude as $excludeId) {
                         unset($options[$excludeId]);
@@ -162,11 +190,17 @@ class TransactionInvoiceLinkForm
 
                     return $options;
                 })
-                ->searchable()
-                ->required()
-                ->live()
-                ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                ->afterStateUpdated(function (?string $state, callable $set, Get $get): void {
+                ->getOptionLabelUsing(function ($value, Get $get): ?string {
+                    if (! $value) {
+                        return null;
+                    }
+
+                    $clientId = (int) ($get('../../related_id') ?? 0);
+
+                    return TransactionResource::invoiceOptionLabel((int) $value, $clientId ?: null)
+                        ?? Invoice::query()->whereKey($value)->value('name');
+                })
+                ->afterStateUpdated(function (?string $state, callable $set): void {
                     if (! $state) {
                         return;
                     }
@@ -211,8 +245,9 @@ class TransactionInvoiceLinkForm
             return;
         }
 
-        $existingPivot = $transaction->invoices()->where('invoices.id', $invoiceId)->exists()
-            ? (float) ($transaction->invoices()->where('invoices.id', $invoiceId)->first()?->pivot?->amount_paid ?? 0)
+        $linked = $transaction->invoices()->where('invoices.id', $invoiceId)->first();
+        $existingPivot = $linked
+            ? (float) ($linked->pivot->amount_paid ?? 0)
             : 0;
 
         $amountPaid = self::clampPaidAmountForInvoiceOnTransaction(
@@ -222,7 +257,7 @@ class TransactionInvoiceLinkForm
             $existingPivot,
         );
 
-        if ($transaction->invoices()->where('invoices.id', $invoiceId)->exists()) {
+        if ($linked) {
             $transaction->updateInvoicePaidAmount($invoice, $amountPaid);
         } else {
             $transaction->invoices()->attach($invoiceId, ['amount_paid' => $amountPaid]);
@@ -230,7 +265,7 @@ class TransactionInvoiceLinkForm
         }
 
         if ($sync) {
-            app(TransactionSettlementService::class)->syncAfterPivotChange($transaction->fresh());
+            app(TransactionSettlementService::class)->syncAfterPivotChange($transaction);
         }
 
         if ($notify) {
@@ -256,7 +291,7 @@ class TransactionInvoiceLinkForm
         );
 
         $transaction->updateInvoicePaidAmount($invoice, $amountPaid);
-        app(TransactionSettlementService::class)->syncAfterPivotChange($transaction->fresh());
+        app(TransactionSettlementService::class)->syncAfterPivotChange($transaction);
 
         Notification::make()
             ->success()
@@ -268,7 +303,7 @@ class TransactionInvoiceLinkForm
     {
         $transaction->invoices()->detach($invoice->id);
         $invoice->recalculatePaidAmountFromTransactions();
-        app(TransactionSettlementService::class)->syncAfterPivotChange($transaction->fresh());
+        app(TransactionSettlementService::class)->syncAfterPivotChange($transaction);
 
         Notification::make()
             ->success()
@@ -302,6 +337,8 @@ class TransactionInvoiceLinkForm
         }
 
         if ($count > 0) {
+            app(TransactionSettlementService::class)->syncAfterPivotChange($transaction);
+
             Notification::make()
                 ->title('Invoices linked')
                 ->body("Linked {$count} invoice(s). Review paid amounts in the Invoices tab.")
