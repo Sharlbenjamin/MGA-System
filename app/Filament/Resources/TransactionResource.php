@@ -486,6 +486,14 @@ class TransactionResource extends Resource
                         }
 
                         $service = app(TransactionDocumentationService::class);
+
+                        if ($service->missingTasksOnHold()) {
+                            return 'Checklist recalculation is paused for performance.'."\n\n"
+                                .'Stored status: '.$service->formatDocumentationStatusLabel(
+                                    $record->documentation_status ?? 'incomplete'
+                                );
+                        }
+
                         $tasks = $service->getMissingTasks($record);
                         $done = collect($tasks)->where('status', 'done')->count();
 

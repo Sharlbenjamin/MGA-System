@@ -27,8 +27,15 @@ class TransactionDocumentationForm
         return Forms\Components\Placeholder::make('documentation_checklist')
             ->label('Documentation checklist')
             ->content(function () use ($record) {
-                $record->refresh();
                 $service = app(TransactionDocumentationService::class);
+
+                if ($service->missingTasksOnHold()) {
+                    $status = $record->documentation_status ?? 'incomplete';
+
+                    return 'Checklist recalculation is paused for performance.'."\n\n"
+                        .'Stored status: '.$service->formatDocumentationStatusLabel($status);
+                }
+
                 $tasks = $service->getMissingTasks($record);
                 $done = collect($tasks)->where('status', 'done')->count();
                 $total = count($tasks);
@@ -47,10 +54,15 @@ class TransactionDocumentationForm
     public static function schema(Transaction $record): array
     {
         $service = app(TransactionDocumentationService::class);
-        $pendingKeys = collect($service->getMissingTasks($record))
-            ->where('status', 'pending')
-            ->pluck('key')
-            ->all();
+        $tasksOnHold = $service->missingTasksOnHold();
+        $pendingKeys = $tasksOnHold
+            ? []
+            : collect($service->getMissingTasks($record))
+                ->where('status', 'pending')
+                ->pluck('key')
+                ->all();
+
+        $showField = static fn (string $key): bool => $tasksOnHold || in_array($key, $pendingKeys, true);
 
         return array_filter([
             self::checklistPlaceholder($record),
@@ -62,8 +74,7 @@ class TransactionDocumentationForm
                     'Provider' => 'Provider',
                     'Branch' => 'Branch',
                 ])
-                ->visible(fn () => in_array('missing_linked_client', $pendingKeys, true)
-                    || in_array('missing_linked_provider', $pendingKeys, true))
+                ->visible(fn () => $showField('missing_linked_client') || $showField('missing_linked_provider'))
                 ->live(),
 
             Forms\Components\Select::make('related_id')
@@ -80,8 +91,7 @@ class TransactionDocumentationForm
                     };
                 })
                 ->searchable()
-                ->visible(fn () => in_array('missing_linked_client', $pendingKeys, true)
-                    || in_array('missing_linked_provider', $pendingKeys, true)),
+                ->visible(fn () => $showField('missing_linked_client') || $showField('missing_linked_provider')),
 
             Forms\Components\Select::make('invoices')
                 ->label('Link invoices')
@@ -97,7 +107,7 @@ class TransactionDocumentationForm
                     );
                 })
                 ->default(fn () => $record->invoices()->pluck('invoices.id')->all())
-                ->visible(fn () => in_array('missing_linked_invoices', $pendingKeys, true)),
+                ->visible(fn () => $showField('missing_linked_invoices')),
 
             Forms\Components\Select::make('bills')
                 ->label('Link bills')
@@ -114,10 +124,10 @@ class TransactionDocumentationForm
                     );
                 })
                 ->default(fn () => $record->bills()->pluck('bills.id')->all())
-                ->visible(fn () => in_array('missing_linked_bills', $pendingKeys, true)),
+                ->visible(fn () => $showField('missing_linked_bills')),
 
             Forms\Components\FileUpload::make('attachment')
-                ->label(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
+                ->label(fn () => $showField('missing_expense_receipt')
                     ? 'Expense receipt'
                     : 'Card payment receipt')
                 ->acceptedFileTypes(['application/pdf', 'image/*'])
@@ -128,16 +138,14 @@ class TransactionDocumentationForm
                 ->preserveFilenames()
                 ->downloadable()
                 ->openable()
-                ->required(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
-                    || in_array('missing_card_receipt', $pendingKeys, true))
-                ->visible(fn () => in_array('missing_expense_receipt', $pendingKeys, true)
-                    || in_array('missing_card_receipt', $pendingKeys, true))
+                ->required(fn () => $showField('missing_expense_receipt') || $showField('missing_card_receipt'))
+                ->visible(fn () => $showField('missing_expense_receipt') || $showField('missing_card_receipt'))
                 ->default(fn () => self::localAttachmentDefault($record)),
 
             Forms\Components\Placeholder::make('undocumented_invoices')
                 ->label('Invoices missing documents')
-                ->content(function () use ($record, $pendingKeys) {
-                    if (! in_array('missing_invoice_documents', $pendingKeys, true)) {
+                ->content(function () use ($record, $showField) {
+                    if (! $showField('missing_invoice_documents')) {
                         return '';
                     }
 
@@ -146,13 +154,13 @@ class TransactionDocumentationForm
                         ->map(fn (Invoice $invoice) => $invoice->name . ' — edit invoice to upload document')
                         ->implode("\n") ?: 'None';
                 })
-                ->visible(fn () => in_array('missing_invoice_documents', $pendingKeys, true))
+                ->visible(fn () => $showField('missing_invoice_documents'))
                 ->columnSpanFull(),
 
             Forms\Components\Placeholder::make('undocumented_bills')
                 ->label('Bills missing documents')
-                ->content(function () use ($record, $pendingKeys) {
-                    if (! in_array('missing_bill_documents', $pendingKeys, true)) {
+                ->content(function () use ($record, $showField) {
+                    if (! $showField('missing_bill_documents')) {
                         return '';
                     }
 
@@ -161,18 +169,18 @@ class TransactionDocumentationForm
                         ->map(fn (Bill $bill) => $bill->name . ' — edit bill to upload document')
                         ->implode("\n") ?: 'None';
                 })
-                ->visible(fn () => in_array('missing_bill_documents', $pendingKeys, true))
+                ->visible(fn () => $showField('missing_bill_documents'))
                 ->columnSpanFull(),
 
             Forms\Components\Toggle::make('generate_trx_in_pdf')
                 ->label('Generate Trx In PDF')
                 ->default(true)
-                ->visible(fn () => in_array('missing_trx_in_pdf', $pendingKeys, true)),
+                ->visible(fn () => $showField('missing_trx_in_pdf')),
 
             Forms\Components\Toggle::make('generate_trx_out_pdf')
                 ->label('Generate Trx Out PDF')
                 ->default(true)
-                ->visible(fn () => in_array('missing_trx_out_pdf', $pendingKeys, true)),
+                ->visible(fn () => $showField('missing_trx_out_pdf')),
         ]);
     }
 

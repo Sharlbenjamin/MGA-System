@@ -10,6 +10,13 @@ use Illuminate\Support\Str;
 
 class TransactionDocumentationService
 {
+    /**
+     * When true, getMissingTasks() is not computed and documentation status is not
+     * recalculated on save — uses the stored documentation_status column instead.
+     * Set to false to re-enable the full checklist pipeline.
+     */
+    public const MISSING_TASKS_ON_HOLD = true;
+
     /** @var list<string> */
     public const DOCUMENTATION_SYNC_ATTRIBUTES = [
         'type',
@@ -85,6 +92,11 @@ class TransactionDocumentationService
         return false;
     }
 
+    public function missingTasksOnHold(): bool
+    {
+        return self::MISSING_TASKS_ON_HOLD;
+    }
+
     public function forgetMissingTasksCache(?Transaction $transaction = null): void
     {
         if ($transaction?->id) {
@@ -117,24 +129,27 @@ class TransactionDocumentationService
         self::$syncingTransactionId = $transaction->id;
 
         try {
-            $this->forgetMissingTasksCache($transaction);
-
-            $previousStatus = $transaction->documentation_status;
-
             if ($deriveReference) {
                 $this->syncDerivedFields($transaction);
             }
 
-            $this->recalculateDocumentationStatus($transaction);
+            if (! $this->missingTasksOnHold()) {
+                $this->forgetMissingTasksCache($transaction);
 
-            $transaction->refresh();
-            $transaction->load(['invoices', 'bills', 'attachments']);
+                $previousStatus = $transaction->documentation_status;
 
-            if (
-                $previousStatus !== $transaction->documentation_status
-                && $transaction->bank_account_id
-            ) {
-                TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+                $this->recalculateDocumentationStatus($transaction);
+
+                $transaction->refresh();
+
+                if (
+                    $previousStatus !== $transaction->documentation_status
+                    && $transaction->bank_account_id
+                ) {
+                    TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+                }
+            } else {
+                $transaction->refresh();
             }
 
             return $transaction;
@@ -170,6 +185,10 @@ class TransactionDocumentationService
 
     public function recalculateDocumentationStatus(Transaction $transaction): void
     {
+        if ($this->missingTasksOnHold()) {
+            return;
+        }
+
         $status = $this->resolveDocumentationStatus($transaction);
 
         if ($transaction->documentation_status !== $status) {
@@ -180,6 +199,10 @@ class TransactionDocumentationService
 
     public function resolveDocumentationStatus(Transaction $transaction): string
     {
+        if ($this->missingTasksOnHold()) {
+            return $transaction->documentation_status ?? 'incomplete';
+        }
+
         $pending = collect($this->getMissingTasks($transaction))->where('status', 'pending');
 
         if ($pending->isEmpty()) {
@@ -314,6 +337,14 @@ class TransactionDocumentationService
 
     public function getDocumentationColumnSummary(Transaction $transaction): string
     {
+        if ($this->missingTasksOnHold()) {
+            $status = $transaction->documentation_status ?? 'incomplete';
+
+            return $status === 'complete'
+                ? 'Ready for taxes'
+                : $this->formatDocumentationStatusLabel($status);
+        }
+
         $pending = collect($this->getMissingTasks($transaction))
             ->where('status', 'pending')
             ->pluck('label')
@@ -338,6 +369,14 @@ class TransactionDocumentationService
 
     public function getDocumentationColumnDescription(Transaction $transaction): ?string
     {
+        if ($this->missingTasksOnHold()) {
+            $status = $transaction->documentation_status ?? 'incomplete';
+
+            return $status === 'complete'
+                ? null
+                : 'Status: '.$this->formatDocumentationStatusLabel($status);
+        }
+
         $pending = collect($this->getMissingTasks($transaction))
             ->where('status', 'pending')
             ->pluck('label')
@@ -415,6 +454,10 @@ class TransactionDocumentationService
      */
     public function getMissingTasks(Transaction $transaction): array
     {
+        if ($this->missingTasksOnHold()) {
+            return [];
+        }
+
         $cacheKey = $this->missingTasksCacheKey($transaction);
 
         if ($transaction->id && isset(self::$missingTasksCache[$transaction->id])) {
@@ -779,6 +822,14 @@ class TransactionDocumentationService
 
     protected function appendDocumentSummary(string $reason, Transaction $transaction, string $documentTaskKey): string
     {
+        if ($this->missingTasksOnHold()) {
+            $summary = $documentTaskKey === 'missing_bill_documents'
+                ? $this->undocumentedBillsSummary($transaction)
+                : $this->undocumentedInvoicesSummary($transaction);
+
+            return $summary === '' ? $reason : $reason."\n\n".$summary;
+        }
+
         $pendingKeys = collect($this->getMissingTasks($transaction))
             ->where('status', 'pending')
             ->pluck('key')
@@ -805,6 +856,12 @@ class TransactionDocumentationService
             return false;
         }
 
+        if ($this->missingTasksOnHold()) {
+            return $this->hasLinkedClient($transaction)
+                && $this->hasLoadedOrExistingInvoices($transaction)
+                && $this->allLinkedInvoicesHaveDocuments($transaction);
+        }
+
         $blockingKeys = [
             'missing_linked_client',
             'missing_linked_invoices',
@@ -820,6 +877,12 @@ class TransactionDocumentationService
     {
         if ($this->resolvedCategory($transaction) !== 'provider_bulk') {
             return false;
+        }
+
+        if ($this->missingTasksOnHold()) {
+            return $this->hasLinkedProvider($transaction)
+                && $this->hasLoadedOrExistingBills($transaction)
+                && $this->allLinkedBillsHaveDocuments($transaction);
         }
 
         $blockingKeys = [
@@ -839,6 +902,10 @@ class TransactionDocumentationService
             return 'Not a Client Payment transaction';
         }
 
+        if ($this->missingTasksOnHold()) {
+            return $this->lightweightTrxInSkipReason($transaction);
+        }
+
         return $this->firstPendingTaskLabel($transaction, [
             'missing_linked_client',
             'missing_linked_invoices',
@@ -850,6 +917,10 @@ class TransactionDocumentationService
     {
         if ($this->resolvedCategory($transaction) !== 'provider_bulk') {
             return 'Not a Provider Bulk transaction';
+        }
+
+        if ($this->missingTasksOnHold()) {
+            return $this->lightweightTrxOutSkipReason($transaction);
         }
 
         return $this->firstPendingTaskLabel($transaction, [
@@ -896,6 +967,14 @@ class TransactionDocumentationService
 
     public function hasPendingDocumentTasks(Transaction $transaction): bool
     {
+        if ($this->missingTasksOnHold()) {
+            return in_array($transaction->documentation_status ?? 'incomplete', [
+                'missing_attachment',
+                'missing_generated_pdf',
+                'incomplete',
+            ], true);
+        }
+
         return collect($this->getMissingTasks($transaction))
             ->where('status', 'pending')
             ->contains(fn (array $task): bool => in_array($task['key'], self::documentTaskKeys(), true));
@@ -915,6 +994,10 @@ class TransactionDocumentationService
      */
     public function pendingDocumentTaskLabels(Transaction $transaction): array
     {
+        if ($this->missingTasksOnHold()) {
+            return [];
+        }
+
         return collect($this->getMissingTasks($transaction))
             ->where('status', 'pending')
             ->filter(fn (array $task): bool => in_array($task['key'], self::documentTaskKeys(), true))
@@ -922,5 +1005,78 @@ class TransactionDocumentationService
             ->map(fn (string $label): string => trim($label, '. '))
             ->values()
             ->all();
+    }
+
+    protected function hasLinkedClient(Transaction $transaction): bool
+    {
+        return in_array($transaction->related_type, ['Client', 'Patient'], true) && (bool) $transaction->related_id;
+    }
+
+    protected function hasLinkedProvider(Transaction $transaction): bool
+    {
+        return in_array($transaction->related_type, ['Provider', 'Branch'], true) && (bool) $transaction->related_id;
+    }
+
+    protected function hasLoadedOrExistingInvoices(Transaction $transaction): bool
+    {
+        return $transaction->relationLoaded('invoices')
+            ? $transaction->invoices->isNotEmpty()
+            : $transaction->invoices()->exists();
+    }
+
+    protected function hasLoadedOrExistingBills(Transaction $transaction): bool
+    {
+        return $transaction->relationLoaded('bills')
+            ? $transaction->bills->isNotEmpty()
+            : $transaction->bills()->exists();
+    }
+
+    protected function allLinkedInvoicesHaveDocuments(Transaction $transaction): bool
+    {
+        $transaction->loadMissing('invoices');
+
+        return $transaction->invoices->every(fn (Invoice $invoice) => $this->invoiceHasDocument($invoice));
+    }
+
+    protected function allLinkedBillsHaveDocuments(Transaction $transaction): bool
+    {
+        $transaction->loadMissing('bills');
+
+        return $transaction->bills->isNotEmpty()
+            && $transaction->bills->every(fn (Bill $bill) => $this->billHasDocument($bill));
+    }
+
+    protected function lightweightTrxInSkipReason(Transaction $transaction): ?string
+    {
+        if (! $this->hasLinkedClient($transaction)) {
+            return 'Missing linked client.';
+        }
+
+        if (! $this->hasLoadedOrExistingInvoices($transaction)) {
+            return 'No invoices linked to this payment.';
+        }
+
+        if (! $this->allLinkedInvoicesHaveDocuments($transaction)) {
+            return 'One or more linked invoices are missing attachments.';
+        }
+
+        return null;
+    }
+
+    protected function lightweightTrxOutSkipReason(Transaction $transaction): ?string
+    {
+        if (! $this->hasLinkedProvider($transaction)) {
+            return 'Missing linked provider.';
+        }
+
+        if (! $this->hasLoadedOrExistingBills($transaction)) {
+            return 'No bills linked to this transfer.';
+        }
+
+        if (! $this->allLinkedBillsHaveDocuments($transaction)) {
+            return 'One or more linked bills are missing attachments.';
+        }
+
+        return null;
     }
 }
