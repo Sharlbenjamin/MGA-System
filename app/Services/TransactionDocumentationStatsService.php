@@ -533,9 +533,9 @@ class TransactionDocumentationStatsService
         }
 
         return $query->where(function (Builder $scoped) use ($category): void {
-            $scoped->where('documentation_category', $category)
+            $scoped->where('transactions.documentation_category', $category)
                 ->orWhere(function (Builder $fallback) use ($category): void {
-                    $fallback->whereNull('documentation_category');
+                    $fallback->whereNull('transactions.documentation_category');
                     self::applyInferredCategoryScope($fallback, $category);
                 });
         });
@@ -544,16 +544,16 @@ class TransactionDocumentationStatsService
     public static function applyInferredCategoryScope(Builder $query, string $category): Builder
     {
         match ($category) {
-            'client_payment' => $query->where('type', 'Income')->has('invoices'),
-            'account_feed' => $query->where('type', 'Income')->doesntHave('invoices'),
-            'refund' => $query->where('type', 'Income')->doesntHave('invoices'),
-            'provider_single' => $query->where('type', 'Outflow')->has('bills', '=', 1),
-            'provider_bulk' => $query->where('type', 'Outflow')->has('bills', '>=', 2),
-            'card_expense' => $query->where('type', 'Outflow')->doesntHave('bills'),
-            'card_provider' => $query->where('type', 'Outflow')->doesntHave('bills'),
-            'patient_refund' => $query->where('type', 'Outflow')->where('related_type', 'Patient'),
-            'capital_return' => $query->where('type', 'Outflow')->where('related_type', 'Other'),
-            'expense_payment' => $query->where('type', 'Expense'),
+            'client_payment' => $query->where('transactions.type', 'Income')->has('invoices'),
+            'account_feed' => $query->where('transactions.type', 'Income')->doesntHave('invoices'),
+            'refund' => $query->where('transactions.type', 'Income')->doesntHave('invoices'),
+            'provider_single' => $query->where('transactions.type', 'Outflow')->has('bills', '=', 1),
+            'provider_bulk' => $query->where('transactions.type', 'Outflow')->has('bills', '>=', 2),
+            'card_expense' => $query->where('transactions.type', 'Outflow')->doesntHave('bills'),
+            'card_provider' => $query->where('transactions.type', 'Outflow')->doesntHave('bills'),
+            'patient_refund' => $query->where('transactions.type', 'Outflow')->where('transactions.related_type', 'Patient'),
+            'capital_return' => $query->where('transactions.type', 'Outflow')->where('transactions.related_type', 'Other'),
+            'expense_payment' => $query->where('transactions.type', 'Expense'),
             default => $query->whereRaw('0 = 1'),
         };
 

@@ -834,7 +834,18 @@ class TransactionResource extends Resource
 
                         return $indicators;
                     }),
-                Tables\Filters\SelectFilter::make('type')->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])->multiple(),
+                Tables\Filters\SelectFilter::make('type')
+                    ->options(['Income' => 'Income', 'Outflow' => 'Outflow', 'Expense' => 'Expense'])
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $values = $data['values'] ?? null;
+
+                        if (blank($values)) {
+                            return $query;
+                        }
+
+                        return $query->whereIn('transactions.type', (array) $values);
+                    }),
                 Tables\Filters\SelectFilter::make('documentation_category')
                     ->label('Category')
                     ->options(TransactionDocumentationStatsService::allCategoryOptions())
@@ -868,7 +879,16 @@ class TransactionResource extends Resource
                         'missing_attachment' => 'Missing attachment',
                         'missing_generated_pdf' => 'Missing PDF',
                     ])
-                    ->multiple(),
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $values = $data['values'] ?? null;
+
+                        if (blank($values)) {
+                            return $query;
+                        }
+
+                        return $query->whereIn('transactions.documentation_status', (array) $values);
+                    }),
                 Tables\Filters\Filter::make('linking_status_mismatch')
                     ->label('Amount mismatch only')
                     ->toggle()
@@ -882,7 +902,16 @@ class TransactionResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Payment status')
                     ->options(['Draft' => 'Draft', 'Completed' => 'Completed', 'Pending' => 'Pending'])
-                    ->multiple(),
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $values = $data['values'] ?? null;
+
+                        if (blank($values)) {
+                            return $query;
+                        }
+
+                        return $query->whereIn('transactions.status', (array) $values);
+                    }),
             ])
             ->groups([
                 Tables\Grouping\Group::make('documentation_status')

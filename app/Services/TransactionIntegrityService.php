@@ -101,7 +101,7 @@ class TransactionIntegrityService
     public static function scopeIncomeUnlinkedOnly(Builder $query): Builder
     {
         return $query
-            ->where('type', 'Income')
+            ->where('transactions.type', 'Income')
             ->doesntHave('invoices')
             ->where(function (Builder $categoryQuery): void {
                 TransactionDocumentationStatsService::applyCategoryScope($categoryQuery, 'client_payment');
@@ -110,7 +110,7 @@ class TransactionIntegrityService
 
     public static function scopeIncomeLinkIssues(Builder $query): Builder
     {
-        return $query->where('type', 'Income')->where(function (Builder $scoped): void {
+        return $query->where('transactions.type', 'Income')->where(function (Builder $scoped): void {
             $scoped->where(fn (Builder $unlinked): Builder => self::scopeIncomeUnlinkedOnly($unlinked))
                 ->orWhere(fn (Builder $mismatch): Builder => self::applyInvoiceTotalMismatchScope($mismatch));
         });
@@ -119,7 +119,7 @@ class TransactionIntegrityService
     public static function scopeOutflowWithoutBills(Builder $query): Builder
     {
         return $query
-            ->where('type', 'Outflow')
+            ->where('transactions.type', 'Outflow')
             ->doesntHave('bills')
             ->whereNot(fn (Builder $excluded): Builder => TransactionDocumentationStatsService::applyCategoryScope($excluded, 'patient_refund'))
             ->whereNot(fn (Builder $excluded): Builder => TransactionDocumentationStatsService::applyCategoryScope($excluded, 'capital_return'))
@@ -191,7 +191,7 @@ class TransactionIntegrityService
     public static function countTransactionsWithInvoiceTotalMismatch(Builder $query): int
     {
         return (clone $query)
-            ->where('type', 'Income')
+            ->where('transactions.type', 'Income')
             ->whereHas('invoices')
             ->whereRaw(self::invoiceTotalMismatchSql())
             ->count();
@@ -200,7 +200,7 @@ class TransactionIntegrityService
     public static function applyInvoiceTotalMismatchScope(Builder $query): Builder
     {
         return $query
-            ->where('type', 'Income')
+            ->where('transactions.type', 'Income')
             ->whereHas('invoices')
             ->whereRaw(self::invoiceTotalMismatchSql());
     }
@@ -217,7 +217,7 @@ class TransactionIntegrityService
     public static function applyPaidInvoiceAmountMismatchScope(Builder $query): Builder
     {
         return $query
-            ->where('type', 'Income')
+            ->where('transactions.type', 'Income')
             ->whereHas('invoices', fn (Builder $q) => $q
                 ->where('status', 'Paid')
                 ->whereRaw('ABS(COALESCE(paid_amount, 0) - total_amount) >= 0.01'));
