@@ -83,28 +83,55 @@ class TransactionDocumentationForm
                     'Branch' => 'Branch',
                     default => 'Client',
                 })
-                ->options(function (Get $get) {
+                ->searchable()
+                ->getSearchResultsUsing(function (Get $get, string $search): array {
                     return match ($get('related_type')) {
-                        'Provider' => Provider::query()->orderBy('name')->pluck('name', 'id'),
-                        'Branch' => ProviderBranch::query()->orderBy('name')->pluck('name', 'id'),
-                        default => Client::query()->orderBy('company_name')->pluck('company_name', 'id'),
+                        'Provider' => TransactionResource::searchProviderOptions($search),
+                        'Branch' => TransactionResource::searchBranchOptions($search),
+                        default => TransactionResource::searchClientOptions($search),
                     };
                 })
-                ->searchable()
+                ->getOptionLabelUsing(function ($value, Get $get): ?string {
+                    if (! $value) {
+                        return null;
+                    }
+
+                    return match ($get('related_type')) {
+                        'Provider' => Provider::query()->whereKey($value)->value('name'),
+                        'Branch' => ProviderBranch::query()->whereKey($value)->value('name'),
+                        default => Client::query()->whereKey($value)->value('company_name'),
+                    };
+                })
                 ->visible(fn () => $showField('missing_linked_client') || $showField('missing_linked_provider')),
 
             Forms\Components\Select::make('invoices')
                 ->label('Link invoices')
                 ->multiple()
-                ->options(function () use ($record) {
+                ->searchable()
+                ->getSearchResultsUsing(function (string $search) use ($record): array {
                     if ($record->related_type !== 'Client' || ! $record->related_id) {
                         return [];
                     }
 
-                    return TransactionResource::availableInvoiceOptions(
+                    return TransactionResource::searchInvoiceOptions(
                         (int) $record->related_id,
                         $record->id,
+                        $search,
                     );
+                })
+                ->getOptionLabelsUsing(function (array $values): array {
+                    if ($values === []) {
+                        return [];
+                    }
+
+                    return Invoice::query()
+                        ->whereIn('id', $values)
+                        ->orderByDesc('id')
+                        ->get()
+                        ->mapWithKeys(fn (Invoice $invoice) => [
+                            $invoice->id => TransactionResource::formatInvoiceOptionLabel($invoice),
+                        ])
+                        ->all();
                 })
                 ->default(fn () => $record->invoices()->pluck('invoices.id')->all())
                 ->visible(fn () => $showField('missing_linked_invoices')),
@@ -112,16 +139,32 @@ class TransactionDocumentationForm
             Forms\Components\Select::make('bills')
                 ->label('Link bills')
                 ->multiple()
-                ->options(function () use ($record) {
+                ->searchable()
+                ->getSearchResultsUsing(function (string $search) use ($record): array {
                     if (! in_array($record->related_type, ['Provider', 'Branch'], true) || ! $record->related_id) {
                         return [];
                     }
 
-                    return TransactionResource::availableBillOptions(
+                    return TransactionResource::searchBillOptions(
                         $record->related_type,
                         (int) $record->related_id,
                         $record->id,
+                        $search,
                     );
+                })
+                ->getOptionLabelsUsing(function (array $values): array {
+                    if ($values === []) {
+                        return [];
+                    }
+
+                    return Bill::query()
+                        ->whereIn('id', $values)
+                        ->orderByDesc('id')
+                        ->get()
+                        ->mapWithKeys(fn (Bill $bill) => [
+                            $bill->id => TransactionResource::formatBillOptionLabel($bill),
+                        ])
+                        ->all();
                 })
                 ->default(fn () => $record->bills()->pluck('bills.id')->all())
                 ->visible(fn () => $showField('missing_linked_bills')),

@@ -31,7 +31,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 
 class TransactionResource extends Resource
 {
@@ -97,17 +96,7 @@ class TransactionResource extends Resource
                     if ($default) {
                         $set('documentation_category', $default);
                     }
-                })->default(function () {
-                    $type = request()->get('type');
-                    $allParams = request()->all();
-                    Log::info('Transaction form defaults:', [
-                        'type' => $type,
-                        'all_params' => $allParams,
-                        'url' => request()->url(),
-                    ]);
-
-                    return $type;
-                }),
+                })->default(fn () => request()->get('type')),
                 Forms\Components\Select::make('related_type')
                     ->options(fn ($get) => self::relatedTypes($get('type')))
                     ->required()
@@ -120,11 +109,10 @@ class TransactionResource extends Resource
                         }
                     })
                     ->default(fn () => request()->get('related_type')),
-                // I want to select an invoice if realted_type is Client
-                Forms\Components\Select::make('related_id')->label('Client')->required()->options(Client::all()->pluck('company_name', 'id'))->visible(fn ($get) => $get('related_type') === 'Client')->searchable()->default(fn () => request()->get('related_id')),
-                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(Provider::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Provider')->searchable()->default(fn () => request()->get('related_id')),
-                Forms\Components\Select::make('related_id')->label('Provider')->required()->options(ProviderBranch::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Branch')->searchable()->default(fn () => request()->get('related_id')),
-                Forms\Components\Select::make('related_id')->label('Patient')->required(fn (Get $get): bool => $get('type') === 'Income')->options(Patient::all()->pluck('name', 'id'))->visible(fn ($get) => $get('related_type') === 'Patient')->searchable()->default(fn () => request()->get('related_id')),
+                static::relatedClientSelect(),
+                static::relatedProviderSelect(),
+                static::relatedBranchSelect(),
+                static::relatedPatientSelect(),
                 static::categorySelect(),
                 Forms\Components\Select::make('bank_account_id')
                     ->relationship('bankAccount', 'beneficiary_name', function ($query) {
@@ -433,7 +421,6 @@ class TransactionResource extends Resource
                     ->label('Bills')
                     ->multiple()
                     ->searchable()
-                    ->preload()
                     ->live()
                     ->visible(fn ($get) => $get('related_type') === 'Provider' || $get('related_type') === 'Branch')
                     ->default(function ($record = null) {
@@ -456,19 +443,34 @@ class TransactionResource extends Resource
 
                         return [];
                     })
-                    ->options(function (callable $get, $record = null) {
+                    ->getSearchResultsUsing(function (string $search, Get $get, $record = null): array {
                         $relatedType = $get('related_type');
-                        $relatedId = $get('related_id');
+                        $relatedId = (int) ($get('related_id') ?? 0);
 
                         if (! $relatedId || ! in_array($relatedType, ['Provider', 'Branch'], true)) {
                             return [];
                         }
 
-                        return static::availableBillOptions(
+                        return static::searchBillOptions(
                             $relatedType,
-                            (int) $relatedId,
+                            $relatedId,
                             $record?->id,
+                            $search,
                         );
+                    })
+                    ->getOptionLabelsUsing(function (array $values): array {
+                        if ($values === []) {
+                            return [];
+                        }
+
+                        return Bill::query()
+                            ->whereIn('id', $values)
+                            ->orderByDesc('id')
+                            ->get()
+                            ->mapWithKeys(fn (Bill $bill) => [
+                                $bill->id => static::formatBillOptionLabel($bill),
+                            ])
+                            ->all();
                     }),
                 static::documentationStatusSection(),
             ]);
@@ -515,7 +517,165 @@ class TransactionResource extends Resource
                         )
                         : '—'),
             ])
-            ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction || $livewire instanceof Pages\CreateTransaction);
+            ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction || $livewire instanceof Pages\CreateTransaction)
+            ->collapsed(fn ($livewire) => $livewire instanceof Pages\EditTransaction);
+    }
+
+    public static function relatedClientSelect(): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('related_id')
+            ->label('Client')
+            ->required()
+            ->visible(fn ($get) => $get('related_type') === 'Client')
+            ->searchable()
+            ->getSearchResultsUsing(fn (string $search): array => static::searchClientOptions($search))
+            ->getOptionLabelUsing(fn ($value): ?string => $value ? Client::query()->whereKey($value)->value('company_name') : null)
+            ->default(fn () => request()->get('related_id'));
+    }
+
+    public static function relatedProviderSelect(): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('related_id')
+            ->label('Provider')
+            ->required()
+            ->visible(fn ($get) => $get('related_type') === 'Provider')
+            ->searchable()
+            ->getSearchResultsUsing(fn (string $search): array => static::searchProviderOptions($search))
+            ->getOptionLabelUsing(fn ($value): ?string => $value ? Provider::query()->whereKey($value)->value('name') : null)
+            ->default(fn () => request()->get('related_id'));
+    }
+
+    public static function relatedBranchSelect(): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('related_id')
+            ->label('Branch')
+            ->required()
+            ->visible(fn ($get) => $get('related_type') === 'Branch')
+            ->searchable()
+            ->getSearchResultsUsing(fn (string $search): array => static::searchBranchOptions($search))
+            ->getOptionLabelUsing(fn ($value): ?string => $value ? ProviderBranch::query()->whereKey($value)->value('name') : null)
+            ->default(fn () => request()->get('related_id'));
+    }
+
+    public static function relatedPatientSelect(): Forms\Components\Select
+    {
+        return Forms\Components\Select::make('related_id')
+            ->label('Patient')
+            ->required(fn (Get $get): bool => $get('type') === 'Income')
+            ->visible(fn ($get) => $get('related_type') === 'Patient')
+            ->searchable()
+            ->getSearchResultsUsing(fn (string $search): array => static::searchPatientOptions($search))
+            ->getOptionLabelUsing(fn ($value): ?string => $value ? Patient::query()->whereKey($value)->value('name') : null)
+            ->default(fn () => request()->get('related_id'));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function searchClientOptions(?string $search, int $limit = 50): array
+    {
+        return Client::query()
+            ->when(filled($search), fn (Builder $query) => $query->where('company_name', 'like', '%'.addcslashes($search, '%_').'%'))
+            ->orderBy('company_name')
+            ->limit($limit)
+            ->pluck('company_name', 'id')
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function searchProviderOptions(?string $search, int $limit = 50): array
+    {
+        return Provider::query()
+            ->when(filled($search), fn (Builder $query) => $query->where('name', 'like', '%'.addcslashes($search, '%_').'%'))
+            ->orderBy('name')
+            ->limit($limit)
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function searchBranchOptions(?string $search, int $limit = 50): array
+    {
+        return ProviderBranch::query()
+            ->when(filled($search), fn (Builder $query) => $query->where('name', 'like', '%'.addcslashes($search, '%_').'%'))
+            ->orderBy('name')
+            ->limit($limit)
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function searchPatientOptions(?string $search, int $limit = 50): array
+    {
+        return Patient::query()
+            ->when(filled($search), fn (Builder $query) => $query->where('name', 'like', '%'.addcslashes($search, '%_').'%'))
+            ->orderBy('name')
+            ->limit($limit)
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function searchBillOptions(
+        string $relatedType,
+        int $relatedId,
+        ?int $transactionId,
+        ?string $search,
+        int $limit = 50,
+    ): array {
+        if (! in_array($relatedType, ['Provider', 'Branch'], true)) {
+            return [];
+        }
+
+        $query = static::billsBaseQueryForRelated($relatedType, $relatedId);
+        static::applyAvailableBillForTransactionScope($query, $transactionId);
+
+        if (filled($search)) {
+            $query->where('bills.name', 'like', '%'.addcslashes($search, '%_').'%');
+        }
+
+        return $query->orderByDesc('bills.id')
+            ->limit($limit)
+            ->get()
+            ->mapWithKeys(fn (Bill $bill) => [
+                $bill->id => static::formatBillOptionLabel($bill),
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function searchInvoiceOptions(?int $clientId, ?int $transactionId, ?string $search, int $limit = 50): array
+    {
+        if (! $clientId) {
+            return [];
+        }
+
+        $query = Invoice::query()
+            ->whereHas('patient', fn (Builder $q) => $q->where('client_id', $clientId));
+
+        static::applyAvailableInvoiceForTransactionScope($query, $transactionId);
+
+        if (filled($search)) {
+            $query->where('invoices.name', 'like', '%'.addcslashes($search, '%_').'%');
+        }
+
+        return $query->orderByDesc('invoices.id')
+            ->limit($limit)
+            ->get()
+            ->mapWithKeys(fn (Invoice $invoice) => [
+                $invoice->id => static::formatInvoiceOptionLabel($invoice),
+            ])
+            ->all();
     }
 
     public static function table(Table $table): Table

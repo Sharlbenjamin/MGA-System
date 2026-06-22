@@ -53,9 +53,13 @@ class TransactionRelationManager extends RelationManager
                     ->label('Open full list')
                     ->icon('heroicon-o-banknotes')
                     ->url(fn (): string => TransactionResource::indexUrlFor($this->getOwnerRecord())),
-                Tables\Actions\CreateAction::make()->url(fn (): string => TransactionResource::getUrl('create', [
-                    'bank_account_id' => $this->getOwnerRecord()->getKey(),
-                ])),
+                Tables\Actions\CreateAction::make()
+                    ->label('New transaction')
+                    ->icon('heroicon-o-plus')
+                    ->color('success')
+                    ->url(fn (): string => TransactionResource::getUrl('create', [
+                        'bank_account_id' => $this->getOwnerRecord()->getKey(),
+                    ])),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->url(fn ($record) => route('filament.admin.resources.transactions.edit', $record->id)),

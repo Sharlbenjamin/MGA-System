@@ -93,6 +93,15 @@ class BankAccountResource extends Resource
                     ->icon('heroicon-o-banknotes')
                     ->visible(fn (BankAccount $record): bool => $record->type === 'Internal')
                     ->url(fn (BankAccount $record): string => TransactionResource::indexUrlFor($record)),
+                Tables\Actions\Action::make('newTransaction')
+                    ->label('New transaction')
+                    ->icon('heroicon-o-plus')
+                    ->color('success')
+                    ->visible(fn (BankAccount $record): bool => $record->type === 'Internal'
+                        && TransactionResource::canCreate())
+                    ->url(fn (BankAccount $record): string => TransactionResource::getUrl('create', [
+                        'bank_account_id' => $record->getKey(),
+                    ])),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])

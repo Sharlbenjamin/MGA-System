@@ -112,7 +112,10 @@ class Transaction extends Model
 
         static::updated(function ($transaction) {
             try {
-                if ($transaction->bank_account_id) {
+                if (
+                    $transaction->bank_account_id
+                    && $transaction->wasChanged('documentation_status')
+                ) {
                     TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
                 }
 

@@ -51,7 +51,9 @@ class EditTransaction extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['bills'] = $this->record->bills()->pluck('bills.id')->all();
+        $data['bills'] = $this->record->relationLoaded('bills')
+            ? $this->record->bills->pluck('id')->all()
+            : $this->record->bills()->pluck('bills.id')->all();
 
         return $data;
     }
@@ -63,7 +65,9 @@ class EditTransaction extends EditRecord
         $this->previousDocumentationCategory = $this->record->documentation_category
             ?? TransactionDocumentationStatsService::resolveCategoryKey($this->record);
         $this->previousBillsToSync = TransactionDocumentationStatsService::normalizeLinkIds(
-            $this->record->bills()->pluck('bills.id')->all(),
+            $this->record->relationLoaded('bills')
+                ? $this->record->bills->pluck('id')->all()
+                : $this->record->bills()->pluck('bills.id')->all(),
         );
 
         $this->relatedTypeForSync = $data['related_type'] ?? $this->record->related_type;
@@ -145,7 +149,7 @@ class EditTransaction extends EditRecord
     #[On('refresh-transaction-edit-record')]
     public function refreshRecordOnPage(bool $full = false): void
     {
-        $this->record = $this->record->fresh(['bills', 'invoices', 'attachments']);
+        $this->record = $this->record->fresh();
 
         $this->refreshFormData(
             $full
@@ -153,7 +157,7 @@ class EditTransaction extends EditRecord
                 : TransactionEditPageRefresh::DOCUMENTATION_FIELDS,
         );
 
-        $this->data['bills'] = $this->record->bills->pluck('id')->all();
+        $this->data['bills'] = $this->record->bills()->pluck('bills.id')->all();
     }
 
     protected function refreshFormAfterSideEffects(): void
@@ -163,10 +167,28 @@ class EditTransaction extends EditRecord
 
     protected function getHeaderActions(): array
     {
+        $category = TransactionDocumentationStatsService::resolveCategoryKey($this->record);
+
+        return array_merge(
+            [TransactionDocumentationForm::makeHeaderAction()],
+            $this->trxInHeaderActions($category),
+            $this->trxOutHeaderActions($category),
+            $this->utilityHeaderActions(),
+        );
+    }
+
+    /**
+     * @return array<int, Action>
+     */
+    protected function trxInHeaderActions(string $category): array
+    {
+        if ($category !== 'client_payment') {
+            return [];
+        }
+
         $docService = app(TransactionDocumentationService::class);
 
         return [
-            TransactionDocumentationForm::makeHeaderAction(),
             Action::make('trxInPdfBlocked')
                 ->label(fn (): string => 'Trx In PDF: '.($docService->getTrxInSkipReason($this->record) ?? 'Not ready'))
                 ->icon('heroicon-o-exclamation-triangle')
@@ -193,6 +215,28 @@ class EditTransaction extends EditRecord
                     $this->record = $this->record->fresh();
                     $this->refreshRecordOnPage(full: true);
                 }),
+            Action::make('viewTrxInPdf')
+                ->label('View Trx In PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('info')
+                ->url(fn () => $this->record->getTrxInPdfUrl())
+                ->openUrlInNewTab()
+                ->visible(fn () => (bool) $this->record->trx_in_pdf_path),
+        ];
+    }
+
+    /**
+     * @return array<int, Action>
+     */
+    protected function trxOutHeaderActions(string $category): array
+    {
+        if ($category !== 'provider_bulk') {
+            return [];
+        }
+
+        $docService = app(TransactionDocumentationService::class);
+
+        return [
             Action::make('trxOutPdfBlocked')
                 ->label(fn (): string => 'Trx Out PDF: '.($docService->getTrxOutSkipReason($this->record) ?? 'Not ready'))
                 ->icon('heroicon-o-exclamation-triangle')
@@ -219,20 +263,22 @@ class EditTransaction extends EditRecord
                     $this->record = $this->record->fresh();
                     $this->refreshRecordOnPage(full: true);
                 }),
-            Action::make('viewTrxInPdf')
-                ->label('View Trx In PDF')
-                ->icon('heroicon-o-document-text')
-                ->color('info')
-                ->url(fn () => $this->record->getTrxInPdfUrl())
-                ->openUrlInNewTab()
-                ->visible(fn () => (bool) $this->record->getTrxInPdfUrl()),
             Action::make('viewTrxOutPdf')
                 ->label('View Trx Out PDF')
                 ->icon('heroicon-o-document-text')
                 ->color('info')
                 ->url(fn () => $this->record->getTrxOutPdfUrl())
                 ->openUrlInNewTab()
-                ->visible(fn () => (bool) $this->record->getTrxOutPdfUrl()),
+                ->visible(fn () => (bool) $this->record->trx_out_pdf_path),
+        ];
+    }
+
+    /**
+     * @return array<int, Action>
+     */
+    protected function utilityHeaderActions(): array
+    {
+        return [
             Action::make('finalizeTransaction')
                 ->label('Confirm payment (finalize)')
                 ->icon('heroicon-o-check-circle')

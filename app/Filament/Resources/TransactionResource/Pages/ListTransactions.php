@@ -86,6 +86,7 @@ class ListTransactions extends ListRecords
         $bankAccountId = $this->bankAccount->id;
 
         return [
+            $this->makeNewTransactionAction(),
             ImportBankTransactionsAction::make($bankAccountId),
             ImportBankTransactionsAction::downloadTemplateAction(),
             Actions\Action::make('bulkGeneratePdfs')
@@ -224,10 +225,24 @@ class ListTransactions extends ListRecords
                         $filename
                     );
                 }),
-            Actions\CreateAction::make()
-                ->url(fn (): string => TransactionResource::getUrl('create', [
-                    'bank_account_id' => $bankAccountId,
-                ])),
+        ];
+    }
+
+    protected function makeNewTransactionAction(): Actions\CreateAction
+    {
+        return Actions\CreateAction::make()
+            ->label('New transaction')
+            ->icon('heroicon-o-plus')
+            ->color('primary')
+            ->url(fn (): string => TransactionResource::getUrl('create', [
+                'bank_account_id' => $this->bankAccount->id,
+            ]));
+    }
+
+    protected function getTableEmptyStateActions(): array
+    {
+        return [
+            $this->makeNewTransactionAction(),
         ];
     }
 
