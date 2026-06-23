@@ -610,7 +610,9 @@ class TransactionResource extends Resource
             return [];
         }
 
-        $query = static::billsBaseQueryForRelated($relatedType, $relatedId);
+        $query = static::billsBaseQueryForRelated($relatedType, $relatedId)
+            ->select('bills.*')
+            ->selectRaw('('.static::billRemainingBalanceSql().') as bill_remaining_balance');
         static::applyAvailableBillForTransactionScope($query, $transactionId);
 
         if (filled($search)) {
@@ -621,7 +623,10 @@ class TransactionResource extends Resource
             ->limit($limit)
             ->get()
             ->mapWithKeys(fn (Bill $bill) => [
-                $bill->id => static::formatBillOptionLabel($bill),
+                $bill->id => static::formatBillOptionLabel(
+                    $bill,
+                    (float) ($bill->bill_remaining_balance ?? $bill->remainingBalance()),
+                ),
             ])
             ->all();
     }
@@ -1093,7 +1098,7 @@ class TransactionResource extends Resource
     }
 
     /**
-     * Bills for payment reference text: use the Bills multi-select (or bill_ids / bill_id from the URL),
+     * Bills for payment reference text: use bill_links repeater (or bill_ids / bill_id from the URL),
      * otherwise every bill for the related provider or branch.
      *
      * @return \Illuminate\Support\Collection<int, Bill>
@@ -1111,9 +1116,19 @@ class TransactionResource extends Resource
 
         $orderedIds = [];
 
-        $fromForm = $get('bills');
-        if (is_array($fromForm)) {
-            foreach ($fromForm as $id) {
+        $fromLinks = $get('bill_links');
+        if (is_array($fromLinks)) {
+            foreach ($fromLinks as $link) {
+                $id = $link['bill_id'] ?? null;
+                if ($id === null || $id === '' || $id === false) {
+                    continue;
+                }
+                $orderedIds[] = (int) $id;
+            }
+        }
+
+        if ($orderedIds === [] && is_array($get('bills'))) {
+            foreach ($get('bills') as $id) {
                 if ($id === null || $id === '' || $id === false) {
                     continue;
                 }
@@ -1163,12 +1178,17 @@ class TransactionResource extends Resource
             return [];
         }
 
-        $query = static::billsBaseQueryForRelated($relatedType, $relatedId);
+        $query = static::billsBaseQueryForRelated($relatedType, $relatedId)
+            ->select('bills.*')
+            ->selectRaw('('.static::billRemainingBalanceSql().') as bill_remaining_balance');
         static::applyAvailableBillForTransactionScope($query, $transactionId);
 
         return $query->orderByDesc('id')->get()
             ->mapWithKeys(fn (Bill $bill) => [
-                $bill->id => static::formatBillOptionLabel($bill),
+                $bill->id => static::formatBillOptionLabel(
+                    $bill,
+                    (float) ($bill->bill_remaining_balance ?? $bill->remainingBalance()),
+                ),
             ])->all();
     }
 
@@ -1247,13 +1267,15 @@ class TransactionResource extends Resource
             ]);
     }
 
-    public static function formatBillOptionLabel(Bill $bill): string
+    public static function formatBillOptionLabel(Bill $bill, ?float $remainingBalance = null): string
     {
         $date = $bill->bill_date ?? $bill->due_date;
         $dateStr = $date ? $date->format('d/m/Y') : '—';
         $amount = number_format((float) $bill->total_amount, 2);
+        $remaining = number_format($remainingBalance ?? $bill->remainingBalance(), 2);
+        $status = $bill->status ?: 'Unpaid';
 
-        return "{$bill->name} · {$dateStr} · €{$amount}";
+        return "{$bill->name} · {$dateStr} · €{$amount} · {$status} · €{$remaining} left";
     }
 
     public static function formatInvoiceOptionLabel(Invoice $invoice, ?float $remainingBalance = null): string
@@ -1266,10 +1288,20 @@ class TransactionResource extends Resource
         return "{$invoice->name} · {$dateStr} · €{$amount} · {$status} · €{$remaining} left";
     }
 
+    protected static function billRemainingBalanceSql(): string
+    {
+        return 'bills.total_amount - COALESCE((
+                SELECT SUM(bt.amount_paid)
+                FROM bill_transaction bt
+                WHERE bt.bill_id = bills.id
+            ), 0)';
+    }
+
     protected static function applyAvailableBillForTransactionScope(Builder $query, ?int $transactionId): void
     {
         $query->where(function (Builder $q) use ($transactionId) {
-            $q->whereDoesntHave('transactions');
+            $q->whereRaw(static::billRemainingBalanceSql().' >= 0.01');
+
             if ($transactionId) {
                 $q->orWhereHas('transactions', fn (Builder $t) => $t->where('transactions.id', $transactionId));
             }
@@ -1372,13 +1404,13 @@ class TransactionResource extends Resource
             })
             ->afterStateUpdated(function (?string $state, callable $set, Get $get): void {
                 match ($state) {
-                    'client_payment', 'account_feed', 'refund' => [$set('type', 'Income'), $set('bills', [])],
-                    'expense_payment', 'card_expense' => [$set('type', 'Expense'), $set('bills', [])],
-                    'card_provider' => [$set('type', 'Outflow'), $set('bills', [])],
+                    'client_payment', 'account_feed', 'refund' => [$set('type', 'Income'), $set('bill_links', [])],
+                    'expense_payment', 'card_expense' => [$set('type', 'Expense'), $set('bill_links', [])],
+                    'card_provider' => [$set('type', 'Outflow'), $set('bill_links', [])],
                     'provider_single', 'provider_bulk' => $set('type', 'Outflow'),
-                    'patient_refund' => [$set('type', 'Outflow'), $set('related_type', 'Patient'), $set('bills', [])],
-                    'capital_return' => [$set('type', 'Outflow'), $set('related_type', 'Other'), $set('bills', [])],
-                    'refunded_payment' => $set('bills', []),
+                    'patient_refund' => [$set('type', 'Outflow'), $set('related_type', 'Patient'), $set('bill_links', [])],
+                    'capital_return' => [$set('type', 'Outflow'), $set('related_type', 'Other'), $set('bill_links', [])],
+                    'refunded_payment' => $set('bill_links', []),
                     default => null,
                 };
 

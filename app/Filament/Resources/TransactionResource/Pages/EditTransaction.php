@@ -23,12 +23,6 @@ class EditTransaction extends EditRecord
 {
     protected static string $resource = TransactionResource::class;
 
-    /** @var array<int, int> */
-    protected array $billsToSync = [];
-
-    /** @var array<int, int> */
-    protected array $previousBillsToSync = [];
-
     protected ?string $documentationCategory = null;
 
     protected ?string $previousDocumentationCategory = null;
@@ -59,35 +53,18 @@ class EditTransaction extends EditRecord
         return null;
     }
 
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        $data['bills'] = $this->record->relationLoaded('bills')
-            ? $this->record->bills->pluck('id')->all()
-            : $this->record->bills()->pluck('bills.id')->all();
-
-        return $data;
-    }
-
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['updated_by'] = Auth::id();
 
         $this->previousDocumentationCategory = $this->record->documentation_category
             ?? TransactionDocumentationStatsService::resolveCategoryKey($this->record);
-        $this->previousBillsToSync = TransactionDocumentationStatsService::normalizeLinkIds(
-            $this->record->relationLoaded('bills')
-                ? $this->record->bills->pluck('id')->all()
-                : $this->record->bills()->pluck('bills.id')->all(),
-        );
 
         $this->relatedTypeForSync = $data['related_type'] ?? $this->record->related_type;
-        $this->billsToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
 
         $type = $data['type'] ?? $this->record->type;
         if ($type === 'Outflow' && in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
-            $billCount = $this->billsToSync !== []
-                ? count($this->billsToSync)
-                : $this->record->bills()->count();
+            $billCount = $this->record->bills()->count();
 
             $autoCategory = TransactionDocumentationStatsService::providerBillCategoryForCount($billCount);
             $currentCategory = $data['documentation_category'] ?? $this->record->documentation_category;
@@ -99,8 +76,6 @@ class EditTransaction extends EditRecord
 
         $this->documentationCategory = $data['documentation_category'] ?? null;
 
-        unset($data['bills']);
-
         if (blank($data['documentation_category'] ?? null)) {
             $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
                 $data['type'] ?? $this->record->type,
@@ -109,11 +84,9 @@ class EditTransaction extends EditRecord
         }
 
         $nextCategory = $data['documentation_category'] ?? $this->previousDocumentationCategory;
-        $nextBills = $this->billsToSync;
         $categoryWillChange = $nextCategory !== $this->previousDocumentationCategory;
-        $billsWillChange = $nextBills !== $this->previousBillsToSync;
 
-        if ($categoryWillChange || $billsWillChange) {
+        if ($categoryWillChange) {
             TransactionDocumentationService::deferSyncFor($this->record->id);
         }
 
@@ -130,14 +103,13 @@ class EditTransaction extends EditRecord
             $statsService = app(TransactionDocumentationStatsService::class);
 
             $categoryChanged = $this->documentationCategory !== $this->previousDocumentationCategory;
-            $billsChanged = $this->billsToSync !== $this->previousBillsToSync;
 
             if ($categoryChanged && filled($this->documentationCategory)) {
                 try {
                     $statsService->applyCategory(
                         $transaction,
                         $this->documentationCategory,
-                        $this->billsToSync,
+                        $transaction->bills()->pluck('bills.id')->all(),
                     );
                     $runSettlement = true;
                 } catch (ValidationException $exception) {
@@ -150,9 +122,6 @@ class EditTransaction extends EditRecord
 
                     $abortAfterSave = true;
                 }
-            } elseif ($billsChanged && in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
-                $statsService->syncBills($transaction, $this->billsToSync);
-                $runSettlement = true;
             }
         });
 
@@ -182,8 +151,6 @@ class EditTransaction extends EditRecord
                 ? TransactionEditPageRefresh::FORM_FIELDS
                 : TransactionEditPageRefresh::DOCUMENTATION_FIELDS,
         );
-
-        $this->data['bills'] = $this->record->bills()->pluck('bills.id')->all();
     }
 
     protected function refreshFormAfterSideEffects(): void

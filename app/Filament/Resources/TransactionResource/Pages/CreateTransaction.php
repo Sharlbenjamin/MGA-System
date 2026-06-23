@@ -12,13 +12,11 @@ use App\Services\TransactionSettlementService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class CreateTransaction extends CreateRecord
 {
     protected static string $resource = TransactionResource::class;
-
-    /** @var array<int, int> */
-    protected array $billsToAttach = [];
 
     /** @var array<int, array{bill_id: int, amount_paid: float}> */
     protected array $billLinksToAttach = [];
@@ -54,15 +52,13 @@ class CreateTransaction extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $this->billsToAttach = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
         $this->billLinksToAttach = $this->normalizeBillLinks($data['bill_links'] ?? []);
         $this->invoiceLinksToAttach = $this->normalizeInvoiceLinks($data['invoice_links'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? request()->get('documentation_category');
 
-        $billIds = array_values(array_unique([
-            ...TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []),
-            ...array_map('intval', array_column($data['bill_links'] ?? [], 'bill_id')),
-        ]));
+        $billIds = array_values(array_unique(
+            array_map('intval', array_column($data['bill_links'] ?? [], 'bill_id')),
+        ));
 
         if (
             ($data['type'] ?? null) === 'Outflow'
@@ -77,7 +73,7 @@ class CreateTransaction extends CreateRecord
             }
         }
 
-        unset($data['bills'], $data['bill_links'], $data['invoice_links']);
+        unset($data['bill_links'], $data['invoice_links']);
 
         if (blank($data['documentation_category'] ?? null)) {
             $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
@@ -99,32 +95,16 @@ class CreateTransaction extends CreateRecord
 
     protected function afterCreate(): void
     {
-        TransactionDocumentationService::withoutObserverSync(function (): void {
+        $categoryWarning = null;
+
+        TransactionDocumentationService::withoutObserverSync(function () use (&$categoryWarning): void {
             $transaction = $this->record->fresh();
             $statsService = app(TransactionDocumentationStatsService::class);
 
-            $this->billsToAttach = $this->mergeBillIdsFromRequest($this->billsToAttach);
             $this->billLinksToAttach = $this->mergeBillLinksFromRequest($this->billLinksToAttach);
             $this->invoiceLinksToAttach = $this->mergeInvoiceLinksFromRequest($this->invoiceLinksToAttach);
 
-            $billIds = array_values(array_unique([
-                ...$this->billsToAttach,
-                ...array_column($this->billLinksToAttach, 'bill_id'),
-            ]));
-
-            if ($this->documentationCategory) {
-                $statsService->applyCategory(
-                    $transaction,
-                    $this->documentationCategory,
-                    $billIds,
-                );
-            } elseif (in_array($transaction->related_type, ['Provider', 'Branch'], true)) {
-                if ($this->isDraftPayment && $billIds !== []) {
-                    $transaction->attachBillsForDraft($billIds);
-                } elseif ($billIds !== []) {
-                    $statsService->syncBills($transaction, $billIds);
-                }
-            }
+            $billIds = array_values(array_unique(array_column($this->billLinksToAttach, 'bill_id')));
 
             if ($this->billLinksToAttach !== []) {
                 foreach ($this->billLinksToAttach as $link) {
@@ -136,6 +116,28 @@ class CreateTransaction extends CreateRecord
                         sync: false,
                     );
                 }
+            } elseif ($billIds !== [] && in_array($transaction->related_type, ['Provider', 'Branch'], true)) {
+                if ($this->isDraftPayment) {
+                    $transaction->attachBillsForDraft($billIds);
+                } else {
+                    $statsService->syncBills($transaction, $billIds);
+                }
+            }
+
+            $transaction = $transaction->fresh();
+            $linkedBillIds = $transaction->bills()->pluck('bills.id')->all();
+
+            if ($this->documentationCategory) {
+                try {
+                    $statsService->applyCategory(
+                        $transaction,
+                        $this->documentationCategory,
+                        $linkedBillIds,
+                    );
+                } catch (ValidationException $exception) {
+                    $categoryWarning = collect($exception->errors())->flatten()->first()
+                        ?? 'Category could not be applied.';
+                }
             }
 
             if ($transaction->related_type === 'Client' && $this->invoiceLinksToAttach !== []) {
@@ -146,6 +148,15 @@ class CreateTransaction extends CreateRecord
         });
 
         app(TransactionSettlementService::class)->syncDocumentation($this->record->fresh());
+
+        if ($categoryWarning) {
+            Notification::make()
+                ->warning()
+                ->title('Bills linked, but category needs attention')
+                ->body($categoryWarning)
+                ->persistent()
+                ->send();
+        }
 
         if ($this->isDraftPayment) {
             Notification::make()
@@ -223,29 +234,6 @@ class CreateTransaction extends CreateRecord
         }
 
         return $links;
-    }
-
-    /**
-     * @param  array<int, int>  $billIds
-     * @return array<int, int>
-     */
-    protected function mergeBillIdsFromRequest(array $billIds): array
-    {
-        $merged = $billIds;
-
-        $billId = request()->integer('bill_id');
-        if ($billId) {
-            $merged[] = $billId;
-        }
-
-        if ($billIds === [] && request()->get('bill_ids')) {
-            $merged = array_merge(
-                $merged,
-                array_values(array_filter(array_map('intval', explode(',', (string) request()->get('bill_ids'))))),
-            );
-        }
-
-        return array_values(array_unique(array_filter($merged)));
     }
 
     /**
