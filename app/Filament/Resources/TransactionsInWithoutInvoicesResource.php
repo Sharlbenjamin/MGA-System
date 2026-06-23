@@ -24,11 +24,11 @@ class TransactionsInWithoutInvoicesResource extends Resource
 
     protected static ?int $navigationSort = 5;
 
-    protected static ?string $navigationLabel = 'Transactions In without invoices';
+    protected static ?string $navigationLabel = 'Trx In ≠ Invoices';
 
-    protected static ?string $modelLabel = 'Transaction in without invoices';
+    protected static ?string $modelLabel = 'Trx In ≠ Invoice';
 
-    protected static ?string $pluralModelLabel = 'Transactions In without invoices';
+    protected static ?string $pluralModelLabel = 'Trx In ≠ Invoices';
 
     protected static ?string $slug = 'transactions-in-without-invoices';
 

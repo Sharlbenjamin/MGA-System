@@ -101,6 +101,11 @@ class User extends Authenticatable implements FilamentUser
         return true; // ❌ Block access to any other panels
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->hasAnyRole(['admin', 'Admin']);
+    }
+
     public function getProfilePhotoUrlAttribute(): string
     {
         return asset('/publiclogo.png'); // ✅ Use your logo.png as the default image

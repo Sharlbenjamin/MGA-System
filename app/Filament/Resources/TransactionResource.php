@@ -389,7 +389,12 @@ class TransactionResource extends Resource
                 Forms\Components\TextInput::make('name')->required()->maxLength(255)->default(fn () => request()->get('name')),
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
-                Forms\Components\Textarea::make('notes')->label('Comment')->columnSpanFull(),
+                Forms\Components\Textarea::make('notes')
+                    ->label('Comment')
+                    ->columnSpanFull()
+                    ->helperText(fn (Get $get): ?string => $get('documentation_category') === 'refunded_payment'
+                        ? 'Describe the refund (date, original payment, reason). This text is sent to the accountant in the tax Excel.'
+                        : null),
 
                 Forms\Components\TextInput::make('bank_charges')
                     ->numeric()
@@ -1398,11 +1403,12 @@ class TransactionResource extends Resource
             ->afterStateUpdated(function (?string $state, callable $set, Get $get): void {
                 match ($state) {
                     'client_payment', 'account_feed', 'refund' => [$set('type', 'Income'), $set('bills', [])],
-                    'expense_payment' => [$set('type', 'Expense'), $set('bills', [])],
-                    'card_provider', 'card_expense' => [$set('type', 'Outflow'), $set('bills', [])],
+                    'expense_payment', 'card_expense' => [$set('type', 'Expense'), $set('bills', [])],
+                    'card_provider' => [$set('type', 'Outflow'), $set('bills', [])],
                     'provider_single', 'provider_bulk' => $set('type', 'Outflow'),
                     'patient_refund' => [$set('type', 'Outflow'), $set('related_type', 'Patient'), $set('bills', [])],
                     'capital_return' => [$set('type', 'Outflow'), $set('related_type', 'Other'), $set('bills', [])],
+                    'refunded_payment' => $set('bills', []),
                     default => null,
                 };
 

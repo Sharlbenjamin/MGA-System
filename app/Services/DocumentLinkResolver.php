@@ -136,12 +136,14 @@ class DocumentLinkResolver
             if ($trxOut !== '') {
                 $links[] = $trxOut;
             }
-        } elseif (in_array($category, ['card_expense', 'expense_payment'], true)) {
+        } elseif (in_array($category, ['card_expense', 'expense_payment'], true)
+            || (app(TransactionDocumentationService::class)->isCardPayment($transaction) && $transaction->type === 'Expense')) {
             $receipt = $this->transactionReceiptLinks($transaction, $minutes);
             if ($receipt !== '') {
                 $links[] = $receipt;
             }
-        } elseif (in_array($category, ['provider_single', 'card_provider'], true)) {
+        } elseif (in_array($category, ['provider_single', 'card_provider'], true)
+            || (app(TransactionDocumentationService::class)->isCardPayment($transaction) && $transaction->type === 'Outflow')) {
             // Bill documents only — no generated Trx Out PDF
         } elseif ($transaction->type === 'Income') {
             $trxIn = $this->trxInLink($transaction, $minutes);

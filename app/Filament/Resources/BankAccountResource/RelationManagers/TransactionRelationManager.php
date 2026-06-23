@@ -42,7 +42,15 @@ class TransactionRelationManager extends RelationManager
                     ->date()
                     ->collapsible()
                     ->getTitleFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y'))
-                    ->getDescriptionFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y') . ' Balance: ' . $record->bankAccount->monthlyBalance($record->date)),
+                    ->getDescriptionFromRecordUsing(function (Transaction $record): string {
+                        $month = $record->date->format('F Y');
+
+                        if (! auth()->user()?->isAdmin()) {
+                            return $month;
+                        }
+
+                        return $month.' Balance: '.$record->bankAccount->monthlyBalance($record->date);
+                    }),
             ])
             ->defaultGroup('date')
             ->filters([

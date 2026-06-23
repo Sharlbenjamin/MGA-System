@@ -130,13 +130,13 @@ class TransactionIntegrityService
         });
     }
 
-    public static function scopeOutflowWithoutBills(Builder $query): Builder
+    public static function scopeOutflowProviderCategories(Builder $query): Builder
     {
         return $query
             ->where('transactions.type', 'Outflow')
-            ->doesntHave('bills')
             ->whereNot(fn (Builder $excluded): Builder => TransactionDocumentationStatsService::applyCategoryScope($excluded, 'patient_refund'))
             ->whereNot(fn (Builder $excluded): Builder => TransactionDocumentationStatsService::applyCategoryScope($excluded, 'capital_return'))
+            ->whereNot(fn (Builder $excluded): Builder => TransactionDocumentationStatsService::applyCategoryScope($excluded, 'refunded_payment'))
             ->where(function (Builder $scoped): void {
                 foreach (['provider_single', 'provider_bulk', 'card_provider'] as $category) {
                     $scoped->orWhere(function (Builder $categoryQuery) use ($category): void {
@@ -144,6 +144,134 @@ class TransactionIntegrityService
                     });
                 }
             });
+    }
+
+    public static function scopeOutflowWithoutProvider(Builder $query): Builder
+    {
+        return self::scopeOutflowProviderCategories($query)->where(function (Builder $scoped): void {
+            $scoped->whereNull('transactions.related_id')
+                ->orWhereNotIn('transactions.related_type', ['Provider', 'Branch']);
+        });
+    }
+
+    public static function scopeOutflowWithoutBills(Builder $query): Builder
+    {
+        return self::scopeOutflowProviderCategories($query)->doesntHave('bills');
+    }
+
+    public static function scopeOutflowLinkIssues(Builder $query): Builder
+    {
+        return self::scopeOutflowProviderCategories($query)->where(function (Builder $scoped): void {
+            $scoped->where(fn (Builder $withoutProvider): Builder => self::scopeOutflowWithoutProvider($withoutProvider))
+                ->orWhere(fn (Builder $withoutBills): Builder => self::scopeOutflowWithoutBills($withoutBills))
+                ->orWhere(fn (Builder $mismatch): Builder => self::applyBillTotalMismatchScope($mismatch));
+        });
+    }
+
+    public static function billsPaidTotalFor(Transaction $transaction): float
+    {
+        if (! $transaction->relationLoaded('bills')) {
+            $transaction->load('bills');
+        }
+
+        return (float) $transaction->bills->sum(
+            fn ($bill): float => (float) ($bill->pivot->amount_paid ?? 0)
+        );
+    }
+
+    public static function billAmountDifferenceFor(Transaction $transaction): float
+    {
+        return (float) $transaction->amount - self::billsPaidTotalFor($transaction);
+    }
+
+    public static function hasBillTotalMismatch(Transaction $transaction): bool
+    {
+        if ($transaction->type !== 'Outflow') {
+            return false;
+        }
+
+        if (self::linkedBillsCountFor($transaction) === 0) {
+            return false;
+        }
+
+        $linkedPaid = self::billsPaidTotalFor($transaction);
+
+        if ($linkedPaid <= 0) {
+            return false;
+        }
+
+        return abs((float) $transaction->amount - $linkedPaid) >= 0.01;
+    }
+
+    public static function linkedBillsCountFor(Transaction $transaction): int
+    {
+        if (isset($transaction->linked_bills_count)) {
+            return (int) $transaction->linked_bills_count;
+        }
+
+        if ($transaction->relationLoaded('bills')) {
+            return $transaction->bills->count();
+        }
+
+        return (int) $transaction->bills()->count();
+    }
+
+    public static function billTotalMismatchTooltip(Transaction $transaction): ?string
+    {
+        if (! self::hasBillTotalMismatch($transaction)) {
+            return null;
+        }
+
+        $linkedPaid = self::billsPaidTotalFor($transaction);
+
+        return sprintf(
+            'Transaction €%s · Linked bills paid €%s',
+            number_format((float) $transaction->amount, 2),
+            number_format($linkedPaid, 2),
+        );
+    }
+
+    public static function outflowLinkingIssueLabel(Transaction $transaction): string
+    {
+        $issues = [];
+
+        if (! in_array($transaction->related_type, ['Provider', 'Branch'], true) || ! $transaction->related_id) {
+            $issues[] = 'No provider';
+        }
+
+        if (self::linkedBillsCountFor($transaction) === 0) {
+            $issues[] = 'No bills';
+        } elseif (self::hasBillTotalMismatch($transaction)) {
+            $issues[] = 'Amount mismatch';
+        }
+
+        return $issues !== [] ? implode(', ', $issues) : 'OK';
+    }
+
+    public static function countTransactionsWithBillTotalMismatch(Builder $query): int
+    {
+        return (clone $query)
+            ->where('transactions.type', 'Outflow')
+            ->whereHas('bills')
+            ->whereRaw(self::billTotalMismatchSql())
+            ->count();
+    }
+
+    public static function applyBillTotalMismatchScope(Builder $query): Builder
+    {
+        return $query
+            ->where('transactions.type', 'Outflow')
+            ->whereHas('bills')
+            ->whereRaw(self::billTotalMismatchSql());
+    }
+
+    protected static function billTotalMismatchSql(): string
+    {
+        return 'ABS(transactions.amount - (
+                SELECT COALESCE(SUM(bill_transaction.amount_paid), 0)
+                FROM bill_transaction
+                WHERE bill_transaction.transaction_id = transactions.id
+            )) >= 0.01';
     }
 
     public function scopedInvoicesForBankAccount(int $bankAccountId): Builder

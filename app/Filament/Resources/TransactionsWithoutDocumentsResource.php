@@ -27,11 +27,11 @@ class TransactionsWithoutDocumentsResource extends Resource
 
     protected static ?int $navigationSort = 7;
 
-    protected static ?string $navigationLabel = 'Transactions missing documents';
+    protected static ?string $navigationLabel = 'Trx ≠ Docs';
 
-    protected static ?string $modelLabel = 'Transaction missing documents';
+    protected static ?string $modelLabel = 'Trx ≠ Doc';
 
-    protected static ?string $pluralModelLabel = 'Transactions missing documents';
+    protected static ?string $pluralModelLabel = 'Trx ≠ Docs';
 
     public static function getNavigationBadge(): ?string
     {

@@ -73,4 +73,59 @@ class TransactionIntegrityServiceTest extends TestCase
         $this->assertTrue(TransactionIntegrityService::hasInvoiceTotalMismatch($transaction));
         $this->assertSame(5.0, TransactionIntegrityService::invoiceAmountDifferenceFor($transaction));
     }
+
+    #[Test]
+    public function bill_amount_difference_uses_pivot_amount_paid(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Outflow',
+            'amount' => 250,
+        ]);
+
+        $bill = new Bill(['total_amount' => 300]);
+        $bill->pivot = (object) ['amount_paid' => 250];
+        $transaction->setRelation('bills', collect([$bill]));
+
+        $this->assertSame(250.0, TransactionIntegrityService::billsPaidTotalFor($transaction));
+        $this->assertFalse(TransactionIntegrityService::hasBillTotalMismatch($transaction));
+    }
+
+    #[Test]
+    public function bill_amount_difference_detects_mismatch(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Outflow',
+            'amount' => 250,
+            'related_type' => 'Provider',
+            'related_id' => 1,
+        ]);
+
+        $bill = new Bill(['total_amount' => 300]);
+        $bill->pivot = (object) ['amount_paid' => 200];
+        $transaction->setRelation('bills', collect([$bill]));
+
+        $this->assertTrue(TransactionIntegrityService::hasBillTotalMismatch($transaction));
+        $this->assertSame(50.0, TransactionIntegrityService::billAmountDifferenceFor($transaction));
+
+        $withProviderOnly = new Transaction([
+            'type' => 'Outflow',
+            'related_type' => 'Provider',
+            'related_id' => 1,
+        ]);
+        $withProviderOnly->setRelation('bills', collect());
+
+        $this->assertSame('No bills', TransactionIntegrityService::outflowLinkingIssueLabel($withProviderOnly));
+        $this->assertSame('Amount mismatch', TransactionIntegrityService::outflowLinkingIssueLabel($transaction));
+    }
+
+    #[Test]
+    public function outflow_linking_issue_label_flags_missing_provider(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Outflow',
+        ]);
+        $transaction->setRelation('bills', collect());
+
+        $this->assertSame('No provider, No bills', TransactionIntegrityService::outflowLinkingIssueLabel($transaction));
+    }
 }

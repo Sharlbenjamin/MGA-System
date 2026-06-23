@@ -14,9 +14,9 @@ class TransactionDocumentationStatsService
 {
     public const INCOME_CATEGORIES = ['client_payment', 'account_feed', 'refund'];
 
-    public const OUTFLOW_CATEGORIES = ['provider_single', 'provider_bulk', 'card_provider', 'card_expense', 'patient_refund', 'capital_return'];
+    public const OUTFLOW_CATEGORIES = ['provider_single', 'provider_bulk', 'card_provider', 'patient_refund', 'capital_return', 'refunded_payment'];
 
-    public const EXPENSE_CATEGORIES = ['expense_payment'];
+    public const EXPENSE_CATEGORIES = ['expense_payment', 'refunded_payment', 'card_expense'];
 
     public const ALL_CATEGORIES = [
         'client_payment',
@@ -29,6 +29,7 @@ class TransactionDocumentationStatsService
         'expense_payment',
         'patient_refund',
         'capital_return',
+        'refunded_payment',
     ];
 
     /**
@@ -47,6 +48,7 @@ class TransactionDocumentationStatsService
             'expense_payment' => 'Expenses Payment',
             'patient_refund' => 'Patient Refund',
             'capital_return' => 'Capital / Owner Return',
+            'refunded_payment' => 'Refunded Payment',
         ];
     }
 
@@ -107,7 +109,7 @@ class TransactionDocumentationStatsService
             $transaction->type === 'Expense' => 'expense_payment',
             $transaction->type === 'Outflow' && $billCount >= 2 => 'provider_bulk',
             $transaction->type === 'Outflow' && $billCount === 1 => 'provider_single',
-            $transaction->type === 'Outflow' && $docService->isCardTransaction($transaction) => 'card_expense',
+            $transaction->type === 'Outflow' && $docService->isCardPayment($transaction) => 'card_provider',
             $transaction->type === 'Outflow' => 'card_provider',
             default => 'account_feed',
         };
@@ -134,11 +136,12 @@ class TransactionDocumentationStatsService
         match ($category) {
             'client_payment', 'account_feed', 'refund' => $this->applySimpleCategory($transaction, 'Income'),
             'expense_payment' => $this->applySimpleCategory($transaction, 'Expense'),
-            'card_expense' => $this->applySimpleCategory($transaction, 'Outflow', detachBills: true),
+            'card_expense' => $this->applySimpleCategory($transaction, 'Expense', detachBills: true),
             'card_provider' => $this->applySimpleCategory($transaction, 'Outflow', detachBills: false),
             'provider_single' => $this->applyBillCategory($transaction, 1, 1, $billIds),
             'provider_bulk' => $this->applyBillCategory($transaction, 2, null, $billIds),
             'patient_refund', 'capital_return' => $this->applySimpleCategory($transaction, 'Outflow', detachBills: true),
+            'refunded_payment' => $this->applyRefundedPaymentCategory($transaction),
         };
 
         $transaction->save();
@@ -151,6 +154,17 @@ class TransactionDocumentationStatsService
         if ($detachBills) {
             $transaction->bills()->detach();
         }
+    }
+
+    protected function applyRefundedPaymentCategory(Transaction $transaction): void
+    {
+        if (! in_array($transaction->type, ['Outflow', 'Expense'], true)) {
+            throw ValidationException::withMessages([
+                'documentation_category' => 'Refunded Payment applies only to Outflow or Expense transactions.',
+            ]);
+        }
+
+        $transaction->bills()->detach();
     }
 
     /**
@@ -518,7 +532,7 @@ class TransactionDocumentationStatsService
             'income' => 'client_payment',
             'trx_out_single' => 'provider_single',
             'trx_out_bulk' => 'provider_bulk',
-            'card' => 'card_expense',
+            'card' => 'card_provider',
             'expense' => 'expense_payment',
         ];
 
@@ -550,11 +564,15 @@ class TransactionDocumentationStatsService
             'refund' => $query->where('transactions.type', 'Income')->doesntHave('invoices'),
             'provider_single' => $query->where('transactions.type', 'Outflow')->has('bills', '=', 1),
             'provider_bulk' => $query->where('transactions.type', 'Outflow')->has('bills', '>=', 2),
-            'card_expense' => $query->where('transactions.type', 'Outflow')->doesntHave('bills'),
+            'card_expense' => $query->where('transactions.type', 'Expense')->where(function (Builder $scoped): void {
+                self::applyCardPaymentBankTextScope($scoped);
+            }),
             'card_provider' => $query->where('transactions.type', 'Outflow')->doesntHave('bills'),
             'patient_refund' => $query->where('transactions.type', 'Outflow')->where('transactions.related_type', 'Patient'),
             'capital_return' => $query->where('transactions.type', 'Outflow')->where('transactions.related_type', 'Other'),
             'expense_payment' => $query->where('transactions.type', 'Expense'),
+            'refunded_payment' => $query->whereIn('transactions.type', ['Outflow', 'Expense'])
+                ->where('transactions.documentation_category', 'refunded_payment'),
             default => $query->whereRaw('0 = 1'),
         };
 
@@ -714,5 +732,20 @@ class TransactionDocumentationStatsService
     protected static function summaryCacheKey(int $bankAccountId): string
     {
         return "txn_doc_stats:summary:{$bankAccountId}";
+    }
+
+    protected static function applyCardPaymentBankTextScope(Builder $query): void
+    {
+        $query->where(function (Builder $scoped): void {
+            foreach (['notes', 'reference', 'name'] as $column) {
+                $scoped->orWhereRaw(
+                    "LOWER(COALESCE(transactions.{$column}, '')) LIKE ?",
+                    ['%tarjeta%']
+                )->orWhereRaw(
+                    "LOWER(COALESCE(transactions.{$column}, '')) LIKE ?",
+                    ['%tarj%']
+                );
+            }
+        });
     }
 }

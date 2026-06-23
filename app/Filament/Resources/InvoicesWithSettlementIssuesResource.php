@@ -22,11 +22,11 @@ class InvoicesWithSettlementIssuesResource extends Resource
 
     protected static ?int $navigationSort = 6;
 
-    protected static ?string $navigationLabel = 'Invoices with settlement issues';
+    protected static ?string $navigationLabel = 'Error Invoices';
 
-    protected static ?string $modelLabel = 'Invoice with settlement issue';
+    protected static ?string $modelLabel = 'Error invoice';
 
-    protected static ?string $pluralModelLabel = 'Invoices with settlement issues';
+    protected static ?string $pluralModelLabel = 'Error Invoices';
 
     protected static ?string $slug = 'invoices-with-settlement-issues';
 

@@ -255,17 +255,26 @@ class TransactionDocumentationService
         return str_contains($text, 'tarjeta') || str_contains($text, 'tarj');
     }
 
+    public function isCardPayment(Transaction $transaction): bool
+    {
+        return self::isCardPaymentBankText($transaction->notes, $transaction->reference, $transaction->name);
+    }
+
     public function isCardTransaction(Transaction $transaction): bool
     {
         if ($transaction->type !== 'Outflow' || $transaction->bills()->exists()) {
             return false;
         }
 
-        return self::isCardPaymentBankText($transaction->notes, $transaction->reference);
+        return $this->isCardPayment($transaction);
     }
 
     public function requiresInvoiceOrBillLink(Transaction $transaction): bool
     {
+        if ($this->isCardPayment($transaction) && $transaction->type === 'Outflow') {
+            return true;
+        }
+
         $category = TransactionDocumentationStatsService::resolveCategoryKey($transaction);
 
         return in_array($category, [
@@ -278,6 +287,10 @@ class TransactionDocumentationService
 
     public function hasInvoiceOrBillLink(Transaction $transaction): bool
     {
+        if ($this->isCardPayment($transaction) && $transaction->type === 'Outflow') {
+            return $transaction->bills()->exists();
+        }
+
         $category = TransactionDocumentationStatsService::resolveCategoryKey($transaction);
 
         return match ($category) {
@@ -391,6 +404,10 @@ class TransactionDocumentationService
 
     public function transactionRequiresDirectAttachment(Transaction $transaction): bool
     {
+        if ($this->isCardPayment($transaction) && $transaction->type === 'Expense') {
+            return true;
+        }
+
         $category = $this->resolvedCategory($transaction);
 
         return in_array($category, ['card_expense', 'expense_payment'], true);
@@ -483,14 +500,27 @@ class TransactionDocumentationService
     /**
      * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
      */
+    protected function resolveCardPaymentTasks(Transaction $transaction): array
+    {
+        return match ($transaction->type) {
+            'Expense' => $this->receiptTasks($transaction, 'expense_receipt', 'Missing expense receipt/invoice.'),
+            'Outflow' => $this->providerBillTasks($transaction, requireTrxOutPdf: false),
+            default => [],
+        };
+    }
+
     protected function computeMissingTasks(Transaction $transaction): array
     {
         $transaction->loadMissing(['invoices', 'bills', 'attachments']);
 
         $category = $this->resolvedCategory($transaction);
 
+        if ($category !== 'refunded_payment' && $this->isCardPayment($transaction)) {
+            return $this->resolveCardPaymentTasks($transaction);
+        }
+
         return match ($category) {
-            'account_feed', 'refund' => [],
+            'account_feed', 'refund', 'refunded_payment' => [],
             'client_payment' => $this->clientPaymentTasks($transaction),
             'provider_single', 'card_provider' => $this->providerBillTasks($transaction, requireTrxOutPdf: false),
             'provider_bulk' => $this->providerBillTasks($transaction, requireTrxOutPdf: true),
@@ -749,6 +779,10 @@ class TransactionDocumentationService
     {
         if ($transaction->attachment_path) {
             return true;
+        }
+
+        if ($transaction->relationLoaded('attachments')) {
+            return $transaction->attachments->contains(fn ($attachment) => $attachment->type === $type);
         }
 
         return $transaction->attachments()->where('type', $type)->exists();

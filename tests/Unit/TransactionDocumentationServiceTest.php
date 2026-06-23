@@ -111,4 +111,141 @@ class TransactionDocumentationServiceTest extends TestCase
         $this->assertNotNull($message);
         $this->assertStringContainsString('Bill Missing Doc', $message);
     }
+
+    #[Test]
+    public function refunded_payment_category_has_no_missing_tasks(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Outflow',
+            'documentation_category' => 'refunded_payment',
+            'notes' => 'Refunded later in March',
+        ]);
+        $transaction->setRelation('invoices', collect());
+        $transaction->setRelation('bills', collect());
+        $transaction->setRelation('attachments', collect());
+
+        $this->assertSame([], $this->service->getMissingTasks($transaction));
+    }
+
+    #[Test]
+    public function is_card_payment_detects_tarjeta_in_notes_reference_or_name(): void
+    {
+        $this->assertTrue($this->service->isCardPayment(new Transaction([
+            'notes' => 'Compra Tarjeta 1234',
+        ])));
+        $this->assertTrue($this->service->isCardPayment(new Transaction([
+            'reference' => 'tarj-abc',
+        ])));
+        $this->assertTrue($this->service->isCardPayment(new Transaction([
+            'name' => 'Payment tarjeta store',
+        ])));
+        $this->assertFalse($this->service->isCardPayment(new Transaction([
+            'notes' => 'Bank transfer only',
+        ])));
+    }
+
+    #[Test]
+    public function expense_card_payment_requires_direct_attachment(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Expense',
+            'documentation_category' => 'expense_payment',
+            'notes' => 'Compra Tarjeta 1234',
+        ]);
+        $transaction->setRelation('invoices', collect());
+        $transaction->setRelation('bills', collect());
+        $transaction->setRelation('attachments', collect());
+
+        $this->assertTrue($this->service->transactionRequiresDirectAttachment($transaction));
+        $this->assertFalse($this->service->requiresInvoiceOrBillLink($transaction));
+
+        $tasks = $this->invokeComputeMissingTasks($transaction);
+        $pendingKeys = collect($tasks)->where('status', 'pending')->pluck('key')->all();
+
+        $this->assertContains('missing_expense_receipt', $pendingKeys);
+    }
+
+    #[Test]
+    public function outflow_card_payment_requires_bill_documents_not_transaction_receipt(): void
+    {
+        $bill = new Bill([
+            'name' => 'Provider Bill',
+            'bill_document_path' => null,
+            'bill_google_link' => null,
+        ]);
+        $bill->setRelation('file', null);
+
+        $transaction = new Transaction([
+            'type' => 'Outflow',
+            'documentation_category' => 'card_provider',
+            'related_type' => 'Provider',
+            'related_id' => 1,
+            'notes' => 'Compra Tarjeta 4176570171221270',
+        ]);
+        $transaction->setRelation('bills', collect([$bill]));
+        $transaction->setRelation('invoices', collect());
+        $transaction->setRelation('attachments', collect());
+
+        $this->assertTrue($this->service->requiresInvoiceOrBillLink($transaction));
+        $this->assertFalse($this->service->transactionRequiresDirectAttachment($transaction));
+
+        $tasks = $this->invokeComputeMissingTasks($transaction);
+        $pendingKeys = collect($tasks)->where('status', 'pending')->pluck('key')->all();
+
+        $this->assertContains('missing_bill_documents', $pendingKeys);
+        $this->assertNotContains('missing_card_receipt', $pendingKeys);
+    }
+
+    #[Test]
+    public function legacy_outflow_card_expense_category_uses_bill_docs_via_type_override(): void
+    {
+        $bill = new Bill([
+            'name' => 'Provider Bill',
+            'bill_google_link' => 'https://drive.google.com/file/d/abc',
+        ]);
+        $bill->setRelation('file', null);
+
+        $transaction = new Transaction([
+            'type' => 'Outflow',
+            'documentation_category' => 'card_expense',
+            'related_type' => 'Provider',
+            'related_id' => 1,
+            'notes' => 'Compra Tarjeta 4176570171221270',
+        ]);
+        $transaction->setRelation('bills', collect([$bill]));
+        $transaction->setRelation('invoices', collect());
+        $transaction->setRelation('attachments', collect());
+
+        $tasks = $this->invokeComputeMissingTasks($transaction);
+        $pendingKeys = collect($tasks)->where('status', 'pending')->pluck('key')->all();
+
+        $this->assertNotContains('missing_card_receipt', $pendingKeys);
+        $this->assertNotContains('missing_expense_receipt', $pendingKeys);
+    }
+
+    #[Test]
+    public function refunded_payment_with_card_text_in_notes_has_no_missing_tasks(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Outflow',
+            'documentation_category' => 'refunded_payment',
+            'notes' => 'Refund for Tarjeta charge reversed',
+        ]);
+        $transaction->setRelation('invoices', collect());
+        $transaction->setRelation('bills', collect());
+        $transaction->setRelation('attachments', collect());
+
+        $this->assertSame([], $this->invokeComputeMissingTasks($transaction));
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
+     */
+    private function invokeComputeMissingTasks(Transaction $transaction): array
+    {
+        $method = new \ReflectionMethod($this->service, 'computeMissingTasks');
+        $method->setAccessible(true);
+
+        return $method->invoke($this->service, $transaction);
+    }
 }

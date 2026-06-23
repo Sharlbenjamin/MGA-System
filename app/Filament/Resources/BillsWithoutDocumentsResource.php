@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillsWithoutDocumentsResource\Pages;
 use App\Models\Bill;
+use App\Services\BillIntegrityService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -24,9 +25,9 @@ class BillsWithoutDocumentsResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
     protected static ?string $navigationGroup = 'Workflow';
     protected static ?int $navigationSort = 3;
-    protected static ?string $navigationLabel = 'Bills without documents';
-    protected static ?string $modelLabel = 'Bill without documents';
-    protected static ?string $pluralModelLabel = 'Bills without documents';
+    protected static ?string $navigationLabel = 'Bills ≠ Docs';
+    protected static ?string $modelLabel = 'Bill ≠ Doc';
+    protected static ?string $pluralModelLabel = 'Bills ≠ Docs';
 
     public static function getNavigationBadge(): ?string
     {
@@ -41,6 +42,11 @@ class BillsWithoutDocumentsResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return 'warning';
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['file.comments', 'file.patient', 'provider']);
     }
 
     public static function form(Form $form): Form
@@ -83,12 +89,7 @@ class BillsWithoutDocumentsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(function (Builder $query) {
-                return $query->where(function (Builder $query) {
-                    $query->whereNull('bill_google_link')
-                        ->orWhere('bill_google_link', '');
-                });
-            })
+            ->modifyQueryUsing(fn (Builder $query): Builder => BillIntegrityService::scopeMissingDocument($query))
             ->columns([
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')
@@ -126,6 +127,27 @@ class BillsWithoutDocumentsResource extends Resource
                         'Paid' => 'success',
                         default => 'gray',
                     }),
+                Tables\Columns\IconColumn::make('transaction_linked')
+                    ->label('Transaction')
+                    ->boolean()
+                    ->getStateUsing(fn (Bill $record): bool => BillIntegrityService::hasTransactionLink($record))
+                    ->trueIcon('heroicon-o-link')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('gray'),
+                Tables\Columns\TextColumn::make('latest_file_comment')
+                    ->label('Case comment')
+                    ->limit(40)
+                    ->wrap()
+                    ->placeholder('—')
+                    ->getStateUsing(function (Bill $record): ?string {
+                        $record->loadMissing('file.comments');
+
+                        return $record->file?->comments
+                            ->sortByDesc('created_at')
+                            ->first()
+                            ?->content;
+                    }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -133,6 +155,23 @@ class BillsWithoutDocumentsResource extends Resource
             ])
             ->defaultSort('due_date', 'asc')
             ->filters([
+                Tables\Filters\SelectFilter::make('documentation_path')
+                    ->label('Documentation path')
+                    ->options([
+                        'all' => 'All missing documents',
+                        'comment_instead_of_transaction' => 'Comment instead of transaction link',
+                        'no_transaction' => 'No transaction link',
+                        'with_case_comment' => 'Has case comment',
+                    ])
+                    ->default('all')
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['value'] ?? 'all') {
+                            'comment_instead_of_transaction' => BillIntegrityService::scopeMissingDocumentWithoutTransactionWithComment($query),
+                            'no_transaction' => BillIntegrityService::scopeWithoutTransactionLink($query),
+                            'with_case_comment' => BillIntegrityService::scopeWithFileComment($query),
+                            default => $query,
+                        };
+                    }),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'Draft' => 'Draft',

@@ -366,7 +366,7 @@ class TransactionImportService
             'updated_by' => $userId,
         ]);
 
-        if ($isCard && in_array($category, ['card_expense', 'card_provider'], true)) {
+        if ($isCard && in_array($category, ['card_expense', 'card_provider', 'expense_payment'], true)) {
             app(TransactionDocumentationStatsService::class)->applyCategory($transaction, $category, []);
             $transaction = $transaction->fresh();
         }
@@ -534,7 +534,7 @@ class TransactionImportService
         }
 
         if ($isCard) {
-            return 'card_expense';
+            return $type === 'Expense' ? 'expense_payment' : 'card_provider';
         }
 
         return TransactionDocumentationStatsService::defaultCategoryFor($type, $relatedType);

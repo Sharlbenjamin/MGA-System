@@ -23,11 +23,11 @@ class AssistedFileChecklistResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationLabel = 'Assisted File Checklist';
+    protected static ?string $navigationLabel = 'File Checklist';
 
-    protected static ?string $modelLabel = 'Assisted file checklist item';
+    protected static ?string $modelLabel = 'File checklist item';
 
-    protected static ?string $pluralModelLabel = 'Assisted File Checklist';
+    protected static ?string $pluralModelLabel = 'File Checklist';
 
     protected static ?string $slug = 'assisted-file-checklist';
 

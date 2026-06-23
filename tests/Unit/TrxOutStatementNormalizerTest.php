@@ -60,6 +60,22 @@ class TrxOutStatementNormalizerTest extends TestCase
     }
 
     #[Test]
+    public function it_maps_expenses_card_purchase_to_expense_payment(): void
+    {
+        $normalizer = new TrxOutStatementNormalizer;
+
+        $mapping = $normalizer->mapToSystemFields(
+            'Expenses',
+            'Card',
+            'Compra Cloudways, Amsterdam, Tarjeta 4176570171221270',
+            'Cloudways hosting',
+        );
+
+        $this->assertSame('Expense', $mapping['type']);
+        $this->assertSame('expense_payment', $mapping['documentation_category']);
+    }
+
+    #[Test]
     public function it_infers_card_category_when_spreadsheet_formula_was_not_evaluated(): void
     {
         $normalizer = new TrxOutStatementNormalizer;

@@ -12,6 +12,7 @@ use App\Exports\TaxesModeExport;
 use App\Models\Invoice;
 use App\Models\Bill;
 use App\Models\FileFee;
+use App\Models\Transaction;
 use Maatwebsite\Excel\Facades\Excel;
 use Google\Client;
 use Google\Service\Drive;
@@ -170,36 +171,8 @@ class TaxesExportController extends Controller
                 ];
             }
 
-            // Keep export aligned with Taxes view table:
-            // include only Expense transactions (not Outflow) to avoid bill duplication.
-            $outTransactions = DB::table('transactions')
-                ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
-                ->where('transactions.type', 'Expense')
-                ->where('bank_accounts.type', 'Internal')
-                ->whereBetween('date', [$startDate, $endDate])
-                ->orderBy('date')
-                ->select('transactions.*')
-                ->get();
-
-            foreach ($outTransactions as $transaction) {
-                $amount = $this->resolveTransactionAmount($transaction);
-
-                $rows[] = [
-                    'Payment',
-                    optional(Carbon::parse($transaction->date))->format('Y-m-d'),
-                    $transaction->name,
-                    '-',
-                    $transaction->name ?? '-',
-                    '-',
-                    '-',
-                    '-',
-                    round($amount, 2),
-                    'N/A',
-                    round($amount, 2),
-                    'N/A',
-                    'Transaction',
-                    $transaction->notes ?? '',
-                ];
+            foreach ($this->taxPaymentTransactionsForPeriod($startDate, $endDate) as $transaction) {
+                $rows[] = $this->buildTransactionPaymentRow($transaction);
             }
         }
 
@@ -210,6 +183,53 @@ class TaxesExportController extends Controller
             'headings' => $headings,
             'rows' => $rows,
             'filename' => $filename,
+        ];
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Transaction>
+     */
+    private function taxPaymentTransactionsForPeriod(Carbon $startDate, Carbon $endDate)
+    {
+        return Transaction::query()
+            ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
+            ->where('bank_accounts.type', 'Internal')
+            ->whereBetween('transactions.date', [$startDate, $endDate])
+            ->where(function (Builder $query): void {
+                $query->where('transactions.type', 'Expense')
+                    ->orWhere(function (Builder $refundedOutflow): void {
+                        $refundedOutflow->where('transactions.type', 'Outflow')
+                            ->where('transactions.documentation_category', 'refunded_payment');
+                    });
+            })
+            ->orderBy('transactions.date')
+            ->select('transactions.*')
+            ->get();
+    }
+
+    private function buildTransactionPaymentRow(Transaction $transaction): array
+    {
+        $amount = round($this->resolveTransactionAmount($transaction), 2);
+        $isRefundedPayment = $transaction->documentation_category === 'refunded_payment';
+        $comment = trim((string) ($transaction->notes ?? ''));
+
+        return [
+            'Payment',
+            optional($transaction->date)->format('Y-m-d'),
+            $isRefundedPayment ? ($comment !== '' ? $comment : ($transaction->name ?? '-')) : ($transaction->name ?? '-'),
+            '-',
+            $isRefundedPayment && $transaction->type === 'Outflow'
+                ? ($transaction->getRelatedPartyLabel() ?? ($transaction->name ?? '-'))
+                : ($transaction->name ?? '-'),
+            '-',
+            '-',
+            '-',
+            $amount,
+            'N/A',
+            $amount,
+            'N/A',
+            $isRefundedPayment ? 'Refunded Payment' : 'Transaction',
+            $isRefundedPayment ? '' : ($transaction->notes ?? ''),
         ];
     }
 

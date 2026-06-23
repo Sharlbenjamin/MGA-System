@@ -41,7 +41,10 @@ class BankAccountResource extends Resource
                 Forms\Components\TextInput::make('swift')->label('SWIFT')->maxLength(255),
                 Forms\Components\TextInput::make('bank_name')->maxLength(255),
                 Forms\Components\Textarea::make('beneficiary_address')->maxLength(65535)->columnSpanFull(),
-                Forms\Components\TextInput::make('balance')->prefix('€')->default(0),
+                Forms\Components\TextInput::make('balance')
+                    ->prefix('€')
+                    ->default(0)
+                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
             ]);
     }
 
@@ -81,7 +84,10 @@ class BankAccountResource extends Resource
                 Tables\Columns\TextColumn::make('beneficiary_name')->label('Name')->searchable(),
                 Tables\Columns\TextColumn::make('iban')->label('IBAN')->searchable(),
                 Tables\Columns\TextColumn::make('swift')->label('SWIFT')->searchable(),
-                Tables\Columns\TextColumn::make('balance')->money('EUR')->sortable(),
+                Tables\Columns\TextColumn::make('balance')
+                    ->money('EUR')
+                    ->sortable()
+                    ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('country')->relationship('country', 'name'),

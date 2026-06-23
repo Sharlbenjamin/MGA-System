@@ -280,9 +280,15 @@ class ListTaxes extends ListRecords
             ->sum('total_amount');
         $expenseTotal = DB::table('transactions')
             ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
-            ->where('transactions.type', 'Expense')
             ->where('bank_accounts.type', 'Internal')
             ->whereBetween('transactions.date', [$startDate, $endDate])
+            ->where(function ($query) {
+                $query->where('transactions.type', 'Expense')
+                    ->orWhere(function ($refundedOutflow) {
+                        $refundedOutflow->where('transactions.type', 'Outflow')
+                            ->where('transactions.documentation_category', 'refunded_payment');
+                    });
+            })
             ->sum('transactions.amount');
 
         // Get filtered data
@@ -532,13 +538,19 @@ class ListTaxes extends ListRecords
                 'bill_google_link as google_drive_link'
             ]);
 
-        // Query only expense transactions for the selected period.
-        // Outflow can duplicate bills already listed above.
+        // Query expense and refunded-payment outflow transactions for the selected period.
+        // Ordinary Outflow can duplicate bills already listed above.
         $expenses = DB::table('transactions')
             ->join('bank_accounts', 'transactions.bank_account_id', '=', 'bank_accounts.id')
-            ->where('transactions.type', 'Expense')
-            ->where('bank_accounts.type', 'Internal') // Med Guard is the internal account
+            ->where('bank_accounts.type', 'Internal')
             ->whereBetween('transactions.date', [$startDate, $endDate])
+            ->where(function ($query) {
+                $query->where('transactions.type', 'Expense')
+                    ->orWhere(function ($refundedOutflow) {
+                        $refundedOutflow->where('transactions.type', 'Outflow')
+                            ->where('transactions.documentation_category', 'refunded_payment');
+                    });
+            })
             ->select([
                 'transactions.id',
                 'transactions.name as document_number',
