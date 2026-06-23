@@ -39,7 +39,7 @@ class BillItemPolicy
      */
     public function update(User $user, BillItem $billItem): bool
     {
-        return $user->can('update BillItem');
+        return $user->can('edit BillItem');
     }
 
     /**
