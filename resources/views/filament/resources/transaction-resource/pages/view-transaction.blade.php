@@ -354,7 +354,12 @@
                         <tbody>
                             @forelse($this->record->bills as $bill)
                                 <tr class="bg-white border-b hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap">{{ $bill->name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <a href="{{ route('filament.admin.resources.bills.edit', $bill) }}"
+                                           class="text-blue-600 hover:text-blue-800 underline">
+                                            {{ $bill->name }}
+                                        </a>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($bill->file)
                                             <a href="{{ route('filament.admin.resources.files.view', $bill->file->id) }}" 

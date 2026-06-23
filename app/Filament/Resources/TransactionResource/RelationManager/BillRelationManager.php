@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TransactionResource\RelationManager;
 
+use App\Filament\Resources\BillResource;
 use App\Filament\Resources\TransactionResource\Pages\EditTransaction;
 use App\Filament\Support\TransactionBillLinkForm;
 use App\Filament\Support\TransactionEditPageRefresh;
@@ -54,7 +55,10 @@ class BillRelationManager extends RelationManager
                 TextColumn::make('name')
                     ->label('Bill')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->color('primary')
+                    ->url(fn (Bill $record): string => BillResource::getUrl('edit', ['record' => $record]))
+                    ->openUrlInNewTab(),
                 TextColumn::make('total_amount')
                     ->label('Bill total')
                     ->money('EUR')
