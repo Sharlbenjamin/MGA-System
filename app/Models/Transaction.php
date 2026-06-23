@@ -391,13 +391,7 @@ class Transaction extends Model
                         'amount_paid' => $bill->total_amount
                     ]);
 
-                    // Temporarily disable model events to prevent circular dependency
-                    $bill->withoutEvents(function () use ($bill) {
-                        $bill->paid_amount = $bill->total_amount;
-                        $bill->status = 'Paid';
-                        $bill->payment_date = now();
-                        $bill->save();
-                    });
+                    $bill->recalculatePaidAmountFromTransactions();
                 }
             }
         }
@@ -555,22 +549,9 @@ class Transaction extends Model
             throw new \Exception('Only draft transactions can be finalized');
         }
 
-        // Mark all attached bills as paid
+        // Mark all attached bills as paid from pivot amounts
         $this->bills()->each(function ($bill) {
-            $amountPaid = $bill->pivot->amount_paid ?? 0;
-            
-            // Update the bill's paid amount
-            $bill->paid_amount += $amountPaid;
-            $bill->payment_date = $this->date;
-            
-            // Check if the bill is now fully paid
-            if ($bill->paid_amount >= $bill->total_amount) {
-                $bill->status = 'Paid';
-            } else {
-                $bill->status = 'Partial';
-            }
-            
-            $bill->save();
+            $bill->recalculatePaidAmountFromTransactions();
         });
 
         // Update transaction status

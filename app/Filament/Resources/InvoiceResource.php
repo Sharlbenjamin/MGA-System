@@ -154,7 +154,17 @@ class InvoiceResource extends Resource
                                 'Partial' => 'Partial',
                                 'Paid' => 'Paid',
                             ])->default('Draft')
-                            ->required(),
+                            ->required()
+                            ->disableOptionWhen(
+                                fn (string $value, ?Invoice $record): bool => $value === 'Paid'
+                                    && $record
+                                    && ! $record->transactions()->exists(),
+                            )
+                            ->helperText(
+                                fn (?Invoice $record): ?string => $record && ! $record->transactions()->exists()
+                                    ? 'Paid status is only available after the invoice is linked to a transaction.'
+                                    : null,
+                            ),
 
                         ])->columnSpan(['lg' => 2]),
 

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use App\Traits\LogsActivity;
+use Illuminate\Support\Facades\DB;
 
 class Bill extends Model
 {
@@ -160,12 +161,103 @@ class Bill extends Model
     // Calculations      Calculations      Calculations       Calculations        Calculations
 
 
-    public function calculateTotal()
+    public function calculateTotal(): void
     {
-        $subtotal = $this->subtotal;
         $this->calculateDiscount();
-        $this->total_amount = $subtotal - $this->discount;
+        $this->total_amount = $this->subtotal - $this->discount;
         $this->save();
+
+        $this->capPivotAmountsToTotal();
+        $this->recalculatePaidAmountFromTransactions();
+    }
+
+    public function totalPaidFromTransactions(): float
+    {
+        if (! $this->exists) {
+            return 0;
+        }
+
+        return (float) DB::table('bill_transaction')
+            ->where('bill_id', $this->id)
+            ->sum('amount_paid');
+    }
+
+    public function remainingBalance(): float
+    {
+        return max(0, round((float) $this->total_amount - $this->totalPaidFromTransactions(), 2));
+    }
+
+    public function recalculatePaidAmountFromTransactions(): void
+    {
+        if (! $this->exists) {
+            return;
+        }
+
+        $paidAmount = round($this->totalPaidFromTransactions(), 2);
+        $totalAmount = (float) $this->total_amount;
+
+        $status = match (true) {
+            $paidAmount >= $totalAmount && $totalAmount > 0 => 'Paid',
+            $paidAmount > 0 => 'Partial',
+            default => 'Unpaid',
+        };
+
+        $paymentDate = $this->payment_date;
+        if ($status === 'Unpaid') {
+            $paymentDate = null;
+        } elseif ($this->status !== $status || round((float) $this->paid_amount, 2) !== $paidAmount) {
+            $transaction = $this->transactions()->first();
+            $paymentDate = $transaction?->date ?? now();
+        }
+
+        if (
+            round((float) $this->paid_amount, 2) === $paidAmount
+            && $this->status === $status
+            && $this->payment_date == $paymentDate
+        ) {
+            return;
+        }
+
+        $this->forceFill([
+            'paid_amount' => $paidAmount,
+            'status' => $status,
+            'payment_date' => $paymentDate,
+        ])->saveQuietly();
+    }
+
+    public function capPivotAmountsToTotal(): void
+    {
+        if (! $this->exists) {
+            return;
+        }
+
+        $total = round((float) $this->total_amount, 2);
+        $sumPaid = round($this->totalPaidFromTransactions(), 2);
+
+        if ($sumPaid <= $total) {
+            return;
+        }
+
+        $pivots = DB::table('bill_transaction')
+            ->where('bill_id', $this->id)
+            ->get();
+
+        if ($pivots->count() === 1) {
+            DB::table('bill_transaction')
+                ->where('bill_id', $this->id)
+                ->update(['amount_paid' => $total]);
+
+            return;
+        }
+
+        $ratio = $total / $sumPaid;
+
+        foreach ($pivots as $pivot) {
+            DB::table('bill_transaction')
+                ->where('bill_id', $this->id)
+                ->where('transaction_id', $pivot->transaction_id)
+                ->update(['amount_paid' => round((float) $pivot->amount_paid * $ratio, 2)]);
+        }
     }
 
     public function getRemaining_AmountAttribute(): float

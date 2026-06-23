@@ -19,10 +19,26 @@ use App\Support\ClientEmailRecipients;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\UploadInvoiceToGoogleDrive;
+use Illuminate\Validation\ValidationException;
 
 class EditInvoice extends EditRecord
 {
     protected static string $resource = InvoiceResource::class;
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (
+            ($data['status'] ?? null) === 'Paid'
+            && $this->record->status !== 'Paid'
+            && ! $this->record->transactions()->exists()
+        ) {
+            throw ValidationException::withMessages([
+                'status' => 'This invoice must be linked to a transaction before it can be marked as Paid.',
+            ]);
+        }
+
+        return $data;
+    }
 
     protected function getHeaderActions(): array
     {

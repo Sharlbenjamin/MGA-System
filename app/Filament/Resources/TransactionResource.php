@@ -6,6 +6,7 @@ use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManager;
 use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
 use App\Filament\Support\TransactionDocumentationForm;
+use App\Filament\Support\TransactionBillLinkForm;
 use App\Filament\Support\TransactionInvoiceLinkForm;
 use App\Models\BankAccount;
 use App\Models\Bill;
@@ -422,61 +423,30 @@ class TransactionResource extends Resource
                     ->visible(fn ($get, $livewire) => $get('related_type') === 'Client'
                         && $livewire instanceof Pages\CreateTransaction)
                     ->columnSpanFull(),
-                Forms\Components\Select::make('bills')
+                Forms\Components\Repeater::make('bill_links')
                     ->label('Bills')
-                    ->multiple()
-                    ->searchable()
-                    ->live()
-                    ->visible(fn ($get) => $get('related_type') === 'Provider' || $get('related_type') === 'Branch')
-                    ->default(function ($record = null) {
-                        // Handle bill_ids parameter (comma-separated list from bulk action)
+                    ->addActionLabel('Add bill')
+                    ->schema(TransactionBillLinkForm::createRepeaterSchema())
+                    ->default(function (): array {
                         if (request()->get('bill_ids')) {
-                            $billIds = explode(',', request()->get('bill_ids'));
-
-                            return array_filter($billIds); // Remove empty values
+                            return collect(explode(',', (string) request()->get('bill_ids')))
+                                ->filter()
+                                ->map(fn ($id) => ['bill_id' => (int) $id, 'amount_paid' => null])
+                                ->values()
+                                ->all();
                         }
 
-                        // Handle single bill_id parameter
-                        if (request()->get('bill_id')) {
-                            return [request()->get('bill_id')];
-                        }
+                        $billId = request()->integer('bill_id');
 
-                        // If editing, get the currently attached bill IDs
-                        if ($record && $record->exists) {
-                            return $record->bills()->pluck('bills.id')->toArray();
-                        }
-
-                        return [];
-                    })
-                    ->getSearchResultsUsing(function (string $search, Get $get, $record = null): array {
-                        $relatedType = $get('related_type');
-                        $relatedId = (int) ($get('related_id') ?? 0);
-
-                        if (! $relatedId || ! in_array($relatedType, ['Provider', 'Branch'], true)) {
+                        if (! $billId) {
                             return [];
                         }
 
-                        return static::searchBillOptions(
-                            $relatedType,
-                            $relatedId,
-                            $record?->id,
-                            $search,
-                        );
+                        return [['bill_id' => $billId, 'amount_paid' => null]];
                     })
-                    ->getOptionLabelsUsing(function (array $values): array {
-                        if ($values === []) {
-                            return [];
-                        }
-
-                        return Bill::query()
-                            ->whereIn('id', $values)
-                            ->orderByDesc('id')
-                            ->get()
-                            ->mapWithKeys(fn (Bill $bill) => [
-                                $bill->id => static::formatBillOptionLabel($bill),
-                            ])
-                            ->all();
-                    }),
+                    ->visible(fn ($get, $livewire) => in_array($get('related_type'), ['Provider', 'Branch'], true)
+                        && $livewire instanceof Pages\CreateTransaction)
+                    ->columnSpanFull(),
                 static::documentationStatusSection(),
             ]);
     }

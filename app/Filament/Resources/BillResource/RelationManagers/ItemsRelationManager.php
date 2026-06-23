@@ -75,22 +75,14 @@ class ItemsRelationManager extends RelationManager
 
                 Forms\Components\TextInput::make('description')
                     ->required()
-                    ->maxLength(255)
-                    ->disabled(fn ($get) => 
-                        $get('service_selector') 
-                        && $get('service_selector') !== 'custom'
-                    ),
+                    ->maxLength(255),
 
                 Forms\Components\TextInput::make('amount')
                     ->required()
                     ->numeric()
                     ->inputMode('decimal')
                     ->step('0.01')
-                    ->prefix('€')
-                    ->disabled(fn ($get) => 
-                        $get('service_selector') 
-                        && $get('service_selector') !== 'custom'
-                    ),
+                    ->prefix('€'),
 
                 Forms\Components\TextInput::make('discount')
                     ->numeric()

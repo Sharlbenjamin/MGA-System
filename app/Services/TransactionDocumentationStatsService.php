@@ -199,17 +199,56 @@ class TransactionDocumentationStatsService
      */
     public function syncBills(Transaction $transaction, array $billIds): void
     {
+        $previousIds = $transaction->bills()->pluck('bills.id')->all();
+        $sync = $this->resolveBillSyncAmounts($transaction, $billIds);
+        $transaction->bills()->sync($sync);
+
+        $affectedIds = array_values(array_unique([...$previousIds, ...array_keys($sync)]));
+
+        if ($affectedIds === []) {
+            return;
+        }
+
+        foreach (Bill::query()->whereIn('id', $affectedIds)->get() as $bill) {
+            $bill->recalculatePaidAmountFromTransactions();
+        }
+    }
+
+    /**
+     * @param  array<int, int|string>  $billIds
+     * @return array<int, array{amount_paid: float}>
+     */
+    public function resolveBillSyncAmounts(Transaction $transaction, array $billIds): array
+    {
+        $billIds = self::normalizeLinkIds($billIds);
+        $bills = Bill::query()->whereIn('id', $billIds)->get()->keyBy('id');
+        $existing = $transaction->exists
+            ? $transaction->bills()->get()->keyBy('id')
+            : collect();
+
         $sync = [];
 
         foreach ($billIds as $billId) {
-            $bill = Bill::find($billId);
+            $bill = $bills->get($billId);
 
-            if ($bill) {
-                $sync[$billId] = ['amount_paid' => $bill->total_amount];
+            if (! $bill) {
+                continue;
             }
+
+            if ($existing->has($billId)) {
+                $sync[$billId] = [
+                    'amount_paid' => (float) ($existing[$billId]->pivot->amount_paid ?? 0),
+                ];
+
+                continue;
+            }
+
+            $sync[$billId] = [
+                'amount_paid' => min($bill->remainingBalance(), (float) $bill->total_amount),
+            ];
         }
 
-        $transaction->bills()->sync($sync);
+        return $sync;
     }
 
     /**

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Traits\LogsActivity;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class Invoice extends Model
 {
@@ -66,8 +67,13 @@ class Invoice extends Model
                 $invoice->invoice_date = $invoice->file?->service_date ?? now();
             }
             $invoice->due_date = now()->addDays(30);
+
+            static::guardPaidStatusRequiresTransaction($invoice);
         });
 
+        static::updating(function ($invoice) {
+            static::guardPaidStatusRequiresTransaction($invoice);
+        });
 
         static::updated(function ($invoice) {
             if ($invoice->isDirty('paid_amount')) {
@@ -244,8 +250,32 @@ class Invoice extends Model
         }
     }
 
+    public function canBeMarkedPaid(): bool
+    {
+        return $this->transactions()->exists();
+    }
+
+    protected static function guardPaidStatusRequiresTransaction(Invoice $invoice): void
+    {
+        if (! $invoice->isDirty('status') || $invoice->status !== 'Paid') {
+            return;
+        }
+
+        if ($invoice->canBeMarkedPaid()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'status' => 'This invoice must be linked to a transaction before it can be marked as Paid.',
+        ]);
+    }
+
     public function markAsPaid()
     {
+        if (! $this->canBeMarkedPaid()) {
+            return;
+        }
+
         $transaction = $this->transactions()->first();
         $now = $transaction?->date ?? now();
         $this->status = 'Paid';

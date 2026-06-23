@@ -425,6 +425,10 @@ class TransactionImportService
 
             $transaction->bills()->updateExistingPivot($billId, ['amount_paid' => $amount]);
         }
+
+        foreach ($billIds as $billId) {
+            Bill::find($billId)?->recalculatePaidAmountFromTransactions();
+        }
     }
 
     /**

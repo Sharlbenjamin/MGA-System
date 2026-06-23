@@ -240,14 +240,8 @@ class TransactionDocumentationForm
         }
 
         if (! empty($data['bills'])) {
-            $sync = [];
-            foreach ($data['bills'] as $billId) {
-                $bill = Bill::find($billId);
-                if ($bill) {
-                    $sync[$billId] = ['amount_paid' => $bill->total_amount];
-                }
-            }
-            $record->bills()->sync($sync);
+            app(TransactionDocumentationStatsService::class)
+                ->syncBills($record, $data['bills']);
         }
 
         $path = self::normalizeUploadedFilePath($data['attachment'] ?? null);

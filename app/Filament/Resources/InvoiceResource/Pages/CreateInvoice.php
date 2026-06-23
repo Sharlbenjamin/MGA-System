@@ -5,6 +5,7 @@ namespace App\Filament\Resources\InvoiceResource\Pages;
 use App\Filament\Resources\InvoiceResource;
 use App\Models\File;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Validation\ValidationException;
 
 class CreateInvoice extends CreateRecord
 {
@@ -18,6 +19,12 @@ class CreateInvoice extends CreateRecord
         // Enforce invoice date during creation:
         // service date if available, otherwise today's date.
         $data['invoice_date'] = $serviceDate ?? now()->format('Y-m-d');
+
+        if (($data['status'] ?? null) === 'Paid') {
+            throw ValidationException::withMessages([
+                'status' => 'This invoice must be linked to a transaction before it can be marked as Paid.',
+            ]);
+        }
 
         return $data;
     }
