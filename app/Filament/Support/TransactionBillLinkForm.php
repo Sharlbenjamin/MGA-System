@@ -5,6 +5,7 @@ namespace App\Filament\Support;
 use App\Filament\Resources\TransactionResource;
 use App\Models\Bill;
 use App\Models\Transaction;
+use App\Services\TransactionDocumentationStatsService;
 use App\Services\TransactionSettlementService;
 use Filament\Forms;
 use Filament\Forms\Get;
@@ -256,9 +257,7 @@ class TransactionBillLinkForm
 
         $bill->recalculatePaidAmountFromTransactions();
 
-        if ($sync) {
-            app(TransactionSettlementService::class)->syncAfterPivotChange($transaction);
-        }
+        self::afterBillCountChange($transaction, $sync);
 
         if ($notify) {
             Notification::make()
@@ -296,7 +295,7 @@ class TransactionBillLinkForm
     {
         $transaction->bills()->detach($bill->id);
         $bill->recalculatePaidAmountFromTransactions();
-        app(TransactionSettlementService::class)->syncAfterPivotChange($transaction);
+        self::afterBillCountChange($transaction);
 
         Notification::make()
             ->success()
@@ -330,6 +329,9 @@ class TransactionBillLinkForm
         }
 
         if ($count > 0) {
+            app(TransactionDocumentationStatsService::class)
+                ->applyProviderBillCategoryFromCount($transaction->fresh());
+
             app(TransactionSettlementService::class)->syncAfterPivotChange($transaction);
 
             Notification::make()
@@ -337,6 +339,18 @@ class TransactionBillLinkForm
                 ->body("Linked {$count} bill(s). Review paid amounts in the Bills tab.")
                 ->info()
                 ->send();
+        }
+    }
+
+    protected static function afterBillCountChange(Transaction $transaction, bool $sync = true): void
+    {
+        $transaction = $transaction->fresh();
+
+        app(TransactionDocumentationStatsService::class)
+            ->applyProviderBillCategoryFromCount($transaction);
+
+        if ($sync) {
+            app(TransactionSettlementService::class)->syncAfterPivotChange($transaction->fresh());
         }
     }
 }

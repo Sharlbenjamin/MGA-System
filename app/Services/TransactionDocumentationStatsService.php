@@ -205,13 +205,51 @@ class TransactionDocumentationStatsService
 
         $affectedIds = array_values(array_unique([...$previousIds, ...array_keys($sync)]));
 
-        if ($affectedIds === []) {
-            return;
+        if ($affectedIds !== []) {
+            foreach (Bill::query()->whereIn('id', $affectedIds)->get() as $bill) {
+                $bill->recalculatePaidAmountFromTransactions();
+            }
         }
 
-        foreach (Bill::query()->whereIn('id', $affectedIds)->get() as $bill) {
-            $bill->recalculatePaidAmountFromTransactions();
+        $transaction->refresh();
+        $this->applyProviderBillCategoryFromCount($transaction);
+    }
+
+    public static function providerBillCategoryForCount(int $billCount): ?string
+    {
+        return match (true) {
+            $billCount >= 2 => 'provider_bulk',
+            $billCount === 1 => 'provider_single',
+            default => null,
+        };
+    }
+
+    public static function shouldAutoAdjustProviderBillCategory(?string $currentCategory): bool
+    {
+        return $currentCategory === null
+            || in_array($currentCategory, ['provider_single', 'provider_bulk'], true);
+    }
+
+    public function applyProviderBillCategoryFromCount(Transaction $transaction): bool
+    {
+        if ($transaction->type !== 'Outflow' || ! in_array($transaction->related_type, ['Provider', 'Branch'], true)) {
+            return false;
         }
+
+        $nextCategory = self::providerBillCategoryForCount($transaction->bills()->count());
+
+        if ($nextCategory === null || ! self::shouldAutoAdjustProviderBillCategory($transaction->documentation_category)) {
+            return false;
+        }
+
+        if ($transaction->documentation_category === $nextCategory) {
+            return false;
+        }
+
+        $transaction->documentation_category = $nextCategory;
+        $transaction->save();
+
+        return true;
     }
 
     /**

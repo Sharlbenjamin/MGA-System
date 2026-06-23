@@ -59,6 +59,24 @@ class CreateTransaction extends CreateRecord
         $this->invoiceLinksToAttach = $this->normalizeInvoiceLinks($data['invoice_links'] ?? []);
         $this->documentationCategory = $data['documentation_category'] ?? request()->get('documentation_category');
 
+        $billIds = array_values(array_unique([
+            ...TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []),
+            ...array_map('intval', array_column($data['bill_links'] ?? [], 'bill_id')),
+        ]));
+
+        if (
+            ($data['type'] ?? null) === 'Outflow'
+            && in_array($data['related_type'] ?? null, ['Provider', 'Branch'], true)
+        ) {
+            $autoCategory = TransactionDocumentationStatsService::providerBillCategoryForCount(count($billIds));
+            $currentCategory = $data['documentation_category'] ?? $this->documentationCategory;
+
+            if ($autoCategory && TransactionDocumentationStatsService::shouldAutoAdjustProviderBillCategory($currentCategory)) {
+                $data['documentation_category'] = $autoCategory;
+                $this->documentationCategory = $autoCategory;
+            }
+        }
+
         unset($data['bills'], $data['bill_links'], $data['invoice_links']);
 
         if (blank($data['documentation_category'] ?? null)) {
@@ -123,6 +141,8 @@ class CreateTransaction extends CreateRecord
             if ($transaction->related_type === 'Client' && $this->invoiceLinksToAttach !== []) {
                 TransactionInvoiceLinkForm::attachLinksFromCreate($transaction, $this->invoiceLinksToAttach);
             }
+
+            $statsService->applyProviderBillCategoryFromCount($transaction->fresh());
         });
 
         app(TransactionSettlementService::class)->syncDocumentation($this->record->fresh());

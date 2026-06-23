@@ -82,6 +82,21 @@ class EditTransaction extends EditRecord
 
         $this->relatedTypeForSync = $data['related_type'] ?? $this->record->related_type;
         $this->billsToSync = TransactionDocumentationStatsService::normalizeLinkIds($data['bills'] ?? []);
+
+        $type = $data['type'] ?? $this->record->type;
+        if ($type === 'Outflow' && in_array($this->relatedTypeForSync, ['Provider', 'Branch'], true)) {
+            $billCount = $this->billsToSync !== []
+                ? count($this->billsToSync)
+                : $this->record->bills()->count();
+
+            $autoCategory = TransactionDocumentationStatsService::providerBillCategoryForCount($billCount);
+            $currentCategory = $data['documentation_category'] ?? $this->record->documentation_category;
+
+            if ($autoCategory && TransactionDocumentationStatsService::shouldAutoAdjustProviderBillCategory($currentCategory)) {
+                $data['documentation_category'] = $autoCategory;
+            }
+        }
+
         $this->documentationCategory = $data['documentation_category'] ?? null;
 
         unset($data['bills']);
