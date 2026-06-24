@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Transaction;
 use App\Services\TransactionDocumentationService;
+use App\Services\TransactionDocumentationStatsService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
 
@@ -24,15 +25,20 @@ class RecalculateTransactionDocumentation extends Command
         $chunkSize = (int) $this->option('chunk');
         $counts = [];
         $processed = 0;
+        $bankAccountIds = [];
 
         $this->info('Recalculating transaction documentation status...');
 
         Transaction::query()
             ->orderBy('id')
-            ->chunkById($chunkSize, function ($transactions) use ($documentationService, &$counts, &$processed) {
+            ->chunkById($chunkSize, function ($transactions) use ($documentationService, &$counts, &$processed, &$bankAccountIds) {
                 foreach ($transactions as $transaction) {
-                    $documentationService->syncAndRecalculate($transaction);
+                    $documentationService->forceRecalculate($transaction);
                     $transaction->refresh();
+
+                    if ($transaction->bank_account_id) {
+                        $bankAccountIds[(int) $transaction->bank_account_id] = true;
+                    }
 
                     $status = $transaction->documentation_status ?? 'unknown';
                     $counts[$status] = ($counts[$status] ?? 0) + 1;
@@ -41,6 +47,10 @@ class RecalculateTransactionDocumentation extends Command
 
                 $this->line("Processed {$processed} transactions...");
             });
+
+        foreach (array_keys($bankAccountIds) as $bankAccountId) {
+            TransactionDocumentationStatsService::forgetBankAccountCache($bankAccountId);
+        }
 
         $this->newLine();
         $this->info("Finished. {$processed} transactions recalculated.");

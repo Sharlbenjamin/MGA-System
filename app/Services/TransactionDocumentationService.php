@@ -15,7 +15,7 @@ class TransactionDocumentationService
      * recalculated on save — uses the stored documentation_status column instead.
      * Set to false to re-enable the full checklist pipeline.
      */
-    public const MISSING_TASKS_ON_HOLD = true;
+    public const MISSING_TASKS_ON_HOLD = false;
 
     /** @var list<string> */
     public const DOCUMENTATION_SYNC_ATTRIBUTES = [
@@ -23,6 +23,9 @@ class TransactionDocumentationService
         'related_type',
         'related_id',
         'documentation_category',
+        'documentation_skipped_at',
+        'documentation_skipped_by',
+        'documentation_skip_reason',
         'attachment_path',
         'trx_in_pdf_path',
         'trx_out_pdf_path',
@@ -183,9 +186,18 @@ class TransactionDocumentationService
         return null;
     }
 
-    public function recalculateDocumentationStatus(Transaction $transaction): void
+    public function recalculateDocumentationStatus(Transaction $transaction, bool $force = false): void
     {
-        if ($this->missingTasksOnHold()) {
+        if (! $force && $this->missingTasksOnHold()) {
+            return;
+        }
+
+        if ($this->isDocumentationSkipped($transaction)) {
+            if ($transaction->documentation_status !== 'complete') {
+                $transaction->documentation_status = 'complete';
+                $transaction->saveQuietly();
+            }
+
             return;
         }
 
@@ -197,10 +209,120 @@ class TransactionDocumentationService
         }
     }
 
+    public function forceRecalculate(Transaction $transaction): Transaction
+    {
+        if (self::$isSyncing && self::$syncingTransactionId === $transaction->id) {
+            return $transaction;
+        }
+
+        self::$isSyncing = true;
+        self::$syncingTransactionId = $transaction->id;
+
+        try {
+            $this->forgetMissingTasksCache($transaction);
+
+            $previousStatus = $transaction->documentation_status;
+
+            $this->recalculateDocumentationStatus($transaction, force: true);
+
+            $transaction->refresh();
+
+            if (
+                $previousStatus !== $transaction->documentation_status
+                && $transaction->bank_account_id
+            ) {
+                TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+            }
+
+            return $transaction;
+        } finally {
+            self::$isSyncing = false;
+            self::$syncingTransactionId = null;
+        }
+    }
+
+    public function isDocumentationSkipped(Transaction $transaction): bool
+    {
+        return filled($transaction->getAttributes()['documentation_skipped_at'] ?? null);
+    }
+
+    public function canSkipDocumentation(Transaction $transaction): bool
+    {
+        return in_array($transaction->type, ['Income', 'Expense'], true)
+            && ! $this->isDocumentationSkipped($transaction);
+    }
+
+    public function skipDocumentation(Transaction $transaction, ?string $reason = null, ?int $userId = null): Transaction
+    {
+        if (! in_array($transaction->type, ['Income', 'Expense'], true)) {
+            throw new \InvalidArgumentException('Only Income and Expense transactions can skip documentation.');
+        }
+
+        $transaction->documentation_skipped_at = now();
+        $transaction->documentation_skipped_by = $userId;
+        $transaction->documentation_skip_reason = filled($reason) ? trim($reason) : null;
+        $transaction->documentation_status = 'complete';
+        $transaction->save();
+
+        if ($transaction->bank_account_id) {
+            TransactionDocumentationStatsService::forgetBankAccountCache((int) $transaction->bank_account_id);
+        }
+
+        return $transaction->refresh();
+    }
+
+    public function undoSkipDocumentation(Transaction $transaction, ?int $userId = null): Transaction
+    {
+        $transaction->documentation_skipped_at = null;
+        $transaction->documentation_skipped_by = null;
+        $transaction->documentation_skip_reason = null;
+
+        if ($userId !== null) {
+            $transaction->updated_by = $userId;
+        }
+
+        $transaction->save();
+
+        return $this->forceRecalculate($transaction);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getFormPendingTaskKeys(Transaction $transaction): array
+    {
+        if ($this->isDocumentationSkipped($transaction)) {
+            return [];
+        }
+
+        $tasks = $this->missingTasksOnHold()
+            ? $this->computeMissingTasksForUi($transaction)
+            : $this->getMissingTasks($transaction);
+
+        return collect($tasks)
+            ->where('status', 'pending')
+            ->pluck('key')
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
+     */
+    protected function computeMissingTasksForUi(Transaction $transaction): array
+    {
+        $transaction->loadMissing(['invoices', 'bills', 'attachments']);
+
+        return $this->computeMissingTasks($transaction);
+    }
+
     public function resolveDocumentationStatus(Transaction $transaction): string
     {
         if ($this->missingTasksOnHold()) {
             return $transaction->documentation_status ?? 'incomplete';
+        }
+
+        if ($this->isDocumentationSkipped($transaction)) {
+            return 'complete';
         }
 
         $pending = collect($this->getMissingTasks($transaction))->where('status', 'pending');
@@ -271,6 +393,10 @@ class TransactionDocumentationService
 
     public function requiresInvoiceOrBillLink(Transaction $transaction): bool
     {
+        if ($this->isDocumentationSkipped($transaction)) {
+            return false;
+        }
+
         if ($this->isCardPayment($transaction) && $transaction->type === 'Outflow') {
             return true;
         }
@@ -307,6 +433,10 @@ class TransactionDocumentationService
 
     public function getDocumentationStatusLabel(Transaction $transaction): string
     {
+        if ($this->isDocumentationSkipped($transaction)) {
+            return 'Complete (skipped)';
+        }
+
         if (filled($transaction->documentation_status)) {
             return $this->formatDocumentationStatusLabel($transaction->documentation_status);
         }
@@ -471,6 +601,10 @@ class TransactionDocumentationService
      */
     public function getMissingTasks(Transaction $transaction): array
     {
+        if ($this->isDocumentationSkipped($transaction)) {
+            return [];
+        }
+
         if ($this->missingTasksOnHold()) {
             return [];
         }
@@ -1001,6 +1135,10 @@ class TransactionDocumentationService
 
     public function hasPendingDocumentTasks(Transaction $transaction): bool
     {
+        if ($this->isDocumentationSkipped($transaction)) {
+            return false;
+        }
+
         if ($this->missingTasksOnHold()) {
             return in_array($transaction->documentation_status ?? 'incomplete', [
                 'missing_attachment',

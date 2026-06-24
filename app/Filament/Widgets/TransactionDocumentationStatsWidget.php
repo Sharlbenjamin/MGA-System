@@ -27,7 +27,9 @@ class TransactionDocumentationStatsWidget extends Widget
     #[On('refresh-transaction-documentation-stats')]
     public function refreshDocumentationStats(): void
     {
-        //
+        if ($this->bankAccountId !== null) {
+            TransactionDocumentationStatsService::forgetBankAccountCache($this->bankAccountId);
+        }
     }
 
     public function getSummaryProperty(): ?array

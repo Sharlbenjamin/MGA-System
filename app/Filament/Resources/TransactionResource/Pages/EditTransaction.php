@@ -163,7 +163,11 @@ class EditTransaction extends EditRecord
         $category = TransactionDocumentationStatsService::resolveCategoryKey($this->record);
 
         return array_merge(
-            [TransactionDocumentationForm::makeHeaderAction()],
+            [
+                TransactionDocumentationForm::makeHeaderAction(),
+                TransactionDocumentationForm::makeSkipHeaderAction(),
+                TransactionDocumentationForm::makeUndoSkipHeaderAction(),
+            ],
             $this->trxInHeaderActions($category),
             $this->trxOutHeaderActions($category),
             $this->utilityHeaderActions(),

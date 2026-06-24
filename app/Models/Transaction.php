@@ -30,6 +30,9 @@ class Transaction extends Model
         'reference',
         'documentation_status',
         'documentation_category',
+        'documentation_skipped_at',
+        'documentation_skipped_by',
+        'documentation_skip_reason',
         'trx_out_pdf_path',
         'trx_in_pdf_path',
         'import_batch_id',
@@ -42,6 +45,7 @@ class Transaction extends Model
         'date' => 'date',
         'charges_covered_by_client' => 'boolean',
         'bank_charges' => 'decimal:2',
+        'documentation_skipped_at' => 'datetime',
     ];
 
     public function attachments(): HasMany
@@ -62,6 +66,16 @@ class Transaction extends Model
     public function updatedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function documentationSkippedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'documentation_skipped_by');
+    }
+
+    public function isDocumentationSkipped(): bool
+    {
+        return app(\App\Services\TransactionDocumentationService::class)->isDocumentationSkipped($this);
     }
 
     public function getDirectionAttribute(): string

@@ -144,6 +144,8 @@ class TransactionsWithoutDocumentsResource extends Resource
             ])
             ->actions([
                 TransactionDocumentationForm::makeTableAction(),
+                TransactionDocumentationForm::makeSkipTableAction(),
+                TransactionDocumentationForm::makeUndoSkipTableAction(),
                 Tables\Actions\Action::make('edit_transaction')
                     ->label('Edit transaction')
                     ->icon('heroicon-o-pencil-square')

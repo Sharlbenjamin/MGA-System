@@ -3,7 +3,6 @@
 namespace App\Filament\Support;
 
 use App\Filament\Resources\TransactionResource;
-use App\Filament\Support\TransactionEditPageRefresh;
 use App\Models\Bill;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -15,10 +14,12 @@ use App\Services\GenerateTrxInPdfService;
 use App\Services\GenerateTrxOutPdfService;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
+use App\Services\TransactionSettlementService;
 use Filament\Forms;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class TransactionDocumentationForm
 {
@@ -28,6 +29,14 @@ class TransactionDocumentationForm
             ->label('Documentation checklist')
             ->content(function () use ($record) {
                 $service = app(TransactionDocumentationService::class);
+
+                if ($service->isDocumentationSkipped($record)) {
+                    $reason = filled($record->documentation_skip_reason)
+                        ? "\n\nReason: {$record->documentation_skip_reason}"
+                        : '';
+
+                    return 'Documentation skipped — counted as complete.'.$reason;
+                }
 
                 if ($service->missingTasksOnHold()) {
                     $status = $record->documentation_status ?? 'incomplete';
@@ -54,15 +63,9 @@ class TransactionDocumentationForm
     public static function schema(Transaction $record): array
     {
         $service = app(TransactionDocumentationService::class);
-        $tasksOnHold = $service->missingTasksOnHold();
-        $pendingKeys = $tasksOnHold
-            ? []
-            : collect($service->getMissingTasks($record))
-                ->where('status', 'pending')
-                ->pluck('key')
-                ->all();
+        $pendingKeys = $service->getFormPendingTaskKeys($record);
 
-        $showField = static fn (string $key): bool => $tasksOnHold || in_array($key, $pendingKeys, true);
+        $showField = static fn (string $key): bool => in_array($key, $pendingKeys, true);
 
         return array_filter([
             self::checklistPlaceholder($record),
@@ -192,9 +195,11 @@ class TransactionDocumentationForm
                         return '';
                     }
 
+                    $record->loadMissing('invoices');
+
                     return $record->invoices
                         ->filter(fn (Invoice $invoice) => ! app(TransactionDocumentationService::class)->invoiceHasDocument($invoice))
-                        ->map(fn (Invoice $invoice) => $invoice->name . ' — edit invoice to upload document')
+                        ->map(fn (Invoice $invoice) => $invoice->name.' — edit invoice to upload document')
                         ->implode("\n") ?: 'None';
                 })
                 ->visible(fn () => $showField('missing_invoice_documents'))
@@ -207,9 +212,11 @@ class TransactionDocumentationForm
                         return '';
                     }
 
+                    $record->loadMissing('bills');
+
                     return $record->bills
                         ->filter(fn (Bill $bill) => ! app(TransactionDocumentationService::class)->billHasDocument($bill))
-                        ->map(fn (Bill $bill) => $bill->name . ' — edit bill to upload document')
+                        ->map(fn (Bill $bill) => $bill->name.' — edit bill to upload document')
                         ->implode("\n") ?: 'None';
                 })
                 ->visible(fn () => $showField('missing_bill_documents'))
@@ -229,19 +236,21 @@ class TransactionDocumentationForm
 
     public static function apply(Transaction $record, array $data): void
     {
+        $pivotChanged = array_key_exists('invoices', $data) || array_key_exists('bills', $data);
+
         if (! empty($data['related_type']) && ! empty($data['related_id'])) {
             $record->related_type = $data['related_type'];
             $record->related_id = $data['related_id'];
         }
 
-        if (! empty($data['invoices'])) {
+        if (array_key_exists('invoices', $data)) {
             app(TransactionDocumentationStatsService::class)
-                ->syncInvoicesWithInitialAmounts($record, $data['invoices']);
+                ->syncInvoicesWithInitialAmounts($record, $data['invoices'] ?? []);
         }
 
-        if (! empty($data['bills'])) {
+        if (array_key_exists('bills', $data)) {
             app(TransactionDocumentationStatsService::class)
-                ->syncBills($record, $data['bills']);
+                ->syncBills($record, $data['bills'] ?? []);
         }
 
         $path = self::normalizeUploadedFilePath($data['attachment'] ?? null);
@@ -280,10 +289,53 @@ class TransactionDocumentationForm
             app(GenerateTrxOutPdfService::class)->generate($record);
         }
 
+        $record->refresh();
+
+        $settlement = app(TransactionSettlementService::class);
+
+        if ($pivotChanged) {
+            $settlement->syncAfterPivotChange($record);
+        } else {
+            $settlement->syncDocumentation($record);
+        }
+
+        if ($record->bank_account_id) {
+            TransactionDocumentationStatsService::forgetBankAccountCache((int) $record->bank_account_id);
+        }
+
         Notification::make()
             ->success()
             ->title('Documentation updated')
             ->body('Transaction documentation has been saved.')
+            ->send();
+    }
+
+    public static function skip(Transaction $record, ?string $reason = null): void
+    {
+        app(TransactionDocumentationService::class)->skipDocumentation(
+            $record,
+            $reason,
+            Auth::id(),
+        );
+
+        Notification::make()
+            ->success()
+            ->title('Documentation skipped')
+            ->body('This transaction is marked complete without links or documents.')
+            ->send();
+    }
+
+    public static function undoSkip(Transaction $record): void
+    {
+        app(TransactionDocumentationService::class)->undoSkipDocumentation(
+            $record,
+            Auth::id(),
+        );
+
+        Notification::make()
+            ->success()
+            ->title('Skip removed')
+            ->body('Documentation requirements have been restored for this transaction.')
             ->send();
     }
 
@@ -306,10 +358,13 @@ class TransactionDocumentationForm
             ->label('Complete documentation')
             ->icon('heroicon-o-clipboard-document-check')
             ->color('warning')
-            ->visible(fn (Transaction $record) => ($record->documentation_status ?? 'incomplete') !== 'complete')
+            ->visible(fn (Transaction $record) => self::canShowCompleteDocumentation($record))
             ->modalHeading('Complete documentation')
             ->modalDescription('Resolve missing links, attachments, and PDFs in one place.')
             ->modalSubmitActionLabel('Save & update')
+            ->extraModalFooterActions(fn (Transaction $record): array => [
+                self::makeSkipModalAction($record),
+            ])
             ->fillForm(fn (Transaction $record) => [
                 'related_type' => $record->related_type,
                 'related_id' => $record->related_id,
@@ -318,7 +373,7 @@ class TransactionDocumentationForm
                 'attachment' => self::localAttachmentDefault($record),
             ])
             ->form(fn (Transaction $record) => self::schema($record))
-            ->action(function (Transaction $record, array $data, \Livewire\Component $livewire): void {
+            ->action(function (Transaction $record, array $data, Component $livewire): void {
                 self::apply($record, $data);
 
                 $livewire->dispatch('refresh-transaction-documentation-stats');
@@ -331,9 +386,12 @@ class TransactionDocumentationForm
             ->label('Complete documentation')
             ->icon('heroicon-o-clipboard-document-check')
             ->color('warning')
-            ->visible(fn (Transaction $record) => ($record->documentation_status ?? 'incomplete') !== 'complete')
+            ->visible(fn (Transaction $record) => self::canShowCompleteDocumentation($record))
             ->modalHeading('Complete documentation')
             ->modalSubmitActionLabel('Save & update')
+            ->extraModalFooterActions(fn (Transaction $record): array => [
+                self::makeSkipModalAction($record),
+            ])
             ->fillForm(fn (Transaction $record) => [
                 'related_type' => $record->related_type,
                 'related_id' => $record->related_id,
@@ -342,7 +400,7 @@ class TransactionDocumentationForm
                 'attachment' => self::localAttachmentDefault($record),
             ])
             ->form(fn (Transaction $record) => self::schema($record))
-            ->action(function (array $data, \Livewire\Component $livewire): void {
+            ->action(function (array $data, Component $livewire): void {
                 if (! method_exists($livewire, 'getRecord')) {
                     return;
                 }
@@ -355,6 +413,138 @@ class TransactionDocumentationForm
                 self::apply($record, $data);
 
                 TransactionEditPageRefresh::refresh($livewire);
+            });
+    }
+
+    public static function makeSkipTableAction(): \Filament\Tables\Actions\Action
+    {
+        return \Filament\Tables\Actions\Action::make('skipDocumentation')
+            ->label('Skip documentation')
+            ->icon('heroicon-o-forward')
+            ->color('gray')
+            ->visible(fn (Transaction $record) => app(TransactionDocumentationService::class)->canSkipDocumentation($record))
+            ->requiresConfirmation()
+            ->modalHeading('Skip documentation')
+            ->modalDescription('Mark this transaction as complete without client links, invoice links, or documents. Only for Income/Expense that will never be documented.')
+            ->form([
+                Forms\Components\Textarea::make('reason')
+                    ->label('Reason (optional)')
+                    ->rows(2)
+                    ->maxLength(1000),
+            ])
+            ->action(function (Transaction $record, array $data, Component $livewire): void {
+                self::skip($record, $data['reason'] ?? null);
+
+                $livewire->dispatch('refresh-transaction-documentation-stats');
+            });
+    }
+
+    public static function makeUndoSkipTableAction(): \Filament\Tables\Actions\Action
+    {
+        return \Filament\Tables\Actions\Action::make('undoSkipDocumentation')
+            ->label('Undo skip')
+            ->icon('heroicon-o-arrow-uturn-left')
+            ->color('gray')
+            ->visible(fn (Transaction $record) => app(TransactionDocumentationService::class)->isDocumentationSkipped($record))
+            ->requiresConfirmation()
+            ->modalHeading('Undo documentation skip')
+            ->modalDescription('Restore normal documentation requirements for this transaction.')
+            ->action(function (Transaction $record, Component $livewire): void {
+                self::undoSkip($record);
+
+                $livewire->dispatch('refresh-transaction-documentation-stats');
+            });
+    }
+
+    public static function makeSkipHeaderAction(): \Filament\Actions\Action
+    {
+        return \Filament\Actions\Action::make('skipDocumentation')
+            ->label('Skip documentation')
+            ->icon('heroicon-o-forward')
+            ->color('gray')
+            ->visible(fn (Transaction $record) => app(TransactionDocumentationService::class)->canSkipDocumentation($record))
+            ->requiresConfirmation()
+            ->modalHeading('Skip documentation')
+            ->modalDescription('Mark this transaction as complete without client links, invoice links, or documents.')
+            ->form([
+                Forms\Components\Textarea::make('reason')
+                    ->label('Reason (optional)')
+                    ->rows(2)
+                    ->maxLength(1000),
+            ])
+            ->action(function (array $data, Component $livewire): void {
+                if (! method_exists($livewire, 'getRecord')) {
+                    return;
+                }
+
+                $record = $livewire->getRecord();
+                if (! $record instanceof Transaction) {
+                    return;
+                }
+
+                self::skip($record, $data['reason'] ?? null);
+
+                TransactionEditPageRefresh::refresh($livewire);
+            });
+    }
+
+    public static function makeUndoSkipHeaderAction(): \Filament\Actions\Action
+    {
+        return \Filament\Actions\Action::make('undoSkipDocumentation')
+            ->label('Undo skip')
+            ->icon('heroicon-o-arrow-uturn-left')
+            ->color('gray')
+            ->visible(fn (Transaction $record) => app(TransactionDocumentationService::class)->isDocumentationSkipped($record))
+            ->requiresConfirmation()
+            ->modalHeading('Undo documentation skip')
+            ->modalDescription('Restore normal documentation requirements for this transaction.')
+            ->action(function (Component $livewire): void {
+                if (! method_exists($livewire, 'getRecord')) {
+                    return;
+                }
+
+                $record = $livewire->getRecord();
+                if (! $record instanceof Transaction) {
+                    return;
+                }
+
+                self::undoSkip($record);
+
+                TransactionEditPageRefresh::refresh($livewire);
+            });
+    }
+
+    protected static function canShowCompleteDocumentation(Transaction $record): bool
+    {
+        $service = app(TransactionDocumentationService::class);
+
+        return ! $service->isDocumentationSkipped($record)
+            && ($record->documentation_status ?? 'incomplete') !== 'complete';
+    }
+
+    protected static function makeSkipModalAction(Transaction $record): \Filament\Actions\Action
+    {
+        return \Filament\Actions\Action::make('skipDocumentationInModal')
+            ->label('Skip documentation')
+            ->color('gray')
+            ->visible(fn () => app(TransactionDocumentationService::class)->canSkipDocumentation($record))
+            ->requiresConfirmation()
+            ->modalHeading('Skip documentation')
+            ->modalDescription('Mark as complete without links or documents. Only for Income/Expense that will never be documented.')
+            ->form([
+                Forms\Components\Textarea::make('reason')
+                    ->label('Reason (optional)')
+                    ->rows(2)
+                    ->maxLength(1000),
+            ])
+            ->action(function (array $data, Component $livewire) use ($record): void {
+                self::skip($record, $data['reason'] ?? null);
+
+                if ($livewire instanceof \Filament\Resources\Pages\EditRecord) {
+                    TransactionEditPageRefresh::refresh($livewire);
+                } else {
+                    $livewire->dispatch('refresh-transaction-documentation-stats');
+                }
             });
     }
 

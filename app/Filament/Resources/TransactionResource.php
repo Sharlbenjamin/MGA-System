@@ -464,6 +464,14 @@ class TransactionResource extends Resource
 
                         $service = app(TransactionDocumentationService::class);
 
+                        if ($service->isDocumentationSkipped($record)) {
+                            $reason = filled($record->documentation_skip_reason)
+                                ? "\n\nReason: {$record->documentation_skip_reason}"
+                                : '';
+
+                            return 'Documentation skipped — counted as complete.'.$reason;
+                        }
+
                         if ($service->missingTasksOnHold()) {
                             return 'Checklist recalculation is paused for performance.'."\n\n"
                                 .'Stored status: '.$service->formatDocumentationStatusLabel(
@@ -487,9 +495,7 @@ class TransactionResource extends Resource
                 Forms\Components\Placeholder::make('documentation_status_display')
                     ->label('Auto status preview')
                     ->content(fn (?Transaction $record) => $record
-                        ? app(TransactionDocumentationService::class)->formatDocumentationStatusLabel(
-                            $record->documentation_status ?? 'incomplete'
-                        )
+                        ? app(TransactionDocumentationService::class)->getDocumentationStatusLabel($record)
                         : '—'),
             ])
             ->visible(fn ($livewire) => $livewire instanceof Pages\EditTransaction || $livewire instanceof Pages\CreateTransaction)
@@ -758,9 +764,14 @@ class TransactionResource extends Resource
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('documentation_status')
                     ->label('Documentation')
-                    ->formatStateUsing(fn (?string $state): string => app(TransactionDocumentationService::class)->formatDocumentationStatusLabel($state))
+                    ->formatStateUsing(fn (?string $state, Transaction $record): string => app(TransactionDocumentationService::class)->getDocumentationStatusLabel($record))
+                    ->tooltip(fn (Transaction $record): ?string => filled($record->documentation_skip_reason)
+                        ? $record->documentation_skip_reason
+                        : null)
                     ->badge()
-                    ->color(fn (?string $state): string => TransactionDocumentationService::colorForStatusKey($state))
+                    ->color(fn (Transaction $record): string => $record->isDocumentationSkipped()
+                        ? 'success'
+                        : TransactionDocumentationService::colorForStatusKey($record->documentation_status))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('type')
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(
@@ -881,6 +892,13 @@ class TransactionResource extends Resource
 
                         return $query->whereIn('transactions.documentation_status', (array) $values);
                     }),
+                Tables\Filters\TernaryFilter::make('documentation_skipped')
+                    ->label('Documentation skipped')
+                    ->visible(fn (): bool => \Illuminate\Support\Facades\Schema::hasColumn('transactions', 'documentation_skipped_at'))
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereNotNull('transactions.documentation_skipped_at'),
+                        false: fn (Builder $query): Builder => $query->whereNull('transactions.documentation_skipped_at'),
+                    ),
                 Tables\Filters\Filter::make('linking_status_mismatch')
                     ->label('Amount mismatch only')
                     ->toggle()
@@ -920,6 +938,8 @@ class TransactionResource extends Resource
             ])
             ->actions([
                 TransactionDocumentationForm::makeTableAction(),
+                TransactionDocumentationForm::makeSkipTableAction(),
+                TransactionDocumentationForm::makeUndoSkipTableAction(),
                 Tables\Actions\ViewAction::make(),
                 Action::make('viewTrxInPdf')
                     ->label('Trx In PDF')

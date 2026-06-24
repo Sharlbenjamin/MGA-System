@@ -238,6 +238,76 @@ class TransactionDocumentationServiceTest extends TestCase
         $this->assertSame([], $this->invokeComputeMissingTasks($transaction));
     }
 
+    #[Test]
+    public function skipped_income_resolves_to_complete_with_no_pending_tasks(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Income',
+            'documentation_category' => 'client_payment',
+        ]);
+        $transaction->setRawAttributes(array_merge($transaction->getAttributes(), [
+            'documentation_skipped_at' => '2026-06-24 12:00:00',
+        ]));
+        $transaction->setRelation('invoices', collect());
+        $transaction->setRelation('bills', collect());
+        $transaction->setRelation('attachments', collect());
+
+        $this->assertTrue($this->service->isDocumentationSkipped($transaction));
+        $this->assertSame('complete', $this->service->resolveDocumentationStatus($transaction));
+        $this->assertSame([], $this->service->getMissingTasks($transaction));
+        $this->assertFalse($this->service->hasPendingDocumentTasks($transaction));
+        $this->assertSame('Complete (skipped)', $this->service->getDocumentationStatusLabel($transaction));
+    }
+
+    #[Test]
+    public function skipped_expense_resolves_to_complete_with_no_pending_tasks(): void
+    {
+        $transaction = new Transaction([
+            'type' => 'Expense',
+            'documentation_category' => 'expense_payment',
+        ]);
+        $transaction->setRawAttributes(array_merge($transaction->getAttributes(), [
+            'documentation_skipped_at' => '2026-06-24 12:00:00',
+        ]));
+        $transaction->setRelation('invoices', collect());
+        $transaction->setRelation('bills', collect());
+        $transaction->setRelation('attachments', collect());
+
+        $this->assertTrue($this->service->canSkipDocumentation(
+            new Transaction(['type' => 'Expense'])
+        ));
+        $this->assertFalse($this->service->canSkipDocumentation(
+            new Transaction(['type' => 'Outflow'])
+        ));
+        $this->assertSame('complete', $this->service->resolveDocumentationStatus($transaction));
+        $this->assertSame([], $this->service->getMissingTasks($transaction));
+    }
+
+    #[Test]
+    public function get_form_pending_task_keys_excludes_expense_receipt_for_outflow_with_bills(): void
+    {
+        $bill = new Bill([
+            'name' => 'Provider Bill',
+            'bill_google_link' => 'https://drive.google.com/file/d/abc',
+        ]);
+        $bill->setRelation('file', null);
+
+        $transaction = new Transaction([
+            'type' => 'Outflow',
+            'documentation_category' => 'provider_single',
+            'related_type' => 'Provider',
+            'related_id' => 1,
+        ]);
+        $transaction->setRelation('bills', collect([$bill]));
+        $transaction->setRelation('invoices', collect());
+        $transaction->setRelation('attachments', collect());
+
+        $pendingKeys = $this->service->getFormPendingTaskKeys($transaction);
+
+        $this->assertNotContains('missing_expense_receipt', $pendingKeys);
+        $this->assertNotContains('missing_card_receipt', $pendingKeys);
+    }
+
     /**
      * @return array<int, array{key: string, label: string, status: string, fix_type: string, meta?: array}>
      */
