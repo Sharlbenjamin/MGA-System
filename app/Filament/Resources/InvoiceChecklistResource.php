@@ -159,7 +159,7 @@ class InvoiceChecklistResource extends Resource
             ->filters(FileWorkflowGapFilters::forInvoiceChecklist())
             ->actions([
                 FileWorkflowActions::viewFile(),
-                FileWorkflowActions::createInvoice(),
+                FileWorkflowActions::openCreateInvoiceForm(),
                 FileWorkflowActions::editInvoiceNeedingDoc(),
                 FileWorkflowActions::generateInvoiceDocument(),
             ])

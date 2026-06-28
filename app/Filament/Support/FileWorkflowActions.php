@@ -258,6 +258,19 @@ class FileWorkflowActions
             });
     }
 
+    public static function openCreateInvoiceForm(): Action
+    {
+        return Action::make('open_create_invoice')
+            ->label('Create Invoice')
+            ->icon('heroicon-o-plus')
+            ->color('success')
+            ->visible(fn (File $record): bool => FileWorkflowGapService::missingInvoice($record))
+            ->url(fn (File $record): string => route('filament.admin.resources.invoices.create', [
+                'file_id' => $record->id,
+                'patient_id' => $record->patient_id,
+            ]));
+    }
+
     public static function editInvoiceNeedingDoc(): Action
     {
         return Action::make('edit_invoice')
