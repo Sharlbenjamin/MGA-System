@@ -36,14 +36,16 @@ class InvoiceResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = InvoiceSettlementIntegrityService::settlementIssueCount();
+        $count = static::getModel()::query()
+            ->where('status', '!=', 'Paid')
+            ->count();
 
         return $count > 0 ? (string) $count : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return 'danger';
+        return 'warning';
     }
 
     public static function form(Form $form): Form
@@ -370,11 +372,11 @@ class InvoiceResource extends Resource
                     ->form([
                         Forms\Components\Checkbox::make('show_draft_posted')
                             ->label('Show Draft & Posted Invoices Only')
-                            ->default(true),
+                            ->default(false),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
-                            $data['show_draft_posted'] ?? true,
+                            $data['show_draft_posted'] ?? false,
                             fn (Builder $query): Builder => $query->whereIn('status', ['Draft', 'Posted', 'Not Sent']),
                         );
                     }),
