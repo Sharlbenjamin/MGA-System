@@ -37,7 +37,7 @@ class InvoiceResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::query()
-            ->where('status', '!=', 'Paid')
+            ->whereIn('status', ['Draft', 'Posted', 'Not Sent'])
             ->count();
 
         return $count > 0 ? (string) $count : null;
@@ -358,16 +358,6 @@ class InvoiceResource extends Resource
                         'Partial' => 'Partial',
                     ]),
 
-                Tables\Filters\Filter::make('settlement_issue')
-                    ->label('Settlement issue')
-                    ->toggle()
-                    ->query(fn (Builder $query): Builder => InvoiceSettlementIntegrityService::applyIssuesScope($query))
-                    ->indicateUsing(fn (): array => ['settlement_issue' => 'Settlement issue']),
-                Tables\Filters\Filter::make('paid_no_transaction')
-                    ->label('Paid/Partial, no transaction linked')
-                    ->toggle()
-                    ->query(fn (Builder $query): Builder => InvoiceSettlementIntegrityService::applyNoTransactionLinkScope($query))
-                    ->indicateUsing(fn (): array => ['paid_no_transaction' => 'Paid/Partial, no transaction linked']),
                 Tables\Filters\Filter::make('draft_or_posted')
                     ->form([
                         Forms\Components\Checkbox::make('show_draft_posted')
