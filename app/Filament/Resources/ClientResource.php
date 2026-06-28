@@ -84,6 +84,28 @@ class ClientResource extends Resource
                     ->splitKeys(['Tab', ',', ' '])
                     ->nestedRecursiveRules(['email'])
                     ->helperText('These addresses are CC\'d when sending invoices and outstanding balance emails.'),
+
+                Forms\Components\Section::make('Invoicing')
+                    ->schema([
+                        Select::make('invoice_file_fee_strategy')
+                            ->label('File fee strategy')
+                            ->options([
+                                Client::FILE_FEE_STRATEGY_TIER => 'Tier (Simple / Middle / Complex by bill total)',
+                                Client::FILE_FEE_STRATEGY_MULTIPLIER => 'Multiplier (1 Simple fee per €350 of bill cost)',
+                            ])
+                            ->default(Client::FILE_FEE_STRATEGY_TIER)
+                            ->required(),
+                        Select::make('invoice_template')
+                            ->label('Invoice template')
+                            ->options([
+                                Client::INVOICE_TEMPLATE_ITEMIZED => 'Itemized (show bill items and file fee separately)',
+                                Client::INVOICE_TEMPLATE_COMBINED => 'Combined (one line on PDF; bill cannot be attached)',
+                            ])
+                            ->default(Client::INVOICE_TEMPLATE_ITEMIZED)
+                            ->required()
+                            ->helperText('Combined template merges lines on the PDF only. Bill attachments are blocked when sending.'),
+                    ])
+                    ->columns(2),
                 Textarea::make('address')
                     ->label('Client Address')
                     ->rows(2)

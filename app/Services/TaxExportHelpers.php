@@ -101,10 +101,18 @@ class TaxExportHelpers
             return null;
         }
 
-        $serviceTypeId = (int) $file->service_type_id;
-        $countryId = $file->country_id ? (int) $file->country_id : null;
-        $cityId = $file->city_id ? (int) $file->city_id : null;
+        return self::resolveFileFeeAmountForServiceType(
+            (int) $file->service_type_id,
+            $file->country_id ? (int) $file->country_id : null,
+            $file->city_id ? (int) $file->city_id : null,
+        );
+    }
 
+    public static function resolveFileFeeAmountForServiceType(
+        int $serviceTypeId,
+        ?int $countryId = null,
+        ?int $cityId = null,
+    ): ?float {
         static $cache = [];
         $cacheKey = implode(':', [$serviceTypeId, $countryId ?? 'null', $cityId ?? 'null']);
 
@@ -143,6 +151,45 @@ class TaxExportHelpers
         $cache[$cacheKey] = $globalDefault ? (float) $globalDefault->amount : null;
 
         return $cache[$cacheKey];
+    }
+
+    /**
+     * Resolve file fee amount for tier/multiplier invoicing (UK vs rest by file service country).
+     */
+    public static function resolveFileFeeAmountForInvoicePricing(
+        int $serviceTypeId,
+        ?int $fileCountryId = null,
+        ?int $fileCityId = null,
+    ): ?float {
+        if ($fileCountryId && self::isUkCountryId($fileCountryId)) {
+            return self::resolveFileFeeAmountForServiceType($serviceTypeId, $fileCountryId, $fileCityId);
+        }
+
+        return self::resolveFileFeeAmountForServiceType($serviceTypeId, null, null);
+    }
+
+    public static function isUkCountryId(?int $countryId): bool
+    {
+        if (! $countryId) {
+            return false;
+        }
+
+        static $ukIds = null;
+
+        if ($ukIds === null) {
+            $names = config('invoice.uk_country_names', ['United Kingdom', 'UK']);
+            $ukIds = \App\Models\Country::query()
+                ->where(function ($query) use ($names) {
+                    foreach ($names as $name) {
+                        $query->orWhereRaw('LOWER(name) = ?', [mb_strtolower(trim($name))]);
+                    }
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        return in_array($countryId, $ukIds, true);
     }
 
     public static function resolveAmountBeforeIva(float $fileFeeAmount, float $ivaRate): float

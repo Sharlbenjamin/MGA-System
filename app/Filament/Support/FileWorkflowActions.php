@@ -226,14 +226,36 @@ class FileWorkflowActions
     public static function createInvoice(): Action
     {
         return Action::make('create_invoice')
-            ->url(fn (File $record): string => route('filament.admin.resources.invoices.create', [
-                'file_id' => $record->id,
-                'patient_id' => $record->patient_id,
-            ]))
-            ->icon('heroicon-o-plus')
-            ->label('Create Invoice')
+            ->label('Generate Invoice')
+            ->icon('heroicon-o-document-plus')
             ->color('success')
-            ->visible(fn (File $record): bool => FileWorkflowGapService::missingInvoice($record));
+            ->visible(fn (File $record): bool => FileWorkflowGapService::missingInvoice($record))
+            ->requiresConfirmation()
+            ->modalHeading('Generate Invoice')
+            ->modalDescription('Create the invoice with bill items and the correct file fee in one step.')
+            ->modalSubmitActionLabel('Generate')
+            ->action(function (File $record) {
+                try {
+                    $invoice = app(\App\Services\InvoiceBuilderService::class)->buildFromFile($record);
+
+                    Notification::make()
+                        ->success()
+                        ->title('Invoice generated')
+                        ->body("Invoice {$invoice->name} was created with bill items and file fee.")
+                        ->send();
+
+                    return redirect(\App\Filament\Resources\InvoiceResource::getUrl('edit', ['record' => $invoice]));
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    Notification::make()
+                        ->warning()
+                        ->title('Could not generate invoice')
+                        ->body(collect($e->errors())->flatten()->first() ?? $e->getMessage())
+                        ->send();
+                } catch (\Throwable $e) {
+                    Log::error('Invoice generation error', ['error' => $e->getMessage(), 'file_id' => $record->id]);
+                    Notification::make()->danger()->title('Invoice generation failed')->body($e->getMessage())->send();
+                }
+            });
     }
 
     public static function editInvoiceNeedingDoc(): Action
@@ -273,7 +295,7 @@ class FileWorkflowActions
                 }
 
                 try {
-                    $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $invoice]);
+                    $pdf = Pdf::loadView('pdf.invoice', \App\Support\InvoicePdfView::data($invoice));
                     $content = $pdf->output();
                     $fileName = $invoice->name.'.pdf';
 

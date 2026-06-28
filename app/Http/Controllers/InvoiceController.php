@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Support\InvoicePdfView;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
@@ -20,7 +20,7 @@ class InvoiceController extends Controller
             $invoice->refresh(); // Refresh again to get the payment link
         }
         
-        $pdf = Pdf::loadView('pdf.invoice', compact('invoice'));
+        $pdf = Pdf::loadView('pdf.invoice', InvoicePdfView::data($invoice));
         return $pdf->stream('invoice.pdf');
     }
 }

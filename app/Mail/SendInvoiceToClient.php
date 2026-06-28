@@ -122,7 +122,13 @@ class SendInvoiceToClient extends Mailable
         }
 
         // Attach bill PDF if selected - double check attachmentTypes is array
-        if (is_array($attachmentTypes) && in_array('bill', $attachmentTypes) && $file) {
+        $client = $file->patient?->client;
+        if (
+            is_array($attachmentTypes)
+            && in_array('bill', $attachmentTypes)
+            && $file
+            && ($client === null || $client->allowsBillAttachmentWithInvoice())
+        ) {
             $bills = $file->bills()->whereNotNull('bill_document_path')->get();
             foreach ($bills as $bill) {
                 if ($bill && $bill->bill_document_path) {

@@ -8,10 +8,14 @@ use App\Models\InvoiceItem;
 
 class InvoiceItemSuggestionService
 {
+    public function __construct(
+        private readonly InvoiceFileFeeService $fileFeeService,
+    ) {}
+
     /**
      * Build suggested invoice items for a given invoice.
      *
-     * @return array<int, array{description: string, amount: float, source: string}>
+     * @return array<int, array{description: string, amount: float, source: string, item_type?: string}>
      */
     public function suggestForInvoice(Invoice $invoice): array
     {
@@ -20,6 +24,7 @@ class InvoiceItemSuggestionService
             'file.city',
             'file.serviceType',
             'file.bills.items',
+            'items',
         ]);
 
         $file = $invoice->file;
@@ -29,6 +34,7 @@ class InvoiceItemSuggestionService
 
         $serviceDate = ($file->service_date ?? now())->format('d/m/Y');
         $suggestions = [];
+        $billItemsTotal = 0.0;
 
         // 1) Directly from this file's bill items (highest confidence).
         foreach ($file->bills as $bill) {
@@ -38,17 +44,49 @@ class InvoiceItemSuggestionService
                     continue;
                 }
 
+                $amount = (float) $billItem->amount;
+                $billItemsTotal += $amount;
+
                 $description = $this->appendServiceDate($description, $serviceDate);
                 $this->pushUniqueSuggestion($suggestions, [
                     'description' => $description,
-                    'amount' => (float) $billItem->amount,
+                    'amount' => $amount,
                     'source' => 'This file bill',
+                    'item_type' => InvoiceFileFeeService::ITEM_TYPE_BILL,
                 ]);
             }
         }
 
-        // 2) From configured file fees by service type + country (and city when available).
+        // Include bill-related invoice items already on this invoice.
+        foreach ($invoice->items as $existingItem) {
+            if ($existingItem->item_type === InvoiceFileFeeService::ITEM_TYPE_FILE_FEE) {
+                continue;
+            }
+
+            $billItemsTotal += (float) $existingItem->amount;
+        }
+
+        // 2) Auto file fee from client strategy (tier or multiplier).
+        if ($billItemsTotal > 0) {
+            $resolved = $this->fileFeeService->resolveForInvoice($invoice);
+            if ($resolved) {
+                $sourceLabel = $resolved['strategy'] === \App\Models\Client::FILE_FEE_STRATEGY_MULTIPLIER
+                    ? 'Auto file fee (Multiplier × ' . $resolved['units'] . ', bill total €' . number_format($resolved['bill_total'], 2) . ')'
+                    : 'Auto file fee (' . ucfirst((string) $resolved['tier']) . ', bill total €' . number_format($resolved['bill_total'], 2) . ')';
+
+                $this->pushUniqueSuggestion($suggestions, [
+                    'description' => $resolved['description'],
+                    'amount' => $resolved['amount'],
+                    'source' => $sourceLabel,
+                    'item_type' => InvoiceFileFeeService::ITEM_TYPE_FILE_FEE,
+                ]);
+            }
+        }
+
+        // 3) From configured file fees by service type + country (excluding tier fee types).
         if ($file->service_type_id && $file->country_id) {
+            $tierServiceTypeIds = $this->tierServiceTypeIds();
+
             $fileFeesQuery = FileFee::query()
                 ->with(['serviceType', 'country', 'city'])
                 ->where('service_type_id', $file->service_type_id)
@@ -59,6 +97,7 @@ class InvoiceItemSuggestionService
                         $query->orWhere('city_id', $file->city_id);
                     }
                 })
+                ->when($tierServiceTypeIds !== [], fn ($query) => $query->whereNotIn('service_type_id', $tierServiceTypeIds))
                 ->orderByRaw('city_id IS NULL')
                 ->limit(5);
 
@@ -70,11 +109,12 @@ class InvoiceItemSuggestionService
                     'description' => $description,
                     'amount' => (float) $fileFee->amount,
                     'source' => 'File fee setup',
+                    'item_type' => InvoiceFileFeeService::ITEM_TYPE_BILL,
                 ]);
             }
         }
 
-        // 3) From historical invoice items for same country + service type.
+        // 4) From historical invoice items for same country + service type.
         if ($file->service_type_id && $file->country_id) {
             $historicalRows = InvoiceItem::query()
                 ->select(['invoice_items.description', 'invoice_items.amount'])
@@ -124,6 +164,7 @@ class InvoiceItemSuggestionService
                     'description' => $description,
                     'amount' => $avgAmount,
                     'source' => 'Historical pattern',
+                    'item_type' => InvoiceFileFeeService::ITEM_TYPE_BILL,
                 ]);
 
                 $added++;
@@ -131,6 +172,23 @@ class InvoiceItemSuggestionService
         }
 
         return array_slice($suggestions, 0, 10);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function tierServiceTypeIds(): array
+    {
+        $ids = [];
+
+        foreach (['simple', 'middle', 'complex'] as $tier) {
+            $serviceType = $this->fileFeeService->findServiceTypeForTier($tier);
+            if ($serviceType) {
+                $ids[] = (int) $serviceType->id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     private function normalizeDescription(string $description): string

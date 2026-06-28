@@ -58,7 +58,7 @@ class EditInvoice extends EditRecord
                     $record->load(['file', 'file.patient', 'file.patient.client', 'file.bills']);
                     
                     // First generate PDF
-                    $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
+                    $pdf = Pdf::loadView('pdf.invoice', \App\Support\InvoicePdfView::data($record));
                     $content = $pdf->output();
                     $fileName = $record->name . '.pdf';
 
@@ -193,9 +193,21 @@ class EditInvoice extends EditRecord
                         ->label('Bill')
                         ->default(false)
                         ->visible(function () {
+                            $client = $this->record->file?->patient?->client;
+
+                            if ($client && ! $client->allowsBillAttachmentWithInvoice()) {
+                                return false;
+                            }
+
                             return $this->record->file !== null;
                         })
                         ->disabled(function () {
+                            $client = $this->record->file?->patient?->client;
+
+                            if ($client && ! $client->allowsBillAttachmentWithInvoice()) {
+                                return true;
+                            }
+
                             $file = $this->record->file;
                             if (!$file) return true;
                             $hasBill = $file->bills()->exists();
@@ -204,6 +216,12 @@ class EditInvoice extends EditRecord
                             return !$hasAttachment;
                         })
                         ->helperText(function () {
+                            $client = $this->record->file?->patient?->client;
+
+                            if ($client && ! $client->allowsBillAttachmentWithInvoice()) {
+                                return 'Bill cannot be attached when the client uses a combined invoice template (file fee hidden).';
+                            }
+
                             $file = $this->record->file;
                             if (!$file) return 'File not found';
                             $hasBill = $file->bills()->exists();
@@ -305,6 +323,11 @@ class EditInvoice extends EditRecord
                         
                         // Ensure invoice relationships are loaded
                         $invoice->load(['file.patient.client', 'file.gops', 'file.medicalReports', 'file.bills']);
+
+                        $client = $invoice->file?->patient?->client;
+                        if ($client && ! $client->allowsBillAttachmentWithInvoice()) {
+                            $attachBill = false;
+                        }
                     
                     // Build email body
                     $file = $invoice->file;

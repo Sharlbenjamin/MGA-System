@@ -176,10 +176,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($invoice->items as $item)
+                    @php
+                        $displayLines = $displayLines ?? app(\App\Services\InvoicePresentationService::class)->linesForDisplay($invoice);
+                    @endphp
+                    @foreach($displayLines as $item)
                     <tr>
-                        <td>{{ $item->description }}</td>
-                        <td>€{{ number_format($item->amount, 2) }}</td>
+                        <td>{{ $item['description'] }}</td>
+                        <td>€{{ number_format($item['amount'], 2) }}</td>
                     </tr>
                     @endforeach
                 </tbody>

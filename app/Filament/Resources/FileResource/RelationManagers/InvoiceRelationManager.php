@@ -4,7 +4,9 @@ namespace App\Filament\Resources\FileResource\RelationManagers;
 
 use App\Filament\Resources\InvoiceResource;
 use App\Models\Invoice;
+use App\Services\InvoiceBuilderService;
 use App\Services\UploadInvoiceToGoogleDrive;
+use App\Support\InvoicePdfView;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -90,7 +92,7 @@ class InvoiceRelationManager extends RelationManager
                     ->visible(fn (Invoice $record): bool => $record->status === 'Draft')
                     ->action(function (Invoice $record) {
                         // First generate PDF
-                        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $record]);
+                        $pdf = Pdf::loadView('pdf.invoice', InvoicePdfView::data($record));
                         $content = $pdf->output();
                         $fileName = $record->name . '.pdf';
 
@@ -152,6 +154,34 @@ class InvoiceRelationManager extends RelationManager
                 Tables\Actions\DeleteBulkAction::make(),
             ])
             ->headerActions([
+                Action::make('generateInvoice')
+                    ->label('Generate Invoice')
+                    ->icon('heroicon-o-document-plus')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Generate Invoice')
+                    ->modalDescription('Create the invoice with bill items and the correct file fee in one step.')
+                    ->modalSubmitActionLabel('Generate')
+                    ->visible(fn (): bool => $this->ownerRecord->bills()->whereHas('items')->exists())
+                    ->action(function () {
+                        try {
+                            $invoice = app(InvoiceBuilderService::class)->buildFromFile($this->ownerRecord);
+
+                            Notification::make()
+                                ->success()
+                                ->title('Invoice generated')
+                                ->body("Invoice {$invoice->name} was created with bill items and file fee.")
+                                ->send();
+
+                            return redirect(InvoiceResource::getUrl('edit', ['record' => $invoice]));
+                        } catch (\Illuminate\Validation\ValidationException $e) {
+                            Notification::make()
+                                ->warning()
+                                ->title('Could not generate invoice')
+                                ->body(collect($e->errors())->flatten()->first() ?? $e->getMessage())
+                                ->send();
+                        }
+                    }),
                 Action::make('createInvoice')
                     ->openUrlInNewTab(false)
                     ->url(fn () => InvoiceResource::getUrl('create', [

@@ -20,13 +20,61 @@ class Client extends Model
 {
     use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
-    protected $fillable = ['company_name','type','status','initials','country_id','niv_number','number_requests','gop_contact_id','operation_contact_id','financial_contact_id','phone','email','operation_email','invoice_cc_emails','address','signed_contract_draft','comment',];
+    public const FILE_FEE_STRATEGY_TIER = 'tier';
+
+    public const FILE_FEE_STRATEGY_MULTIPLIER = 'multiplier';
+
+    public const INVOICE_TEMPLATE_ITEMIZED = 'itemized';
+
+    public const INVOICE_TEMPLATE_COMBINED = 'combined';
+
+    protected $fillable = [
+        'company_name',
+        'type',
+        'status',
+        'initials',
+        'country_id',
+        'niv_number',
+        'number_requests',
+        'gop_contact_id',
+        'operation_contact_id',
+        'financial_contact_id',
+        'phone',
+        'email',
+        'operation_email',
+        'invoice_cc_emails',
+        'invoice_file_fee_strategy',
+        'invoice_template',
+        'address',
+        'signed_contract_draft',
+        'comment',
+    ];
+
+    protected $attributes = [
+        'invoice_file_fee_strategy' => self::FILE_FEE_STRATEGY_TIER,
+        'invoice_template' => self::INVOICE_TEMPLATE_ITEMIZED,
+    ];
 
     protected $casts = [
         'id' => 'integer',
         'country_id' => 'integer',
         'invoice_cc_emails' => 'array',
     ];
+
+    public function usesCombinedInvoiceTemplate(): bool
+    {
+        return $this->invoice_template === self::INVOICE_TEMPLATE_COMBINED;
+    }
+
+    public function usesMultiplierFileFeeStrategy(): bool
+    {
+        return $this->invoice_file_fee_strategy === self::FILE_FEE_STRATEGY_MULTIPLIER;
+    }
+
+    public function allowsBillAttachmentWithInvoice(): bool
+    {
+        return ! $this->usesCombinedInvoiceTemplate();
+    }
 
     public function getNameAttribute()
     {

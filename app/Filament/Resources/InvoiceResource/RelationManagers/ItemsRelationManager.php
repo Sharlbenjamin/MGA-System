@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\InvoiceResource\RelationManagers;
 
 use App\Models\BillItem;
+use App\Models\InvoiceItem;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Repeater;
@@ -11,6 +12,7 @@ use Filament\Tables\Table;
 use Filament\Tables;
 use Filament\Notifications\Notification;
 use App\Models\FileFee;
+use App\Services\InvoiceFileFeeService;
 use App\Services\InvoiceItemSuggestionService;
 
 class ItemsRelationManager extends RelationManager
@@ -44,7 +46,13 @@ class ItemsRelationManager extends RelationManager
                             );
                         }
 
-                        // Add file fees
+                        // Add file fees (excluding tier-based Simple/Middle/Complex fees — those are auto-managed)
+                        $tierServiceTypeIds = collect(['simple', 'middle', 'complex'])
+                            ->map(fn (string $tier) => app(InvoiceFileFeeService::class)->findServiceTypeForTier($tier)?->id)
+                            ->filter()
+                            ->values()
+                            ->all();
+
                         $fileFees = FileFee::with('serviceType', 'country', 'city')
                             ->where('service_type_id', $invoice->file?->service_type_id)
                             ->where('country_id', $invoice->file?->country_id)
@@ -54,6 +62,7 @@ class ItemsRelationManager extends RelationManager
                                     $query->orWhere('city_id', $invoice->file->city_id);
                                 }
                             })
+                            ->when($tierServiceTypeIds !== [], fn ($query) => $query->whereNotIn('service_type_id', $tierServiceTypeIds))
                             ->get();
                         
                         foreach ($fileFees as $fileFee) {
@@ -142,8 +151,18 @@ class ItemsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
+        $fileFeeService = app(InvoiceFileFeeService::class);
+
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('item_type')
+                    ->label('Type')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        InvoiceItem::TYPE_FILE_FEE => 'File Fee',
+                        default => 'Bill',
+                    })
+                    ->color(fn (string $state) => $state === InvoiceItem::TYPE_FILE_FEE ? 'info' : 'gray'),
                 Tables\Columns\TextColumn::make('description'),
                 Tables\Columns\TextColumn::make('amount')
                     ->money('EUR'),
@@ -157,42 +176,52 @@ class ItemsRelationManager extends RelationManager
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->using(function (array $data) {
-                        // If an item was selected, ensure description is set with service date
-                        if (isset($data['item_selector']) && $data['item_selector'] !== 'custom') {
-                            $invoice = $this->getOwnerRecord();
-                            $serviceDate = $invoice->file->service_date ?? now();
-                            $dateString = $serviceDate->format('d/m/Y');
-                            
-                            if (str_starts_with($data['item_selector'], 'bill_item_')) {
-                                $billItemId = str_replace('bill_item_', '', $data['item_selector']);
-                                $billItem = BillItem::find($billItemId);
-                                if ($billItem) {
-                                    $data['description'] = "{$billItem->description} on {$dateString}";
-                                    if (empty($data['amount'])) {
-                                        $data['amount'] = (float) $billItem->amount;
-                                    }
-                                }
-                            } elseif (str_starts_with($data['item_selector'], 'file_fee_')) {
-                                $fileFeeId = str_replace('file_fee_', '', $data['item_selector']);
-                                $fileFee = FileFee::with('serviceType')->find($fileFeeId);
-                                if ($fileFee) {
-                                    $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
-                                    $isTelemedicine = $fileFee->serviceType && strtolower($fileFee->serviceType->name) === 'telemedicine';
-                                    $data['description'] = $isTelemedicine ? "{$serviceName} on {$dateString}" : "File Fee";
-                                    if (empty($data['amount'])) {
-                                        $data['amount'] = (float) $fileFee->amount;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Remove the item_selector field as it's not part of the model
+                        $data = $this->prepareItemData($data);
                         unset($data['item_selector']);
-                        
+
                         return $this->getRelationship()->create($data);
-                    })
-                    ->after(function ($record) {
-                        $record->invoice->calculateTotal();
+                    }),
+                Tables\Actions\Action::make('sync_file_fee')
+                    ->label('Refresh File Fee')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn () => (bool) $this->getOwnerRecord()->file_id)
+                    ->action(function () use ($fileFeeService): void {
+                        $invoice = $this->getOwnerRecord();
+                        $resolved = $fileFeeService->resolveFileFeeForInvoice($invoice);
+
+                        if ($resolved === null) {
+                            Notification::make()
+                                ->warning()
+                                ->title('No file fee applied')
+                                ->body('Add bill-related items first, or configure Simple/Middle/Complex file fees in the File Fees table.')
+                                ->send();
+
+                            return;
+                        }
+
+                        $fileFeeService->syncForInvoice($invoice);
+                        $invoice->calculateTotal();
+
+                        Notification::make()
+                            ->success()
+                            ->title('File fee updated')
+                            ->body(match (true) {
+                                isset($resolved['units']) && $resolved['units'] > 1 => sprintf(
+                                    'Multiplier × %d applied (bill total €%s → file fee €%s).',
+                                    $resolved['units'],
+                                    number_format($resolved['bill_total'], 2),
+                                    number_format($resolved['amount'], 2),
+                                ),
+                                isset($resolved['tier']) => sprintf(
+                                    '%s tier applied (bill total €%s → file fee €%s).',
+                                    ucfirst($resolved['tier']),
+                                    number_format($resolved['bill_total'], 2),
+                                    number_format($resolved['amount'], 2),
+                                ),
+                                default => 'File fee line was updated.',
+                            })
+                            ->send();
                     }),
                 Tables\Actions\Action::make('predict_items')
                     ->label('Suggest Items')
@@ -219,6 +248,8 @@ class ItemsRelationManager extends RelationManager
                                 Forms\Components\TextInput::make('source')
                                     ->disabled()
                                     ->dehydrated(false),
+                                Forms\Components\Hidden::make('item_type')
+                                    ->default(InvoiceItem::TYPE_BILL),
                             ])
                             ->columns(4)
                             ->addable(false)
@@ -243,14 +274,20 @@ class ItemsRelationManager extends RelationManager
                         }
 
                         foreach ($rows as $row) {
+                            if (($row['item_type'] ?? InvoiceItem::TYPE_BILL) === InvoiceItem::TYPE_FILE_FEE) {
+                                continue;
+                            }
+
                             $this->getRelationship()->create([
                                 'description' => $row['description'],
                                 'amount' => (float) $row['amount'],
                                 'discount' => 0,
                                 'tax' => 0,
+                                'item_type' => $row['item_type'] ?? InvoiceItem::TYPE_BILL,
                             ]);
                         }
 
+                        app(InvoiceFileFeeService::class)->syncForInvoice($this->getOwnerRecord());
                         $this->getOwnerRecord()->calculateTotal();
 
                         Notification::make()
@@ -262,20 +299,69 @@ class ItemsRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->after(function ($record) {
-                        $record->invoice->calculateTotal();
+                    ->using(function (InvoiceItem $record, array $data) {
+                        unset($data['item_selector']);
+
+                        if ($record->isFileFeeItem()) {
+                            $data['item_type'] = InvoiceItem::TYPE_FILE_FEE;
+                        }
+
+                        $record->update($data);
+
+                        return $record;
                     }),
                 Tables\Actions\DeleteAction::make()
-                    ->after(function ($record) {
-                        $record->invoice->calculateTotal();
-                    }),
+                    ->hidden(fn (InvoiceItem $record) => $record->isFileFeeItem()),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
-                    ->after(function () {
-                        $this->getOwnerRecord()->calculateTotal();
+                    ->action(function ($records) {
+                        $records
+                            ->reject(fn (InvoiceItem $record) => $record->isFileFeeItem())
+                            ->each->delete();
                     }),
             ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function prepareItemData(array $data): array
+    {
+        $data['item_type'] = InvoiceItem::TYPE_BILL;
+
+        if (! isset($data['item_selector']) || $data['item_selector'] === 'custom') {
+            return $data;
+        }
+
+        $invoice = $this->getOwnerRecord();
+        $serviceDate = $invoice->file->service_date ?? now();
+        $dateString = $serviceDate->format('d/m/Y');
+
+        if (str_starts_with($data['item_selector'], 'bill_item_')) {
+            $billItemId = str_replace('bill_item_', '', $data['item_selector']);
+            $billItem = BillItem::find($billItemId);
+            if ($billItem) {
+                $data['description'] = "{$billItem->description} on {$dateString}";
+                if (empty($data['amount'])) {
+                    $data['amount'] = (float) $billItem->amount;
+                }
+            }
+        } elseif (str_starts_with($data['item_selector'], 'file_fee_')) {
+            $fileFeeId = str_replace('file_fee_', '', $data['item_selector']);
+            $fileFee = FileFee::with('serviceType')->find($fileFeeId);
+            if ($fileFee) {
+                $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
+                $isTelemedicine = $fileFee->serviceType && strtolower($fileFee->serviceType->name) === 'telemedicine';
+                $data['description'] = $isTelemedicine ? "{$serviceName} on {$dateString}" : 'File Fee';
+                if (empty($data['amount'])) {
+                    $data['amount'] = (float) $fileFee->amount;
+                }
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -292,6 +378,7 @@ class ItemsRelationManager extends RelationManager
                 'description' => $item['description'],
                 'amount' => (float) $item['amount'],
                 'source' => $item['source'],
+                'item_type' => $item['item_type'] ?? InvoiceItem::TYPE_BILL,
             ])
             ->values()
             ->all();
