@@ -397,7 +397,17 @@ class Bill extends Model
      */
     public function hasLocalDocument(): bool
     {
-        return !empty($this->bill_document_path);
+        if (empty($this->bill_document_path)) {
+            return false;
+        }
+
+        $resolver = app(\App\Services\DocumentLinkResolver::class);
+
+        if ($resolver->isExternalPath($this->bill_document_path)) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->exists($this->bill_document_path);
     }
 
     /**

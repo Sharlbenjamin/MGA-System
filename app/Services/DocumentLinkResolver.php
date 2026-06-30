@@ -26,7 +26,7 @@ class DocumentLinkResolver
             ->implode(' | ');
     }
 
-    public function invoiceLinks(Invoice $invoice, ?int $expirationMinutes = null): string
+    public function invoiceLinks(Invoice $invoice, ?int $expirationMinutes = null, bool $forExport = false): string
     {
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $links = [];
@@ -40,10 +40,10 @@ class DocumentLinkResolver
             $links[] = $signed;
         }
 
-        return $this->joinLinks($links);
+        return $forExport ? $this->primaryExportLink($links) : $this->joinLinks($links);
     }
 
-    public function billLinks(Bill $bill, ?int $expirationMinutes = null): string
+    public function billLinks(Bill $bill, ?int $expirationMinutes = null, bool $forExport = false): string
     {
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $links = [];
@@ -57,10 +57,10 @@ class DocumentLinkResolver
             $links[] = $signed;
         }
 
-        return $this->joinLinks($links);
+        return $forExport ? $this->primaryExportLink($links) : $this->joinLinks($links);
     }
 
-    public function trxInLink(Transaction $transaction, ?int $expirationMinutes = null): string
+    public function trxInLink(Transaction $transaction, ?int $expirationMinutes = null, bool $forExport = false): string
     {
         if ($transaction->type !== 'Income') {
             return '';
@@ -69,10 +69,10 @@ class DocumentLinkResolver
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $url = $transaction->getTrxInPdfUrl($minutes);
 
-        return $url ?? '';
+        return $forExport ? $this->primaryExportLink([$url]) : ($url ?? '');
     }
 
-    public function trxOutLink(Transaction $transaction, ?int $expirationMinutes = null): string
+    public function trxOutLink(Transaction $transaction, ?int $expirationMinutes = null, bool $forExport = false): string
     {
         if ($transaction->type !== 'Outflow') {
             return '';
@@ -81,10 +81,10 @@ class DocumentLinkResolver
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $url = $transaction->getTrxOutPdfUrl($minutes);
 
-        return $url ?? '';
+        return $forExport ? $this->primaryExportLink([$url]) : ($url ?? '');
     }
 
-    public function transactionReceiptLinks(Transaction $transaction, ?int $expirationMinutes = null): string
+    public function transactionReceiptLinks(Transaction $transaction, ?int $expirationMinutes = null, bool $forExport = false): string
     {
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $links = [];
@@ -109,7 +109,7 @@ class DocumentLinkResolver
             }
         }
 
-        return $this->joinLinks($links);
+        return $forExport ? $this->primaryExportLink($links) : $this->joinLinks($links);
     }
 
     public function transactionAttachmentLinks(Transaction $transaction, ?int $expirationMinutes = null): string
@@ -120,7 +120,7 @@ class DocumentLinkResolver
     /**
      * Tab 1 scope: generated Trx In/Out PDFs plus direct transaction receipts only.
      */
-    public function transactionTabOneLinks(Transaction $transaction, ?int $expirationMinutes = null): string
+    public function transactionTabOneLinks(Transaction $transaction, ?int $expirationMinutes = null, bool $forExport = false): string
     {
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
         $links = [];
@@ -162,7 +162,7 @@ class DocumentLinkResolver
             }
         }
 
-        return $this->joinLinks($links);
+        return $forExport ? $this->primaryExportLink($links) : $this->joinLinks($links);
     }
 
     public function transactionAllLinks(Transaction $transaction, ?int $expirationMinutes = null): string
@@ -196,6 +196,19 @@ class DocumentLinkResolver
         $minutes = $expirationMinutes ?? $this->exportExpiryMinutes();
 
         return $attachment->getDocumentSignedUrl($minutes);
+    }
+
+    /**
+     * Pick one reliable link for spreadsheet export (Excel breaks multi-link cells and truncates URLs at &).
+     *
+     * @param  array<int, string|null>  $links
+     */
+    public function primaryExportLink(array $links): string
+    {
+        return collect($links)
+            ->filter(fn (?string $link) => filled($link))
+            ->unique()
+            ->first() ?? '';
     }
 
     public function isExternalPath(string $path): bool

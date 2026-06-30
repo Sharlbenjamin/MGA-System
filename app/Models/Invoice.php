@@ -348,7 +348,17 @@ class Invoice extends Model
      */
     public function hasLocalDocument(): bool
     {
-        return !empty($this->invoice_document_path);
+        if (empty($this->invoice_document_path)) {
+            return false;
+        }
+
+        $resolver = app(\App\Services\DocumentLinkResolver::class);
+
+        if ($resolver->isExternalPath($this->invoice_document_path)) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->exists($this->invoice_document_path);
     }
 
     /**

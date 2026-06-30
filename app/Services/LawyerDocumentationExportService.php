@@ -155,7 +155,7 @@ class LawyerDocumentationExportService
                 $transaction->bills->count(),
                 $this->documentationService->formatDocumentationStatusLabel($transaction->documentation_status),
                 $this->documentationService->getPendingTaskSummary($transaction) ?? '',
-                $this->linkResolver->transactionTabOneLinks($transaction),
+                $this->linkResolver->transactionTabOneLinks($transaction, forExport: true),
             ];
         }
 
@@ -198,12 +198,12 @@ class LawyerDocumentationExportService
                 $transaction->id,
                 $transaction->date?->format('Y-m-d'),
                 $clientName,
-                round(abs((float) $transaction->amount), 2),
+                round(TransactionIntegrityService::effectiveIncomeAmountFor($transaction), 2),
                 $transaction->invoices->count(),
                 $transaction->invoices->pluck('name')->implode(', ') ?: '-',
                 $this->documentationService->formatDocumentationStatusLabel($transaction->documentation_status),
-                $this->linkResolver->trxInLink($transaction),
-                $this->linkResolver->transactionReceiptLinks($transaction),
+                $this->linkResolver->trxInLink($transaction, forExport: true),
+                $this->linkResolver->transactionReceiptLinks($transaction, forExport: true),
             ];
         }
 
@@ -253,15 +253,12 @@ class LawyerDocumentationExportService
 
             $invoice->loadMissing(['file.serviceType', 'patient.client']);
 
-            $fileFeeAmount = TaxExportHelpers::resolveFileFeeAmountForFile($invoice->file);
             $clientCountry = TaxExportHelpers::resolveClientCountryFromInvoice($invoice);
-            $invoiceAmount = (float) ($invoice->total_amount ?? 0);
-            $amount = $fileFeeAmount !== null
-                ? round(TaxExportHelpers::resolveAmountBeforeIva($fileFeeAmount, $ivaRate), 2)
-                : round($invoiceAmount, 2);
-            $totalAfterIva = $fileFeeAmount !== null
-                ? round($fileFeeAmount, 2)
-                : round($invoiceAmount, 2);
+            $amountPaid = (float) ($invoice->pivot->amount_paid ?? 0);
+            $totalAfterIva = $amountPaid > 0
+                ? round($amountPaid, 2)
+                : round((float) ($invoice->total_amount ?? 0), 2);
+            $amount = round(TaxExportHelpers::resolveAmountBeforeIva($totalAfterIva, $ivaRate), 2);
 
             $rows[] = [
                 $transaction->id,
@@ -277,7 +274,7 @@ class LawyerDocumentationExportService
                 $ivaPercent,
                 $totalAfterIva,
                 $invoice->status,
-                $this->linkResolver->invoiceLinks($invoice),
+                $this->linkResolver->invoiceLinks($invoice, forExport: true),
             ];
         }
 
@@ -329,8 +326,8 @@ class LawyerDocumentationExportService
                 $transaction->bills->count(),
                 $transaction->bills->pluck('name')->implode(', ') ?: '-',
                 $this->documentationService->formatDocumentationStatusLabel($transaction->documentation_status),
-                $hasBills ? $this->linkResolver->trxOutLink($transaction) : '',
-                $hasBills ? '' : $this->linkResolver->transactionReceiptLinks($transaction),
+                $hasBills ? $this->linkResolver->trxOutLink($transaction, forExport: true) : '',
+                $hasBills ? '' : $this->linkResolver->transactionReceiptLinks($transaction, forExport: true),
             ];
         }
 
@@ -388,8 +385,8 @@ class LawyerDocumentationExportService
                         round((float) ($bill->pivot->amount_paid ?? 0), 2),
                         $file?->patient?->client?->company_name ?? '-',
                         TaxExportHelpers::resolveNifFromFile($file, $nifSource),
-                        $this->linkResolver->billLinks($bill),
-                        $this->linkResolver->trxOutLink($transaction),
+                        $this->linkResolver->billLinks($bill, forExport: true),
+                        $this->linkResolver->trxOutLink($transaction, forExport: true),
                         '',
                     ];
                 }
@@ -414,7 +411,7 @@ class LawyerDocumentationExportService
                 '-',
                 '',
                 '',
-                $this->linkResolver->transactionReceiptLinks($transaction),
+                $this->linkResolver->transactionReceiptLinks($transaction, forExport: true),
             ];
         }
 
@@ -474,8 +471,11 @@ class LawyerDocumentationExportService
                 ];
             }
 
+            $amountPaid = (float) ($invoice->pivot->amount_paid ?? 0);
             $clientStats[$clientId]['count']++;
-            $clientStats[$clientId]['total'] += (float) ($invoice->total_amount ?? 0);
+            $clientStats[$clientId]['total'] += $amountPaid > 0
+                ? $amountPaid
+                : (float) ($invoice->total_amount ?? 0);
             $clientStats[$clientId]['transaction_ids'][$transaction->id] = $transaction->id;
         }
 
