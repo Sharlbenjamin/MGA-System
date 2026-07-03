@@ -238,9 +238,9 @@ trait HasDashboardFilters
         $revenue = $this->getRevenueForFileIds($fileIds);
         $cost = $this->getCostForFileIds($fileIds);
         $expenses = $this->getExpensesForPeriod($period);
-        $income = $revenue - $cost;
         $outflow = $cost + $expenses;
-        $profit = $income;
+        $income = $revenue - $outflow;
+        $profit = $revenue - $cost;
 
         return compact('revenue', 'cost', 'expenses', 'income', 'outflow', 'profit');
     }
