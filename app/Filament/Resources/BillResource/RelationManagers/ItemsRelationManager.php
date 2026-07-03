@@ -9,6 +9,7 @@ use Filament\Support\RawJs;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Tables;
+use App\Filament\Support\FileBillingWarnings;
 use App\Models\BranchService;
 use App\Models\ServiceType;
 use App\Models\BillItem;
@@ -131,6 +132,7 @@ class ItemsRelationManager extends RelationManager
                     })
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
+                        FileBillingWarnings::notifyIfBillChangedOnFile($record->bill->file, 'update');
                     }),
             ])
             ->actions([
@@ -142,16 +144,20 @@ class ItemsRelationManager extends RelationManager
                     })
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
+                        FileBillingWarnings::notifyIfBillChangedOnFile($record->bill->file, 'update');
                     }),
                 Tables\Actions\DeleteAction::make()
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
+                        FileBillingWarnings::notifyIfBillChangedOnFile($record->bill->file, 'update');
                     }),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->after(function () {
-                        $this->getOwnerRecord()->calculateTotal();
+                        $bill = $this->getOwnerRecord();
+                        $bill->calculateTotal();
+                        FileBillingWarnings::notifyIfBillChangedOnFile($bill->file, 'update');
                     }),
             ]);
     }

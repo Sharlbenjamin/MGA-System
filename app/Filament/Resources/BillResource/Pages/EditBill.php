@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BillResource\Pages;
 
 use App\Filament\Resources\BillResource;
 use App\Filament\Resources\FileResource;
+use App\Filament\Support\FileBillingWarnings;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
@@ -29,11 +30,13 @@ class EditBill extends EditRecord
     {
         // Debug: Log successful save
         \Log::info('Bill saved successfully', ['bill_id' => $this->record->id]);
-        
+
         Notification::make()
             ->success()
             ->title('Bill updated successfully')
             ->send();
+
+        FileBillingWarnings::notifyIfBillChangedOnFile($this->record->file, 'update');
     }
 
     protected function getHeaderActions(): array

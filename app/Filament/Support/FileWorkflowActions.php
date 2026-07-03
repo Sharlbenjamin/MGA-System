@@ -127,7 +127,8 @@ class FileWorkflowActions
             ->visible(fn (File $record): bool => FileWorkflowGapService::missingBill($record))
             ->requiresConfirmation()
             ->modalHeading('Upload Bill Document')
-            ->modalDescription('Upload a bill document for this file.')
+            ->modalDescription(fn (File $record): string => FileBillingWarnings::modalDescriptionForFile($record, 'create')
+                ?? 'Upload a bill document for this file.')
             ->modalSubmitActionLabel('Upload Bill')
             ->form([
                 Forms\Components\TextInput::make('name')
@@ -183,6 +184,8 @@ class FileWorkflowActions
                             ->body('Bill record created without a document.')
                             ->send();
 
+                        FileBillingWarnings::notifyIfBillChangedOnFile($record->fresh(['invoices', 'bills']), 'create');
+
                         return;
                     }
 
@@ -216,6 +219,8 @@ class FileWorkflowActions
                         ->title('Bill uploaded successfully')
                         ->body('Bill document has been saved locally and uploaded to Google Drive.')
                         ->send();
+
+                    FileBillingWarnings::notifyIfBillChangedOnFile($record->fresh(['invoices', 'bills']), 'create');
                 } catch (\Throwable $e) {
                     Log::error('Bill creation error', ['error' => $e->getMessage(), 'file_id' => $record->id]);
                     Notification::make()->danger()->title('Bill creation error')->body($e->getMessage())->send();
