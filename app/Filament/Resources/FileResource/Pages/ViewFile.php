@@ -53,6 +53,7 @@ use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Actions\DeleteAction;
 use Illuminate\Support\Facades\Storage;
 use App\Services\DocumentPathResolver;
+use App\Filament\Support\FileBillingWarnings;
 use Filament\Infolists\Components\ViewEntry;
 
 class ViewFile extends ViewRecord
@@ -407,6 +408,8 @@ class ViewFile extends ViewRecord
     protected function updateBillDocumentPath($record, $filePath): void
     {
         $bill = $record->bills()->latest()->first();
+        $createdNewBill = false;
+
         if ($bill) {
             $bill->update(['bill_document_path' => $filePath]);
         } else {
@@ -418,6 +421,11 @@ class ViewFile extends ViewRecord
                 'status' => 'Unpaid',
                 'bill_document_path' => $filePath,
             ]);
+            $createdNewBill = true;
+        }
+
+        if ($createdNewBill) {
+            FileBillingWarnings::notifyIfBillChangedOnFile($record->fresh(['invoices', 'bills']), 'create');
         }
     }
 

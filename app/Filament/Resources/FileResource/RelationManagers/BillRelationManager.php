@@ -6,6 +6,7 @@ use App\Filament\Resources\BillResource;
 use App\Filament\Resources\FileResource;
 use App\Filament\Resources\FileResource\Pages;
 use App\Filament\Resources\InvoiceResource;
+use App\Filament\Support\FileBillingWarnings;
 use App\Models\Country;
 use App\Models\File;
 use App\Models\Bill;
@@ -193,6 +194,8 @@ class BillRelationManager extends RelationManager
                                     ->title('Bill document uploaded successfully')
                                     ->body('Bill document has been saved locally and uploaded to Google Drive.')
                                     ->send();
+
+                                FileBillingWarnings::notifyIfBillChangedOnFile($record->file?->fresh(['invoices', 'bills']), 'update');
                                     
                             } catch (\Exception $e) {
                                 Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);

@@ -85,6 +85,26 @@
                 </div>
             </div>
         @endif
+
+        @if ($this->billingMismatchIssues > 0)
+            <div class="mt-6 rounded-xl border border-warning-200/70 bg-warning-50/40 p-4 dark:border-warning-900/50 dark:bg-warning-950/20">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div class="text-sm font-semibold text-gray-950 dark:text-white">Bill vs invoice mismatches</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            Files where provider bills no longer match what was invoiced to the client.
+                        </div>
+                    </div>
+                    <a
+                        href="{{ $this->getBillingMismatchesUrl() }}"
+                        class="inline-flex items-center gap-2 rounded-lg bg-warning-100 px-3 py-1.5 text-xs font-semibold text-warning-800 hover:bg-warning-200 dark:bg-warning-900/50 dark:text-warning-200 dark:hover:bg-warning-900"
+                    >
+                        <span>View {{ $this->billingMismatchIssues }} file(s)</span>
+                        <x-heroicon-o-arrow-right class="h-4 w-4" />
+                    </a>
+                </div>
+            </div>
+        @endif
     </x-filament::section>
 
     <x-filament::loading-section wire:loading.delay.longer wire:target="applyIssueFilter,clearIssueFilter" />

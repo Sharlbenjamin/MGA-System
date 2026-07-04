@@ -1,5 +1,7 @@
 @php
     use App\Helpers\FileCompactViewHelper;
+    use App\Services\FileBillingIntegrityService;
+    use App\Filament\Resources\FilesWithBillingIssuesResource;
 
     $summaryText = '';
     $compactTasks = [];
@@ -37,6 +39,8 @@
     $billStatus = $latestBill ? $latestBill->status : 'No Bill';
     $billTotalAmount = $latestBill ? number_format((float) ($latestBill->total_amount ?? 0), 2) : null;
     $gopTotalAmount = number_format((float) $record->gopInTotal(), 2);
+    $billingIssues = FileBillingIntegrityService::describeIssues($record);
+    $billingMismatchUrl = FilesWithBillingIssuesResource::getUrl('index');
     $truncate = fn ($s, $len = 80) => $s ? (strlen($s) > $len ? substr($s, 0, $len) . '…' : $s) : '—';
     $statusColor = match ($record->status ?? '') {
         'Assisted', 'Confirmed', 'confirmed' => 'success',
@@ -117,6 +121,17 @@
                     <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-shield-check', 'h-4 w-4')</span><dt class="{{ $labelClass }}">GOP In Status:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$gopInStatus === 'Sent' ? 'success' : ($gopInStatus === 'No GOP In' ? 'gray' : 'warning')">{{ $gopInStatus }}</x-filament::badge></dd></div>
                     <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-document-text', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Bill:</dt><dd class="min-w-0 inline-block"><x-filament::badge :color="$billStatus === 'Paid' ? 'success' : ($billStatus === 'No Bill' ? 'gray' : 'warning')">{{ $billStatus }}</x-filament::badge></dd></div>
                     <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-banknotes', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Bill Total Amount:</dt><dd class="min-w-0">{{ $latestBill ? 'EUR ' . $billTotalAmount : '—' }}</dd></div>
+                    @if(!empty($billingIssues))
+                        <div class="mt-2 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-xs text-warning-900 dark:border-warning-700 dark:bg-warning-950/40 dark:text-warning-100">
+                            <div class="font-semibold">Billing mismatch</div>
+                            <div class="mt-1">
+                                @foreach($billingIssues as $issue)
+                                    {{ FileBillingIntegrityService::issueTypeLabel($issue) }}@if(! $loop->last), @endif
+                                @endforeach
+                            </div>
+                            <a href="{{ $billingMismatchUrl }}" class="mt-1 inline-block font-medium text-warning-800 underline dark:text-warning-200">View billing mismatches</a>
+                        </div>
+                    @endif
                 </dl>
             </div>
         </div>

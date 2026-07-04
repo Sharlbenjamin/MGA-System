@@ -3,7 +3,9 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Resources\InvoicesWithSettlementIssuesResource\Pages\ListInvoicesWithSettlementIssues;
+use App\Filament\Resources\FilesWithBillingIssuesResource;
 use App\Filament\Resources\TransactionsInWithoutInvoicesResource;
+use App\Services\FileBillingIntegrityService;
 use App\Services\InvoiceSettlementIntegrityService;
 use App\Services\TransactionIntegrityService;
 use App\Models\Transaction;
@@ -72,5 +74,15 @@ class InvoiceSettlementIssuesOverviewWidget extends Widget
     public function getTransactionsInWithoutInvoicesUrl(): string
     {
         return TransactionsInWithoutInvoicesResource::getUrl('index');
+    }
+
+    public function getBillingMismatchIssuesProperty(): int
+    {
+        return FileBillingIntegrityService::billingIssueCount();
+    }
+
+    public function getBillingMismatchesUrl(): string
+    {
+        return FilesWithBillingIssuesResource::getUrl('index');
     }
 }

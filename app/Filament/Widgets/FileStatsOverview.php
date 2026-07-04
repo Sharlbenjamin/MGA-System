@@ -55,15 +55,17 @@ class FileStatsOverview extends  StatsOverviewWidget
         $costChart = $this->getFileBasedChartData('cost');
         $expensesChart = $this->getExpensesChartData();
 
-        $incomeChart = array_map(function ($revenue, $cost) {
-            return $revenue - $cost;
-        }, $revenueChart, $costChart);
-
         $outflowChart = array_map(function ($cost, $expenses) {
             return $cost + $expenses;
         }, $costChart, $expensesChart);
 
-        $profitChart = $incomeChart;
+        $incomeChart = array_map(function ($revenue, $outflow) {
+            return $revenue - $outflow;
+        }, $revenueChart, $outflowChart);
+
+        $profitChart = array_map(function ($revenue, $cost) {
+            return $revenue - $cost;
+        }, $revenueChart, $costChart);
 
         // File statistics
         $activeFiles = File::where('status', 'Assisted')

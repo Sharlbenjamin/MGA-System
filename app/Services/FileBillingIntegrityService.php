@@ -293,6 +293,28 @@ class FileBillingIntegrityService
             return false;
         }
 
+        if ($file->relationLoaded('invoices') && $file->relationLoaded('bills')) {
+            $sentInvoices = $file->invoices->filter(
+                fn (Invoice $invoice): bool => in_array($invoice->status, self::SENT_INVOICE_STATUSES, true),
+            );
+
+            if ($sentInvoices->isEmpty()) {
+                return false;
+            }
+
+            $sentInvoiceMilestone = $sentInvoices->min('created_at');
+            $latestSentInvoiceUpdate = $sentInvoices->max('updated_at');
+
+            return $file->bills->contains(function ($bill) use ($sentInvoiceMilestone, $latestSentInvoiceUpdate): bool {
+                return $bill->created_at > $sentInvoiceMilestone
+                    || $bill->updated_at > $latestSentInvoiceUpdate;
+            });
+        }
+
+        if (! $file->exists) {
+            return false;
+        }
+
         $sentInvoiceMilestone = $file->invoices()
             ->whereIn('status', self::SENT_INVOICE_STATUSES)
             ->min('created_at');

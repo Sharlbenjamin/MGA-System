@@ -44,6 +44,9 @@
         $billLinesDelta = round($total - $invoiceBillLines, 2);
     } else {
         $total = 0;
+        $billingIssues = [];
+        $invoiceBillLines = 0;
+        $billLinesDelta = 0;
     }
 @endphp
 

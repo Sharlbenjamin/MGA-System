@@ -59,7 +59,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/UserSignature.php": "1f5e31edb3dd7b2295fbe4207b0c2ca03b32e1304e89a126596fed478a7eaff5",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Filament\/Resources\/NotificationResource\/EditNotification.php": "8d3647ef04cc6306a8e31143f3e8440a04d3567354e3cc4fd69c7d6ea14520f8",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Filament\/Resources\/NotificationResource\/ListNotifications.php": "f608d448a41020f47677145b22b46daab43964ebc3598b4962f9c7c050d0944f",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Filament\/Widgets\/Traits\/HasDashboardFilters.php": "267110bba5e04f7d2e837487c5def04493dcb9578dbeb38013b6162133dff535",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Filament\/Widgets\/Traits\/HasDashboardFilters.php": "c075f5c60a885cdd6a80d2d33465c33e3ccf715e9f835b392682dbe61a57c864",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Http\/Controllers\/BankAccountController.php": "16916e6a9a9b1f2e82b93655aec868ab14ee3abbea96dad8b9cfdb9255ebbbe4",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Http\/Controllers\/BillController.php": "ad80ef3c462796510f50bf262b196d8b574cf4c36a144c751a762e4daab79197",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Http\/Controllers\/BillItemController.php": "e6d95528b5bd97f567f6e00300745471fafb6d1b0380e4c160e4ee82242627c3",
@@ -437,5 +437,6 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Services\/InvoicePresentationService.php": "ffcf3f51f9cb7df58c2d184eec5696b34fdbf9c14250a5a63e58612f3a0c4be2",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_06_26_000001_add_item_type_to_invoice_items_table.php": "8b377efb605e4e96c3e8c31cd2c96c8fa6e1c153079e9c20073549a0f88d50a3",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_06_26_120000_add_invoice_settings_to_clients_table.php": "ec0665b6a8c4d914fa6ba02de858c273b6dc9218947794c4564ae3b0ae37ef6b",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/invoice.php": "5aebad80be8ff5dfa13648887e0dd7fb7a16390bb60d205e517a0cb6a43e6fa8"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/invoice.php": "5aebad80be8ff5dfa13648887e0dd7fb7a16390bb60d205e517a0cb6a43e6fa8",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Services\/FileBillingIntegrityService.php": "30805ce34be30eabd7f8894de0c5bbc90b478869edba0e258f40b6ca4638541f"
 }
