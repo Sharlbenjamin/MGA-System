@@ -81,8 +81,8 @@ class InvoiceSettlementIssuesOverviewWidget extends Widget
         return FileBillingIntegrityService::billingIssueCount();
     }
 
-    public function getBillingMismatchesUrl(): string
+    public function getBillingMismatchesUrl(): ?string
     {
-        return FilesWithBillingIssuesResource::getUrl('index');
+        return FilesWithBillingIssuesResource::tryGetIndexUrl();
     }
 }

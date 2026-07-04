@@ -40,7 +40,7 @@
     $billTotalAmount = $latestBill ? number_format((float) ($latestBill->total_amount ?? 0), 2) : null;
     $gopTotalAmount = number_format((float) $record->gopInTotal(), 2);
     $billingIssues = FileBillingIntegrityService::describeIssues($record);
-    $billingMismatchUrl = FilesWithBillingIssuesResource::getUrl('index');
+    $billingMismatchUrl = FilesWithBillingIssuesResource::tryGetIndexUrl();
     $truncate = fn ($s, $len = 80) => $s ? (strlen($s) > $len ? substr($s, 0, $len) . '…' : $s) : '—';
     $statusColor = match ($record->status ?? '') {
         'Assisted', 'Confirmed', 'confirmed' => 'success',
@@ -129,7 +129,9 @@
                                     {{ FileBillingIntegrityService::issueTypeLabel($issue) }}@if(! $loop->last), @endif
                                 @endforeach
                             </div>
-                            <a href="{{ $billingMismatchUrl }}" class="mt-1 inline-block font-medium text-warning-800 underline dark:text-warning-200">View billing mismatches</a>
+                            @if(filled($billingMismatchUrl))
+                                <a href="{{ $billingMismatchUrl }}" class="mt-1 inline-block font-medium text-warning-800 underline dark:text-warning-200">View billing mismatches</a>
+                            @endif
                         </div>
                     @endif
                 </dl>

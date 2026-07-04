@@ -86,7 +86,7 @@
             </div>
         @endif
 
-        @if ($this->billingMismatchIssues > 0)
+        @if ($this->billingMismatchIssues > 0 && filled($this->getBillingMismatchesUrl()))
             <div class="mt-6 rounded-xl border border-warning-200/70 bg-warning-50/40 p-4 dark:border-warning-900/50 dark:bg-warning-950/20">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>

@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Route;
 
 class FilesWithBillingIssuesResource extends Resource
 {
@@ -29,11 +30,33 @@ class FilesWithBillingIssuesResource extends Resource
 
     protected static ?string $slug = 'files-with-billing-issues';
 
+    public static function indexRouteName(): string
+    {
+        return static::getRouteBaseName().'.index';
+    }
+
+    public static function tryGetIndexUrl(): ?string
+    {
+        if (! Route::has(static::indexRouteName())) {
+            return null;
+        }
+
+        try {
+            return static::getUrl('index');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     public static function getNavigationBadge(): ?string
     {
-        $count = FileBillingIntegrityService::billingIssueCount();
+        try {
+            $count = FileBillingIntegrityService::billingIssueCount();
 
-        return $count > 0 ? (string) $count : null;
+            return $count > 0 ? (string) $count : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public static function getNavigationBadgeColor(): ?string
