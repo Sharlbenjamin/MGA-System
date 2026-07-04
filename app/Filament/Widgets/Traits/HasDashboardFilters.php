@@ -218,18 +218,23 @@ trait HasDashboardFilters
             ->sum('total_amount');
     }
 
+    protected function getExpensesBetween(Carbon $start, Carbon $end): float
+    {
+        return (float) Transaction::query()
+            ->where('type', 'Expense')
+            ->whereDoesntHave('bills')
+            ->whereBetween('date', [$start, $end])
+            ->sum('amount');
+    }
+
     protected function getExpensesForPeriod(string $period = 'current'): float
     {
         $dateRange = $this->getDateRange();
 
-        return (float) Transaction::query()
-            ->where('type', 'Expense')
-            ->whereDoesntHave('bills')
-            ->whereBetween('date', [
-                $dateRange[$period]['start'],
-                $dateRange[$period]['end'],
-            ])
-            ->sum('amount');
+        return $this->getExpensesBetween(
+            $dateRange[$period]['start'],
+            $dateRange[$period]['end'],
+        );
     }
 
     protected function getFileBasedFinancials(string $period = 'current'): array
@@ -239,8 +244,8 @@ trait HasDashboardFilters
         $cost = $this->getCostForFileIds($fileIds);
         $expenses = $this->getExpensesForPeriod($period);
         $outflow = $cost + $expenses;
-        $income = $revenue - $outflow;
-        $profit = $revenue - $cost;
+        $income = $revenue - $cost;
+        $profit = $income - $expenses;
 
         return compact('revenue', 'cost', 'expenses', 'income', 'outflow', 'profit');
     }
@@ -336,8 +341,10 @@ trait HasDashboardFilters
 
         $revenue = $this->getRevenueForFileIds($fileIds);
         $cost = $this->getCostForFileIds($fileIds);
+        $income = $revenue - $cost;
+        $expenses = $this->getExpensesBetween($start, $end);
 
-        return $revenue - $cost;
+        return $income - $expenses;
     }
 
     protected function applyDateFilter($query, $dateField = 'created_at'): void

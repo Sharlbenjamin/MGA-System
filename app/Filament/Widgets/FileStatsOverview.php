@@ -25,7 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Cases created in the period → sum all their invoices minus all their bills
+        // Cases created in the period → revenue/cost from invoices/bills; income = revenue - cost; profit = income - expenses
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
@@ -59,13 +59,13 @@ class FileStatsOverview extends  StatsOverviewWidget
             return $cost + $expenses;
         }, $costChart, $expensesChart);
 
-        $incomeChart = array_map(function ($revenue, $outflow) {
-            return $revenue - $outflow;
-        }, $revenueChart, $outflowChart);
-
-        $profitChart = array_map(function ($revenue, $cost) {
+        $incomeChart = array_map(function ($revenue, $cost) {
             return $revenue - $cost;
         }, $revenueChart, $costChart);
+
+        $profitChart = array_map(function ($revenue, $cost, $expenses) {
+            return ($revenue - $cost) - $expenses;
+        }, $revenueChart, $costChart, $expensesChart);
 
         // File statistics
         $activeFiles = File::where('status', 'Assisted')
