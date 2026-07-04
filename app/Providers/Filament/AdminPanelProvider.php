@@ -87,6 +87,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Resources\TransactionsOutWithoutBillsResource::class,
                 \App\Filament\Resources\TransactionsInWithoutInvoicesResource::class,
                 \App\Filament\Resources\InvoicesWithSettlementIssuesResource::class,
+                \App\Filament\Resources\FilesWithBillingIssuesResource::class,
                 \App\Filament\Resources\TransactionsWithoutDocumentsResource::class,
             ])
 

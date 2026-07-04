@@ -34,6 +34,14 @@
         
         $total = $file->billsTotal();
         $medicalReportWithDocument = $file->medicalReports()->whereNotNull('document_path')->latest()->first();
+
+        $billingIssues = $record
+            ? \App\Services\FileBillingIntegrityService::describeIssues($file)
+            : [];
+        $invoiceBillLines = $record
+            ? \App\Services\FileBillingIntegrityService::invoiceBillLinesFor($file)
+            : 0;
+        $billLinesDelta = round($total - $invoiceBillLines, 2);
     } else {
         $total = 0;
     }
@@ -50,6 +58,24 @@
     @endif
 
     <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Bill Details</h3>
+
+    @if(!empty($billingIssues))
+        <div class="rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-sm text-warning-900 dark:border-warning-700 dark:bg-warning-950/40 dark:text-warning-100">
+            <div class="font-semibold">Billing mismatch on this file</div>
+            <div class="mt-1">
+                Live bills total €{{ number_format($total, 2) }};
+                invoice bill lines €{{ number_format($invoiceBillLines, 2) }}
+                @if(abs($billLinesDelta) > 0.01)
+                    (drift €{{ number_format($billLinesDelta, 2) }}).
+                @endif
+            </div>
+            <div class="mt-1 text-xs">
+                @foreach($billingIssues as $issue)
+                    {{ \App\Services\FileBillingIntegrityService::issueTypeLabel($issue) }}@if(! $loop->last), @endif
+                @endforeach
+            </div>
+        </div>
+    @endif
     
     @if($allBillItems->isEmpty())
         <p class="text-sm text-gray-500">No bill items found</p>
