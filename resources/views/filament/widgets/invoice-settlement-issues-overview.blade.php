@@ -86,7 +86,7 @@
             </div>
         @endif
 
-        @if ($this->billingMismatchIssues > 0 && filled($this->getBillingMismatchesUrl()))
+        @if ($this->billingMismatchIssues > 0 && filled($this->billingMismatchesUrl))
             <div class="mt-6 rounded-xl border border-warning-200/70 bg-warning-50/40 p-4 dark:border-warning-900/50 dark:bg-warning-950/20">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -96,7 +96,7 @@
                         </div>
                     </div>
                     <a
-                        href="{{ $this->getBillingMismatchesUrl() }}"
+                        href="{{ $this->billingMismatchesUrl }}"
                         class="inline-flex items-center gap-2 rounded-lg bg-warning-100 px-3 py-1.5 text-xs font-semibold text-warning-800 hover:bg-warning-200 dark:bg-warning-900/50 dark:text-warning-200 dark:hover:bg-warning-900"
                     >
                         <span>View {{ $this->billingMismatchIssues }} file(s)</span>

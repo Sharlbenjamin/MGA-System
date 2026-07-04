@@ -37,15 +37,15 @@ class FilesWithBillingIssuesResource extends Resource
 
     public static function tryGetIndexUrl(): ?string
     {
-        if (! Route::has(static::indexRouteName())) {
-            return null;
+        try {
+            if (Route::has(static::indexRouteName())) {
+                return static::getUrl('index');
+            }
+        } catch (\Throwable) {
+            //
         }
 
-        try {
-            return static::getUrl('index');
-        } catch (\Throwable) {
-            return null;
-        }
+        return null;
     }
 
     public static function getNavigationBadge(): ?string
