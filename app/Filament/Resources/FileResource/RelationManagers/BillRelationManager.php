@@ -38,7 +38,7 @@ class BillRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return $table
+        return BillTable::configureRecordTitle($table)
             ->modifyQueryUsing(fn (Builder $query) => $query->with(BillTable::eagerLoadRelations()))
             ->defaultPaginationPageOption(10)
             ->columns(BillTable::relationManagerColumns())

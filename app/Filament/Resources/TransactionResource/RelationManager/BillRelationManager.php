@@ -39,8 +39,7 @@ class BillRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return $table
-            ->recordTitleAttribute('display_name')
+        return BillTable::configureRecordTitle($table)
             ->modifyQueryUsing(function (Builder $query): void {
                 $query->with(BillTable::eagerLoadRelations())
                     ->select(
@@ -54,7 +53,7 @@ class BillRelationManager extends RelationManager
                     );
             })
             ->columns([
-                BillTable::nameColumn(editable: true),
+                BillTable::nameColumn(),
                 TextColumn::make('total_amount')
                     ->label('Bill total')
                     ->money('EUR')

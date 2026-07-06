@@ -27,7 +27,21 @@ class BillResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Ops';
-    protected static ?string $recordTitleAttribute = 'display_name';
+    protected static ?string $recordTitleAttribute = null;
+
+    public static function getRecordTitle(?\Illuminate\Database\Eloquent\Model $record): string | \Illuminate\Contracts\Support\Htmlable | null
+    {
+        if ($record instanceof Bill) {
+            return $record->display_name;
+        }
+
+        return parent::getRecordTitle($record);
+    }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name'];
+    }
 
 
 
@@ -133,7 +147,7 @@ class BillResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->groups([
+        return BillTable::configureRecordTitle($table)->groups([
             Group::make('provider.name')->label('Provider')->collapsible(),
             Group::make('branch.branch_name')->label('Branch')->collapsible(),
         ])
@@ -148,7 +162,7 @@ class BillResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
                 Tables\Columns\TextColumn::make('branch.branch_name')->searchable()->sortable()->label('Branch'),
-                BillTable::nameColumn(editable: true),
+                BillTable::nameColumn(),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->searchable()
                     ->sortable()

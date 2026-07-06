@@ -15,8 +15,6 @@ class BillRelationManager extends RelationManager
 
     protected static ?string $title = 'Bills';
 
-    protected static ?string $recordTitleAttribute = 'display_name';
-
     public function form(Form $form): Form
     {
         return $form->schema([]);
@@ -24,7 +22,7 @@ class BillRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return $table
+        return BillTable::configureRecordTitle($table)
             ->modifyQueryUsing(fn (Builder $query) => $query->with(BillTable::eagerLoadRelations()))
             ->columns(BillTable::relationManagerColumns())
             ->filters([

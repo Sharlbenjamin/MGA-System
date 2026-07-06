@@ -6,6 +6,7 @@ use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManager;
 use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
 use App\Filament\Support\TransactionDocumentationForm;
+use App\Filament\Support\BillTable;
 use App\Filament\Support\TransactionBillLinkForm;
 use App\Filament\Support\TransactionInvoiceLinkForm;
 use App\Models\BankAccount;
@@ -622,7 +623,7 @@ class TransactionResource extends Resource
         static::applyAvailableBillForTransactionScope($query, $transactionId);
 
         if (filled($search)) {
-            $query->where('bills.name', 'like', '%'.addcslashes($search, '%_').'%');
+            BillTable::applyNameSearch($query, $search);
         }
 
         return $query->orderByDesc('bills.id')
@@ -1295,7 +1296,7 @@ class TransactionResource extends Resource
         $remaining = number_format($remainingBalance ?? $bill->remainingBalance(), 2);
         $status = $bill->status ?: 'Unpaid';
 
-        return "{$bill->name} · {$dateStr} · €{$amount} · {$status} · €{$remaining} left";
+        return "{$bill->display_name} · {$dateStr} · €{$amount} · {$status} · €{$remaining} left";
     }
 
     public static function formatInvoiceOptionLabel(Invoice $invoice, ?float $remainingBalance = null): string
