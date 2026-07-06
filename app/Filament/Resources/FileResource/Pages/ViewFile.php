@@ -369,8 +369,10 @@ class ViewFile extends ViewRecord
             $record->gops()->create([
                 'type' => 'In',
                 'amount' => 0,
+                'offered_cost' => 0,
+                'file_fee' => 0,
                 'date' => now(),
-                'status' => 'Not Sent',
+                'status' => \App\Models\Gop::IN_STATUS_DRAFT,
                 'document_path' => $filePath,
             ]);
         }

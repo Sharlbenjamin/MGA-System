@@ -15,7 +15,7 @@
     @if(!empty($file->symptoms))
     <p><strong>Symptoms:</strong> {{ $file->symptoms }}</p>
     @endif
-    <p>Please note that the expected cost for the appointment is <strong>{{$file->gops->where('type', 'In')->first()->amount}}</strong>, excluding our file fees.</p>
+    <p>Please note that the expected cost for the appointment is <strong>{{ $file->gops->where('type', 'In')->first()?->offered_cost ?? $file->gops->where('type', 'In')->first()?->amount }}</strong>, excluding our file fees.</p>
     <p>So, please send us a GOP as soon as possible, to confirm the {{$file->serviceType->name}} appointment.</p>
     <p>We remain at your disposal for any further information.</p>
     @include('draftsignature', ['signature' => auth()->user()->signature])

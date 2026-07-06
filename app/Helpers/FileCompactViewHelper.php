@@ -18,7 +18,13 @@ class FileCompactViewHelper
     {
         $hasReceivedStatus = $record->gops()
             ->where('type', 'In')
-            ->whereIn('status', ['Received', 'Sent', 'Updated'])
+            ->whereIn('status', [
+                \App\Models\Gop::IN_STATUS_OFFERED,
+                \App\Models\Gop::IN_STATUS_ACCEPTED,
+                'Received',
+                'Sent',
+                'Updated',
+            ])
             ->exists();
         if ($hasReceivedStatus) {
             return true;

@@ -173,9 +173,8 @@ class InvoiceResource extends Resource
 
                 Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\Placeholder::make('gop_in_total')
-                            ->label('GOP In Total')
-                            ->content(fn (?Invoice $record): string => $record ? '€'.number_format($record->file->gopInTotal(), 2) : '0.00'),
+                        Forms\Components\View::make('filament.forms.components.gop-offer-invoice-comparison')
+                            ->label('Accepted Offer vs Invoice'),
 
                         Forms\Components\View::make('filament.forms.components.bill-details')
                             ->label('Bill Details'),

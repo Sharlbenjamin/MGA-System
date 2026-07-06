@@ -5,13 +5,18 @@
     $invoiceStatus = $latestInvoice ? $latestInvoice->status : 'No Invoice';
     $canViewInvoiceAmount = auth()->user()?->hasAnyRole(['admin', 'Financial', 'financial']) ?? false;
     $invoiceTotalAmount = $latestInvoice ? number_format((float) ($latestInvoice->total_amount ?? 0), 2) : null;
+    $acceptedGopIn = $record->acceptedGopInOfferRecord();
+    $acceptedGopTotal = $acceptedGopIn ? number_format((float) ($acceptedGopIn->amount ?? 0), 2) : null;
+    $acceptedGopCost = $acceptedGopIn ? number_format((float) ($acceptedGopIn->offered_cost ?? 0), 2) : null;
+    $acceptedGopFee = $acceptedGopIn ? number_format((float) ($acceptedGopIn->file_fee ?? 0), 2) : null;
+    $acceptedGopProvider = $acceptedGopIn?->providerBranch?->branch_name;
+    $acceptedGopStatus = $acceptedGopIn?->status ?? 'No accepted offer';
     $latestGopIn = $record->gops()->where('type', 'In')->latest()->first();
-    $gopInAmount = $latestGopIn ? number_format((float) ($latestGopIn->amount ?? 0), 2) : null;
     $gopInStatus = $latestGopIn?->status ?? 'No GOP In';
     $latestBill = $record->bills()->latest()->first();
     $billStatus = $latestBill ? $latestBill->status : 'No Bill';
     $billTotalAmount = $latestBill ? number_format((float) ($latestBill->total_amount ?? 0), 2) : null;
-    $gopTotalAmount = number_format((float) $record->gopInTotal(), 2);
+    $gopTotalAmount = $acceptedGopTotal ?? number_format((float) $record->gopInTotal(), 2);
     $truncate = fn ($s, $len = 80) => $s ? (strlen($s) > $len ? substr($s, 0, $len) . '…' : $s) : '—';
     $statusColor = match ($record->status ?? '') {
         'Assisted', 'Confirmed', 'confirmed' => 'green',
@@ -53,8 +58,8 @@
                     @if($record->service_time)<div><dt class="font-medium text-gray-500 dark:text-gray-400">Service Time</dt><dd>{{ \Carbon\Carbon::parse($record->service_time)->format('h:i A') }}</dd></div>@endif
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Status</dt><dd><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass($statusColor) }}">{{ $record->status }}</span></dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Invoice</dt><dd class="inline-flex items-center gap-2"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass($invoiceStatus === 'Paid' ? 'green' : ($invoiceStatus === 'No Invoice' ? 'gray' : 'yellow')) }}">{{ $invoiceStatus }}</span>@if($latestInvoice && $canViewInvoiceAmount)<span class="text-sm text-gray-700 dark:text-gray-300">EUR {{ $invoiceTotalAmount }}</span>@endif</dd></div>
-                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">GOP Total Amount</dt><dd>{{ ((float) $record->gopInTotal()) > 0 ? 'EUR ' . $gopTotalAmount : '—' }}</dd></div>
-                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">GOP In Status</dt><dd><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass($gopInStatus === 'Sent' ? 'green' : ($gopInStatus === 'No GOP In' ? 'gray' : 'yellow')) }}">{{ $gopInStatus }}</span></dd></div>
+                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">Accepted Offer</dt><dd>@if($acceptedGopIn)<span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass($acceptedGopStatus === 'Accepted' ? 'green' : 'yellow') }}">{{ $acceptedGopStatus }}</span><span class="ml-2 text-sm">EUR {{ $acceptedGopTotal }} (cost {{ $acceptedGopCost }} + fee {{ $acceptedGopFee }})</span>@if($acceptedGopProvider)<span class="block text-xs text-gray-500 mt-0.5">{{ $acceptedGopProvider }}</span>@endif @else — @endif</dd></div>
+                    <div><dt class="font-medium text-gray-500 dark:text-gray-400">GOP In (latest)</dt><dd><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass(in_array($gopInStatus, ['Accepted', 'Offered']) ? 'green' : ($gopInStatus === 'No GOP In' ? 'gray' : 'yellow')) }}">{{ $gopInStatus }}</span></dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Bill</dt><dd><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badgeClass($billStatus === 'Paid' ? 'green' : ($billStatus === 'No Bill' ? 'gray' : 'yellow')) }}">{{ $billStatus }}</span></dd></div>
                     <div><dt class="font-medium text-gray-500 dark:text-gray-400">Bill Total Amount</dt><dd>{{ $latestBill ? 'EUR ' . $billTotalAmount : '—' }}</dd></div>
                 </dl>

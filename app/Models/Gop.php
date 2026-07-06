@@ -15,8 +15,111 @@ class Gop extends Model
 {
     use HasFactory, LogsActivity;
 
-    protected $fillable = ['file_id','type','amount','status','date','gop_google_drive_link','document_path'];
-    protected $casts = ['id' => 'integer','file_id' => 'integer','amount' => 'float','date' => 'date','status' => 'string',];
+    public const IN_STATUS_DRAFT = 'Draft';
+
+    public const IN_STATUS_OFFERED = 'Offered';
+
+    public const IN_STATUS_ACCEPTED = 'Accepted';
+
+    public const IN_STATUS_REJECTED = 'Rejected';
+
+    public const OUT_STATUS_NOT_SENT = 'Not Sent';
+
+    public const OUT_STATUS_SENT = 'Sent';
+
+    public const OUT_STATUS_UPDATED = 'Updated';
+
+    public const OUT_STATUS_CANCELLED = 'Cancelled';
+
+    protected $fillable = [
+        'file_id',
+        'provider_branch_id',
+        'type',
+        'amount',
+        'offered_cost',
+        'file_fee',
+        'notes',
+        'status',
+        'date',
+        'gop_google_drive_link',
+        'document_path',
+    ];
+
+    protected $casts = [
+        'id' => 'integer',
+        'file_id' => 'integer',
+        'provider_branch_id' => 'integer',
+        'amount' => 'float',
+        'offered_cost' => 'float',
+        'file_fee' => 'float',
+        'date' => 'date',
+        'status' => 'string',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Gop $gop): void {
+            if ($gop->type !== 'In') {
+                return;
+            }
+
+            if ($gop->offered_cost !== null || $gop->file_fee !== null) {
+                $gop->amount = round(
+                    (float) ($gop->offered_cost ?? 0) + (float) ($gop->file_fee ?? 0),
+                    2,
+                );
+            }
+        });
+    }
+
+    public static function inStatusOptions(): array
+    {
+        return [
+            self::IN_STATUS_DRAFT => 'Draft',
+            self::IN_STATUS_OFFERED => 'Offered',
+            self::IN_STATUS_ACCEPTED => 'Accepted',
+            self::IN_STATUS_REJECTED => 'Rejected',
+        ];
+    }
+
+    public static function outStatusOptions(): array
+    {
+        return [
+            self::OUT_STATUS_NOT_SENT => 'Not Sent',
+            self::OUT_STATUS_SENT => 'Sent',
+            self::OUT_STATUS_UPDATED => 'Updated',
+            self::OUT_STATUS_CANCELLED => 'Cancelled',
+        ];
+    }
+
+    public function isIn(): bool
+    {
+        return $this->type === 'In';
+    }
+
+    public function isOut(): bool
+    {
+        return $this->type === 'Out';
+    }
+
+    public function isAcceptedOffer(): bool
+    {
+        return $this->isIn() && $this->status === self::IN_STATUS_ACCEPTED;
+    }
+
+    public function getEffectiveOfferedCostAttribute(): float
+    {
+        if ($this->offered_cost !== null) {
+            return (float) $this->offered_cost;
+        }
+
+        return (float) $this->amount;
+    }
+
+    public function getEffectiveFileFeeAttribute(): float
+    {
+        return (float) ($this->file_fee ?? 0);
+    }
 
     public function getActivityReference(): ?string
     {
@@ -29,9 +132,9 @@ class Gop extends Model
         return $this->belongsTo(File::class);
     }
 
-    public function providerBranch()
+    public function providerBranch(): BelongsTo
     {
-        return $this->file->providerBranch();
+        return $this->belongsTo(ProviderBranch::class);
     }
 
     public function sendGopToBranch()
@@ -40,8 +143,9 @@ class Gop extends Model
         if($this->type == 'In'){
             return;
         }
-        // cehck if there is a branch in the file
-        $branch = $this->file->providerBranch;
+        $branch = $this->provider_branch_id
+            ? $this->providerBranch
+            : $this->file->providerBranch;
         if (!$branch) {
             Notification::make()->title('GOP Notification')->body('This file doesn\'t have a branch')->danger()->send();
             return false;
@@ -55,7 +159,7 @@ class Gop extends Model
 
         try {
             Mail::to($gopContact->email)->send(new GopMailable($this));
-            $this->status = 'Sent';
+            $this->status = self::OUT_STATUS_SENT;
             $this->save();
             Notification::make()->title('GOP Notification')->body('GOP sent to branch')->success()->send();
             return true;

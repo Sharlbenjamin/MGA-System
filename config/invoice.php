@@ -25,16 +25,6 @@ return [
     */
     'combined_line_description' => 'Medical assistance services',
 
-    /*
-    |--------------------------------------------------------------------------
-    | Tiered file fee thresholds (bill-related invoice items total)
-    |--------------------------------------------------------------------------
-    |
-    | simple  : total < simple_max
-    | middle  : simple_max <= total < middle_max
-    | complex : total >= middle_max
-    |
-    */
     'file_fee_tiers' => [
         'simple' => [
             'service_type_names' => [
@@ -59,5 +49,15 @@ return [
             ],
             'min_total' => 1000,
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accepted GOP In offer vs invoice variance warnings
+    |--------------------------------------------------------------------------
+    */
+    'internal_offer_variance' => [
+        'amount_eur' => 25,
+        'percent' => 10,
     ],
 ];

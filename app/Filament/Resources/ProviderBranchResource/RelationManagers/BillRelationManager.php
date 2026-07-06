@@ -2,57 +2,43 @@
 
 namespace App\Filament\Resources\ProviderBranchResource\RelationManagers;
 
-use App\Models\City;
-use App\Models\Client;
-use App\Models\Country;
-use App\Models\Patient;
-use App\Models\Provider;
-use App\Models\ProviderBranch;
+use App\Filament\Support\BillTable;
 use Filament\Forms;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Tables;
-use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Forms\Components\TextInput;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Actions\EditAction;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Tables;
 use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
+use Illuminate\Database\Eloquent\Builder;
 
 class BillRelationManager extends RelationManager
 {
     protected static string $relationship = 'bills';
 
+    protected static ?string $recordTitleAttribute = 'display_name';
+
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            TextInput::make('name')->label('Name'),
+            TextInput::make('name')
+                ->label('Custom bill name')
+                ->placeholder(fn ($record) => $record?->display_name),
         ]);
     }
-
 
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
-            ->columns([
-                TextColumn::make('name')->sortable()->searchable(),
-                TextColumn::make('total_amount')->sortable()->searchable()->money('eur'),
-                TextColumn::make('paid_amount')->sortable()->searchable()->money('eur'),
-                TextColumn::make('remaining_amount')->sortable()->searchable()->money('eur')->state(fn ($record) => $record->total_amount - $record->paid_amount),
-                TextColumn::make('bill_date')->sortable()->searchable()->date('d-m-Y'),
-                TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
-                    'Paid' => 'success',
-                    'Unpaid' => 'danger',
-                    'Partial' => 'warning',
-                    default => 'secondary',
-                }),
-            ])
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(BillTable::eagerLoadRelations()))
+            ->columns(BillTable::relationManagerColumns())
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->options([
                     'Paid' => 'Paid',
                     'Unpaid' => 'Unpaid',
                     'Partial' => 'Partial',
                 ]),
-            ]) ->headerActions([
+            ])
+            ->headerActions([
                 Tables\Actions\CreateAction::make(),
             ])
             ->actions([

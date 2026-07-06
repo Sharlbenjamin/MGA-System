@@ -341,7 +341,7 @@ class ListClients extends ListRecords
                                 'providers' => 'Providers Email',
                                 'custom' => 'Custom Email',
                             ])
-                            ->default('user')
+                            ->default('providers')
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, Set $set, Get $get): void {
@@ -352,7 +352,7 @@ class ListClients extends ListRecords
                             }),
                         Forms\Components\TextInput::make('sender_email')
                             ->label('From')
-                            ->default(fn (): string => $this->resolveClientDraftSenderAddress('user'))
+                            ->default(fn (): string => $this->resolveClientDraftSenderAddress('providers'))
                             ->disabled()
                             ->dehydrated(false),
                         Forms\Components\TextInput::make('custom_sender_email')
@@ -433,7 +433,7 @@ class ListClients extends ListRecords
                             return;
                         }
 
-                        $senderEmailType = (string) ($data['sender_email_type'] ?? 'user');
+                        $senderEmailType = (string) ($data['sender_email_type'] ?? 'providers');
                         $customSenderEmail = trim((string) ($data['custom_sender_email'] ?? ''));
                         $senderConfig = $this->resolveClientDraftSenderConfig($senderEmailType, $customSenderEmail, $user);
 

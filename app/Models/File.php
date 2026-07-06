@@ -94,8 +94,24 @@ class File extends Model
         return $this->hasMany(Gop::class);
     }
 
+    public function acceptedGopInOfferRecord(): ?Gop
+    {
+        return $this->gops()
+            ->where('type', 'In')
+            ->where('status', Gop::IN_STATUS_ACCEPTED)
+            ->with(['providerBranch.provider'])
+            ->latest('id')
+            ->first();
+    }
+
     public function gopInTotal()
     {
+        $accepted = $this->acceptedGopInOfferRecord();
+
+        if ($accepted) {
+            return (float) $accepted->amount;
+        }
+
         return $this->gops()->where('type', 'In')->sum('amount');
     }
 

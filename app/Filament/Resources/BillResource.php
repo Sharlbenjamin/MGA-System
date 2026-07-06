@@ -16,7 +16,7 @@ use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\BadgeColumn;
 use Illuminate\Database\Eloquent\Builder;
-use App\Services\UploadBillToGoogleDrive;
+use App\Filament\Support\BillTable;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action;
 
@@ -27,7 +27,7 @@ class BillResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Ops';
-    protected static ?string $recordTitleAttribute = 'name';
+    protected static ?string $recordTitleAttribute = 'display_name';
 
 
 
@@ -40,10 +40,17 @@ class BillResource extends Resource
                 Forms\Components\Card::make()
                     ->schema([
                         Forms\Components\TextInput::make('name')
+                            ->label('Custom bill name')
                             ->maxLength(255)
-                            ->disabled()
-                            ->dehydrated()
-                            ->helperText('Bill name will be auto-generated based on file reference and sequence'),
+                            ->placeholder(fn (?Bill $record): string => $record?->display_name ?? '')
+                            ->helperText(fn (?Bill $record): string => $record
+                                ? 'Auto-generated: ' . $record->display_name . '. Leave empty to keep using it.'
+                                : 'Leave empty to use the auto-generated bill number.')
+                            ->afterStateHydrated(function (Forms\Components\TextInput $component, ?Bill $record): void {
+                                if ($record && ! $record->hasCustomName()) {
+                                    $component->state('');
+                                }
+                            }),
                         Forms\Components\Select::make('file_id')
                             ->relationship('file', 'mga_reference')
                             ->required()
@@ -132,14 +139,16 @@ class BillResource extends Resource
         ])
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
                 'file.patient.client',
+                'file.patient',
+                'file.serviceType',
                 'provider',
-                'branch'
+                'branch',
             ]))
             ->defaultSort('bill_date', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')->searchable()->sortable()->label('Provider'),
                 Tables\Columns\TextColumn::make('branch.branch_name')->searchable()->sortable()->label('Branch'),
-                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
+                BillTable::nameColumn(editable: true),
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->searchable()
                     ->sortable()
@@ -256,7 +265,7 @@ class BillResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return ($record->name ?? 'Unknown') . ' - ' . ($record->file?->mga_reference ?? 'Unknown File');
+        return ($record->display_name ?? 'Unknown') . ' - ' . ($record->file?->mga_reference ?? 'Unknown File');
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array

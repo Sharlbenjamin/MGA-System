@@ -10,9 +10,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use App\Models\Gop;
 use App\Services\UploadGopToGoogleDrive;
 use Filament\Notifications\Notification;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -37,38 +37,35 @@ class GopRelationManager extends RelationManager
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client', 'providerBranch']))
             ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('type'),
-                TextColumn::make('file.patient.client.company_name')
-                    ->label('Client')
-                    ->sortable()
-                    ->searchable(),
-                TextColumn::make('amount'),
+                TextColumn::make('providerBranch.branch_name')->label('Provider')->placeholder('—'),
+                TextColumn::make('offered_cost')->label('Cost')->placeholder('—'),
+                TextColumn::make('file_fee')->label('Fee')->placeholder('—'),
+                TextColumn::make('amount')->label('Total'),
                 TextColumn::make('date')->date(),
-                TextColumn::make('status')->badge()->color(fn($state) => $state === 'Sent' ? 'success' : 'danger'),
+                TextColumn::make('status')->badge()->color(fn (Gop $record, $state) => match (true) {
+                    $record->type === 'In' && $state === Gop::IN_STATUS_ACCEPTED => 'success',
+                    $record->type === 'In' && $state === Gop::IN_STATUS_REJECTED => 'danger',
+                    $record->type === 'Out' && $state === Gop::OUT_STATUS_SENT => 'success',
+                    default => 'warning',
+                }),
             ])
             ->headerActions([
                 // Create via modal action
                 Action::make('create')->label('Add GOP')->icon('heroicon-o-plus')->modalHeading('Add GOP')
                 ->modalButton('Create')
-                    ->form([
-                        // Use a hidden field to set file_id from the owner record
-                        Hidden::make('file_id')->default(fn() => $this->ownerRecord->getKey()),
-                        Select::make('type')
-                            ->options([
-                                'In'  => 'In',
-                                'Out' => 'Out',
-                            ])
-                            ->required(),
-                        TextInput::make('amount')->numeric()->required(),
-                        DatePicker::make('date')->required(),
-                        Select::make('status')->options(['Not Sent' => 'Not Sent', 'Sent' => 'Sent', 'Updated' => 'Updated', 'Cancelled' => 'Cancelled'])->default('Not Sent')->required(),
-                        TextInput::make('gop_google_drive_link')->label('Google Drive Link')->nullable(),
-                    ])
+                    ->form($this->gopFormSchema())
                     ->action(function (array $data) {
-                        // Create the GOP record using the parent model's relation
+                        if (($data['type'] ?? null) === 'In') {
+                            $data['amount'] = round(
+                                (float) ($data['offered_cost'] ?? 0) + (float) ($data['file_fee'] ?? 0),
+                                2,
+                            );
+                        }
+
                         $this->ownerRecord->gops()->create($data);
                     })
             ])
@@ -195,6 +192,10 @@ class GopRelationManager extends RelationManager
                         // Update GOP with local document path (PRIMARY)
                         $record->document_path = $localPath;
 
+                        if ($record->type === 'Out') {
+                            $record->status = Gop::OUT_STATUS_SENT;
+                        }
+
                         // Clean up temporary file if it exists (from FileUpload component)
                         if (isset($uploadedFile) && $uploadedFile !== $localPath) {
                             try {
@@ -213,11 +214,9 @@ class GopRelationManager extends RelationManager
                         );
 
                         if ($result !== false) {
-                            // Update GOP with Google Drive link if upload successful (backup only)
                             $record->gop_google_drive_link = $result;
                         }
 
-                        $record->status = 'Sent';
                         $record->save();
 
                         $actionType = $record->type === 'Out' ? 'generated and uploaded' : 'uploaded';
@@ -240,6 +239,7 @@ class GopRelationManager extends RelationManager
                     ->label('Send')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
+                    ->visible(fn (Gop $record) => $record->type === 'Out')
                     ->requiresConfirmation()
                     ->modalHeading('Send GOP')
                     ->modalDescription('Are you sure you want to send this GOP to the branch?')
@@ -253,22 +253,16 @@ class GopRelationManager extends RelationManager
                     ->icon('heroicon-o-pencil')
                     ->modalHeading('Edit GOP')
                     ->modalButton('Update')
-                    ->form(function ($record) {
-                        return [
-                            // file_id can be hidden and unchanged
-                            Hidden::make('file_id')->default($record->file_id),
-                            Select::make('type')
-                                ->options([
-                                    'In'  => 'In',
-                                    'Out' => 'Out',
-                                ])->default($record->type)->required(),
-                            TextInput::make('amount')->numeric()->default($record->amount)->required(),
-                            DatePicker::make('date')->default($record->date)->required(),
-                            Select::make('status')->options(['Not Sent' => 'Not Sent', 'Sent' => 'Sent', 'Updated' => 'Updated', 'Cancelled' => 'Cancelled'])->default($record->status)->required(),
-                            TextInput::make('gop_google_drive_link')->label('Google Drive Link')->nullable(),
-                        ];
-                    })
-                    ->action(function ($record, array $data) {
+                    ->fillForm(fn (Gop $record) => $record->toArray())
+                    ->form($this->gopFormSchema(isEdit: true))
+                    ->action(function (Gop $record, array $data) {
+                        if (($data['type'] ?? $record->type) === 'In') {
+                            $data['amount'] = round(
+                                (float) ($data['offered_cost'] ?? 0) + (float) ($data['file_fee'] ?? 0),
+                                2,
+                            );
+                        }
+
                         $record->update($data);
                     }),
                 // Delete action
@@ -284,5 +278,49 @@ class GopRelationManager extends RelationManager
             ->bulkActions([
                 DeleteBulkAction::make(),
             ]);
+    }
+
+    protected function gopFormSchema(bool $isEdit = false): array
+    {
+        return [
+            Hidden::make('file_id')->default(fn () => $this->ownerRecord->getKey()),
+            Select::make('type')
+                ->options(['In' => 'In', 'Out' => 'Out'])
+                ->required()
+                ->live()
+                ->disabled($isEdit),
+            Select::make('provider_branch_id')
+                ->label('Provider branch')
+                ->options(fn () => \App\Models\ProviderBranch::query()->orderBy('branch_name')->pluck('branch_name', 'id'))
+                ->searchable()
+                ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
+            TextInput::make('offered_cost')
+                ->label('Offered cost')
+                ->numeric()
+                ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
+            TextInput::make('file_fee')
+                ->label('File fee')
+                ->numeric()
+                ->default(0)
+                ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
+            TextInput::make('amount')
+                ->label(fn (Forms\Get $get) => $get('type') === 'In' ? 'Total (auto for In)' : 'Amount')
+                ->numeric()
+                ->required(fn (Forms\Get $get) => $get('type') === 'Out')
+                ->disabled(fn (Forms\Get $get) => $get('type') === 'In'),
+            Forms\Components\Textarea::make('notes')
+                ->rows(2)
+                ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
+            DatePicker::make('date')->required(),
+            Select::make('status')
+                ->options(fn (Forms\Get $get) => $get('type') === 'In'
+                    ? Gop::inStatusOptions()
+                    : Gop::outStatusOptions())
+                ->default(fn (Forms\Get $get) => $get('type') === 'In'
+                    ? Gop::IN_STATUS_DRAFT
+                    : Gop::OUT_STATUS_NOT_SENT)
+                ->required(),
+            TextInput::make('gop_google_drive_link')->label('Google Drive Link')->nullable(),
+        ];
     }
 }

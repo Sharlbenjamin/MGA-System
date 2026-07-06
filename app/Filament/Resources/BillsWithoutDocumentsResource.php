@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillsWithoutDocumentsResource\Pages;
+use App\Filament\Support\BillTable;
 use App\Models\Bill;
 use App\Services\BillIntegrityService;
 use Filament\Forms;
@@ -107,10 +108,7 @@ class BillsWithoutDocumentsResource extends Resource
                     ->label('Provider')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Bill Name')
-                    ->searchable()
-                    ->sortable(),
+                BillTable::nameColumn(),
                 Tables\Columns\TextColumn::make('total_amount')
                     ->money('EUR')
                     ->sortable(),
@@ -209,7 +207,7 @@ class BillsWithoutDocumentsResource extends Resource
                                     ->get();
                                 
                                 return $bills->mapWithKeys(function ($bill) {
-                                    $label = "ID: {$bill->id} - {$bill->file->mga_reference} - {$bill->file->patient->name} - {$bill->name}";
+                                    $label = "ID: {$bill->id} - {$bill->file->mga_reference} - {$bill->file->patient->name} - {$bill->display_name}";
                                     return [$bill->id => $label];
                                 });
                             })

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\FileResource\RelationManagers;
 
+use App\Filament\Support\BillTable;
 use App\Filament\Resources\BillResource;
 use App\Filament\Resources\FileResource;
 use App\Filament\Resources\FileResource\Pages;
@@ -38,29 +39,9 @@ class BillRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(BillTable::eagerLoadRelations()))
             ->defaultPaginationPageOption(10)
-            ->columns([
-                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('file.patient.client.company_name')
-                    ->label('Client')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()
-                ->color(fn (string $state): string => match ($state) {
-                    'Paid' => 'success',
-                    'Unpaid' => 'warning',
-                    'Partial' => 'gray',
-                }),
-                Tables\Columns\TextColumn::make('due_date')->sortable()->searchable()->date(),
-                Tables\Columns\TextColumn::make('total_amount')->sortable()->searchable()->money('EUR'),
-                Tables\Columns\TextColumn::make('remaining_amount')
-                    ->label('Remaining Amount')
-                    ->money('EUR')
-                    ->state(fn ($record) => $record->total_amount - $record->paid_amount)
-                    ->sortable()
-                    ->searchable(),
-            ])
+            ->columns(BillTable::relationManagerColumns())
             ->filters([
                 SelectFilter::make('status')
                     ->options([

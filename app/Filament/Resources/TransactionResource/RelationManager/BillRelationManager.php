@@ -16,6 +16,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use App\Filament\Support\BillTable;
 
 class BillRelationManager extends RelationManager
 {
@@ -39,26 +40,21 @@ class BillRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('name')
+            ->recordTitleAttribute('display_name')
             ->modifyQueryUsing(function (Builder $query): void {
-                $query->select(
-                    'bills.*',
-                    'bill_transaction.amount_paid',
-                )->selectSub(
-                    DB::table('bill_transaction')
-                        ->selectRaw('COALESCE(SUM(amount_paid), 0)')
-                        ->whereColumn('bill_id', 'bills.id'),
-                    'bill_total_paid',
-                );
+                $query->with(BillTable::eagerLoadRelations())
+                    ->select(
+                        'bills.*',
+                        'bill_transaction.amount_paid',
+                    )->selectSub(
+                        DB::table('bill_transaction')
+                            ->selectRaw('COALESCE(SUM(amount_paid), 0)')
+                            ->whereColumn('bill_id', 'bills.id'),
+                        'bill_total_paid',
+                    );
             })
             ->columns([
-                TextColumn::make('name')
-                    ->label('Bill')
-                    ->searchable()
-                    ->sortable()
-                    ->color('primary')
-                    ->url(fn (Bill $record): string => BillResource::getUrl('edit', ['record' => $record]))
-                    ->openUrlInNewTab(),
+                BillTable::nameColumn(editable: true),
                 TextColumn::make('total_amount')
                     ->label('Bill total')
                     ->money('EUR')
