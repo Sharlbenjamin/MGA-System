@@ -34,6 +34,8 @@ class Gop extends Model
     protected $fillable = [
         'file_id',
         'provider_branch_id',
+        'service_type_id',
+        'service_type_other',
         'type',
         'amount',
         'offered_cost',
@@ -49,6 +51,7 @@ class Gop extends Model
         'id' => 'integer',
         'file_id' => 'integer',
         'provider_branch_id' => 'integer',
+        'service_type_id' => 'integer',
         'amount' => 'float',
         'offered_cost' => 'float',
         'file_fee' => 'float',
@@ -135,6 +138,20 @@ class Gop extends Model
     public function providerBranch(): BelongsTo
     {
         return $this->belongsTo(ProviderBranch::class);
+    }
+
+    public function serviceType(): BelongsTo
+    {
+        return $this->belongsTo(ServiceType::class);
+    }
+
+    public function getEffectiveServiceTypeNameAttribute(): string
+    {
+        if (filled($this->service_type_other)) {
+            return trim($this->service_type_other);
+        }
+
+        return trim((string) ($this->serviceType?->name ?? ''));
     }
 
     public function sendGopToBranch()

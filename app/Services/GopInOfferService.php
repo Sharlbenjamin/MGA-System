@@ -60,8 +60,19 @@ class GopInOfferService
         float $fileFee = 0,
         string $status = Gop::IN_STATUS_DRAFT,
         ?string $notes = null,
+        ?int $serviceTypeId = null,
+        ?string $serviceTypeOther = null,
     ): Gop {
-        return DB::transaction(function () use ($file, $providerBranchId, $offeredCost, $fileFee, $status, $notes) {
+        return DB::transaction(function () use (
+            $file,
+            $providerBranchId,
+            $offeredCost,
+            $fileFee,
+            $status,
+            $notes,
+            $serviceTypeId,
+            $serviceTypeOther,
+        ) {
             if ($status === Gop::IN_STATUS_ACCEPTED) {
                 $this->clearAcceptedOffers($file);
             }
@@ -69,6 +80,8 @@ class GopInOfferService
             return $file->gops()->create([
                 'type' => 'In',
                 'provider_branch_id' => $providerBranchId,
+                'service_type_id' => $serviceTypeId,
+                'service_type_other' => filled($serviceTypeOther) ? trim($serviceTypeOther) : null,
                 'offered_cost' => round($offeredCost, 2),
                 'file_fee' => round($fileFee, 2),
                 'amount' => round($offeredCost + $fileFee, 2),
@@ -124,7 +137,7 @@ class GopInOfferService
         return $file->gops()
             ->where('type', 'In')
             ->where('status', Gop::IN_STATUS_ACCEPTED)
-            ->with(['providerBranch.provider'])
+            ->with(['providerBranch.provider', 'serviceType'])
             ->latest('id')
             ->first();
     }
@@ -168,7 +181,7 @@ class GopInOfferService
         }
     }
 
-    protected function resolveFileFeeAmount(File $file, int $serviceTypeId): ?float
+    public function resolveFileFeeAmount(File $file, int $serviceTypeId): ?float
     {
         $countryId = $file->country_id;
         $cityId = $file->city_id;

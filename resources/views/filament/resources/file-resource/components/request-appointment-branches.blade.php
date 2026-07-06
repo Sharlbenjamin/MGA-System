@@ -26,7 +26,7 @@
     @if ($livewire->branchTableRows === [])
         <p class="text-sm text-gray-500 dark:text-gray-400 py-4">No eligible provider branches found for this file.</p>
     @else
-        <table class="w-full min-w-[1200px] text-sm">
+        <table class="w-full min-w-[1400px] text-sm">
             <thead>
                 <tr class="bg-gray-50 border-b-2 border-gray-200 font-semibold text-left dark:bg-white/5 dark:border-white/10">
                     <th class="px-2 py-2 w-10">
@@ -39,6 +39,7 @@
                         />
                     </th>
                     <th class="px-2 py-2">Branch</th>
+                    <th class="px-2 py-2 w-40">Service</th>
                     <th class="px-2 py-2 w-16">Priority</th>
                     <th class="px-2 py-2 w-24">List cost</th>
                     <th class="px-2 py-2 w-24">Offer cost</th>
@@ -54,7 +55,15 @@
                 @foreach ($livewire->branchTableRows as $row)
                     @php
                         $branchId = $row['id'];
-                        $inputs = $livewire->branchOfferInputs[$branchId] ?? ['offered_cost' => '', 'file_fee' => '0', 'notes' => ''];
+                        $inputs = $livewire->branchOfferInputs[$branchId] ?? [
+                            'offered_cost' => '',
+                            'file_fee' => '0',
+                            'notes' => '',
+                            'service_type_id' => $row['default_service_type_id'],
+                            'service_type_other' => '',
+                        ];
+                        $serviceTypeId = $inputs['service_type_id'] ?? null;
+                        $showOtherService = $serviceTypeId === 'other' || (blank($serviceTypeId) && filled($inputs['service_type_other'] ?? null));
                         $offeredCost = is_numeric($inputs['offered_cost'] ?? null) ? (float) $inputs['offered_cost'] : 0;
                         $fileFee = is_numeric($inputs['file_fee'] ?? null) ? (float) $inputs['file_fee'] : 0;
                         $rowTotal = $offeredCost + $fileFee;
@@ -77,6 +86,26 @@
                                 'providerName' => $row['provider_name'],
                                 'providerComment' => $row['provider_comment'],
                             ])
+                        </td>
+                        <td class="px-2 py-2 align-top">
+                            <select
+                                wire:model.live="branchOfferInputs.{{ $branchId }}.service_type_id"
+                                class="mb-1 w-36 rounded-md border-gray-300 text-xs shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
+                            >
+                                <option value="">— Select —</option>
+                                @foreach ($livewire->serviceTypeOptions as $id => $name)
+                                    <option value="{{ $id }}">{{ $name }}</option>
+                                @endforeach
+                                <option value="other">Other (specify)</option>
+                            </select>
+                            @if ($showOtherService)
+                                <input
+                                    type="text"
+                                    wire:model.blur="branchOfferInputs.{{ $branchId }}.service_type_other"
+                                    class="w-36 rounded-md border-gray-300 text-xs shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
+                                    placeholder="Service name"
+                                />
+                            @endif
                         </td>
                         <td class="px-2 py-2 align-top">{{ $row['priority'] }}</td>
                         <td class="px-2 py-2 align-top text-gray-500">{{ $row['cost'] }}</td>

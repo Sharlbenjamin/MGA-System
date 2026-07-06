@@ -7,6 +7,7 @@ use App\Jobs\SendAppointmentRequestsJob;
 use App\Models\FileFee;
 use App\Models\Gop;
 use App\Models\ServiceType;
+use App\Services\AppointmentRequestMessageFormatter;
 use App\Services\DistanceCalculationService;
 use App\Services\GopInOfferService;
 use Filament\Actions\Action;
@@ -61,7 +62,7 @@ class RequestAppointment extends Page implements HasForms
 
     public ?array $data = [];
 
-    /** @var array<int, array{offered_cost: ?string, file_fee: ?string, notes: ?string}> */
+    /** @var array<int, array{offered_cost: ?string, file_fee: ?string, notes: ?string, service_type_id: int|string|null, service_type_other: ?string}> */
     public array $branchOfferInputs = [];
 
     protected function getForms(): array
@@ -262,12 +263,17 @@ class RequestAppointment extends Page implements HasForms
                     ? (string) ($latestOffer->file_fee ?? 0)
                     : ($suggested['file_fee'] !== null ? (string) $suggested['file_fee'] : ''),
                 'notes' => $latestOffer?->notes ?? '',
+                'service_type_id' => filled($latestOffer?->service_type_other)
+                    ? 'other'
+                    : ($latestOffer?->service_type_id ?? $this->record->service_type_id),
+                'service_type_other' => $latestOffer?->service_type_other ?? '',
             ];
         }
 
         return [
             'id' => $branch->id,
             'branch_name' => $branch->branch_name,
+            'default_service_type_id' => $this->record->service_type_id,
             'provider_name' => $branch->provider?->name,
             'provider_comment' => $branch->provider?->comment,
             'priority' => $branch->priority ?? 'N/A',
@@ -307,6 +313,7 @@ class RequestAppointment extends Page implements HasForms
         }
 
         $offerService = app(GopInOfferService::class);
+        [$serviceTypeId, $serviceTypeOther] = $this->parseServiceTypeFromInputs($inputs);
         $gop = $offerService->createOffer(
             $this->record,
             $branchId,
@@ -314,6 +321,8 @@ class RequestAppointment extends Page implements HasForms
             (float) ($inputs['file_fee'] ?? 0),
             Gop::IN_STATUS_ACCEPTED,
             $inputs['notes'] ?? null,
+            $serviceTypeId,
+            $serviceTypeOther,
         );
 
         Notification::make()->title('Offer accepted')->body("€{$gop->amount} accepted for this provider.")->success()->send();
@@ -343,6 +352,7 @@ class RequestAppointment extends Page implements HasForms
             return null;
         }
 
+        [$serviceTypeId, $serviceTypeOther] = $this->parseServiceTypeFromInputs($inputs);
         $gop = app(GopInOfferService::class)->createOffer(
             $this->record,
             $branchId,
@@ -350,6 +360,8 @@ class RequestAppointment extends Page implements HasForms
             (float) ($inputs['file_fee'] ?? 0),
             $status,
             $inputs['notes'] ?? null,
+            $serviceTypeId,
+            $serviceTypeOther,
         );
 
         Notification::make()->title($successTitle)->body("€{$gop->amount} for {$gop->providerBranch?->branch_name}.")->success()->send();
@@ -641,66 +653,45 @@ class RequestAppointment extends Page implements HasForms
 
     protected function formatAppointmentRequestText($branch): string
     {
-        $address = $branch->address ?? 'N/A';
-        $patientAddress = $this->record->address ?? null;
-        $distanceText = isset($branch->sort_distance) && $branch->sort_distance < 999999
-            ? round($branch->sort_distance, 0) . 'Mins by car'
-            : 'N/A';
-        $branchName = $branch->branch_name ?? 'N/A';
-        $serviceTypeName = trim((string) ($this->record->serviceType?->name ?? ''));
-        $isHospitalVisit = strcasecmp($serviceTypeName, 'Hospital Visit') === 0;
-        $dateTime = $isHospitalVisit
-            ? 'The patient will wait in the ER for assesment'
-            : 'N/A';
-        if (! $isHospitalVisit && $this->record->service_date) {
-            $parts = [$this->record->service_date->format('d/m/Y')];
-            if ($this->record->service_time) {
-                $parts[] = \Carbon\Carbon::parse($this->record->service_time)->format('H:i');
-            }
-            $dateTime = implode(' at ', $parts);
-        }
-        $cost = 'N/A';
-        $gop = 'N/A';
-        $serviceTypeId = $this->record->service_type_id;
-        if ($serviceTypeId) {
-            $service = $this->getBranchServiceForRecord($branch);
-            if ($service) {
-                $minCost = $service->pivot->min_cost;
-                $maxCost = $service->pivot->max_cost;
-                $fileFeeAmount = $this->getFileFeeForServiceType($serviceTypeId);
-                if ($serviceTypeId == 2 && $fileFeeAmount) {
-                    $cost = number_format($fileFeeAmount, 0) . '€';
-                    $gop = $cost;
-                } elseif ($serviceTypeId == 1 && ($minCost || $maxCost)) {
-                    $base = $minCost ?? $maxCost ?? 0;
-                    $rounded = $base < 200 ? 300 : ceil($base / 100) * 100;
-                    $cost = number_format($rounded, 0) . '€';
-                    $gop = $cost;
-                } elseif ($fileFeeAmount) {
-                    $max = $maxCost ?? $minCost ?? 0;
-                    $mult = ceil($max / 250);
-                    $fee = $fileFeeAmount * $mult;
-                    $cost = number_format($max, 0) . '€';
-                    $gop = number_format($max + $fee, 0) . '€';
-                } elseif ($minCost) {
-                    $cost = number_format($minCost, 0) . '€';
-                    $gop = $cost;
-                }
-            }
-        }
-        $text = "Address: {$address}\n";
-        $text .= "Distance: {$distanceText}\n";
-        $text .= "Name: {$branchName}\n";
+        $distanceMinutes = isset($branch->sort_distance) && $branch->sort_distance < 999999
+            ? (float) $branch->sort_distance
+            : null;
 
-        if (!empty($patientAddress)) {
-            $text .= "Patient Address: {$patientAddress}\n";
+        return app(AppointmentRequestMessageFormatter::class)->format(
+            $this->record,
+            $branch,
+            $distanceMinutes,
+        );
+    }
+
+    /**
+     * @return array{0: ?int, 1: ?string}
+     */
+    protected function parseServiceTypeFromInputs(array $inputs): array
+    {
+        $serviceTypeId = $inputs['service_type_id'] ?? null;
+        $serviceTypeOther = null;
+
+        if ($serviceTypeId === 'other') {
+            $serviceTypeId = null;
+            $serviceTypeOther = filled($inputs['service_type_other'] ?? null)
+                ? trim((string) $inputs['service_type_other'])
+                : null;
+        } elseif (filled($serviceTypeId)) {
+            $serviceTypeId = (int) $serviceTypeId;
+        } else {
+            $serviceTypeId = null;
+            $serviceTypeOther = filled($inputs['service_type_other'] ?? null)
+                ? trim((string) $inputs['service_type_other'])
+                : null;
         }
 
-        $text .= "Date & Time: {$dateTime}\n";
-        $text .= "Cost: {$cost}\n";
-        $text .= "Requested GOP: {$gop}";
+        return [$serviceTypeId, $serviceTypeOther];
+    }
 
-        return $text;
+    public function getServiceTypeOptionsProperty(): array
+    {
+        return ServiceType::query()->orderBy('name')->pluck('name', 'id')->all();
     }
 
     protected function getFileFeeForServiceType(?int $serviceTypeId): ?float

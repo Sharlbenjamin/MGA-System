@@ -99,7 +99,7 @@ class File extends Model
         return $this->gops()
             ->where('type', 'In')
             ->where('status', Gop::IN_STATUS_ACCEPTED)
-            ->with(['providerBranch.provider'])
+            ->with(['providerBranch.provider', 'serviceType'])
             ->latest('id')
             ->first();
     }

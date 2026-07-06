@@ -2366,153 +2366,22 @@ class ViewFile extends ViewRecord
      */
     protected function formatAppointmentRequestText($branch): string
     {
-        // Address
-        $address = $branch->address ?? 'N/A';
-        $patientAddress = $this->record->address ?? null;
-        
-        // Distance - extract from distance calculation
-        $distanceText = 'N/A';
+        $distanceMinutes = null;
+
         try {
             $distanceData = $this->calculateBranchDistanceForSorting($branch);
-            if (isset($distanceData['display'])) {
-                // Extract text from HTML if needed, or use a simple format
-                // The user wants format like "20Mins by car"
-                if ($distanceData['sort_value'] < 999999) {
-                    $minutes = round($distanceData['sort_value'], 0);
-                    $distanceText = "{$minutes}Mins by car";
-                }
+            if (isset($distanceData['sort_value']) && $distanceData['sort_value'] < 999999) {
+                $distanceMinutes = (float) $distanceData['sort_value'];
             }
         } catch (\Exception $e) {
-            $distanceText = 'N/A';
+            $distanceMinutes = null;
         }
-        
-        // Branch name
-        $branchName = $branch->branch_name ?? 'N/A';
-        
-        // Date & Time
-        $dateTime = 'N/A';
-        if ($this->record) {
-            $dateParts = [];
-            if ($this->record->service_date) {
-                $dateParts[] = \Carbon\Carbon::parse($this->record->service_date)->format('d/m/Y');
-            }
-            if ($this->record->service_time) {
-                $timeParts = explode(':', $this->record->service_time);
-                if (count($timeParts) >= 2) {
-                    $dateParts[] = $timeParts[0] . ':' . $timeParts[1];
-                }
-            }
-            $dateTime = !empty($dateParts) ? implode(' at ', $dateParts) : 'N/A';
-        }
-        
-        // Get service type and branch service data
-        $serviceTypeId = $this->record->service_type_id ?? null;
-        $minCost = null;
-        $maxCost = null; // This is the "selling price"
-        $cost = 'N/A';
-        $fileFeeText = '';
-        $gop = 'N/A';
-        
-        if ($this->record && $serviceTypeId) {
-            $service = $branch->services()
-                ->where('service_type_id', $serviceTypeId)
-                ->first();
-            
-            if ($service) {
-                $minCost = $service->pivot->min_cost;
-                $maxCost = $service->pivot->max_cost; // This is the selling price
-            }
-        }
-        
-        // Get file fee from file_fees table for the service type
-        $fileFeeAmount = $this->getFileFeeForServiceType($serviceTypeId);
-        
-        // Calculate based on service type
-        if ($serviceTypeId == 2) {
-            // Telemedicine: Only cost and GOP = File Fee amount
-            if ($fileFeeAmount) {
-                $cost = number_format($fileFeeAmount, 0) . '€';
-                $gop = number_format($fileFeeAmount, 0) . '€';
-                $fileFeeText = ''; // No file fee text for telemedicine
-            } else {
-                $cost = 'N/A';
-                $gop = 'N/A';
-            }
-        } elseif ($serviceTypeId == 1) {
-            // House Call: Round to nearest 100€ (special logic: <200→300, then round up to next 100€)
-            if ($minCost || $maxCost) {
-                $baseCost = $minCost ?? $maxCost ?? 0;
-                // Special rounding logic for House Call
-                $roundedCost = $this->roundHouseCallCost($baseCost);
-                $cost = number_format($roundedCost, 0) . '€';
-                $gop = number_format($roundedCost, 0) . '€';
-                $fileFeeText = ''; // No file fee for house call
-            }
-        } else {
-            // Any other service type
-            if (empty($maxCost)) {
-                // If selling price (max_cost) is empty, use min_cost
-                if ($minCost) {
-                    $cost = number_format($minCost, 0) . '€';
-                    
-                    // Calculate file fee: for each 250€, add one multiple of file fee
-                    if ($fileFeeAmount) {
-                        $fileFeeMultiplier = ceil($minCost / 250);
-                        $calculatedFileFee = $fileFeeAmount * $fileFeeMultiplier;
-                        $fileFeeText = ' + ' . number_format($calculatedFileFee, 0) . '€ file fee';
-                        $gop = number_format($minCost + $calculatedFileFee, 0) . '€';
-                    } else {
-                        // Try to get Clinic Visit file fee as substitute
-                        $clinicVisitFileFee = $this->getFileFeeForClinicVisit();
-                        if ($clinicVisitFileFee) {
-                            $fileFeeMultiplier = ceil($minCost / 250);
-                            $calculatedFileFee = $clinicVisitFileFee * $fileFeeMultiplier;
-                            $fileFeeText = ' + ' . number_format($calculatedFileFee, 0) . '€ file fee';
-                            $gop = number_format($minCost + $calculatedFileFee, 0) . '€';
-                        } else {
-                            $fileFeeText = '';
-                            $gop = number_format($minCost, 0) . '€';
-                        }
-                    }
-                }
-            } else {
-                // If selling price (max_cost) is not empty, use it and add file fee (MULTIPLIED)
-                $cost = number_format($maxCost, 0) . '€';
-                
-                if ($fileFeeAmount) {
-                    // File fee should be multiplied for all services except house call and telemedicine
-                    $fileFeeMultiplier = ceil($maxCost / 250);
-                    $calculatedFileFee = $fileFeeAmount * $fileFeeMultiplier;
-                    $fileFeeText = ' + ' . number_format($calculatedFileFee, 0) . '€ file fee';
-                    $gop = number_format($maxCost + $calculatedFileFee, 0) . '€';
-                } else {
-                    // Try Clinic Visit file fee as substitute
-                    $clinicVisitFileFee = $this->getFileFeeForClinicVisit();
-                    if ($clinicVisitFileFee) {
-                        $fileFeeMultiplier = ceil($maxCost / 250);
-                        $calculatedFileFee = $clinicVisitFileFee * $fileFeeMultiplier;
-                        $fileFeeText = ' + ' . number_format($calculatedFileFee, 0) . '€ file fee';
-                        $gop = number_format($maxCost + $calculatedFileFee, 0) . '€';
-                    } else {
-                        $fileFeeText = '';
-                        $gop = number_format($maxCost, 0) . '€';
-                    }
-                }
-            }
-        }
-        
-        // Format the text
-        $text = "Address: {$address}\n";
-        $text .= "Distance: {$distanceText}\n";
-        $text .= "Name: {$branchName}\n";
-        if (!empty($patientAddress)) {
-            $text .= "Patient Address: {$patientAddress}\n";
-        }
-        $text .= "Date & Time: {$dateTime}\n";
-        $text .= "Cost: {$cost}{$fileFeeText}\n";
-        $text .= "Requested GOP: {$gop}";
-        
-        return $text;
+
+        return app(\App\Services\AppointmentRequestMessageFormatter::class)->format(
+            $this->record,
+            $branch,
+            $distanceMinutes,
+        );
     }
 
     /**

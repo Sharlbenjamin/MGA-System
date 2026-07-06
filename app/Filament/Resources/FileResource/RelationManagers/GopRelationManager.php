@@ -13,6 +13,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use App\Models\Gop;
+use App\Models\ServiceType;
 use App\Services\UploadGopToGoogleDrive;
 use Filament\Notifications\Notification;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -37,11 +38,12 @@ class GopRelationManager extends RelationManager
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client', 'providerBranch']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client', 'providerBranch', 'serviceType']))
             ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('type'),
                 TextColumn::make('providerBranch.branch_name')->label('Provider')->placeholder('—'),
+                TextColumn::make('effective_service_type_name')->label('Service')->placeholder('—'),
                 TextColumn::make('offered_cost')->label('Cost')->placeholder('—'),
                 TextColumn::make('file_fee')->label('Fee')->placeholder('—'),
                 TextColumn::make('amount')->label('Total'),
@@ -60,10 +62,7 @@ class GopRelationManager extends RelationManager
                     ->form($this->gopFormSchema())
                     ->action(function (array $data) {
                         if (($data['type'] ?? null) === 'In') {
-                            $data['amount'] = round(
-                                (float) ($data['offered_cost'] ?? 0) + (float) ($data['file_fee'] ?? 0),
-                                2,
-                            );
+                            $data = $this->normalizeInGopData($data);
                         }
 
                         $this->ownerRecord->gops()->create($data);
@@ -257,10 +256,7 @@ class GopRelationManager extends RelationManager
                     ->form($this->gopFormSchema(isEdit: true))
                     ->action(function (Gop $record, array $data) {
                         if (($data['type'] ?? $record->type) === 'In') {
-                            $data['amount'] = round(
-                                (float) ($data['offered_cost'] ?? 0) + (float) ($data['file_fee'] ?? 0),
-                                2,
-                            );
+                            $data = $this->normalizeInGopData($data);
                         }
 
                         $record->update($data);
@@ -294,6 +290,20 @@ class GopRelationManager extends RelationManager
                 ->options(fn () => \App\Models\ProviderBranch::query()->orderBy('branch_name')->pluck('branch_name', 'id'))
                 ->searchable()
                 ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
+            Select::make('service_type_id')
+                ->label('Service type')
+                ->options(fn () => ServiceType::query()->orderBy('name')->pluck('name', 'id'))
+                ->searchable()
+                ->placeholder('Select from list')
+                ->live()
+                ->visible(fn (Forms\Get $get) => $get('type') === 'In')
+                ->afterStateUpdated(fn (Forms\Set $set) => $set('service_type_other', null)),
+            Forms\Components\TextInput::make('service_type_other')
+                ->label('Other service type')
+                ->placeholder('e.g. Cardiology specialist')
+                ->maxLength(255)
+                ->visible(fn (Forms\Get $get) => $get('type') === 'In')
+                ->helperText('Use when the service is not in the list above.'),
             TextInput::make('offered_cost')
                 ->label('Offered cost')
                 ->numeric()
@@ -322,5 +332,25 @@ class GopRelationManager extends RelationManager
                 ->required(),
             TextInput::make('gop_google_drive_link')->label('Google Drive Link')->nullable(),
         ];
+    }
+
+    protected function normalizeInGopData(array $data): array
+    {
+        $data['amount'] = round(
+            (float) ($data['offered_cost'] ?? 0) + (float) ($data['file_fee'] ?? 0),
+            2,
+        );
+
+        if (filled($data['service_type_id'] ?? null)) {
+            $data['service_type_other'] = null;
+        } elseif (filled($data['service_type_other'] ?? null)) {
+            $data['service_type_id'] = null;
+            $data['service_type_other'] = trim((string) $data['service_type_other']);
+        } else {
+            $data['service_type_id'] = null;
+            $data['service_type_other'] = null;
+        }
+
+        return $data;
     }
 }
