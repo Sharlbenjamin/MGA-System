@@ -36,6 +36,8 @@ class AppointmentRequestMessageFormatter
             "Date & Time: {$dateTime}",
             "Cost: {$cost}",
             "Requested GOP: {$requestedGop}",
+            '',
+            'Please let us know if these details suits the patient in order to proceed with the booking or check for another appointment',
         ];
 
         return implode("\n", $lines);

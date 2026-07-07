@@ -290,6 +290,7 @@ class RequestAppointment extends Page implements HasForms
             'suggested_total' => $suggested['total'] !== null
                 ? number_format((float) $suggested['total'], 2)
                 : null,
+            'distance_display' => $this->branchDistanceCache[$branch->id]['display'] ?? 'N/A',
         ];
     }
 

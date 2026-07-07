@@ -47,6 +47,9 @@
                     <th class="px-2 py-2 w-20">Total</th>
                     <th class="px-2 py-2 w-24">Offer status</th>
                     <th class="px-2 py-2 w-28">Offer actions</th>
+                    <th class="px-2 py-2 w-16">Phone</th>
+                    <th class="px-2 py-2 w-24">Address</th>
+                    <th class="px-2 py-2 w-20">Website</th>
                     <th class="px-2 py-2 w-20">Distance</th>
                     <th class="px-2 py-2 w-20">Request</th>
                 </tr>
@@ -161,7 +164,25 @@
                                 >Accept</button>
                             </div>
                         </td>
-                        <td class="px-2 py-2 align-top text-gray-400">N/A</td>
+                        <td class="px-2 py-2 align-top">
+                            @include('filament.forms.components.copiable-field', [
+                                'label' => 'phone',
+                                'value' => $row['phone'],
+                            ])
+                        </td>
+                        <td class="px-2 py-2 align-top">
+                            @include('filament.forms.components.copiable-field', [
+                                'label' => 'address',
+                                'value' => $row['address'],
+                            ])
+                        </td>
+                        <td class="px-2 py-2 align-top">
+                            @include('filament.forms.components.copiable-field', [
+                                'label' => 'website',
+                                'value' => $row['website'],
+                            ])
+                        </td>
+                        <td class="px-2 py-2 align-top text-gray-400">{!! $row['distance_display'] ?? 'N/A' !!}</td>
                         <td class="px-2 py-2 align-top">
                             @include('filament.forms.components.request-appointment', [
                                 'appointmentText' => $row['appointment_text'],

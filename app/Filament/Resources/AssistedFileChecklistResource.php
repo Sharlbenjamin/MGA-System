@@ -10,6 +10,7 @@ use App\Services\FileWorkflowGapService;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -65,6 +66,12 @@ class AssistedFileChecklistResource extends Resource
     {
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => FileWorkflowGapService::scopeAssistedChecklistBase($query))
+            ->groups([
+                Group::make('providerBranch.provider.name')
+                    ->label('Provider')
+                    ->collapsible(),
+            ])
+            ->defaultGroup('providerBranch.provider.name')
             ->columns([
                 Tables\Columns\IconColumn::make('gap_gop')
                     ->label('GOP')

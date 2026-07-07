@@ -58,6 +58,7 @@ class AppointmentRequestMessageFormatterTest extends TestCase
         $this->assertStringContainsString('Date & Time: 10/07/2026 at 14:30', $message);
         $this->assertStringContainsString('Cost: 450€', $message);
         $this->assertStringContainsString('Requested GOP: 505€', $message);
+        $this->assertStringContainsString('Please let us know if these details suits the patient in order to proceed with the booking or check for another appointment', $message);
         $this->assertStringNotContainsString('Patient Address', $message);
         $this->assertStringNotContainsString('123 Patient Street', $message);
     }
