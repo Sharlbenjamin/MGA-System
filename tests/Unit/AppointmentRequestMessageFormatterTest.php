@@ -32,6 +32,7 @@ class AppointmentRequestMessageFormatterTest extends TestCase
         $file->setRelation('serviceType', $serviceType);
 
         $branch = new ProviderBranch([
+            'id' => 42,
             'branch_name' => 'Rome Medical Center',
             'address' => 'Via Roma 1, Rome',
         ]);
@@ -39,6 +40,7 @@ class AppointmentRequestMessageFormatterTest extends TestCase
         $acceptedGop = new Gop([
             'type' => 'In',
             'status' => Gop::IN_STATUS_ACCEPTED,
+            'provider_branch_id' => 42,
             'offered_cost' => 450,
             'file_fee' => 55,
             'amount' => 505,
@@ -47,7 +49,8 @@ class AppointmentRequestMessageFormatterTest extends TestCase
         $acceptedGop->setRelation('serviceType', $serviceType);
 
         $offerService = Mockery::mock(GopInOfferService::class);
-        $offerService->shouldReceive('acceptedOfferForFile')->once()->with($file)->andReturn($acceptedGop);
+        $offerService->shouldReceive('resolveGopInForAppointmentMessage')->once()->with($file, $branch)->andReturn($acceptedGop);
+        $offerService->shouldReceive('resolveCostAndTotalForBranch')->once()->with($file, $branch, $acceptedGop)->andReturn([450.0, 505.0]);
 
         $message = (new AppointmentRequestMessageFormatter($offerService))->format($file, $branch, 20);
 
@@ -72,6 +75,7 @@ class AppointmentRequestMessageFormatterTest extends TestCase
         $file->setRelation('serviceType', new ServiceType(['name' => 'Clinic Visit']));
 
         $branch = new ProviderBranch([
+            'id' => 7,
             'branch_name' => 'Specialist Clinic',
             'address' => 'Main Street',
         ]);
@@ -79,6 +83,7 @@ class AppointmentRequestMessageFormatterTest extends TestCase
         $acceptedGop = new Gop([
             'type' => 'In',
             'status' => Gop::IN_STATUS_ACCEPTED,
+            'provider_branch_id' => 7,
             'offered_cost' => 300,
             'file_fee' => 40,
             'amount' => 340,
@@ -86,7 +91,8 @@ class AppointmentRequestMessageFormatterTest extends TestCase
         ]);
 
         $offerService = Mockery::mock(GopInOfferService::class);
-        $offerService->shouldReceive('acceptedOfferForFile')->once()->andReturn($acceptedGop);
+        $offerService->shouldReceive('resolveGopInForAppointmentMessage')->once()->with($file, $branch)->andReturn($acceptedGop);
+        $offerService->shouldReceive('resolveCostAndTotalForBranch')->once()->with($file, $branch, $acceptedGop)->andReturn([300.0, 340.0]);
 
         $message = (new AppointmentRequestMessageFormatter($offerService))->format($file, $branch);
 
@@ -103,5 +109,38 @@ class AppointmentRequestMessageFormatterTest extends TestCase
             'Here are the details of the nearest available house visit provider:',
             $formatter->buildIntro('House Call'),
         );
+    }
+
+    public function test_it_uses_branch_gop_in_even_when_amount_field_is_stale(): void
+    {
+        $file = new File([
+            'service_type_id' => 5,
+            'service_date' => now()->parse('2026-07-07'),
+        ]);
+        $file->setRelation('serviceType', new ServiceType(['name' => 'Clinic Visit']));
+
+        $branch = new ProviderBranch([
+            'id' => 99,
+            'branch_name' => 'Dooctor.ie Abbeyfeale',
+            'address' => 'The Old Bank, Main Street, Abbeyfeale, Co. Limerick',
+        ]);
+
+        $gopIn = new Gop([
+            'type' => 'In',
+            'status' => Gop::IN_STATUS_DRAFT,
+            'provider_branch_id' => 99,
+            'offered_cost' => 100,
+            'file_fee' => 50,
+            'amount' => 100,
+        ]);
+
+        $offerService = Mockery::mock(GopInOfferService::class);
+        $offerService->shouldReceive('resolveGopInForAppointmentMessage')->once()->with($file, $branch)->andReturn($gopIn);
+        $offerService->shouldReceive('resolveCostAndTotalForBranch')->once()->with($file, $branch, $gopIn)->andReturn([100.0, 150.0]);
+
+        $message = (new AppointmentRequestMessageFormatter($offerService))->format($file, $branch);
+
+        $this->assertStringContainsString('Cost: 100€', $message);
+        $this->assertStringContainsString('Requested GOP: 150€', $message);
     }
 }

@@ -14,8 +14,8 @@ class AppointmentRequestMessageFormatter
 
     public function format(File $file, ProviderBranch $branch, ?float $distanceMinutes = null): string
     {
-        $acceptedGopIn = $this->gopInOfferService->acceptedOfferForFile($file);
-        $serviceLabel = $this->resolveServiceLabel($file, $acceptedGopIn);
+        $gopIn = $this->gopInOfferService->resolveGopInForAppointmentMessage($file, $branch);
+        $serviceLabel = $this->resolveServiceLabel($file, $gopIn);
         $intro = $this->buildIntro($serviceLabel);
 
         $address = $branch->address ?? 'N/A';
@@ -25,7 +25,7 @@ class AppointmentRequestMessageFormatter
         $branchName = $branch->branch_name ?? 'N/A';
         $dateTime = $this->formatDateTime($file, $serviceLabel);
 
-        [$cost, $requestedGop] = $this->resolveCostAndGop($file, $branch, $acceptedGopIn);
+        [$cost, $requestedGop] = $this->formatCostAndGopForMessage($file, $branch, $gopIn);
 
         $lines = [
             $intro,
@@ -81,73 +81,18 @@ class AppointmentRequestMessageFormatter
     /**
      * @return array{0: string, 1: string}
      */
-    protected function resolveCostAndGop(File $file, ProviderBranch $branch, ?Gop $acceptedGopIn): array
+    protected function formatCostAndGopForMessage(File $file, ProviderBranch $branch, ?Gop $gopIn): array
     {
-        if ($acceptedGopIn && $acceptedGopIn->offered_cost !== null) {
-            $cost = number_format((float) $acceptedGopIn->offered_cost, 0) . '€';
-            $requestedGop = number_format((float) $acceptedGopIn->amount, 0) . '€';
+        [$cost, $total] = $this->gopInOfferService->resolveCostAndTotalForBranch($file, $branch, $gopIn);
 
-            return [$cost, $requestedGop];
+        if ($cost === null || $cost <= 0) {
+            return ['N/A', 'N/A'];
         }
 
-        return $this->calculateLegacyCostAndGop($file, $branch);
-    }
-
-    /**
-     * @return array{0: string, 1: string}
-     */
-    protected function calculateLegacyCostAndGop(File $file, ProviderBranch $branch): array
-    {
-        $serviceTypeId = $file->service_type_id;
-        $cost = 'N/A';
-        $gop = 'N/A';
-
-        if (! $serviceTypeId) {
-            return [$cost, $gop];
-        }
-
-        $service = $branch->services->firstWhere('id', $serviceTypeId)
-            ?? $branch->services()->where('service_types.id', $serviceTypeId)->first();
-
-        if (! $service) {
-            return [$cost, $gop];
-        }
-
-        $minCost = $service->pivot->min_cost;
-        $maxCost = $service->pivot->max_cost;
-        $fileFeeAmount = $this->gopInOfferService->resolveFileFeeAmount($file, $serviceTypeId);
-
-        if ($serviceTypeId == 2 && $fileFeeAmount) {
-            $formatted = number_format($fileFeeAmount, 0) . '€';
-
-            return [$formatted, $formatted];
-        }
-
-        if ($serviceTypeId == 1 && ($minCost || $maxCost)) {
-            $base = $minCost ?? $maxCost ?? 0;
-            $rounded = $base < 200 ? 300 : ceil($base / 100) * 100;
-            $formatted = number_format($rounded, 0) . '€';
-
-            return [$formatted, $formatted];
-        }
-
-        if ($fileFeeAmount) {
-            $max = $maxCost ?? $minCost ?? 0;
-            $mult = ceil($max / 250);
-            $fee = $fileFeeAmount * $mult;
-            $cost = number_format($max, 0) . '€';
-            $gop = number_format($max + $fee, 0) . '€';
-
-            return [$cost, $gop];
-        }
-
-        if ($minCost) {
-            $formatted = number_format($minCost, 0) . '€';
-
-            return [$formatted, $formatted];
-        }
-
-        return [$cost, $gop];
+        return [
+            number_format($cost, 0) . '€',
+            number_format($total ?? $cost, 0) . '€',
+        ];
     }
 
     protected function formatDateTime(File $file, string $serviceLabel): string

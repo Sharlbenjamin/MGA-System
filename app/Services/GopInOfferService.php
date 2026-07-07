@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 class GopInOfferService
 {
-    public function suggestCostsForBranch(File $file, ProviderBranch $branch): array
+    public function suggestCostsForBranch(File $file, ProviderBranch $branch, ?int $serviceTypeId = null): array
     {
-        $serviceTypeId = $file->service_type_id;
+        $serviceTypeId = $serviceTypeId ?? $file->service_type_id;
         $offeredCost = null;
         $fileFee = null;
 
@@ -140,6 +140,135 @@ class GopInOfferService
             ->with(['providerBranch.provider', 'serviceType'])
             ->latest('id')
             ->first();
+    }
+
+    public function resolveGopInForAppointmentMessage(File $file, ProviderBranch $branch): ?Gop
+    {
+        $branchId = (int) $branch->id;
+
+        $acceptedForBranch = $file->gops()
+            ->where('type', 'In')
+            ->where('provider_branch_id', $branchId)
+            ->where('status', Gop::IN_STATUS_ACCEPTED)
+            ->latest('id')
+            ->first();
+
+        if ($acceptedForBranch) {
+            return $acceptedForBranch;
+        }
+
+        $latestForBranch = $file->gops()
+            ->where('type', 'In')
+            ->where('provider_branch_id', $branchId)
+            ->where(function ($query) {
+                $query->where(function ($inner) {
+                    $inner->whereNotNull('offered_cost')
+                        ->where('offered_cost', '>', 0);
+                })->orWhere(function ($inner) {
+                    $inner->whereNotNull('amount')
+                        ->where('amount', '>', 0);
+                });
+            })
+            ->latest('id')
+            ->first();
+
+        if ($latestForBranch) {
+            return $latestForBranch;
+        }
+
+        $acceptedForFile = $this->acceptedOfferForFile($file);
+
+        if ($acceptedForFile && (int) ($acceptedForFile->provider_branch_id ?? 0) === $branchId) {
+            return $acceptedForFile;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{0: float, 1: float}
+     */
+    public function resolveGopInCostAndTotal(Gop $gop): array
+    {
+        $fileFee = round((float) ($gop->file_fee ?? 0), 2);
+
+        if ($gop->offered_cost !== null && (float) $gop->offered_cost > 0) {
+            $cost = round((float) $gop->offered_cost, 2);
+
+            return [$cost, round($cost + $fileFee, 2)];
+        }
+
+        if ($gop->amount !== null && (float) $gop->amount > 0) {
+            $amount = round((float) $gop->amount, 2);
+
+            if ($fileFee > 0 && $amount > $fileFee) {
+                return [round($amount - $fileFee, 2), $amount];
+            }
+
+            return [$amount, round($amount + $fileFee, 2)];
+        }
+
+        return [0.0, 0.0];
+    }
+
+    /**
+     * GOP In dominates; branch service pricing is the fallback.
+     *
+     * @return array{0: ?float, 1: ?float}
+     */
+    public function resolveCostAndTotalForBranch(File $file, ProviderBranch $branch, ?Gop $gopIn = null): array
+    {
+        $gopIn ??= $this->resolveGopInForAppointmentMessage($file, $branch);
+
+        if ($gopIn) {
+            [$cost, $total] = $this->resolveGopInCostAndTotal($gopIn);
+
+            if ($cost > 0) {
+                return [$cost, $total];
+            }
+        }
+
+        $suggested = $this->suggestCostsForBranch($file, $branch);
+
+        if ($suggested['offered_cost'] !== null && (float) $suggested['offered_cost'] > 0) {
+            return [
+                (float) $suggested['offered_cost'],
+                (float) ($suggested['total'] ?? $suggested['offered_cost']),
+            ];
+        }
+
+        return [null, null];
+    }
+
+    /**
+     * @return array{offered_cost: ?float, file_fee: ?float, total: ?float}
+     */
+    public function suggestCostsForGopForm(File $file, ?int $providerBranchId, ?int $serviceTypeId = null): array
+    {
+        if (! $providerBranchId) {
+            return [
+                'offered_cost' => null,
+                'file_fee' => null,
+                'total' => null,
+            ];
+        }
+
+        $branch = ProviderBranch::query()
+            ->with(['services' => fn ($query) => $query->when(
+                $serviceTypeId ?? $file->service_type_id,
+                fn ($serviceQuery, $id) => $serviceQuery->where('service_types.id', $id),
+            )])
+            ->find($providerBranchId);
+
+        if (! $branch) {
+            return [
+                'offered_cost' => null,
+                'file_fee' => null,
+                'total' => null,
+            ];
+        }
+
+        return $this->suggestCostsForBranch($file, $branch, $serviceTypeId);
     }
 
     public function formatTeamCopyText(File $file, Gop $gop): string

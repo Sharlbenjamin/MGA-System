@@ -1,12 +1,5 @@
 @php
     $livewire = $getLivewire();
-
-    $offerStatusColors = [
-        'Draft' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-        'Offered' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-        'Accepted' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-        'Rejected' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    ];
 @endphp
 
 <div
@@ -26,7 +19,7 @@
     @if ($livewire->branchTableRows === [])
         <p class="text-sm text-gray-500 dark:text-gray-400 py-4">No eligible provider branches found for this file.</p>
     @else
-        <table class="w-full min-w-[1400px] text-sm">
+        <table class="w-full min-w-[900px] text-sm">
             <thead>
                 <tr class="bg-gray-50 border-b-2 border-gray-200 font-semibold text-left dark:bg-white/5 dark:border-white/10">
                     <th class="px-2 py-2 w-10">
@@ -39,14 +32,6 @@
                         />
                     </th>
                     <th class="px-2 py-2">Branch</th>
-                    <th class="px-2 py-2 w-40">Service</th>
-                    <th class="px-2 py-2 w-16">Priority</th>
-                    <th class="px-2 py-2 w-24">List cost</th>
-                    <th class="px-2 py-2 w-24">Offer cost</th>
-                    <th class="px-2 py-2 w-20">Fee</th>
-                    <th class="px-2 py-2 w-20">Total</th>
-                    <th class="px-2 py-2 w-24">Offer status</th>
-                    <th class="px-2 py-2 w-28">Offer actions</th>
                     <th class="px-2 py-2 w-16">Phone</th>
                     <th class="px-2 py-2 w-24">Address</th>
                     <th class="px-2 py-2 w-20">Website</th>
@@ -58,20 +43,6 @@
                 @foreach ($livewire->branchTableRows as $row)
                     @php
                         $branchId = $row['id'];
-                        $inputs = $livewire->branchOfferInputs[$branchId] ?? [
-                            'offered_cost' => '',
-                            'file_fee' => '0',
-                            'notes' => '',
-                            'service_type_id' => $row['default_service_type_id'],
-                            'service_type_other' => '',
-                        ];
-                        $serviceTypeId = $inputs['service_type_id'] ?? null;
-                        $showOtherService = $serviceTypeId === 'other' || (blank($serviceTypeId) && filled($inputs['service_type_other'] ?? null));
-                        $offeredCost = is_numeric($inputs['offered_cost'] ?? null) ? (float) $inputs['offered_cost'] : 0;
-                        $fileFee = is_numeric($inputs['file_fee'] ?? null) ? (float) $inputs['file_fee'] : 0;
-                        $rowTotal = $offeredCost + $fileFee;
-                        $status = $row['latest_offer_status'] ?? null;
-                        $statusClass = $status ? ($offerStatusColors[$status] ?? 'bg-gray-100 text-gray-800') : '';
                     @endphp
                     <tr wire:key="branch-row-{{ $branchId }}" class="border-b border-gray-100 hover:bg-gray-50 dark:border-white/5 dark:hover:bg-white/5">
                         <td class="px-2 py-2 align-top">
@@ -89,80 +60,6 @@
                                 'providerName' => $row['provider_name'],
                                 'providerComment' => $row['provider_comment'],
                             ])
-                        </td>
-                        <td class="px-2 py-2 align-top">
-                            <select
-                                wire:model.live="branchOfferInputs.{{ $branchId }}.service_type_id"
-                                class="mb-1 w-36 rounded-md border-gray-300 text-xs shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
-                            >
-                                <option value="">— Select —</option>
-                                @foreach ($livewire->serviceTypeOptions as $id => $name)
-                                    <option value="{{ $id }}">{{ $name }}</option>
-                                @endforeach
-                                <option value="other">Other (specify)</option>
-                            </select>
-                            @if ($showOtherService)
-                                <input
-                                    type="text"
-                                    wire:model.blur="branchOfferInputs.{{ $branchId }}.service_type_other"
-                                    class="w-36 rounded-md border-gray-300 text-xs shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
-                                    placeholder="Service name"
-                                />
-                            @endif
-                        </td>
-                        <td class="px-2 py-2 align-top">{{ $row['priority'] }}</td>
-                        <td class="px-2 py-2 align-top text-gray-500">{{ $row['cost'] }}</td>
-                        <td class="px-2 py-2 align-top">
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                wire:model.blur="branchOfferInputs.{{ $branchId }}.offered_cost"
-                                class="w-20 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
-                                placeholder="0"
-                            />
-                        </td>
-                        <td class="px-2 py-2 align-top">
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                wire:model.blur="branchOfferInputs.{{ $branchId }}.file_fee"
-                                class="w-16 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900"
-                                placeholder="0"
-                            />
-                        </td>
-                        <td class="px-2 py-2 align-top font-medium">
-                            €{{ number_format($rowTotal, 2) }}
-                        </td>
-                        <td class="px-2 py-2 align-top">
-                            @if ($status)
-                                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {{ $statusClass }}">{{ $status }}</span>
-                                @if ($row['latest_offer_total'])
-                                    <div class="mt-1 text-xs text-gray-500">Last: €{{ $row['latest_offer_total'] }}</div>
-                                @endif
-                            @else
-                                <span class="text-xs text-gray-400">—</span>
-                            @endif
-                        </td>
-                        <td class="px-2 py-2 align-top">
-                            <div class="flex flex-col gap-1">
-                                <button
-                                    type="button"
-                                    wire:click="saveBranchOffer({{ $branchId }})"
-                                    class="text-xs font-medium text-primary-600 hover:underline"
-                                >Save</button>
-                                <button
-                                    type="button"
-                                    wire:click="shareBranchOffer({{ $branchId }})"
-                                    class="text-xs font-medium text-primary-600 hover:underline"
-                                >Offer</button>
-                                <button
-                                    type="button"
-                                    wire:click="acceptBranchOffer({{ $branchId }})"
-                                    class="text-xs font-medium text-success-600 hover:underline"
-                                >Accept</button>
-                            </div>
                         </td>
                         <td class="px-2 py-2 align-top">
                             @include('filament.forms.components.copiable-field', [

@@ -4,12 +4,9 @@ namespace App\Filament\Resources\FileResource\Pages;
 
 use App\Filament\Resources\FileResource;
 use App\Jobs\SendAppointmentRequestsJob;
-use App\Models\FileFee;
 use App\Models\Gop;
-use App\Models\ServiceType;
 use App\Services\AppointmentRequestMessageFormatter;
 use App\Services\DistanceCalculationService;
-use App\Services\GopInOfferService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
@@ -45,10 +42,6 @@ class RequestAppointment extends Page implements HasForms
     /** @var array<int, array{sort_value: float|int, display: string}> */
     protected array $branchDistanceCache = [];
 
-    protected ?float $cachedFileFeeAmount = null;
-
-    protected bool $fileFeeResolved = false;
-
     /** @var array<int, array<string, mixed>> */
     public array $branchTableRows = [];
 
@@ -61,9 +54,6 @@ class RequestAppointment extends Page implements HasForms
     public bool $distancesLoaded = false;
 
     public ?array $data = [];
-
-    /** @var array<int, array{offered_cost: ?string, file_fee: ?string, notes: ?string, service_type_id: int|string|null, service_type_other: ?string}> */
-    public array $branchOfferInputs = [];
 
     protected function getForms(): array
     {
@@ -200,7 +190,6 @@ class RequestAppointment extends Page implements HasForms
         $this->distancesLoaded = false;
         $this->distancesLoading = false;
         $this->branchDistanceCache = [];
-        $this->branchOfferInputs = [];
         $this->prepareBranchTable($cityFilter);
     }
 
@@ -226,8 +215,6 @@ class RequestAppointment extends Page implements HasForms
 
     protected function prepareBranchTable(?int $cityFilter = null): void
     {
-        $this->getFileFeeForServiceType($this->record->service_type_id);
-
         $branches = $this->getEligibleProviderBranches($this->record, $cityFilter)
             ->sortBy([
                 fn ($branch) => (int) ($branch->priority ?? 999),
@@ -242,133 +229,19 @@ class RequestAppointment extends Page implements HasForms
 
     protected function buildBranchTableRow($branch): array
     {
-        $service = $this->getBranchServiceForRecord($branch);
-        $cost = 'N/A';
-        if ($service && $service->pivot->min_cost) {
-            $cost = '€' . number_format($service->pivot->min_cost, 2);
-        }
-
         $branch->sort_distance = $this->branchDistanceCache[$branch->id]['sort_value'] ?? 999999;
-
-        $offerService = app(GopInOfferService::class);
-        $suggested = $offerService->suggestCostsForBranch($this->record, $branch);
-        $latestOffer = $offerService->latestOfferForBranch($this->record, (int) $branch->id);
-
-        if (! isset($this->branchOfferInputs[$branch->id])) {
-            $this->branchOfferInputs[$branch->id] = [
-                'offered_cost' => $latestOffer
-                    ? (string) $latestOffer->offered_cost
-                    : ($suggested['offered_cost'] !== null ? (string) $suggested['offered_cost'] : ''),
-                'file_fee' => $latestOffer
-                    ? (string) ($latestOffer->file_fee ?? 0)
-                    : ($suggested['file_fee'] !== null ? (string) $suggested['file_fee'] : ''),
-                'notes' => $latestOffer?->notes ?? '',
-                'service_type_id' => filled($latestOffer?->service_type_other)
-                    ? 'other'
-                    : ($latestOffer?->service_type_id ?? $this->record->service_type_id),
-                'service_type_other' => $latestOffer?->service_type_other ?? '',
-            ];
-        }
 
         return [
             'id' => $branch->id,
             'branch_name' => $branch->branch_name,
-            'default_service_type_id' => $this->record->service_type_id,
             'provider_name' => $branch->provider?->name,
             'provider_comment' => $branch->provider?->comment,
-            'priority' => $branch->priority ?? 'N/A',
-            'cost' => $cost,
-            'communication_method' => $branch->communication_method ?? 'N/A',
-            'contact_html' => $this->getBranchContactInfo($branch),
             'phone' => $branch->phone ?? ($branch->getPrimaryPhoneAttribute() ?? 'N/A'),
             'address' => $branch->address ?? 'N/A',
             'website' => $branch->website ?? 'N/A',
             'appointment_text' => $this->formatAppointmentRequestText($branch),
-            'latest_offer_status' => $latestOffer?->status,
-            'latest_offer_total' => $latestOffer ? number_format((float) $latestOffer->amount, 2) : null,
-            'latest_offer_id' => $latestOffer?->id,
-            'suggested_total' => $suggested['total'] !== null
-                ? number_format((float) $suggested['total'], 2)
-                : null,
             'distance_display' => $this->branchDistanceCache[$branch->id]['display'] ?? 'N/A',
         ];
-    }
-
-    public function saveBranchOffer(int $branchId): void
-    {
-        $this->persistBranchOffer($branchId, Gop::IN_STATUS_DRAFT, 'Offer saved as draft');
-    }
-
-    public function shareBranchOffer(int $branchId): void
-    {
-        $this->persistBranchOffer($branchId, Gop::IN_STATUS_OFFERED, 'Offer marked as offered');
-    }
-
-    public function acceptBranchOffer(int $branchId): void
-    {
-        $inputs = $this->branchOfferInputs[$branchId] ?? null;
-        if (! $inputs || ! is_numeric($inputs['offered_cost'] ?? null)) {
-            Notification::make()->title('Invalid cost')->body('Enter a valid offered cost before accepting.')->danger()->send();
-
-            return;
-        }
-
-        $offerService = app(GopInOfferService::class);
-        [$serviceTypeId, $serviceTypeOther] = $this->parseServiceTypeFromInputs($inputs);
-        $gop = $offerService->createOffer(
-            $this->record,
-            $branchId,
-            (float) $inputs['offered_cost'],
-            (float) ($inputs['file_fee'] ?? 0),
-            Gop::IN_STATUS_ACCEPTED,
-            $inputs['notes'] ?? null,
-            $serviceTypeId,
-            $serviceTypeOther,
-        );
-
-        Notification::make()->title('Offer accepted')->body("€{$gop->amount} accepted for this provider.")->success()->send();
-        $this->prepareBranchTable(filled($this->data['city_filter'] ?? null) ? (int) $this->data['city_filter'] : null);
-    }
-
-    public function acceptLatestBranchOffer(int $branchId): void
-    {
-        $latest = app(GopInOfferService::class)->latestOfferForBranch($this->record, $branchId);
-        if (! $latest) {
-            Notification::make()->title('No offer')->body('Save an offer for this provider first.')->warning()->send();
-
-            return;
-        }
-
-        app(GopInOfferService::class)->markAccepted($latest);
-        Notification::make()->title('Offer accepted')->body("€{$latest->amount} is now the accepted figure.")->success()->send();
-        $this->prepareBranchTable(filled($this->data['city_filter'] ?? null) ? (int) $this->data['city_filter'] : null);
-    }
-
-    protected function persistBranchOffer(int $branchId, string $status, string $successTitle): ?Gop
-    {
-        $inputs = $this->branchOfferInputs[$branchId] ?? null;
-        if (! $inputs || ! is_numeric($inputs['offered_cost'] ?? null)) {
-            Notification::make()->title('Invalid cost')->body('Enter a valid offered cost.')->danger()->send();
-
-            return null;
-        }
-
-        [$serviceTypeId, $serviceTypeOther] = $this->parseServiceTypeFromInputs($inputs);
-        $gop = app(GopInOfferService::class)->createOffer(
-            $this->record,
-            $branchId,
-            (float) $inputs['offered_cost'],
-            (float) ($inputs['file_fee'] ?? 0),
-            $status,
-            $inputs['notes'] ?? null,
-            $serviceTypeId,
-            $serviceTypeOther,
-        );
-
-        Notification::make()->title($successTitle)->body("€{$gop->amount} for {$gop->providerBranch?->branch_name}.")->success()->send();
-        $this->prepareBranchTable(filled($this->data['city_filter'] ?? null) ? (int) $this->data['city_filter'] : null);
-
-        return $gop;
     }
 
     public function sendRequest(array $confirmationData = []): void
@@ -518,22 +391,6 @@ class RequestAppointment extends Page implements HasForms
             ->get();
     }
 
-    protected function getBranchContactInfo($branch): string
-    {
-        $hasEmail = !empty($branch->email);
-        $hasPhone = !empty($branch->phone);
-        if ($hasEmail && $hasPhone) {
-            return 'Email, <button type="button" class="text-blue-600 cursor-pointer hover:underline" wire:click="showPhoneNotification(\'' . addslashes($branch->phone) . '\', \'' . addslashes($branch->branch_name) . '\')">Phone</button>';
-        }
-        if ($hasEmail) {
-            return 'Email';
-        }
-        if ($hasPhone) {
-            return '<button type="button" class="text-blue-600 cursor-pointer hover:underline" wire:click="showPhoneNotification(\'' . addslashes($branch->phone) . '\', \'' . addslashes($branch->branch_name) . '\')">Phone</button>';
-        }
-        return 'None';
-    }
-
     protected function warmBranchDistanceCache(\Illuminate\Support\Collection $branches): void
     {
         if (! $this->record || ! $this->record->address) {
@@ -598,16 +455,6 @@ class RequestAppointment extends Page implements HasForms
         }
     }
 
-    protected function getBranchServiceForRecord($branch): ?ServiceType
-    {
-        $serviceTypeId = $this->record?->service_type_id;
-        if (! $serviceTypeId) {
-            return null;
-        }
-
-        return $branch->services->firstWhere('id', $serviceTypeId);
-    }
-
     protected function calculateBranchDistanceForSorting($branch): array
     {
         if (isset($this->branchDistanceCache[$branch->id])) {
@@ -663,67 +510,6 @@ class RequestAppointment extends Page implements HasForms
             $branch,
             $distanceMinutes,
         );
-    }
-
-    /**
-     * @return array{0: ?int, 1: ?string}
-     */
-    protected function parseServiceTypeFromInputs(array $inputs): array
-    {
-        $serviceTypeId = $inputs['service_type_id'] ?? null;
-        $serviceTypeOther = null;
-
-        if ($serviceTypeId === 'other') {
-            $serviceTypeId = null;
-            $serviceTypeOther = filled($inputs['service_type_other'] ?? null)
-                ? trim((string) $inputs['service_type_other'])
-                : null;
-        } elseif (filled($serviceTypeId)) {
-            $serviceTypeId = (int) $serviceTypeId;
-        } else {
-            $serviceTypeId = null;
-            $serviceTypeOther = filled($inputs['service_type_other'] ?? null)
-                ? trim((string) $inputs['service_type_other'])
-                : null;
-        }
-
-        return [$serviceTypeId, $serviceTypeOther];
-    }
-
-    public function getServiceTypeOptionsProperty(): array
-    {
-        return ServiceType::query()->orderBy('name')->pluck('name', 'id')->all();
-    }
-
-    protected function getFileFeeForServiceType(?int $serviceTypeId): ?float
-    {
-        if ($this->fileFeeResolved) {
-            return $this->cachedFileFeeAmount;
-        }
-
-        $this->fileFeeResolved = true;
-
-        if (! $serviceTypeId || ! $this->record) {
-            return $this->cachedFileFeeAmount = null;
-        }
-
-        $countryId = $this->record->country_id;
-        $cityId = $this->record->city_id;
-        if ($countryId && $cityId) {
-            $fileFee = FileFee::where('service_type_id', $serviceTypeId)->where('country_id', $countryId)->where('city_id', $cityId)->first();
-            if ($fileFee) {
-                return $this->cachedFileFeeAmount = (float) $fileFee->amount;
-            }
-        }
-        if ($countryId) {
-            $fileFee = FileFee::where('service_type_id', $serviceTypeId)->where('country_id', $countryId)->whereNull('city_id')->first();
-            if ($fileFee) {
-                return $this->cachedFileFeeAmount = (float) $fileFee->amount;
-            }
-        }
-        $fileFee = FileFee::where('service_type_id', $serviceTypeId)->whereNull('country_id')->whereNull('city_id')->first();
-
-        return $this->cachedFileFeeAmount = $fileFee ? (float) $fileFee->amount : null;
     }
 
     protected function createGopIfRequested(array $confirmationData): ?Gop
@@ -810,16 +596,6 @@ class RequestAppointment extends Page implements HasForms
             ->title('Copied to clipboard')
             ->body("'{$label}' has been copied to your clipboard")
             ->success()
-            ->send();
-    }
-
-    public function showPhoneNotification($phoneNumber, $branchName): void
-    {
-        Notification::make()
-            ->title("{$branchName}'s Phone Number")
-            ->body("Phone: {$phoneNumber}")
-            ->success()
-            ->persistent()
             ->send();
     }
 }
