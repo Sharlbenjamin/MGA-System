@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\File;
-use App\Models\FileFee;
 use App\Models\Gop;
 use App\Models\ProviderBranch;
 use Illuminate\Support\Facades\DB;
@@ -312,39 +311,13 @@ class GopInOfferService
 
     public function resolveFileFeeAmount(File $file, int $serviceTypeId): ?float
     {
-        $countryId = $file->country_id;
-        $cityId = $file->city_id;
+        $countryId = $file->country_id ? (int) $file->country_id : null;
+        $clientId = $file->patient?->client_id ? (int) $file->patient->client_id : null;
 
-        if ($countryId && $cityId) {
-            $fileFee = FileFee::query()
-                ->where('service_type_id', $serviceTypeId)
-                ->where('country_id', $countryId)
-                ->where('city_id', $cityId)
-                ->first();
-
-            if ($fileFee) {
-                return (float) $fileFee->amount;
-            }
-        }
-
-        if ($countryId) {
-            $fileFee = FileFee::query()
-                ->where('service_type_id', $serviceTypeId)
-                ->where('country_id', $countryId)
-                ->whereNull('city_id')
-                ->first();
-
-            if ($fileFee) {
-                return (float) $fileFee->amount;
-            }
-        }
-
-        $fileFee = FileFee::query()
-            ->where('service_type_id', $serviceTypeId)
-            ->whereNull('country_id')
-            ->whereNull('city_id')
-            ->first();
-
-        return $fileFee ? (float) $fileFee->amount : null;
+        return app(FileFeeResolver::class)->resolveServiceTypeAmount(
+            $serviceTypeId,
+            $countryId,
+            $clientId,
+        );
     }
 }

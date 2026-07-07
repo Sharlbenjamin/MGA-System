@@ -2406,45 +2406,18 @@ class ViewFile extends ViewRecord
      */
     protected function getFileFeeForServiceType(?int $serviceTypeId): ?float
     {
-        if (!$serviceTypeId || !$this->record) {
+        if (! $serviceTypeId || ! $this->record) {
             return null;
         }
 
-        $countryId = $this->record->country_id;
-        $cityId = $this->record->city_id;
+        $countryId = $this->record->country_id ? (int) $this->record->country_id : null;
+        $clientId = $this->record->patient?->client_id ? (int) $this->record->patient->client_id : null;
 
-        // Priority 1: service_type + country + city
-        if ($countryId && $cityId) {
-            $fileFee = FileFee::where('service_type_id', $serviceTypeId)
-                ->where('country_id', $countryId)
-                ->where('city_id', $cityId)
-                ->first();
-            if ($fileFee) {
-                return (float) $fileFee->amount;
-            }
-        }
-
-        // Priority 2: service_type + country
-        if ($countryId) {
-            $fileFee = FileFee::where('service_type_id', $serviceTypeId)
-                ->where('country_id', $countryId)
-                ->whereNull('city_id')
-                ->first();
-            if ($fileFee) {
-                return (float) $fileFee->amount;
-            }
-        }
-
-        // Priority 3: service_type only
-        $fileFee = FileFee::where('service_type_id', $serviceTypeId)
-            ->whereNull('country_id')
-            ->whereNull('city_id')
-            ->first();
-        if ($fileFee) {
-            return (float) $fileFee->amount;
-        }
-
-        return null;
+        return app(\App\Services\FileFeeResolver::class)->resolveServiceTypeAmount(
+            $serviceTypeId,
+            $countryId,
+            $clientId,
+        );
     }
 
     /**
@@ -2452,47 +2425,7 @@ class ViewFile extends ViewRecord
      */
     protected function getFileFeeForClinicVisit(): ?float
     {
-        if (!$this->record) {
-            return null;
-        }
-
-        // Find Clinic Visit service type (ID 5)
-        $clinicVisitServiceTypeId = 5;
-        $countryId = $this->record->country_id;
-        $cityId = $this->record->city_id;
-
-        // Priority 1: Clinic Visit + country + city
-        if ($countryId && $cityId) {
-            $fileFee = FileFee::where('service_type_id', $clinicVisitServiceTypeId)
-                ->where('country_id', $countryId)
-                ->where('city_id', $cityId)
-                ->first();
-            if ($fileFee) {
-                return (float) $fileFee->amount;
-            }
-        }
-
-        // Priority 2: Clinic Visit + country
-        if ($countryId) {
-            $fileFee = FileFee::where('service_type_id', $clinicVisitServiceTypeId)
-                ->where('country_id', $countryId)
-                ->whereNull('city_id')
-                ->first();
-            if ($fileFee) {
-                return (float) $fileFee->amount;
-            }
-        }
-
-        // Priority 3: Clinic Visit only
-        $fileFee = FileFee::where('service_type_id', $clinicVisitServiceTypeId)
-            ->whereNull('country_id')
-            ->whereNull('city_id')
-            ->first();
-        if ($fileFee) {
-            return (float) $fileFee->amount;
-        }
-
-        return null;
+        return $this->getFileFeeForServiceType(5);
     }
 
     /**

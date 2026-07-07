@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\FileFee;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 
@@ -83,25 +82,18 @@ class InvoiceItemSuggestionService
             }
         }
 
-        // 3) From configured file fees by service type + country (excluding tier fee types).
+        // 3) From configured file fees by service type + country (excluding tier fees).
         if ($file->service_type_id && $file->country_id) {
-            $tierServiceTypeIds = $this->tierServiceTypeIds();
+            $resolver = app(FileFeeResolver::class);
+            $clientId = $file->patient?->client_id ? (int) $file->patient->client_id : null;
 
-            $fileFeesQuery = FileFee::query()
-                ->with(['serviceType', 'country', 'city'])
-                ->where('service_type_id', $file->service_type_id)
-                ->where('country_id', $file->country_id)
-                ->where(function ($query) use ($file) {
-                    $query->whereNull('city_id');
-                    if ($file->city_id) {
-                        $query->orWhere('city_id', $file->city_id);
-                    }
-                })
-                ->when($tierServiceTypeIds !== [], fn ($query) => $query->whereNotIn('service_type_id', $tierServiceTypeIds))
-                ->orderByRaw('city_id IS NULL')
-                ->limit(5);
+            $fileFees = $resolver->matchingServiceTypeFees(
+                (int) $file->service_type_id,
+                (int) $file->country_id,
+                $clientId,
+            )->take(5);
 
-            foreach ($fileFeesQuery->get() as $fileFee) {
+            foreach ($fileFees as $fileFee) {
                 $serviceName = $fileFee->serviceType?->name ?: 'Service';
                 $description = $this->appendServiceDate($serviceName, $serviceDate);
 
@@ -172,23 +164,6 @@ class InvoiceItemSuggestionService
         }
 
         return array_slice($suggestions, 0, 10);
-    }
-
-    /**
-     * @return list<int>
-     */
-    private function tierServiceTypeIds(): array
-    {
-        $ids = [];
-
-        foreach (['simple', 'middle', 'complex'] as $tier) {
-            $serviceType = $this->fileFeeService->findServiceTypeForTier($tier);
-            if ($serviceType) {
-                $ids[] = (int) $serviceType->id;
-            }
-        }
-
-        return array_values(array_unique($ids));
     }
 
     private function normalizeDescription(string $description): string

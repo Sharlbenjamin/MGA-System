@@ -46,34 +46,29 @@ class ItemsRelationManager extends RelationManager
                             );
                         }
 
-                        // Add file fees (excluding tier-based Simple/Middle/Complex fees — those are auto-managed)
-                        $tierServiceTypeIds = collect(['simple', 'middle', 'complex'])
-                            ->map(fn (string $tier) => app(InvoiceFileFeeService::class)->findServiceTypeForTier($tier)?->id)
-                            ->filter()
-                            ->values()
-                            ->all();
+                        if ($invoice->file?->service_type_id) {
+                            $resolver = app(\App\Services\FileFeeResolver::class);
+                            $clientId = $invoice->file?->patient?->client_id
+                                ? (int) $invoice->file->patient->client_id
+                                : null;
 
-                        $fileFees = FileFee::with('serviceType', 'country', 'city')
-                            ->where('service_type_id', $invoice->file?->service_type_id)
-                            ->where('country_id', $invoice->file?->country_id)
-                            ->where(function ($query) use ($invoice) {
-                                $query->whereNull('city_id');
-                                if ($invoice->file?->city_id) {
-                                    $query->orWhere('city_id', $invoice->file->city_id);
-                                }
-                            })
-                            ->when($tierServiceTypeIds !== [], fn ($query) => $query->whereNotIn('service_type_id', $tierServiceTypeIds))
-                            ->get();
-                        
-                        foreach ($fileFees as $fileFee) {
-                            $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
-                            $countryName = $fileFee->country ? $fileFee->country->name : '';
-                            $cityName = $fileFee->city ? $fileFee->city->name : '';
-                            
-                            $location = trim("{$countryName} {$cityName}");
-                            $label = $location ? "{$serviceName} ({$location}) - €{$fileFee->amount}" : "{$serviceName} - €{$fileFee->amount}";
-                            
-                            $options->put("file_fee_{$fileFee->id}", $label);
+                            $fileFees = $resolver->matchingServiceTypeFees(
+                                (int) $invoice->file->service_type_id,
+                                $invoice->file->country_id ? (int) $invoice->file->country_id : null,
+                                $clientId,
+                            );
+
+                            foreach ($fileFees as $fileFee) {
+                                $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
+                                $countryNames = $fileFee->countries->pluck('name')->join(', ');
+                                $clientNames = $fileFee->clients->pluck('company_name')->join(', ');
+
+                                $scopeParts = array_filter([$countryNames, $clientNames]);
+                                $scope = $scopeParts !== [] ? implode(' · ', $scopeParts) : 'All countries · All clients';
+                                $label = "{$serviceName} ({$scope}) - €{$fileFee->amount}";
+
+                                $options->put("file_fee_{$fileFee->id}", $label);
+                            }
                         }
 
                         // Add custom option

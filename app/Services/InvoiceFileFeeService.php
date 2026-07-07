@@ -127,24 +127,20 @@ class InvoiceFileFeeService
     {
         $invoice->loadMissing(['file']);
 
-        $serviceType = $this->findServiceTypeForTier($tier);
-        if (! $serviceType) {
-            return null;
-        }
-
         $countryId = $invoice->file?->country_id ? (int) $invoice->file->country_id : null;
-        $cityId = $invoice->file?->city_id ? (int) $invoice->file->city_id : null;
+        $clientId = $invoice->file?->patient?->client_id ? (int) $invoice->file->patient->client_id : null;
 
         $amount = TaxExportHelpers::resolveFileFeeAmountForInvoicePricing(
-            (int) $serviceType->id,
+            $tier,
             $countryId,
-            $cityId,
+            $clientId,
         );
 
         if ($amount === null) {
             return null;
         }
 
+        $tierLabel = ucfirst($tier);
         $serviceDate = ($invoice->file?->service_date ?? now())->format('d/m/Y');
 
         return [
@@ -153,8 +149,8 @@ class InvoiceFileFeeService
             'units' => null,
             'bill_total' => round($billTotal, 2),
             'amount' => $amount,
-            'description' => "File Fee ({$serviceType->name}) on {$serviceDate}",
-            'service_type' => $serviceType->name,
+            'description' => "File Fee ({$tierLabel}) on {$serviceDate}",
+            'service_type' => $tierLabel,
         ];
     }
 
@@ -165,23 +161,18 @@ class InvoiceFileFeeService
     {
         $invoice->loadMissing(['file']);
 
-        $serviceType = $this->findServiceTypeForTier('simple');
-        if (! $serviceType) {
-            return null;
-        }
-
         $units = $this->calculateMultiplierUnits($billTotal);
         if ($units <= 0) {
             return null;
         }
 
         $countryId = $invoice->file?->country_id ? (int) $invoice->file->country_id : null;
-        $cityId = $invoice->file?->city_id ? (int) $invoice->file->city_id : null;
+        $clientId = $invoice->file?->patient?->client_id ? (int) $invoice->file->patient->client_id : null;
 
         $unitAmount = TaxExportHelpers::resolveFileFeeAmountForInvoicePricing(
-            (int) $serviceType->id,
+            'simple',
             $countryId,
-            $cityId,
+            $clientId,
         );
 
         if ($unitAmount === null) {
@@ -190,8 +181,8 @@ class InvoiceFileFeeService
 
         $serviceDate = ($invoice->file?->service_date ?? now())->format('d/m/Y');
         $feeLabel = $units > 1
-            ? "File Fee ({$serviceType->name} × {$units})"
-            : "File Fee ({$serviceType->name})";
+            ? "File Fee (Simple × {$units})"
+            : 'File Fee (Simple)';
 
         return [
             'strategy' => Client::FILE_FEE_STRATEGY_MULTIPLIER,
@@ -200,7 +191,7 @@ class InvoiceFileFeeService
             'bill_total' => round($billTotal, 2),
             'amount' => round($unitAmount * $units, 2),
             'description' => "{$feeLabel} on {$serviceDate}",
-            'service_type' => $serviceType->name,
+            'service_type' => 'Simple',
         ];
     }
 

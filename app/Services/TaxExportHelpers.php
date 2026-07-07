@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Bill;
 use App\Models\Client;
-use App\Models\FileFee;
 use App\Models\Invoice;
 use Carbon\Carbon;
 
@@ -95,7 +94,7 @@ class TaxExportHelpers
         return in_array(mb_strtolower(trim($countryName)), $euCountries, true);
     }
 
-    public static function resolveFileFeeAmountForFile($file): ?float
+    public static function resolveFileFeeAmountForFile($file, ?int $clientId = null): ?float
     {
         if (! $file || ! $file->service_type_id) {
             return null;
@@ -104,51 +103,42 @@ class TaxExportHelpers
         return self::resolveFileFeeAmountForServiceType(
             (int) $file->service_type_id,
             $file->country_id ? (int) $file->country_id : null,
-            $file->city_id ? (int) $file->city_id : null,
+            $clientId ?? ($file->patient?->client_id ? (int) $file->patient->client_id : null),
         );
     }
 
     public static function resolveFileFeeAmountForServiceType(
         int $serviceTypeId,
         ?int $countryId = null,
-        ?int $cityId = null,
+        ?int $clientId = null,
     ): ?float {
         static $cache = [];
-        $cacheKey = implode(':', [$serviceTypeId, $countryId ?? 'null', $cityId ?? 'null']);
+        $cacheKey = implode(':', [$serviceTypeId, $countryId ?? 'null', $clientId ?? 'null']);
 
         if (array_key_exists($cacheKey, $cache)) {
             return $cache[$cacheKey];
         }
 
-        if ($countryId && $cityId) {
-            $exact = FileFee::query()
-                ->where('service_type_id', $serviceTypeId)
-                ->where('country_id', $countryId)
-                ->where('city_id', $cityId)
-                ->first();
-            if ($exact) {
-                return $cache[$cacheKey] = (float) $exact->amount;
-            }
+        $resolver = app(FileFeeResolver::class);
+        $cache[$cacheKey] = $resolver->resolveServiceTypeAmount($serviceTypeId, $countryId, $clientId);
+
+        return $cache[$cacheKey];
+    }
+
+    public static function resolveFileFeeAmountForTier(
+        string $tier,
+        ?int $countryId = null,
+        ?int $clientId = null,
+    ): ?float {
+        static $cache = [];
+        $cacheKey = implode(':', [$tier, $countryId ?? 'null', $clientId ?? 'null']);
+
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
         }
 
-        if ($countryId) {
-            $countryDefault = FileFee::query()
-                ->where('service_type_id', $serviceTypeId)
-                ->where('country_id', $countryId)
-                ->whereNull('city_id')
-                ->first();
-            if ($countryDefault) {
-                return $cache[$cacheKey] = (float) $countryDefault->amount;
-            }
-        }
-
-        $globalDefault = FileFee::query()
-            ->where('service_type_id', $serviceTypeId)
-            ->whereNull('country_id')
-            ->whereNull('city_id')
-            ->first();
-
-        $cache[$cacheKey] = $globalDefault ? (float) $globalDefault->amount : null;
+        $resolver = app(FileFeeResolver::class);
+        $cache[$cacheKey] = $resolver->resolveTierAmount($tier, $countryId, $clientId);
 
         return $cache[$cacheKey];
     }
@@ -157,15 +147,17 @@ class TaxExportHelpers
      * Resolve file fee amount for tier/multiplier invoicing (UK vs rest by file service country).
      */
     public static function resolveFileFeeAmountForInvoicePricing(
-        int $serviceTypeId,
+        string $tier,
         ?int $fileCountryId = null,
-        ?int $fileCityId = null,
+        ?int $clientId = null,
     ): ?float {
+        $countryId = null;
+
         if ($fileCountryId && self::isUkCountryId($fileCountryId)) {
-            return self::resolveFileFeeAmountForServiceType($serviceTypeId, $fileCountryId, $fileCityId);
+            $countryId = $fileCountryId;
         }
 
-        return self::resolveFileFeeAmountForServiceType($serviceTypeId, null, null);
+        return self::resolveFileFeeAmountForTier($tier, $countryId, $clientId);
     }
 
     public static function isUkCountryId(?int $countryId): bool
