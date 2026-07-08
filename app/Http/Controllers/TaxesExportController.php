@@ -11,7 +11,6 @@ use Carbon\Carbon;
 use App\Exports\TaxesModeExport;
 use App\Models\Invoice;
 use App\Models\Bill;
-use App\Models\FileFee;
 use App\Models\Transaction;
 use Maatwebsite\Excel\Facades\Excel;
 use Google\Client;
@@ -319,52 +318,10 @@ class TaxesExportController extends Controller
 
     private function resolveFileFeeAmountForFile($file): ?float
     {
-        if (!$file || !$file->service_type_id) {
-            return null;
-        }
-
-        $serviceTypeId = (int) $file->service_type_id;
-        $countryId = $file->country_id ? (int) $file->country_id : null;
-        $cityId = $file->city_id ? (int) $file->city_id : null;
-
-        static $cache = [];
-        $cacheKey = implode(':', [$serviceTypeId, $countryId ?? 'null', $cityId ?? 'null']);
-
-        if (array_key_exists($cacheKey, $cache)) {
-            return $cache[$cacheKey];
-        }
-
-        if ($countryId && $cityId) {
-            $exact = FileFee::query()
-                ->where('service_type_id', $serviceTypeId)
-                ->where('country_id', $countryId)
-                ->where('city_id', $cityId)
-                ->first();
-            if ($exact) {
-                return $cache[$cacheKey] = (float) $exact->amount;
-            }
-        }
-
-        if ($countryId) {
-            $countryDefault = FileFee::query()
-                ->where('service_type_id', $serviceTypeId)
-                ->where('country_id', $countryId)
-                ->whereNull('city_id')
-                ->first();
-            if ($countryDefault) {
-                return $cache[$cacheKey] = (float) $countryDefault->amount;
-            }
-        }
-
-        $globalDefault = FileFee::query()
-            ->where('service_type_id', $serviceTypeId)
-            ->whereNull('country_id')
-            ->whereNull('city_id')
-            ->first();
-
-        $cache[$cacheKey] = $globalDefault ? (float) $globalDefault->amount : null;
-
-        return $cache[$cacheKey];
+        return TaxExportHelpers::resolveFileFeeAmountForFile(
+            $file,
+            $file?->patient?->client_id ? (int) $file->patient->client_id : null,
+        );
     }
 
     private function resolveAmountBeforeIva(float $fileFeeAmount, float $ivaRate): float
