@@ -68,16 +68,13 @@ class FilesWithBillingIssuesResource extends Resource
     {
         $billsTotal = FileBillingIntegrityService::billsTotalSubquerySql();
         $invoicesTotal = FileBillingIntegrityService::invoicesTotalSubquerySql();
-        $invoiceBillLines = FileBillingIntegrityService::invoiceBillLinesSubquerySql();
 
         return parent::getEloquentQuery()
             ->with(['patient.client', 'bills', 'invoices'])
             ->select('files.*')
             ->selectRaw("{$billsTotal} as bills_total_sum")
             ->selectRaw("{$invoicesTotal} as invoices_total_sum")
-            ->selectRaw("{$invoiceBillLines} as invoice_bill_lines_sum")
-            ->selectRaw("({$billsTotal} - {$invoicesTotal}) as margin_delta")
-            ->selectRaw("({$billsTotal} - {$invoiceBillLines}) as bill_lines_delta");
+            ->selectRaw("({$invoicesTotal} - {$billsTotal}) as margin_delta");
     }
 
     public static function form(Form $form): Form
@@ -98,7 +95,6 @@ class FilesWithBillingIssuesResource extends Resource
                     ->formatStateUsing(fn (string $state): string => FileBillingIntegrityService::issueTypeLabel($state))
                     ->color(fn (string $state): string => match ($state) {
                         FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE => 'danger',
-                        FileBillingIntegrityService::ISSUE_STALE_BILL_LINES => 'warning',
                         FileBillingIntegrityService::ISSUE_BILL_AFTER_INVOICE_SENT => 'info',
                         default => 'gray',
                     }),
@@ -124,22 +120,11 @@ class FilesWithBillingIssuesResource extends Resource
                     ->state(fn (File $record): float => FileBillingIntegrityService::invoicesTotalFor($record))
                     ->money('EUR')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('invoice_bill_lines_sum')
-                    ->label('Invoice bill lines')
-                    ->state(fn (File $record): float => FileBillingIntegrityService::invoiceBillLinesFor($record))
-                    ->money('EUR')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('margin_delta')
                     ->label('Margin (inv − bills)')
                     ->state(fn (File $record): float => FileBillingIntegrityService::marginDeltaFor($record))
                     ->money('EUR')
                     ->color(fn (File $record): string => FileBillingIntegrityService::marginDeltaFor($record) < 0 ? 'danger' : 'success')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('bill_lines_delta')
-                    ->label('Bill drift')
-                    ->state(fn (File $record): float => FileBillingIntegrityService::billLinesDeltaFor($record))
-                    ->money('EUR')
-                    ->color(fn (File $record): string => abs(FileBillingIntegrityService::billLinesDeltaFor($record)) > FileBillingIntegrityService::AMOUNT_TOLERANCE ? 'warning' : 'success')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('service_date')
                     ->date()

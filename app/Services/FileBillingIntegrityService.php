@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\File;
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -18,15 +17,12 @@ class FileBillingIntegrityService
 
     public const ISSUE_BILLS_EXCEED_INVOICE = 'bills_exceed_invoice';
 
-    public const ISSUE_STALE_BILL_LINES = 'stale_bill_lines';
-
     public const ISSUE_BILL_AFTER_INVOICE_SENT = 'bill_after_invoice_sent';
 
     public static function issueTypeLabels(): array
     {
         return [
             self::ISSUE_BILLS_EXCEED_INVOICE => 'Bills total exceeds invoice total',
-            self::ISSUE_STALE_BILL_LINES => 'Bill amounts differ from invoice bill lines',
             self::ISSUE_BILL_AFTER_INVOICE_SENT => 'Bill created or changed after invoice sent',
         ];
     }
@@ -46,18 +42,6 @@ class FileBillingIntegrityService
         return '(SELECT COALESCE(SUM(invoices.total_amount), 0) FROM invoices WHERE invoices.file_id = files.id)';
     }
 
-    public static function invoiceBillLinesSubquerySql(): string
-    {
-        $statuses = implode("','", self::COMMITTED_INVOICE_STATUSES);
-
-        return "(SELECT COALESCE(SUM(invoice_items.amount), 0)
-            FROM invoice_items
-            INNER JOIN invoices ON invoices.id = invoice_items.invoice_id
-            WHERE invoices.file_id = files.id
-            AND invoices.status IN ('{$statuses}')
-            AND invoice_items.item_type != '".InvoiceItem::TYPE_FILE_FEE."')";
-    }
-
     public static function applyIssuesScope(Builder $query): Builder
     {
         return $query
@@ -65,7 +49,6 @@ class FileBillingIntegrityService
             ->where(function (Builder $issues): void {
                 $issues
                     ->where(fn (Builder $q): Builder => self::applyBillsExceedInvoiceScope($q))
-                    ->orWhere(fn (Builder $q): Builder => self::applyStaleBillLinesScope($q))
                     ->orWhere(fn (Builder $q): Builder => self::applyBillAfterInvoiceSentScope($q));
             });
     }
@@ -76,14 +59,6 @@ class FileBillingIntegrityService
         $invoicesTotal = self::invoicesTotalSubquerySql();
 
         return $query->whereRaw("{$billsTotal} > {$invoicesTotal} + ?", [self::AMOUNT_TOLERANCE]);
-    }
-
-    public static function applyStaleBillLinesScope(Builder $query): Builder
-    {
-        $billsTotal = self::billsTotalSubquerySql();
-        $invoiceBillLines = self::invoiceBillLinesSubquerySql();
-
-        return $query->whereRaw("ABS({$billsTotal} - {$invoiceBillLines}) > ?", [self::AMOUNT_TOLERANCE]);
     }
 
     public static function applyBillAfterInvoiceSentScope(Builder $query): Builder
@@ -117,7 +92,6 @@ class FileBillingIntegrityService
     {
         return match ($issueType) {
             self::ISSUE_BILLS_EXCEED_INVOICE => self::applyBillsExceedInvoiceScope($query),
-            self::ISSUE_STALE_BILL_LINES => self::applyStaleBillLinesScope($query),
             self::ISSUE_BILL_AFTER_INVOICE_SENT => self::applyBillAfterInvoiceSentScope($query),
             default => $query,
         };
@@ -158,15 +132,12 @@ class FileBillingIntegrityService
     {
         $billsTotal = self::billsTotalSubquerySql();
         $invoicesTotal = self::invoicesTotalSubquerySql();
-        $invoiceBillLines = self::invoiceBillLinesSubquerySql();
 
         return self::issuesQuery()
             ->select('files.*')
             ->selectRaw("{$billsTotal} as bills_total_sum")
             ->selectRaw("{$invoicesTotal} as invoices_total_sum")
-            ->selectRaw("{$invoiceBillLines} as invoice_bill_lines_sum")
-            ->selectRaw("({$billsTotal} - {$invoicesTotal}) as margin_delta")
-            ->selectRaw("({$billsTotal} - {$invoiceBillLines}) as bill_lines_delta")
+            ->selectRaw("({$invoicesTotal} - {$billsTotal}) as margin_delta")
             ->orderBy('files.id')
             ->get();
     }
@@ -184,14 +155,9 @@ class FileBillingIntegrityService
 
         $billsTotal = self::billsTotalFor($file);
         $invoicesTotal = self::invoicesTotalFor($file);
-        $invoiceBillLines = self::invoiceBillLinesFor($file);
 
         if ($billsTotal > $invoicesTotal + self::AMOUNT_TOLERANCE) {
             $issues[] = self::ISSUE_BILLS_EXCEED_INVOICE;
-        }
-
-        if (abs($billsTotal - $invoiceBillLines) > self::AMOUNT_TOLERANCE) {
-            $issues[] = self::ISSUE_STALE_BILL_LINES;
         }
 
         if (self::hasBillActivityAfterInvoiceSent($file)) {
@@ -256,19 +222,6 @@ class FileBillingIntegrityService
         return round((float) $file->invoices()->sum('total_amount'), 2);
     }
 
-    public static function invoiceBillLinesFor(File $file): float
-    {
-        if (isset($file->invoice_bill_lines_sum)) {
-            return round((float) $file->invoice_bill_lines_sum, 2);
-        }
-
-        return round((float) $file->invoices()
-            ->whereIn('status', self::COMMITTED_INVOICE_STATUSES)
-            ->withSum(['items as bill_lines_sum' => fn (Builder $query): Builder => $query->where('item_type', '!=', InvoiceItem::TYPE_FILE_FEE)], 'amount')
-            ->get()
-            ->sum('bill_lines_sum'), 2);
-    }
-
     public static function marginDeltaFor(File $file): float
     {
         if (isset($file->margin_delta)) {
@@ -276,15 +229,6 @@ class FileBillingIntegrityService
         }
 
         return round(self::invoicesTotalFor($file) - self::billsTotalFor($file), 2);
-    }
-
-    public static function billLinesDeltaFor(File $file): float
-    {
-        if (isset($file->bill_lines_delta)) {
-            return round((float) $file->bill_lines_delta, 2);
-        }
-
-        return round(self::billsTotalFor($file) - self::invoiceBillLinesFor($file), 2);
     }
 
     public static function hasBillActivityAfterInvoiceSent(File $file): bool
@@ -344,18 +288,17 @@ class FileBillingIntegrityService
         $ref = $file->mga_reference ?? ('File #'.$file->getKey());
         $billsTotal = number_format(self::billsTotalFor($file), 2);
         $invoicesTotal = number_format(self::invoicesTotalFor($file), 2);
-        $invoiceBillLines = number_format(self::invoiceBillLinesFor($file), 2);
 
         if (self::hasSentInvoice($file)) {
             return match ($action) {
-                'create' => "A bill is being added to {$ref} after the invoice was already sent. Current invoice total is €{$invoicesTotal}; invoice bill lines total €{$invoiceBillLines}.",
-                default => "Bill {$action} on {$ref} after the invoice was sent. Live bills total €{$billsTotal}; invoice bill lines total €{$invoiceBillLines}. Regenerate or adjust the invoice if needed.",
+                'create' => "A bill is being added to {$ref} after the invoice was already sent. Current invoice total is €{$invoicesTotal}.",
+                default => "Bill {$action} on {$ref} after the invoice was sent. Live bills total €{$billsTotal}; invoice total €{$invoicesTotal}.",
             };
         }
 
         return match ($action) {
-            'create' => "A bill is being added to {$ref} which already has a committed invoice (€{$invoicesTotal}). Invoice bill lines currently total €{$invoiceBillLines}.",
-            default => "Bill {$action} on {$ref} with a committed invoice. Live bills total €{$billsTotal}; invoice bill lines total €{$invoiceBillLines}.",
+            'create' => "A bill is being added to {$ref} which already has a committed invoice (€{$invoicesTotal}).",
+            default => "Bill {$action} on {$ref} with a committed invoice. Live bills total €{$billsTotal}; invoice total €{$invoicesTotal}.",
         };
     }
 

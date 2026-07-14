@@ -38,15 +38,15 @@
         $billingIssues = $record
             ? \App\Services\FileBillingIntegrityService::describeIssues($file)
             : [];
-        $invoiceBillLines = $record
-            ? \App\Services\FileBillingIntegrityService::invoiceBillLinesFor($file)
+        $invoicesTotal = $record
+            ? \App\Services\FileBillingIntegrityService::invoicesTotalFor($file)
             : 0;
-        $billLinesDelta = round($total - $invoiceBillLines, 2);
+        $marginDelta = round($invoicesTotal - $total, 2);
     } else {
         $total = 0;
         $billingIssues = [];
-        $invoiceBillLines = 0;
-        $billLinesDelta = 0;
+        $invoicesTotal = 0;
+        $marginDelta = 0;
     }
 @endphp
 
@@ -67,9 +67,9 @@
             <div class="font-semibold">Billing mismatch on this file</div>
             <div class="mt-1">
                 Live bills total €{{ number_format($total, 2) }};
-                invoice bill lines €{{ number_format($invoiceBillLines, 2) }}
-                @if(abs($billLinesDelta) > 0.01)
-                    (drift €{{ number_format($billLinesDelta, 2) }}).
+                invoice total €{{ number_format($invoicesTotal, 2) }}
+                @if(abs($marginDelta) > 0.01)
+                    (margin €{{ number_format($marginDelta, 2) }}).
                 @endif
             </div>
             <div class="mt-1 text-xs">

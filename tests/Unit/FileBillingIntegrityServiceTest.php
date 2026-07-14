@@ -5,7 +5,6 @@ namespace Tests\Unit;
 use App\Models\Bill;
 use App\Models\File;
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use App\Services\FileBillingIntegrityService;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -18,27 +17,37 @@ class FileBillingIntegrityServiceTest extends TestCase
         $file = $this->makeFileWithBilling(
             billsTotal: 500,
             invoicesTotal: 400,
-            invoiceBillLines: 300,
         );
 
         $issues = FileBillingIntegrityService::describeIssues($file);
 
-        $this->assertContains(FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE, $issues);
+        $this->assertSame([FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE], $issues);
     }
 
     #[Test]
-    public function describe_issues_flags_stale_bill_lines(): void
+    public function describe_issues_does_not_flag_when_bills_are_below_invoice_totals(): void
     {
         $file = $this->makeFileWithBilling(
-            billsTotal: 450,
-            invoicesTotal: 500,
-            invoiceBillLines: 300,
+            billsTotal: 150,
+            invoicesTotal: 300,
         );
 
         $issues = FileBillingIntegrityService::describeIssues($file);
 
-        $this->assertContains(FileBillingIntegrityService::ISSUE_STALE_BILL_LINES, $issues);
-        $this->assertSame(150.0, FileBillingIntegrityService::billLinesDeltaFor($file));
+        $this->assertSame([], $issues);
+        $this->assertSame(150.0, FileBillingIntegrityService::marginDeltaFor($file));
+    }
+
+    #[Test]
+    public function describe_issues_does_not_flag_stale_bill_lines(): void
+    {
+        $file = $this->makeFileWithBilling(
+            billsTotal: 300,
+            invoicesTotal: 500,
+        );
+
+        $this->assertSame([], FileBillingIntegrityService::describeIssues($file));
+        $this->assertArrayNotHasKey('stale_bill_lines', FileBillingIntegrityService::issueTypeLabels());
     }
 
     #[Test]
@@ -62,7 +71,6 @@ class FileBillingIntegrityServiceTest extends TestCase
         $file = $this->makeFileWithBilling(
             billsTotal: 450,
             invoicesTotal: 500,
-            invoiceBillLines: 300,
             invoiceStatus: 'Paid',
         );
 
@@ -80,7 +88,6 @@ class FileBillingIntegrityServiceTest extends TestCase
         $file = $this->makeFileWithBilling(
             billsTotal: 500,
             invoicesTotal: 400,
-            invoiceBillLines: 300,
         );
 
         $this->assertSame(-100.0, FileBillingIntegrityService::marginDeltaFor($file));
@@ -89,7 +96,6 @@ class FileBillingIntegrityServiceTest extends TestCase
     private function makeFileWithBilling(
         float $billsTotal,
         float $invoicesTotal,
-        float $invoiceBillLines,
         string $invoiceStatus = 'Sent',
     ): File {
         $file = new File(['id' => 1, 'mga_reference' => 'MG001AB']);
@@ -105,9 +111,7 @@ class FileBillingIntegrityServiceTest extends TestCase
 
         $file->bills_total_sum = $billsTotal;
         $file->invoices_total_sum = $invoicesTotal;
-        $file->invoice_bill_lines_sum = $invoiceBillLines;
         $file->margin_delta = $invoicesTotal - $billsTotal;
-        $file->bill_lines_delta = $billsTotal - $invoiceBillLines;
 
         return $file;
     }
