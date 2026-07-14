@@ -505,8 +505,7 @@ class TransactionImportService
             'Client' => Client::query()->where('company_name', $row['client_name'] ?? '')->value('id')
                 ?? Client::query()->where('name', $row['client_name'] ?? '')->value('id'),
             'Provider' => Provider::query()->where('name', $row['provider_name'] ?? '')->value('id'),
-            'Branch' => ProviderBranch::query()->where('branch_name', $row['branch_name'] ?? '')->value('id')
-                ?? ProviderBranch::query()->where('name', $row['branch_name'] ?? '')->value('id'),
+            'Branch' => ProviderBranch::query()->where('branch_name', $row['branch_name'] ?? '')->value('id'),
             default => null,
         };
     }

@@ -25,7 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Cases created in the period → revenue/cost from invoices/bills; income = revenue - cost; profit = income - expenses
+        // Assisted cases with both invoice and bill → revenue/cost from those; income = revenue - cost; profit = income - expenses
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
@@ -67,12 +67,13 @@ class FileStatsOverview extends  StatsOverviewWidget
             return ($revenue - $cost) - $expenses;
         }, $revenueChart, $costChart, $expensesChart);
 
-        // File statistics
-        $activeFiles = File::where('status', 'Assisted')
-            ->whereBetween('created_at', [
+        // File statistics (Active = Assisted with both invoice and bill, matching financial scope)
+        $activeFiles = $this->applyDashboardFinancialFileScope(
+            File::query()->whereBetween('created_at', [
                 $dateRange['current']['start'],
-                $dateRange['current']['end']
-            ])->count();
+                $dateRange['current']['end'],
+            ])
+        )->count();
             
         $cancelledFiles = File::whereIn('status', ['Cancelled', 'Void'])
             ->whereBetween('created_at', [
@@ -98,11 +99,12 @@ class FileStatsOverview extends  StatsOverviewWidget
         ])->count();
 
         // Previous period file statistics
-        $previousActiveFiles = File::where('status', 'Assisted')
-            ->whereBetween('created_at', [
+        $previousActiveFiles = $this->applyDashboardFinancialFileScope(
+            File::query()->whereBetween('created_at', [
                 $dateRange['previous']['start'],
-                $dateRange['previous']['end']
-            ])->count();
+                $dateRange['previous']['end'],
+            ])
+        )->count();
             
         $previousCancelledFiles = File::whereIn('status', ['Cancelled', 'Void'])
             ->whereBetween('created_at', [
