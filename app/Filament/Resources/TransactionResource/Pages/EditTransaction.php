@@ -8,11 +8,13 @@ use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\TransactionEditPageRefresh;
 use App\Services\GenerateTrxInPdfService;
 use App\Services\GenerateTrxOutPdfService;
+use App\Services\TransactionBillAmountSyncService;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
 use App\Services\TransactionSettlementService;
 use Filament\Actions;
 use Filament\Actions\Action;
+use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
@@ -275,7 +277,59 @@ class EditTransaction extends EditRecord
      */
     protected function utilityHeaderActions(): array
     {
+        $syncService = app(TransactionBillAmountSyncService::class);
+
         return [
+            Action::make('syncTrAndBillAmount')
+                ->label('Sync TR & Bill Amount')
+                ->icon('heroicon-o-arrows-right-left')
+                ->color('warning')
+                ->visible(fn (): bool => $syncService->canSync($this->record))
+                ->modalHeading('Sync TR & Bill Amount')
+                ->modalDescription('Adjust the transaction total and matching bill amount(s). The difference must be less than €100.')
+                ->modalSubmitActionLabel('Sync amounts')
+                ->fillForm(fn (): array => [
+                    'new_total' => (float) $this->record->amount,
+                ])
+                ->form([
+                    Forms\Components\Placeholder::make('current_total')
+                        ->label('Current transaction total')
+                        ->content(fn (): string => '€'.number_format((float) $this->record->amount, 2)),
+                    Forms\Components\TextInput::make('new_total')
+                        ->label('New transaction total')
+                        ->numeric()
+                        ->inputMode('decimal')
+                        ->step('0.01')
+                        ->prefix('€')
+                        ->required()
+                        ->rule('gt:0')
+                        ->helperText('Difference from current total must be less than €100.'),
+                ])
+                ->action(function (array $data) use ($syncService): void {
+                    try {
+                        $this->record = $syncService->sync(
+                            $this->record,
+                            (float) $data['new_total'],
+                        );
+
+                        $this->refreshRecordOnPage(full: true);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Amounts synced')
+                            ->body('Transaction and linked bill amount(s) were updated.')
+                            ->send();
+                    } catch (ValidationException $exception) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Sync failed')
+                            ->body(collect($exception->errors())->flatten()->first() ?? 'Validation failed.')
+                            ->persistent()
+                            ->send();
+
+                        throw $exception;
+                    }
+                }),
             Action::make('finalizeTransaction')
                 ->label('Confirm payment (finalize)')
                 ->icon('heroicon-o-check-circle')
