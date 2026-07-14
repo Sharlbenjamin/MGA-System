@@ -36,7 +36,10 @@
         $medicalReportWithDocument = $file->medicalReports()->whereNotNull('document_path')->latest()->first();
 
         $billingIssues = $record
-            ? \App\Services\FileBillingIntegrityService::describeIssues($file)
+            ? array_values(array_filter(
+                \App\Services\FileBillingIntegrityService::describeIssues($file),
+                fn (string $issue): bool => $issue === \App\Services\FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE,
+            ))
             : [];
         $invoicesTotal = $record
             ? \App\Services\FileBillingIntegrityService::invoicesTotalFor($file)
@@ -66,16 +69,12 @@
         <div class="rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-sm text-warning-900 dark:border-warning-700 dark:bg-warning-950/40 dark:text-warning-100">
             <div class="font-semibold">Billing mismatch on this file</div>
             <div class="mt-1">
-                Live bills total €{{ number_format($total, 2) }};
-                invoice total €{{ number_format($invoicesTotal, 2) }}
+                Bills total exceeds invoice total
+                (bills €{{ number_format($total, 2) }}
+                &gt; invoice €{{ number_format($invoicesTotal, 2) }}
                 @if(abs($marginDelta) > 0.01)
-                    (margin €{{ number_format($marginDelta, 2) }}).
-                @endif
-            </div>
-            <div class="mt-1 text-xs">
-                @foreach($billingIssues as $issue)
-                    {{ \App\Services\FileBillingIntegrityService::issueTypeLabel($issue) }}@if(! $loop->last), @endif
-                @endforeach
+                    , margin €{{ number_format($marginDelta, 2) }}
+                @endif).
             </div>
         </div>
     @endif

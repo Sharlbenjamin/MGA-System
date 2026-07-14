@@ -39,7 +39,10 @@
     $billStatus = $latestBill ? $latestBill->status : 'No Bill';
     $billTotalAmount = $latestBill ? number_format((float) ($latestBill->total_amount ?? 0), 2) : null;
     $gopTotalAmount = number_format((float) $record->gopInTotal(), 2);
-    $billingIssues = FileBillingIntegrityService::describeIssues($record);
+    $billingIssues = array_values(array_filter(
+        FileBillingIntegrityService::describeIssues($record),
+        fn (string $issue): bool => $issue === FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE,
+    ));
     $billingMismatchUrl = FilesWithBillingIssuesResource::tryGetIndexUrl();
     $truncate = fn ($s, $len = 80) => $s ? (strlen($s) > $len ? substr($s, 0, $len) . '…' : $s) : '—';
     $statusColor = match ($record->status ?? '') {
@@ -123,11 +126,11 @@
                     <div class="flex flex-nowrap gap-x-2 items-center"><span class="{{ $iconClass }}">@svg('heroicon-o-banknotes', 'h-4 w-4')</span><dt class="{{ $labelClass }}">Bill Total Amount:</dt><dd class="min-w-0">{{ $latestBill ? 'EUR ' . $billTotalAmount : '—' }}</dd></div>
                     @if(!empty($billingIssues))
                         <div class="mt-2 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-xs text-warning-900 dark:border-warning-700 dark:bg-warning-950/40 dark:text-warning-100">
-                            <div class="font-semibold">Billing mismatch</div>
+            <div class="font-semibold">Billing mismatch</div>
                             <div class="mt-1">
-                                @foreach($billingIssues as $issue)
-                                    {{ FileBillingIntegrityService::issueTypeLabel($issue) }}@if(! $loop->last), @endif
-                                @endforeach
+                                Bills total exceeds invoice total
+                                (bills €{{ number_format(FileBillingIntegrityService::billsTotalFor($record), 2) }}
+                                &gt; invoice €{{ number_format(FileBillingIntegrityService::invoicesTotalFor($record), 2) }}).
                             </div>
                             @if(filled($billingMismatchUrl))
                                 <a href="{{ $billingMismatchUrl }}" class="mt-1 inline-block font-medium text-warning-800 underline dark:text-warning-200">View billing mismatches</a>

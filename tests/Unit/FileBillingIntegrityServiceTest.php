@@ -18,43 +18,37 @@ class FileBillingIntegrityServiceTest extends TestCase
         $file = $this->makeFileWithBilling(
             billsTotal: 500,
             invoicesTotal: 400,
-            invoiceBillLines: 400,
         );
 
         $issues = FileBillingIntegrityService::describeIssues($file);
 
-        $this->assertContains(FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE, $issues);
+        $this->assertSame([FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE], $issues);
     }
 
     #[Test]
-    public function describe_issues_flags_when_bills_are_below_invoice_bill_lines(): void
+    public function describe_issues_does_not_flag_when_bills_are_below_invoice_totals(): void
     {
         $file = $this->makeFileWithBilling(
             billsTotal: 150,
             invoicesTotal: 300,
-            invoiceBillLines: 300,
         );
 
         $issues = FileBillingIntegrityService::describeIssues($file);
 
-        $this->assertNotContains(FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE, $issues);
-        $this->assertContains(FileBillingIntegrityService::ISSUE_STALE_BILL_LINES, $issues);
-        $this->assertSame(-150.0, FileBillingIntegrityService::billLinesDeltaFor($file));
+        $this->assertSame([], $issues);
+        $this->assertSame(150.0, FileBillingIntegrityService::marginDeltaFor($file));
     }
 
     #[Test]
-    public function describe_issues_flags_stale_bill_lines_in_either_direction(): void
+    public function describe_issues_does_not_flag_stale_bill_lines(): void
     {
         $file = $this->makeFileWithBilling(
-            billsTotal: 450,
+            billsTotal: 300,
             invoicesTotal: 500,
-            invoiceBillLines: 300,
         );
 
-        $issues = FileBillingIntegrityService::describeIssues($file);
-
-        $this->assertContains(FileBillingIntegrityService::ISSUE_STALE_BILL_LINES, $issues);
-        $this->assertSame(150.0, FileBillingIntegrityService::billLinesDeltaFor($file));
+        $this->assertSame([], FileBillingIntegrityService::describeIssues($file));
+        $this->assertArrayNotHasKey('stale_bill_lines', FileBillingIntegrityService::issueTypeLabels());
     }
 
     #[Test]
@@ -74,7 +68,6 @@ class FileBillingIntegrityServiceTest extends TestCase
         $file->setRelation('bills', collect([$bill]));
         $file->bills_total_sum = 300;
         $file->invoices_total_sum = 400;
-        $file->invoice_bill_lines_sum = 300;
 
         $issues = FileBillingIntegrityService::describeIssues($file);
 
@@ -152,7 +145,6 @@ class FileBillingIntegrityServiceTest extends TestCase
         $file->setRelation('bills', collect([$bill]));
         $file->bills_total_sum = 300;
         $file->invoices_total_sum = 400;
-        $file->invoice_bill_lines_sum = 300;
 
         $this->assertTrue(FileBillingIntegrityService::isBillAfterAccepted($file));
         $this->assertSame([], FileBillingIntegrityService::describeIssues($file));
@@ -162,7 +154,6 @@ class FileBillingIntegrityServiceTest extends TestCase
 
         $file->setRelation('bills', collect([$bill, $newerBill]));
         $file->bills_total_sum = 350;
-        $file->invoice_bill_lines_sum = 350;
 
         $this->assertFalse(FileBillingIntegrityService::isBillAfterAccepted($file));
         $this->assertContains(
@@ -202,7 +193,6 @@ class FileBillingIntegrityServiceTest extends TestCase
     private function makeFileWithBilling(
         float $billsTotal,
         float $invoicesTotal,
-        ?float $invoiceBillLines = null,
         string $invoiceStatus = 'Sent',
     ): File {
         $file = new File(['id' => 1, 'mga_reference' => 'MG001AB']);
@@ -216,12 +206,9 @@ class FileBillingIntegrityServiceTest extends TestCase
         $file->setRelation('bills', collect([$bill]));
         $file->setRelation('invoices', collect([$invoice]));
 
-        $resolvedBillLines = $invoiceBillLines ?? $billsTotal;
         $file->bills_total_sum = $billsTotal;
         $file->invoices_total_sum = $invoicesTotal;
-        $file->invoice_bill_lines_sum = $resolvedBillLines;
         $file->margin_delta = $invoicesTotal - $billsTotal;
-        $file->bill_lines_delta = $billsTotal - $resolvedBillLines;
 
         return $file;
     }

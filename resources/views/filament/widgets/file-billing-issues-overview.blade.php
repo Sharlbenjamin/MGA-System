@@ -4,7 +4,6 @@
             $issueLabels = \App\Services\FileBillingIntegrityService::issueTypeLabels();
             $issueChipClasses = [
                 \App\Services\FileBillingIntegrityService::ISSUE_BILLS_EXCEED_INVOICE => 'border-danger-200 bg-danger-50 text-danger-800 hover:bg-danger-100 dark:border-danger-800 dark:bg-danger-950/40 dark:text-danger-200 dark:hover:bg-danger-950/60 [&_span:last-child]:bg-danger-100 dark:[&_span:last-child]:bg-danger-900',
-                \App\Services\FileBillingIntegrityService::ISSUE_STALE_BILL_LINES => 'border-warning-200 bg-warning-50 text-warning-800 hover:bg-warning-100 dark:border-warning-800 dark:bg-warning-950/40 dark:text-warning-200 dark:hover:bg-warning-950/60 [&_span:last-child]:bg-warning-100 dark:[&_span:last-child]:bg-warning-900',
                 \App\Services\FileBillingIntegrityService::ISSUE_BILL_AFTER_INVOICE => 'border-info-200 bg-info-50 text-info-800 hover:bg-info-100 dark:border-info-800 dark:bg-info-950/40 dark:text-info-200 dark:hover:bg-info-950/60 [&_span:last-child]:bg-info-100 dark:[&_span:last-child]:bg-info-900',
             ];
             $chipBase = 'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-primary-500';
@@ -23,7 +22,7 @@
                 </div>
                 <button
                     type="button"
-                    class="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-primary-700 shadow-sm ring-1 ring-primary-200 hover:bg-primary-100 dark:bg-primary-900 dark:text-primary-100 dark:ring-primary-700 dark:hover:bg-primary-800"
+                    class="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-primary-700 shadow-sm ring-1 ring-primary-200 hover:bg-primary-100 dark:bg-primary-900 dark:text-primary-100 dark:hover:bg-primary-800"
                     wire:click="clearIssueFilter"
                 >
                     Clear filter
