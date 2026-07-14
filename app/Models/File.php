@@ -31,7 +31,19 @@ class File extends Model
 
     protected $fillable = ['status','mga_reference','patient_id','client_reference','country_id','city_id','service_type_id','provider_branch_id','service_date','service_time','address','symptoms','diagnosis','contact_patient', 'google_drive_link', 'email', 'phone'];
 
-    protected $casts = ['id' => 'integer','patient_id' => 'integer','country_id' => 'integer','city_id' => 'integer','service_type_id' => 'integer','provider_branch_id' => 'integer','service_date' => 'date', ];
+    protected $casts = [
+        'id' => 'integer',
+        'patient_id' => 'integer',
+        'country_id' => 'integer',
+        'city_id' => 'integer',
+        'service_type_id' => 'integer',
+        'provider_branch_id' => 'integer',
+        'service_date' => 'date',
+        'billing_mismatch_accepted_at' => 'datetime',
+        'accepted_bills_exceed_bills_total' => 'decimal:2',
+        'accepted_bills_exceed_invoices_total' => 'decimal:2',
+        'accepted_bill_after_at' => 'datetime',
+    ];
 
     public function patient(): BelongsTo
     {

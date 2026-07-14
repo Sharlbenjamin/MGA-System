@@ -73,6 +73,27 @@ class AssistedFileChecklistResource extends Resource
             ])
             ->defaultGroup('providerBranch.provider.name')
             ->columns([
+                Tables\Columns\TextColumn::make('assisted_gaps')
+                    ->label('Reasons')
+                    ->badge()
+                    ->getStateUsing(fn (File $record): array => FileWorkflowGapService::describeAssistedGaps($record))
+                    ->formatStateUsing(fn (string $state): string => FileWorkflowGapService::assistedGapLabel($state))
+                    ->color(fn (string $state): string => match ($state) {
+                        FileWorkflowGapService::GAP_NO_GOP_ACCEPTED => 'danger',
+                        FileWorkflowGapService::GAP_GOP => 'warning',
+                        FileWorkflowGapService::GAP_GOP_DOC => 'warning',
+                        FileWorkflowGapService::GAP_MR => 'warning',
+                        FileWorkflowGapService::GAP_BILL => 'warning',
+                        default => 'gray',
+                    }),
+                Tables\Columns\IconColumn::make('gap_gop_accepted')
+                    ->label('GOP accepted')
+                    ->boolean()
+                    ->getStateUsing(fn (File $record): bool => ! FileWorkflowGapService::missingAcceptedGopIn($record))
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-exclamation-triangle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
                 Tables\Columns\IconColumn::make('gap_gop')
                     ->label('GOP')
                     ->boolean()

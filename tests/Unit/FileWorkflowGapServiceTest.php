@@ -38,6 +38,51 @@ class FileWorkflowGapServiceTest extends TestCase
         $this->assertTrue(FileWorkflowGapService::hasAnyInvoiceGap($file));
     }
 
+    public function test_assisted_file_without_accepted_gop_in_is_flagged(): void
+    {
+        $gop = new Gop(['type' => 'In', 'status' => Gop::IN_STATUS_OFFERED, 'gop_google_drive_link' => 'https://drive.example/gop']);
+        $invoice = new Invoice(['status' => 'Sent', 'invoice_google_link' => 'https://drive.example/invoice']);
+        $file = $this->makeFileWithRelations(
+            gops: collect([$gop]),
+            invoices: collect([$invoice]),
+            bills: collect([(object) ['id' => 1]]),
+            medicalReports: collect([(object) ['id' => 1]]),
+        );
+
+        $this->assertTrue(FileWorkflowGapService::missingAcceptedGopIn($file));
+        $this->assertTrue(FileWorkflowGapService::hasAnyGap($file));
+        $this->assertFalse(FileWorkflowGapService::hasAnyInvoiceGap($file));
+        $this->assertContains(
+            FileWorkflowGapService::GAP_NO_GOP_ACCEPTED,
+            FileWorkflowGapService::describeAssistedGaps($file),
+        );
+        $this->assertSame(
+            'No GOP accepted',
+            FileWorkflowGapService::assistedGapLabel(FileWorkflowGapService::GAP_NO_GOP_ACCEPTED),
+        );
+    }
+
+    public function test_assisted_file_with_accepted_gop_in_is_not_flagged_for_gop(): void
+    {
+        $gop = new Gop([
+            'type' => 'In',
+            'status' => Gop::IN_STATUS_ACCEPTED,
+            'gop_google_drive_link' => 'https://drive.example/gop',
+        ]);
+        $file = $this->makeFileWithRelations(
+            gops: collect([$gop]),
+            bills: collect([(object) ['id' => 1]]),
+            medicalReports: collect([(object) ['id' => 1]]),
+        );
+
+        $this->assertFalse(FileWorkflowGapService::missingAcceptedGopIn($file));
+        $this->assertFalse(FileWorkflowGapService::hasAnyGap($file));
+        $this->assertNotContains(
+            FileWorkflowGapService::GAP_NO_GOP_ACCEPTED,
+            FileWorkflowGapService::describeAssistedGaps($file),
+        );
+    }
+
     /**
      * @param  \Illuminate\Support\Collection<int, mixed>  $gops
      * @param  \Illuminate\Support\Collection<int, mixed>  $invoices

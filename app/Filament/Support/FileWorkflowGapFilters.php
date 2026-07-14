@@ -37,6 +37,10 @@ class FileWorkflowGapFilters
                 FileWorkflowGapService::invoiceCheckpointOptions(),
                 fn (Builder $query, string $gapKey): Builder => FileWorkflowGapService::scopeWithInvoiceGap($query, $gapKey),
             ),
+            Filter::make('with_bills')
+                ->label('With bills')
+                ->query(fn (Builder $query): Builder => $query->whereHas('bills'))
+                ->toggle(),
             ...self::sharedFileFilters(includeClient: true),
         ];
     }

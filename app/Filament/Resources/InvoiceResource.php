@@ -311,7 +311,25 @@ class InvoiceResource extends Resource
                             })
                             ->formatStateUsing(fn ($state): string => '€' . number_format((float) $state, 2))
                     )
-                    ->sortable(false),
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
+
+                        return $query->orderByRaw(
+                            '(
+                                COALESCE((
+                                    SELECT SUM(file_invoices.total_amount)
+                                    FROM invoices AS file_invoices
+                                    WHERE file_invoices.file_id = invoices.file_id
+                                ), 0)
+                                -
+                                COALESCE((
+                                    SELECT SUM(bills.total_amount)
+                                    FROM bills
+                                    WHERE bills.file_id = invoices.file_id
+                                ), 0)
+                            ) '.$direction
+                        );
+                    }),
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->badge()->color(fn (string $state): string => match ($state) {
                     'New' => 'gray',
                     'Handling' => 'info',

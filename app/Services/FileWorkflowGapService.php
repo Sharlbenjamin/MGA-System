@@ -13,6 +13,8 @@ class FileWorkflowGapService
 
     public const GAP_GOP_DOC = 'gop_doc';
 
+    public const GAP_NO_GOP_ACCEPTED = 'no_gop_accepted';
+
     public const GAP_MR = 'mr';
 
     public const GAP_BILL = 'bill';
@@ -32,11 +34,31 @@ class FileWorkflowGapService
     {
         return [
             self::GAP_ANY => 'Any gap',
+            self::GAP_NO_GOP_ACCEPTED => 'No GOP accepted',
             self::GAP_GOP => 'Missing GOP',
             self::GAP_GOP_DOC => 'Missing GOP doc',
             self::GAP_MR => 'Missing MR',
             self::GAP_BILL => 'Missing bill',
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function assistedGapLabels(): array
+    {
+        return [
+            self::GAP_NO_GOP_ACCEPTED => 'No GOP accepted',
+            self::GAP_GOP => 'Missing GOP',
+            self::GAP_GOP_DOC => 'Missing GOP doc',
+            self::GAP_MR => 'Missing MR',
+            self::GAP_BILL => 'Missing bill',
+        ];
+    }
+
+    public static function assistedGapLabel(string $gapKey): string
+    {
+        return self::assistedGapLabels()[$gapKey] ?? ucfirst(str_replace('_', ' ', $gapKey));
     }
 
     /**
@@ -58,6 +80,20 @@ class FileWorkflowGapService
         }
 
         return ! $file->gops()->exists();
+    }
+
+    public static function missingAcceptedGopIn(File $file): bool
+    {
+        if ($file->relationLoaded('gops')) {
+            return ! $file->gops->contains(
+                fn (Gop $gop): bool => $gop->type === 'In' && $gop->status === Gop::IN_STATUS_ACCEPTED
+            );
+        }
+
+        return ! $file->gops()
+            ->where('type', 'In')
+            ->where('status', Gop::IN_STATUS_ACCEPTED)
+            ->exists();
     }
 
     public static function missingGopDoc(File $file): bool
@@ -97,15 +133,54 @@ class FileWorkflowGapService
 
     public static function hasAnyGap(File $file): bool
     {
-        return self::missingGop($file)
+        return self::missingAcceptedGopIn($file)
+            || self::missingGop($file)
             || self::missingGopDoc($file)
             || self::missingMr($file)
             || self::missingBill($file);
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function describeAssistedGaps(File $file): array
+    {
+        $gaps = [];
+
+        if (self::missingAcceptedGopIn($file)) {
+            $gaps[] = self::GAP_NO_GOP_ACCEPTED;
+        }
+
+        if (self::missingGop($file)) {
+            $gaps[] = self::GAP_GOP;
+        }
+
+        if (self::missingGopDoc($file)) {
+            $gaps[] = self::GAP_GOP_DOC;
+        }
+
+        if (self::missingMr($file)) {
+            $gaps[] = self::GAP_MR;
+        }
+
+        if (self::missingBill($file)) {
+            $gaps[] = self::GAP_BILL;
+        }
+
+        return $gaps;
+    }
+
     public static function scopeMissingGop(Builder $query): Builder
     {
         return $query->whereDoesntHave('gops');
+    }
+
+    public static function scopeMissingAcceptedGopIn(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('gops', function (Builder $gopQuery): void {
+            $gopQuery->where('type', 'In')
+                ->where('status', Gop::IN_STATUS_ACCEPTED);
+        });
     }
 
     public static function scopeMissingGopDoc(Builder $query): Builder
@@ -132,7 +207,8 @@ class FileWorkflowGapService
     public static function scopeWithAnyGap(Builder $query): Builder
     {
         return $query->where(function (Builder $gapQuery): void {
-            $gapQuery->where(fn (Builder $q) => self::scopeMissingGop($q))
+            $gapQuery->where(fn (Builder $q) => self::scopeMissingAcceptedGopIn($q))
+                ->orWhere(fn (Builder $q) => self::scopeMissingGop($q))
                 ->orWhere(fn (Builder $q) => self::scopeMissingGopDoc($q))
                 ->orWhere(fn (Builder $q) => self::scopeMissingMr($q))
                 ->orWhere(fn (Builder $q) => self::scopeMissingBill($q));
@@ -142,6 +218,7 @@ class FileWorkflowGapService
     public static function scopeWithGap(Builder $query, string $gapKey): Builder
     {
         return match ($gapKey) {
+            self::GAP_NO_GOP_ACCEPTED => self::scopeMissingAcceptedGopIn($query),
             self::GAP_GOP => self::scopeMissingGop($query),
             self::GAP_GOP_DOC => self::scopeMissingGopDoc($query),
             self::GAP_MR => self::scopeMissingMr($query),
