@@ -90,6 +90,7 @@ class InvoiceItemSuggestionService
             $fileFees = $resolver->matchingServiceTypeFees(
                 (int) $file->service_type_id,
                 (int) $file->country_id,
+                $file->city_id ? (int) $file->city_id : null,
                 $clientId,
             )->take(5);
 

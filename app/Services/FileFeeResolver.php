@@ -10,16 +10,46 @@ use Illuminate\Support\Facades\DB;
 class FileFeeResolver
 {
     /**
+     * Resolve the best matching tier package for invoicing caps and amounts.
+     */
+    public function resolveTierPackage(
+        ?int $countryId = null,
+        ?int $cityId = null,
+        ?int $clientId = null,
+    ): ?FileFee {
+        return $this->matchingFees(
+            fn (Builder $query) => $query
+                ->whereNull('service_type_id')
+                ->where(function (Builder $query) {
+                    $query->whereNotNull('simple_amount')
+                        ->orWhereNotNull('middle_amount')
+                        ->orWhereNotNull('complex_amount');
+                }),
+            $countryId,
+            $cityId,
+            $clientId,
+        )->first();
+    }
+
+    /**
      * Resolve a tier-based file fee amount for invoice pricing.
      */
     public function resolveTierAmount(
         string $tier,
         ?int $countryId = null,
+        ?int $cityId = null,
         ?int $clientId = null,
     ): ?float {
+        $package = $this->resolveTierPackage($countryId, $cityId, $clientId);
+
+        if ($package) {
+            return $package->amountForTier($tier);
+        }
+
         return $this->resolveAmount(
             fn (Builder $query) => $query->where('tier', $tier),
             $countryId,
+            $cityId,
             $clientId,
         );
     }
@@ -30,6 +60,7 @@ class FileFeeResolver
     public function resolveServiceTypeAmount(
         int $serviceTypeId,
         ?int $countryId = null,
+        ?int $cityId = null,
         ?int $clientId = null,
     ): ?float {
         return $this->resolveAmount(
@@ -37,6 +68,7 @@ class FileFeeResolver
                 ->where('service_type_id', $serviceTypeId)
                 ->whereNull('tier'),
             $countryId,
+            $cityId,
             $clientId,
         );
     }
@@ -47,6 +79,7 @@ class FileFeeResolver
     public function matchingServiceTypeFees(
         int $serviceTypeId,
         ?int $countryId = null,
+        ?int $cityId = null,
         ?int $clientId = null,
     ): Collection {
         return $this->matchingFees(
@@ -54,6 +87,7 @@ class FileFeeResolver
                 ->where('service_type_id', $serviceTypeId)
                 ->whereNull('tier'),
             $countryId,
+            $cityId,
             $clientId,
         );
     }
@@ -61,11 +95,12 @@ class FileFeeResolver
     private function resolveAmount(
         callable $scope,
         ?int $countryId,
+        ?int $cityId,
         ?int $clientId,
     ): ?float {
-        $match = $this->matchingFees($scope, $countryId, $clientId)->first();
+        $match = $this->matchingFees($scope, $countryId, $cityId, $clientId)->first();
 
-        return $match ? (float) $match->amount : null;
+        return $match && $match->amount !== null ? (float) $match->amount : null;
     }
 
     /**
@@ -74,11 +109,12 @@ class FileFeeResolver
     private function matchingFees(
         callable $scope,
         ?int $countryId,
+        ?int $cityId,
         ?int $clientId,
     ): Collection {
         $query = FileFee::query()
-            ->with(['countries'])
-            ->withCount(['countries', 'clients']);
+            ->with(['countries', 'cities', 'clients'])
+            ->withCount(['countries', 'cities', 'clients']);
 
         $scope($query);
 
@@ -86,8 +122,9 @@ class FileFeeResolver
 
         return $candidates
             ->filter(fn (FileFee $fee) => $this->matchesCountryScope($fee, $countryId))
+            ->filter(fn (FileFee $fee) => $this->matchesCityScope($fee, $cityId))
             ->filter(fn (FileFee $fee) => $this->matchesClientScope($fee, $clientId))
-            ->sortByDesc(fn (FileFee $fee) => $this->specificityScore($fee, $countryId, $clientId))
+            ->sortByDesc(fn (FileFee $fee) => $this->specificityScore($fee, $countryId, $cityId, $clientId))
             ->values();
     }
 
@@ -104,6 +141,19 @@ class FileFeeResolver
         return $fee->countries->contains('id', $countryId);
     }
 
+    private function matchesCityScope(FileFee $fee, ?int $cityId): bool
+    {
+        if ($fee->cities_count === 0) {
+            return true;
+        }
+
+        if (! $cityId) {
+            return false;
+        }
+
+        return $fee->cities->contains('id', $cityId);
+    }
+
     private function matchesClientScope(FileFee $fee, ?int $clientId): bool
     {
         if ($fee->clients_count === 0) {
@@ -117,12 +167,20 @@ class FileFeeResolver
         return $this->feeAppliesToClient($fee, $clientId);
     }
 
-    private function specificityScore(FileFee $fee, ?int $countryId, ?int $clientId): int
-    {
+    private function specificityScore(
+        FileFee $fee,
+        ?int $countryId,
+        ?int $cityId,
+        ?int $clientId,
+    ): int {
         $score = 0;
 
         if ($fee->clients_count > 0 && $clientId && $this->feeAppliesToClient($fee, $clientId)) {
             $score += 100;
+        }
+
+        if ($fee->cities_count > 0 && $cityId && $fee->cities->contains('id', $cityId)) {
+            $score += 50;
         }
 
         if ($fee->countries_count > 0 && $countryId && $fee->countries->contains('id', $countryId)) {

@@ -2411,11 +2411,13 @@ class ViewFile extends ViewRecord
         }
 
         $countryId = $this->record->country_id ? (int) $this->record->country_id : null;
+        $cityId = $this->record->city_id ? (int) $this->record->city_id : null;
         $clientId = $this->record->patient?->client_id ? (int) $this->record->patient->client_id : null;
 
         return app(\App\Services\FileFeeResolver::class)->resolveServiceTypeAmount(
             $serviceTypeId,
             $countryId,
+            $cityId,
             $clientId,
         );
     }

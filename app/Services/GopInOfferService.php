@@ -312,11 +312,13 @@ class GopInOfferService
     public function resolveFileFeeAmount(File $file, int $serviceTypeId): ?float
     {
         $countryId = $file->country_id ? (int) $file->country_id : null;
+        $cityId = $file->city_id ? (int) $file->city_id : null;
         $clientId = $file->patient?->client_id ? (int) $file->patient->client_id : null;
 
         return app(FileFeeResolver::class)->resolveServiceTypeAmount(
             $serviceTypeId,
             $countryId,
+            $cityId,
             $clientId,
         );
     }

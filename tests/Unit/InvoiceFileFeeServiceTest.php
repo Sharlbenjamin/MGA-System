@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\FileFee;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Services\InvoiceFileFeeService;
@@ -29,6 +30,20 @@ class InvoiceFileFeeServiceTest extends TestCase
     }
 
     #[Test]
+    public function determine_tier_uses_package_caps_when_provided(): void
+    {
+        $package = new FileFee([
+            'simple_max_total' => 500,
+            'middle_max_total' => 1200,
+        ]);
+
+        $this->assertSame('simple', $this->service->determineTier(499.99, $package));
+        $this->assertSame('middle', $this->service->determineTier(500, $package));
+        $this->assertSame('middle', $this->service->determineTier(1199.99, $package));
+        $this->assertSame('complex', $this->service->determineTier(1200, $package));
+    }
+
+    #[Test]
     public function calculate_multiplier_units_uses_cap(): void
     {
         $this->assertSame(0, $this->service->calculateMultiplierUnits(0));
@@ -36,6 +51,18 @@ class InvoiceFileFeeServiceTest extends TestCase
         $this->assertSame(1, $this->service->calculateMultiplierUnits(350));
         $this->assertSame(2, $this->service->calculateMultiplierUnits(351));
         $this->assertSame(3, $this->service->calculateMultiplierUnits(900));
+    }
+
+    #[Test]
+    public function calculate_multiplier_units_uses_package_simple_cap_when_provided(): void
+    {
+        $package = new FileFee([
+            'simple_max_total' => 200,
+        ]);
+
+        $this->assertSame(1, $this->service->calculateMultiplierUnits(200, $package));
+        $this->assertSame(2, $this->service->calculateMultiplierUnits(201, $package));
+        $this->assertSame(5, $this->service->calculateMultiplierUnits(1000, $package));
     }
 
     #[Test]

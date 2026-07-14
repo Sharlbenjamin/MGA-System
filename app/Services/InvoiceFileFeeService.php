@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Client;
+use App\Models\FileFee;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\ServiceType;
@@ -54,33 +55,37 @@ class InvoiceFileFeeService
      *
      * @return 'simple'|'middle'|'complex'|null
      */
-    public function determineTier(float $billItemsTotal): ?string
+    public function determineTier(float $billItemsTotal, ?FileFee $package = null): ?string
     {
         if ($billItemsTotal <= 0) {
             return null;
         }
 
-        $simpleMax = (float) config('invoice.file_fee_tiers.simple.max_total', 350);
-        $middleMax = (float) config('invoice.file_fee_tiers.middle.max_total', 1000);
+        $caps = $package?->tierCaps() ?? [
+            'simple_max' => (float) config('invoice.file_fee_tiers.simple.max_total', 350),
+            'middle_max' => (float) config('invoice.file_fee_tiers.middle.max_total', 1000),
+        ];
 
-        if ($billItemsTotal < $simpleMax) {
+        if ($billItemsTotal < $caps['simple_max']) {
             return 'simple';
         }
 
-        if ($billItemsTotal < $middleMax) {
+        if ($billItemsTotal < $caps['middle_max']) {
             return 'middle';
         }
 
         return 'complex';
     }
 
-    public function calculateMultiplierUnits(float $billItemsTotal): int
+    public function calculateMultiplierUnits(float $billItemsTotal, ?FileFee $package = null): int
     {
         if ($billItemsTotal <= 0) {
             return 0;
         }
 
-        $cap = (float) config('invoice.multiplier_cap', 350);
+        $cap = $package?->simple_max_total !== null
+            ? (float) $package->simple_max_total
+            : (float) config('invoice.multiplier_cap', 350);
 
         return max(1, (int) ceil($billItemsTotal / $cap));
     }
@@ -99,17 +104,22 @@ class InvoiceFileFeeService
             return null;
         }
 
+        $countryId = $invoice->file?->country_id ? (int) $invoice->file->country_id : null;
+        $cityId = $invoice->file?->city_id ? (int) $invoice->file->city_id : null;
+        $clientId = $client?->id ? (int) $client->id : null;
+        $package = TaxExportHelpers::resolveTierPackageForInvoicePricing($countryId, $cityId, $clientId);
+
         if ($client?->usesMultiplierFileFeeStrategy()) {
-            return $this->buildMultiplierPayload($invoice, $billTotal);
+            return $this->buildMultiplierPayload($invoice, $billTotal, $package);
         }
 
-        $tier = $this->determineTier($billTotal);
+        $tier = $this->determineTier($billTotal, $package);
 
         if ($tier === null) {
             return null;
         }
 
-        return $this->buildTierPayload($invoice, $tier, $billTotal);
+        return $this->buildTierPayload($invoice, $tier, $billTotal, $package);
     }
 
     /**
@@ -123,18 +133,25 @@ class InvoiceFileFeeService
     /**
      * @return array{strategy: string, tier: string, units: null, bill_total: float, amount: float, description: string, service_type: string}|null
      */
-    public function buildTierPayload(Invoice $invoice, string $tier, float $billTotal): ?array
-    {
+    public function buildTierPayload(
+        Invoice $invoice,
+        string $tier,
+        float $billTotal,
+        ?FileFee $package = null,
+    ): ?array {
         $invoice->loadMissing(['file']);
 
         $countryId = $invoice->file?->country_id ? (int) $invoice->file->country_id : null;
+        $cityId = $invoice->file?->city_id ? (int) $invoice->file->city_id : null;
         $clientId = $invoice->file?->patient?->client_id ? (int) $invoice->file->patient->client_id : null;
 
-        $amount = TaxExportHelpers::resolveFileFeeAmountForInvoicePricing(
-            $tier,
-            $countryId,
-            $clientId,
-        );
+        $amount = $package?->amountForTier($tier)
+            ?? TaxExportHelpers::resolveFileFeeAmountForInvoicePricing(
+                $tier,
+                $countryId,
+                $cityId,
+                $clientId,
+            );
 
         if ($amount === null) {
             return null;
@@ -157,23 +174,29 @@ class InvoiceFileFeeService
     /**
      * @return array{strategy: string, tier: null, units: int, bill_total: float, amount: float, description: string, service_type: string}|null
      */
-    public function buildMultiplierPayload(Invoice $invoice, float $billTotal): ?array
-    {
+    public function buildMultiplierPayload(
+        Invoice $invoice,
+        float $billTotal,
+        ?FileFee $package = null,
+    ): ?array {
         $invoice->loadMissing(['file']);
 
-        $units = $this->calculateMultiplierUnits($billTotal);
+        $units = $this->calculateMultiplierUnits($billTotal, $package);
         if ($units <= 0) {
             return null;
         }
 
         $countryId = $invoice->file?->country_id ? (int) $invoice->file->country_id : null;
+        $cityId = $invoice->file?->city_id ? (int) $invoice->file->city_id : null;
         $clientId = $invoice->file?->patient?->client_id ? (int) $invoice->file->patient->client_id : null;
 
-        $unitAmount = TaxExportHelpers::resolveFileFeeAmountForInvoicePricing(
-            'simple',
-            $countryId,
-            $clientId,
-        );
+        $unitAmount = $package?->amountForTier('simple')
+            ?? TaxExportHelpers::resolveFileFeeAmountForInvoicePricing(
+                'simple',
+                $countryId,
+                $cityId,
+                $clientId,
+            );
 
         if ($unitAmount === null) {
             return null;

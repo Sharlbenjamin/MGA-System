@@ -55,16 +55,18 @@ class ItemsRelationManager extends RelationManager
                             $fileFees = $resolver->matchingServiceTypeFees(
                                 (int) $invoice->file->service_type_id,
                                 $invoice->file->country_id ? (int) $invoice->file->country_id : null,
+                                $invoice->file->city_id ? (int) $invoice->file->city_id : null,
                                 $clientId,
                             );
 
                             foreach ($fileFees as $fileFee) {
                                 $serviceName = $fileFee->serviceType ? $fileFee->serviceType->name : 'Unknown Service';
                                 $countryNames = $fileFee->countries->pluck('name')->join(', ');
+                                $cityNames = $fileFee->cities->pluck('name')->join(', ');
                                 $clientNames = $fileFee->clients->pluck('company_name')->join(', ');
 
-                                $scopeParts = array_filter([$countryNames, $clientNames]);
-                                $scope = $scopeParts !== [] ? implode(' · ', $scopeParts) : 'All countries · All clients';
+                                $scopeParts = array_filter([$countryNames, $cityNames, $clientNames]);
+                                $scope = $scopeParts !== [] ? implode(' · ', $scopeParts) : 'All countries · All cities · All clients';
                                 $label = "{$serviceName} ({$scope}) - €{$fileFee->amount}";
 
                                 $options->put("file_fee_{$fileFee->id}", $label);

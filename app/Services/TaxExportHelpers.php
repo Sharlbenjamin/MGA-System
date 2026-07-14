@@ -103,6 +103,7 @@ class TaxExportHelpers
         return self::resolveFileFeeAmountForServiceType(
             (int) $file->service_type_id,
             $file->country_id ? (int) $file->country_id : null,
+            $file->city_id ? (int) $file->city_id : null,
             $clientId ?? ($file->patient?->client_id ? (int) $file->patient->client_id : null),
         );
     }
@@ -110,17 +111,18 @@ class TaxExportHelpers
     public static function resolveFileFeeAmountForServiceType(
         int $serviceTypeId,
         ?int $countryId = null,
+        ?int $cityId = null,
         ?int $clientId = null,
     ): ?float {
         static $cache = [];
-        $cacheKey = implode(':', [$serviceTypeId, $countryId ?? 'null', $clientId ?? 'null']);
+        $cacheKey = implode(':', [$serviceTypeId, $countryId ?? 'null', $cityId ?? 'null', $clientId ?? 'null']);
 
         if (array_key_exists($cacheKey, $cache)) {
             return $cache[$cacheKey];
         }
 
         $resolver = app(FileFeeResolver::class);
-        $cache[$cacheKey] = $resolver->resolveServiceTypeAmount($serviceTypeId, $countryId, $clientId);
+        $cache[$cacheKey] = $resolver->resolveServiceTypeAmount($serviceTypeId, $countryId, $cityId, $clientId);
 
         return $cache[$cacheKey];
     }
@@ -128,17 +130,18 @@ class TaxExportHelpers
     public static function resolveFileFeeAmountForTier(
         string $tier,
         ?int $countryId = null,
+        ?int $cityId = null,
         ?int $clientId = null,
     ): ?float {
         static $cache = [];
-        $cacheKey = implode(':', [$tier, $countryId ?? 'null', $clientId ?? 'null']);
+        $cacheKey = implode(':', [$tier, $countryId ?? 'null', $cityId ?? 'null', $clientId ?? 'null']);
 
         if (array_key_exists($cacheKey, $cache)) {
             return $cache[$cacheKey];
         }
 
         $resolver = app(FileFeeResolver::class);
-        $cache[$cacheKey] = $resolver->resolveTierAmount($tier, $countryId, $clientId);
+        $cache[$cacheKey] = $resolver->resolveTierAmount($tier, $countryId, $cityId, $clientId);
 
         return $cache[$cacheKey];
     }
@@ -149,6 +152,7 @@ class TaxExportHelpers
     public static function resolveFileFeeAmountForInvoicePricing(
         string $tier,
         ?int $fileCountryId = null,
+        ?int $fileCityId = null,
         ?int $clientId = null,
     ): ?float {
         $countryId = null;
@@ -157,7 +161,21 @@ class TaxExportHelpers
             $countryId = $fileCountryId;
         }
 
-        return self::resolveFileFeeAmountForTier($tier, $countryId, $clientId);
+        return self::resolveFileFeeAmountForTier($tier, $countryId, $fileCityId, $clientId);
+    }
+
+    public static function resolveTierPackageForInvoicePricing(
+        ?int $fileCountryId = null,
+        ?int $fileCityId = null,
+        ?int $clientId = null,
+    ): ?\App\Models\FileFee {
+        $countryId = null;
+
+        if ($fileCountryId && self::isUkCountryId($fileCountryId)) {
+            $countryId = $fileCountryId;
+        }
+
+        return app(FileFeeResolver::class)->resolveTierPackage($countryId, $fileCityId, $clientId);
     }
 
     public static function isUkCountryId(?int $countryId): bool
