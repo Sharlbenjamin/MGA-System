@@ -101,7 +101,7 @@ class TransactionDocumentationForm
 
                     return match ($get('related_type')) {
                         'Provider' => Provider::query()->whereKey($value)->value('name'),
-                        'Branch' => ProviderBranch::query()->whereKey($value)->value('name'),
+                        'Branch' => ProviderBranch::query()->whereKey($value)->value('branch_name'),
                         default => Client::query()->whereKey($value)->value('company_name'),
                     };
                 })

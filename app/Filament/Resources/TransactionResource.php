@@ -535,7 +535,7 @@ class TransactionResource extends Resource
             ->visible(fn ($get) => $get('related_type') === 'Branch')
             ->searchable()
             ->getSearchResultsUsing(fn (string $search): array => static::searchBranchOptions($search))
-            ->getOptionLabelUsing(fn ($value): ?string => $value ? ProviderBranch::query()->whereKey($value)->value('name') : null)
+            ->getOptionLabelUsing(fn ($value): ?string => $value ? ProviderBranch::query()->whereKey($value)->value('branch_name') : null)
             ->default(fn () => request()->get('related_id'));
     }
 
@@ -583,10 +583,10 @@ class TransactionResource extends Resource
     public static function searchBranchOptions(?string $search, int $limit = 50): array
     {
         return ProviderBranch::query()
-            ->when(filled($search), fn (Builder $query) => $query->where('name', 'like', '%'.addcslashes($search, '%_').'%'))
-            ->orderBy('name')
+            ->when(filled($search), fn (Builder $query) => $query->where('branch_name', 'like', '%'.addcslashes($search, '%_').'%'))
+            ->orderBy('branch_name')
             ->limit($limit)
-            ->pluck('name', 'id')
+            ->pluck('branch_name', 'id')
             ->all();
     }
 
