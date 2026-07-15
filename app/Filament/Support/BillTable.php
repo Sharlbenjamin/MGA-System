@@ -2,10 +2,15 @@
 
 namespace App\Filament\Support;
 
+use App\Exports\ProviderBillsExport;
 use App\Models\Bill;
+use App\Models\Provider;
+use App\Models\ProviderBranch;
 use Filament\Tables;
 use Filament\Tables\Columns\Column;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BillTable
 {
@@ -142,5 +147,28 @@ class BillTable
     public static function configureRecordTitle(Tables\Table $table): Tables\Table
     {
         return $table->recordTitle(fn (Bill $record): string => $record->display_name);
+    }
+
+    public static function exportAction(): Tables\Actions\Action
+    {
+        return Tables\Actions\Action::make('export')
+            ->label('Export')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->color('gray')
+            ->action(function ($livewire) {
+                $owner = $livewire->getOwnerRecord();
+                $label = match (true) {
+                    $owner instanceof Provider => $owner->name,
+                    $owner instanceof ProviderBranch => $owner->branch_name,
+                    default => 'bills',
+                };
+
+                $filename = 'bills_'.Str::slug((string) $label).'_'.now()->format('Y-m-d_H-i-s').'.xlsx';
+
+                return Excel::download(
+                    new ProviderBillsExport($livewire->getFilteredTableQuery()),
+                    $filename
+                );
+            });
     }
 }
