@@ -89,43 +89,28 @@ class InvoiceChecklistResource extends Resource
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => FileWorkflowGapService::scopeInvoiceChecklistBase($query))
             ->columns([
-                Tables\Columns\IconColumn::make('gap_no_invoice')
-                    ->label('Invoice')
-                    ->boolean()
-                    ->getStateUsing(fn (File $record): bool => ! FileWorkflowGapService::missingInvoice($record))
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-exclamation-triangle')
-                    ->trueColor('success')
-                    ->falseColor('warning'),
-                Tables\Columns\IconColumn::make('gap_invoice_doc')
-                    ->label('Invoice doc')
-                    ->boolean()
-                    ->getStateUsing(fn (File $record): bool => ! FileWorkflowGapService::missingInvoiceDocument($record))
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-exclamation-triangle')
-                    ->trueColor('success')
-                    ->falseColor('warning'),
-                Tables\Columns\TextColumn::make('mga_reference')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('mga_reference')
+                    ->searchable()
+                    ->sortable()
+                    ->description(function (File $record): string {
+                        $invoice = FileWorkflowGapService::firstInvoiceNeedingDocument($record);
+
+                        return $invoice?->name ?? '—';
+                    }),
                 Tables\Columns\TextColumn::make('patient.name')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('patient.client.company_name')
                     ->label('Client')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn (File $record): string => $record->client_reference ?: '—'),
                 Tables\Columns\TextColumn::make('providerBranch.provider.name')
                     ->label('Provider')
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('serviceType.name')
-                    ->label('Service Type')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('service_date')->date()->sortable(),
-                Tables\Columns\TextColumn::make('pending_invoice')
-                    ->label('Pending invoice')
-                    ->getStateUsing(function (File $record): string {
-                        $invoice = FileWorkflowGapService::firstInvoiceNeedingDocument($record);
-
-                        return $invoice?->name ?? '—';
-                    })
-                    ->toggleable(),
+                Tables\Columns\TextColumn::make('service_date')
+                    ->label('Service / Type')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->description(fn (File $record): string => $record->serviceType?->name ?? '—'),
                 Tables\Columns\TextColumn::make('bill_amount')
                     ->label('Bill')
                     ->state(function (File $record): string {
@@ -166,8 +151,10 @@ class InvoiceChecklistResource extends Resource
             ])
             ->filters(FileWorkflowGapFilters::forInvoiceChecklist())
             ->actions([
-                FileWorkflowActions::viewFile(),
-                FileWorkflowActions::openCreateInvoiceForm(),
+                Tables\Actions\ActionGroup::make([
+                    FileWorkflowActions::viewFile(),
+                    FileWorkflowActions::openCreateInvoiceForm(),
+                ])->dropdown(false),
                 FileWorkflowActions::editInvoiceNeedingDoc(),
                 FileWorkflowActions::generateInvoiceDocument(),
             ])
