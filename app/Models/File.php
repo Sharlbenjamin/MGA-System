@@ -439,21 +439,51 @@ class File extends Model
         return $latestAppointment;
     }
 
+    /**
+     * Generate the next MGA reference for a client or patient.
+     * Reuses the lowest missing sequence number for that client; if none, uses max + 1.
+     */
     public static function generateMGAReference($id, $type)
     {
-        if (!$id) return 'MG000XXX';
-
-        if ($type == 'client') {
-            $client = Client::find($id);
-            if (!$client) return 'MG000XXX';
-
-            return sprintf('MG%03d%s', $client->files()->count() + 1, $client->initials ?? '');
-        } else {
-            $patient = Patient::find($id);
-            if (!$patient) return 'MG000XXX';
-
-            return sprintf('MG%03d%s', $patient->client->files()->count() + 1, $patient->client->initials ?? '');
+        if (!$id) {
+            return 'MG000XXX';
         }
+
+        $client = $type === 'client'
+            ? Client::find($id)
+            : Patient::find($id)?->client;
+
+        if (!$client) {
+            return 'MG000XXX';
+        }
+
+        $initials = $client->initials ?? '';
+        $pattern = '/^MG(\d+)' . preg_quote($initials, '/') . '$/i';
+
+        $used = $client->files()
+            ->pluck('mga_reference')
+            ->map(function ($ref) use ($pattern) {
+                if (preg_match($pattern, (string) $ref, $matches)) {
+                    return (int) $matches[1];
+                }
+
+                return null;
+            })
+            ->filter(fn ($n) => $n !== null)
+            ->unique()
+            ->sort()
+            ->values();
+
+        $next = 1;
+        foreach ($used as $n) {
+            if ($n === $next) {
+                $next++;
+            } elseif ($n > $next) {
+                break;
+            }
+        }
+
+        return sprintf('MG%03d%s', $next, $initials);
     }
 
     // Attributes   Attributes   Attributes   Attributes   Attributes   Attributes   Attributes   Attributes
