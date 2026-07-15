@@ -75,6 +75,7 @@ class InvoiceChecklistResource extends Resource
                 'providerBranch.provider',
                 'invoices',
                 'bills',
+                'medicalReports',
             ]);
     }
 
@@ -154,7 +155,14 @@ class InvoiceChecklistResource extends Resource
 
                         return $hasAttachment ? 'success' : 'danger';
                     }),
-                Tables\Columns\TextColumn::make('status')->badge(),
+                Tables\Columns\IconColumn::make('gap_mr')
+                    ->label('MR')
+                    ->boolean()
+                    ->getStateUsing(fn (File $record): bool => ! FileWorkflowGapService::missingMr($record))
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-exclamation-triangle')
+                    ->trueColor('success')
+                    ->falseColor('warning'),
             ])
             ->filters(FileWorkflowGapFilters::forInvoiceChecklist())
             ->actions([

@@ -40,6 +40,7 @@ class BillRelationManager extends RelationManager
                     }),
             ])
             ->headerActions([
+                BillTable::exportAction(),
                 Tables\Actions\CreateAction::make(),
             ])
             ->actions([
