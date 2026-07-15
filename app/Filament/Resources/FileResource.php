@@ -100,7 +100,7 @@ class FileResource extends Resource
                 })
                 ->label('Client')
                 ->hidden(fn ($get) => !$get('new_patient')),
-            TextInput::make('mga_reference')->label('MGA Reference')->required()->readOnly()->unique(ignoreRecord: true)->helperText('Auto-generated based on the patient'),
+            TextInput::make('mga_reference')->label('MGA Reference')->required()->readOnly()->helperText('Auto-generated based on the patient'),
             Select::make('service_type_id')->relationship('serviceType', 'name')->label('Service Type')->required()->live(),
             TextInput::make('client_reference')->label('Client Reference')->nullable(),
             Select::make('country_id')->relationship('country', 'name')->label('Country')->preload()->searchable()->nullable()->live(),

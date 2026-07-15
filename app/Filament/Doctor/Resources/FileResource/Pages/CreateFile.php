@@ -3,6 +3,7 @@
 namespace App\Filament\Doctor\Resources\FileResource\Pages;
 
 use App\Filament\Doctor\Resources\FileResource;
+use App\Models\File;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use App\Models\Patient;
@@ -39,6 +40,13 @@ class CreateFile extends CreateRecord
                 
                 $data['patient_id'] = $patient->id;
             }
+        }
+
+        // Always resolve a free MGA reference at save time (gap-fill only if count+1 is taken)
+        if (! empty($data['patient_id'])) {
+            $data['mga_reference'] = File::generateMGAReference($data['patient_id'], 'patient');
+        } elseif (! empty($data['client_id'])) {
+            $data['mga_reference'] = File::generateMGAReference($data['client_id'], 'client');
         }
 
         return $data;

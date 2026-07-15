@@ -451,21 +451,73 @@ class File extends Model
         return $latestAppointment;
     }
 
+    /**
+     * Generate the next MGA reference for a client or patient.
+     * Fast path: count + 1. If that ref is already taken, gap-fill the lowest missing number.
+     */
     public static function generateMGAReference($id, $type)
     {
-        if (!$id) return 'MG000XXX';
-
-        if ($type == 'client') {
-            $client = Client::find($id);
-            if (!$client) return 'MG000XXX';
-
-            return sprintf('MG%03d%s', $client->files()->count() + 1, $client->initials ?? '');
-        } else {
-            $patient = Patient::find($id);
-            if (!$patient) return 'MG000XXX';
-
-            return sprintf('MG%03d%s', $patient->client->files()->count() + 1, $patient->client->initials ?? '');
+        if (!$id) {
+            return 'MG000XXX';
         }
+
+        $client = $type === 'client'
+            ? Client::find($id)
+            : Patient::find($id)?->client;
+
+        if (!$client) {
+            return 'MG000XXX';
+        }
+
+        $initials = $client->initials ?? '';
+        $candidate = sprintf('MG%03d%s', $client->files()->count() + 1, $initials);
+
+        if (! static::query()->where('mga_reference', $candidate)->exists()) {
+            return $candidate;
+        }
+
+        return static::generateMGAReferenceFromGap($client, $initials);
+    }
+
+    /**
+     * Find the lowest missing sequence number for a client's MGA references.
+     */
+    protected static function generateMGAReferenceFromGap(Client $client, string $initials): string
+    {
+        $pattern = '/^MG(\d+)' . preg_quote($initials, '/') . '$/i';
+
+        $used = $client->files()
+            ->pluck('mga_reference')
+            ->map(function ($ref) use ($pattern) {
+                if (preg_match($pattern, (string) $ref, $matches)) {
+                    return (int) $matches[1];
+                }
+
+                return null;
+            })
+            ->filter(fn ($n) => $n !== null)
+            ->unique()
+            ->sort()
+            ->values();
+
+        $next = 1;
+        foreach ($used as $n) {
+            if ($n === $next) {
+                $next++;
+            } elseif ($n > $next) {
+                break;
+            }
+        }
+
+        $reference = sprintf('MG%03d%s', $next, $initials);
+
+        // Safety: if still taken (e.g. shared initials across clients), keep advancing
+        while (static::query()->where('mga_reference', $reference)->exists()) {
+            $next++;
+            $reference = sprintf('MG%03d%s', $next, $initials);
+        }
+
+        return $reference;
     }
 
     // Attributes   Attributes   Attributes   Attributes   Attributes   Attributes   Attributes   Attributes
