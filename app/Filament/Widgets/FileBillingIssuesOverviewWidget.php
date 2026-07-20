@@ -9,6 +9,8 @@ use Livewire\Attributes\On;
 
 class FileBillingIssuesOverviewWidget extends Widget
 {
+    protected static bool $isDiscovered = false;
+
     protected static bool $isLazy = true;
 
     protected static string $view = 'filament.widgets.file-billing-issues-overview';

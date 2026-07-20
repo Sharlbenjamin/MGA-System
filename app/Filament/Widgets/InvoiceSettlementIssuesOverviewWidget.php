@@ -3,9 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Resources\InvoicesWithSettlementIssuesResource\Pages\ListInvoicesWithSettlementIssues;
-use App\Filament\Resources\FilesWithBillingIssuesResource;
 use App\Filament\Resources\TransactionsInWithoutInvoicesResource;
-use App\Services\FileBillingIntegrityService;
 use App\Services\InvoiceSettlementIntegrityService;
 use App\Services\TransactionIntegrityService;
 use App\Models\Transaction;
@@ -14,6 +12,8 @@ use Livewire\Attributes\On;
 
 class InvoiceSettlementIssuesOverviewWidget extends Widget
 {
+    protected static bool $isDiscovered = false;
+
     protected static bool $isLazy = true;
 
     protected static string $view = 'filament.widgets.invoice-settlement-issues-overview';
@@ -74,15 +74,5 @@ class InvoiceSettlementIssuesOverviewWidget extends Widget
     public function getTransactionsInWithoutInvoicesUrl(): string
     {
         return TransactionsInWithoutInvoicesResource::getUrl('index');
-    }
-
-    public function getBillingMismatchIssuesProperty(): int
-    {
-        return FileBillingIntegrityService::billingIssueCount();
-    }
-
-    public function getBillingMismatchesUrlProperty(): ?string
-    {
-        return FilesWithBillingIssuesResource::tryGetIndexUrl();
     }
 }

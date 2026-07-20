@@ -185,27 +185,18 @@ trait HasDashboardFilters
     }
 
     /**
-     * Cases that count toward dashboard revenue/cost: Assisted with both invoice and bill.
+     * Files created in the selected period — financial widgets use their invoices/bills.
      */
-    protected function applyDashboardFinancialFileScope($query)
-    {
-        return $query
-            ->where('status', 'Assisted')
-            ->whereHas('invoices')
-            ->whereHas('bills');
-    }
-
     protected function getFileIdsForPeriod(string $period = 'current'): Collection
     {
         $dateRange = $this->getDateRange();
 
-        return $this->applyDashboardFinancialFileScope(
-            File::query()
-                ->whereBetween('created_at', [
-                    $dateRange[$period]['start'],
-                    $dateRange[$period]['end'],
-                ])
-        )->pluck('id');
+        return File::query()
+            ->whereBetween('created_at', [
+                $dateRange[$period]['start'],
+                $dateRange[$period]['end'],
+            ])
+            ->pluck('id');
     }
 
     protected function getRevenueForFileIds(Collection $fileIds): float
@@ -271,17 +262,6 @@ trait HasDashboardFilters
 
         $query = DB::table('files')
             ->join($table, "{$table}.file_id", '=', 'files.id')
-            ->where('files.status', 'Assisted')
-            ->whereExists(function ($subquery) {
-                $subquery->select(DB::raw(1))
-                    ->from('invoices')
-                    ->whereColumn('invoices.file_id', 'files.id');
-            })
-            ->whereExists(function ($subquery) {
-                $subquery->select(DB::raw(1))
-                    ->from('bills')
-                    ->whereColumn('bills.file_id', 'files.id');
-            })
             ->whereBetween('files.created_at', [
                 $dateRange['current']['start'],
                 $dateRange['current']['end'],
@@ -358,9 +338,9 @@ trait HasDashboardFilters
 
     protected function getProfitForFileBucket(Carbon $start, Carbon $end): float
     {
-        $fileIds = $this->applyDashboardFinancialFileScope(
-            File::query()->whereBetween('created_at', [$start, $end])
-        )->pluck('id');
+        $fileIds = File::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->pluck('id');
 
         $revenue = $this->getRevenueForFileIds($fileIds);
         $cost = $this->getCostForFileIds($fileIds);
