@@ -25,17 +25,14 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Files created in the period → revenue/cost from their invoices/bills; income = revenue - cost
+        // Files created in the period → revenue/cost from their invoices/bills; income = revenue - cost; profit = income - expenses
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
         $expenses = $current['expenses'];
         $income = $current['income'];
         $outflow = $current['outflow'];
-
-        // Profit: Assisted cases with both invoice and bill
-        $profitCurrent = $this->getAssistedProfitFinancials('current');
-        $profit = $profitCurrent['profit'];
+        $profit = $current['profit'];
 
         $previous = $this->getFileBasedFinancials('previous');
         $previousRevenue = $previous['revenue'];
@@ -43,8 +40,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $previousExpenses = $previous['expenses'];
         $previousIncome = $previous['income'];
         $previousOutflow = $previous['outflow'];
-
-        $previousProfit = $this->getAssistedProfitFinancials('previous')['profit'];
+        $previousProfit = $previous['profit'];
 
         // Calculate comparisons
         $revenueComparison = $this->calculateComparison($revenue, $previousRevenue);
@@ -59,9 +55,6 @@ class FileStatsOverview extends  StatsOverviewWidget
         $costChart = $this->getFileBasedChartData('cost');
         $expensesChart = $this->getExpensesChartData();
 
-        $assistedRevenueChart = $this->getFileBasedChartData('revenue', assistedWithInvoiceAndBill: true);
-        $assistedCostChart = $this->getFileBasedChartData('cost', assistedWithInvoiceAndBill: true);
-
         $outflowChart = array_map(function ($cost, $expenses) {
             return $cost + $expenses;
         }, $costChart, $expensesChart);
@@ -72,7 +65,7 @@ class FileStatsOverview extends  StatsOverviewWidget
 
         $profitChart = array_map(function ($revenue, $cost, $expenses) {
             return ($revenue - $cost) - $expenses;
-        }, $assistedRevenueChart, $assistedCostChart, $expensesChart);
+        }, $revenueChart, $costChart, $expensesChart);
 
         // File statistics
         $activeFiles = File::where('status', 'Assisted')
@@ -133,6 +126,9 @@ class FileStatsOverview extends  StatsOverviewWidget
             default => 'Year',
         };
 
+        $assistedProfit = $this->getAssistedProfitForPeriod('current');
+        $assistedProfitLabel = '€' . number_format($assistedProfit);
+
         return [
             Stat::make("Revenue this {$periodLabel}", '€' . number_format($revenue))
                 ->description($this->formatComparisonDescription($revenueComparison))
@@ -146,7 +142,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->color($this->getComparisonColor($incomeComparison))
                 ->chart($incomeChart),
 
-            Stat::make("Profit this {$periodLabel} (assisted with both invoices and bills)", '€' . number_format($profit))
+            Stat::make("Profit this {$periodLabel} ({$assistedProfitLabel})", '€' . number_format($profit))
                 ->description($this->formatComparisonDescription($profitComparison))
                 ->descriptionIcon($profitComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($profitComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($profitComparison))
