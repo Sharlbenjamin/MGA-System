@@ -25,14 +25,17 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Assisted cases with both invoice and bill → revenue/cost from those; income = revenue - cost; profit = income - expenses
+        // Files created in the period → revenue/cost from their invoices/bills; income = revenue - cost
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
         $expenses = $current['expenses'];
         $income = $current['income'];
         $outflow = $current['outflow'];
-        $profit = $current['profit'];
+
+        // Profit: Assisted cases with both invoice and bill
+        $profitCurrent = $this->getAssistedProfitFinancials('current');
+        $profit = $profitCurrent['profit'];
 
         $previous = $this->getFileBasedFinancials('previous');
         $previousRevenue = $previous['revenue'];
@@ -40,7 +43,8 @@ class FileStatsOverview extends  StatsOverviewWidget
         $previousExpenses = $previous['expenses'];
         $previousIncome = $previous['income'];
         $previousOutflow = $previous['outflow'];
-        $previousProfit = $previous['profit'];
+
+        $previousProfit = $this->getAssistedProfitFinancials('previous')['profit'];
 
         // Calculate comparisons
         $revenueComparison = $this->calculateComparison($revenue, $previousRevenue);
@@ -55,6 +59,9 @@ class FileStatsOverview extends  StatsOverviewWidget
         $costChart = $this->getFileBasedChartData('cost');
         $expensesChart = $this->getExpensesChartData();
 
+        $assistedRevenueChart = $this->getFileBasedChartData('revenue', assistedWithInvoiceAndBill: true);
+        $assistedCostChart = $this->getFileBasedChartData('cost', assistedWithInvoiceAndBill: true);
+
         $outflowChart = array_map(function ($cost, $expenses) {
             return $cost + $expenses;
         }, $costChart, $expensesChart);
@@ -65,15 +72,14 @@ class FileStatsOverview extends  StatsOverviewWidget
 
         $profitChart = array_map(function ($revenue, $cost, $expenses) {
             return ($revenue - $cost) - $expenses;
-        }, $revenueChart, $costChart, $expensesChart);
+        }, $assistedRevenueChart, $assistedCostChart, $expensesChart);
 
-        // File statistics (Active = Assisted with both invoice and bill, matching financial scope)
-        $activeFiles = $this->applyDashboardFinancialFileScope(
-            File::query()->whereBetween('created_at', [
+        // File statistics
+        $activeFiles = File::where('status', 'Assisted')
+            ->whereBetween('created_at', [
                 $dateRange['current']['start'],
-                $dateRange['current']['end'],
-            ])
-        )->count();
+                $dateRange['current']['end']
+            ])->count();
             
         $cancelledFiles = File::whereIn('status', ['Cancelled', 'Void'])
             ->whereBetween('created_at', [
@@ -99,12 +105,11 @@ class FileStatsOverview extends  StatsOverviewWidget
         ])->count();
 
         // Previous period file statistics
-        $previousActiveFiles = $this->applyDashboardFinancialFileScope(
-            File::query()->whereBetween('created_at', [
+        $previousActiveFiles = File::where('status', 'Assisted')
+            ->whereBetween('created_at', [
                 $dateRange['previous']['start'],
-                $dateRange['previous']['end'],
-            ])
-        )->count();
+                $dateRange['previous']['end']
+            ])->count();
             
         $previousCancelledFiles = File::whereIn('status', ['Cancelled', 'Void'])
             ->whereBetween('created_at', [
@@ -141,7 +146,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->color($this->getComparisonColor($incomeComparison))
                 ->chart($incomeChart),
 
-            Stat::make("Profit this {$periodLabel}", '€' . number_format($profit))
+            Stat::make("Profit this {$periodLabel} (assisted with both invoices and bills)", '€' . number_format($profit))
                 ->description($this->formatComparisonDescription($profitComparison))
                 ->descriptionIcon($profitComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($profitComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($profitComparison))

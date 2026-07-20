@@ -185,9 +185,9 @@ trait HasDashboardFilters
     }
 
     /**
-     * Cases that count toward dashboard revenue/cost: Assisted with both invoice and bill.
+     * Cases that count toward dashboard profit: Assisted with both invoice and bill.
      */
-    protected function applyDashboardFinancialFileScope($query)
+    protected function applyAssistedWithInvoiceAndBillScope($query)
     {
         return $query
             ->where('status', 'Assisted')
@@ -195,11 +195,29 @@ trait HasDashboardFilters
             ->whereHas('bills');
     }
 
+    /**
+     * Files created in the selected period — revenue/cost widgets use their invoices/bills.
+     */
     protected function getFileIdsForPeriod(string $period = 'current'): Collection
     {
         $dateRange = $this->getDateRange();
 
-        return $this->applyDashboardFinancialFileScope(
+        return File::query()
+            ->whereBetween('created_at', [
+                $dateRange[$period]['start'],
+                $dateRange[$period]['end'],
+            ])
+            ->pluck('id');
+    }
+
+    /**
+     * Assisted files with both invoice and bill, created in the selected period (profit scope).
+     */
+    protected function getAssistedFileIdsForPeriod(string $period = 'current'): Collection
+    {
+        $dateRange = $this->getDateRange();
+
+        return $this->applyAssistedWithInvoiceAndBillScope(
             File::query()
                 ->whereBetween('created_at', [
                     $dateRange[$period]['start'],
@@ -262,7 +280,22 @@ trait HasDashboardFilters
         return compact('revenue', 'cost', 'expenses', 'income', 'outflow', 'profit');
     }
 
-    protected function getFileBasedChartData(string $metric): array
+    /**
+     * Profit financials: Assisted cases that have both an invoice and a bill.
+     */
+    protected function getAssistedProfitFinancials(string $period = 'current'): array
+    {
+        $fileIds = $this->getAssistedFileIdsForPeriod($period);
+        $revenue = $this->getRevenueForFileIds($fileIds);
+        $cost = $this->getCostForFileIds($fileIds);
+        $expenses = $this->getExpensesForPeriod($period);
+        $income = $revenue - $cost;
+        $profit = $income - $expenses;
+
+        return compact('revenue', 'cost', 'expenses', 'income', 'profit');
+    }
+
+    protected function getFileBasedChartData(string $metric, bool $assistedWithInvoiceAndBill = false): array
     {
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
@@ -271,21 +304,25 @@ trait HasDashboardFilters
 
         $query = DB::table('files')
             ->join($table, "{$table}.file_id", '=', 'files.id')
-            ->where('files.status', 'Assisted')
-            ->whereExists(function ($subquery) {
-                $subquery->select(DB::raw(1))
-                    ->from('invoices')
-                    ->whereColumn('invoices.file_id', 'files.id');
-            })
-            ->whereExists(function ($subquery) {
-                $subquery->select(DB::raw(1))
-                    ->from('bills')
-                    ->whereColumn('bills.file_id', 'files.id');
-            })
             ->whereBetween('files.created_at', [
                 $dateRange['current']['start'],
                 $dateRange['current']['end'],
             ]);
+
+        if ($assistedWithInvoiceAndBill) {
+            $query
+                ->where('files.status', 'Assisted')
+                ->whereExists(function ($subquery) {
+                    $subquery->select(DB::raw(1))
+                        ->from('invoices')
+                        ->whereColumn('invoices.file_id', 'files.id');
+                })
+                ->whereExists(function ($subquery) {
+                    $subquery->select(DB::raw(1))
+                        ->from('bills')
+                        ->whereColumn('bills.file_id', 'files.id');
+                });
+        }
 
         if ($filters['duration'] === 'Day') {
             return $query
@@ -358,7 +395,7 @@ trait HasDashboardFilters
 
     protected function getProfitForFileBucket(Carbon $start, Carbon $end): float
     {
-        $fileIds = $this->applyDashboardFinancialFileScope(
+        $fileIds = $this->applyAssistedWithInvoiceAndBillScope(
             File::query()->whereBetween('created_at', [$start, $end])
         )->pluck('id');
 

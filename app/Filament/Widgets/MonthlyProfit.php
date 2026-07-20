@@ -17,7 +17,7 @@ class MonthlyProfit extends ChartWidget
     }
 
     protected static ?int $sort = 3;
-    protected static ?string $heading = 'Profit Trend';
+    protected static ?string $heading = 'Profit Trend (assisted with both invoices and bills)';
     protected static ?string $maxHeight = '300px';
 
     protected function getData(): array
