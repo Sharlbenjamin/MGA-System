@@ -126,6 +126,9 @@ class FileStatsOverview extends  StatsOverviewWidget
             default => 'Year',
         };
 
+        $assistedProfit = $this->getAssistedProfitForPeriod('current');
+        $assistedProfitLabel = '€' . number_format($assistedProfit);
+
         return [
             Stat::make("Revenue this {$periodLabel}", '€' . number_format($revenue))
                 ->description($this->formatComparisonDescription($revenueComparison))
@@ -139,7 +142,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->color($this->getComparisonColor($incomeComparison))
                 ->chart($incomeChart),
 
-            Stat::make("Profit this {$periodLabel}", '€' . number_format($profit))
+            Stat::make("Profit this {$periodLabel} ({$assistedProfitLabel})", '€' . number_format($profit))
                 ->description($this->formatComparisonDescription($profitComparison))
                 ->descriptionIcon($profitComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($profitComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($profitComparison))

@@ -185,6 +185,17 @@ trait HasDashboardFilters
     }
 
     /**
+     * Cases used for the Assisted profit reference: Assisted with both invoice and bill.
+     */
+    protected function applyAssistedWithInvoiceAndBillScope($query)
+    {
+        return $query
+            ->where('status', 'Assisted')
+            ->whereHas('invoices')
+            ->whereHas('bills');
+    }
+
+    /**
      * Files created in the selected period — financial widgets use their invoices/bills.
      */
     protected function getFileIdsForPeriod(string $period = 'current'): Collection
@@ -197,6 +208,22 @@ trait HasDashboardFilters
                 $dateRange[$period]['end'],
             ])
             ->pluck('id');
+    }
+
+    /**
+     * Assisted files with both invoice and bill, created in the selected period.
+     */
+    protected function getAssistedFileIdsForPeriod(string $period = 'current'): Collection
+    {
+        $dateRange = $this->getDateRange();
+
+        return $this->applyAssistedWithInvoiceAndBillScope(
+            File::query()
+                ->whereBetween('created_at', [
+                    $dateRange[$period]['start'],
+                    $dateRange[$period]['end'],
+                ])
+        )->pluck('id');
     }
 
     protected function getRevenueForFileIds(Collection $fileIds): float
@@ -251,6 +278,19 @@ trait HasDashboardFilters
         $profit = $income - $expenses;
 
         return compact('revenue', 'cost', 'expenses', 'income', 'outflow', 'profit');
+    }
+
+    /**
+     * Profit for Assisted cases that have both an invoice and a bill (old method).
+     */
+    protected function getAssistedProfitForPeriod(string $period = 'current'): float
+    {
+        $fileIds = $this->getAssistedFileIdsForPeriod($period);
+        $revenue = $this->getRevenueForFileIds($fileIds);
+        $cost = $this->getCostForFileIds($fileIds);
+        $expenses = $this->getExpensesForPeriod($period);
+
+        return ($revenue - $cost) - $expenses;
     }
 
     protected function getFileBasedChartData(string $metric): array
