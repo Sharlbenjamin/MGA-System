@@ -25,7 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Files created in the period → revenue/cost from their invoices/bills; income = revenue - cost; profit = income - expenses
+        // Revenue by invoice_date, cost by bill_date; income = revenue - cost; profit = income - expenses
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
@@ -50,7 +50,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $expensesComparison = $this->calculateComparison($expenses, $previousExpenses);
         $outflowComparison = $this->calculateComparison($outflow, $previousOutflow);
 
-        // Chart data (bucketed by case creation date for revenue/cost, transaction date for expenses)
+        // Chart data (bucketed by invoice_date / bill_date, transaction date for expenses)
         $revenueChart = $this->getFileBasedChartData('revenue');
         $costChart = $this->getFileBasedChartData('cost');
         $expensesChart = $this->getExpensesChartData();
