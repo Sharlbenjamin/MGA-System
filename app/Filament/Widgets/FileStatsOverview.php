@@ -25,7 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Files created in the period → revenue/cost from their invoices/bills; income = revenue - cost; profit = income - expenses
+        // Revenue by invoice_date, cost by bill_date; income = revenue - cost; profit = income - expenses
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
@@ -50,7 +50,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $expensesComparison = $this->calculateComparison($expenses, $previousExpenses);
         $outflowComparison = $this->calculateComparison($outflow, $previousOutflow);
 
-        // Chart data (bucketed by case creation date for revenue/cost, transaction date for expenses)
+        // Chart data (bucketed by invoice_date / bill_date, transaction date for expenses)
         $revenueChart = $this->getFileBasedChartData('revenue');
         $costChart = $this->getFileBasedChartData('cost');
         $expensesChart = $this->getExpensesChartData();
@@ -74,28 +74,17 @@ class FileStatsOverview extends  StatsOverviewWidget
                 $dateRange['current']['end']
             ])->count();
             
-        $cancelledFiles = File::whereIn('status', ['Cancelled', 'Void'])
+        $cancelledFiles = File::where('status', 'Cancelled')
             ->whereBetween('created_at', [
                 $dateRange['current']['start'],
                 $dateRange['current']['end']
             ])->count();
             
-        $cancelledCount = File::where('status', 'Cancelled')
+        $totalFiles = File::where('status', '!=', 'Void')
             ->whereBetween('created_at', [
                 $dateRange['current']['start'],
                 $dateRange['current']['end']
             ])->count();
-            
-        $voidCount = File::where('status', 'Void')
-            ->whereBetween('created_at', [
-                $dateRange['current']['start'],
-                $dateRange['current']['end']
-            ])->count();
-            
-        $totalFiles = File::whereBetween('created_at', [
-            $dateRange['current']['start'],
-            $dateRange['current']['end']
-        ])->count();
 
         // Previous period file statistics
         $previousActiveFiles = File::where('status', 'Assisted')
@@ -104,16 +93,17 @@ class FileStatsOverview extends  StatsOverviewWidget
                 $dateRange['previous']['end']
             ])->count();
             
-        $previousCancelledFiles = File::whereIn('status', ['Cancelled', 'Void'])
+        $previousCancelledFiles = File::where('status', 'Cancelled')
             ->whereBetween('created_at', [
                 $dateRange['previous']['start'],
                 $dateRange['previous']['end']
             ])->count();
             
-        $previousTotalFiles = File::whereBetween('created_at', [
-            $dateRange['previous']['start'],
-            $dateRange['previous']['end']
-        ])->count();
+        $previousTotalFiles = File::where('status', '!=', 'Void')
+            ->whereBetween('created_at', [
+                $dateRange['previous']['start'],
+                $dateRange['previous']['end']
+            ])->count();
 
         // File comparisons
         $activeFilesComparison = $this->calculateComparison($activeFiles, $previousActiveFiles);
@@ -171,7 +161,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->descriptionIcon($activeFilesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($activeFilesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($activeFilesComparison)),
 
-            Stat::make("Cancelled ({$cancelledCount})", $cancelledFiles)
+            Stat::make('Cancelled', $cancelledFiles)
                 ->description($this->formatComparisonDescription($cancelledFilesComparison))
                 ->descriptionIcon($cancelledFilesComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($cancelledFilesComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($cancelledFilesComparison)),

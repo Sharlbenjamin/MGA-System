@@ -148,6 +148,12 @@ class ProviderBranchResource extends Resource
                             ->label('Comment')
                             ->visible(fn (Get $get) => $get('create_new_provider'))
                             ->nullable(),
+
+                        Textarea::make('new_provider_request_comment')
+                            ->label('Request Comment')
+                            ->helperText('Included in the Request Appointment copy message when set.')
+                            ->visible(fn (Get $get) => $get('create_new_provider'))
+                            ->nullable(),
                     ])
                     ->collapsible(),
 
@@ -157,6 +163,12 @@ class ProviderBranchResource extends Resource
                             ->label('Branch Name')
                             ->required()
                             ->maxLength(255),
+
+                        Textarea::make('request_comment')
+                            ->label('Request Comment')
+                            ->helperText('Included in the Request Appointment copy message when set. Overrides the provider-level request comment.')
+                            ->nullable()
+                            ->columnSpanFull(),
 
                         Select::make('cities')
                             ->label('Branch Cities')

@@ -1355,17 +1355,22 @@ class TransactionResource extends Resource
         $q = Bill::query();
 
         if ($relatedType === 'Provider') {
-            $q->whereHas('file', function ($query) use ($relatedId) {
-                $query->whereHas('provider', function ($providerQuery) use ($relatedId) {
-                    $providerQuery->where('providers.id', $relatedId);
-                })
-                    ->orWhereHas('providerBranch', function ($branchQuery) use ($relatedId) {
+            // Prefer the denormalized bill.provider_id; fall back to file/branch for older rows.
+            $q->where(function (Builder $query) use ($relatedId) {
+                $query->where('bills.provider_id', $relatedId)
+                    ->orWhereHas('branch', function (Builder $branchQuery) use ($relatedId) {
+                        $branchQuery->where('provider_branches.provider_id', $relatedId);
+                    })
+                    ->orWhereHas('file.providerBranch', function (Builder $branchQuery) use ($relatedId) {
                         $branchQuery->where('provider_branches.provider_id', $relatedId);
                     });
             });
         } elseif ($relatedType === 'Branch') {
-            $q->whereHas('file', function ($query) use ($relatedId) {
-                $query->where('provider_branch_id', $relatedId);
+            $q->where(function (Builder $query) use ($relatedId) {
+                $query->where('bills.branch_id', $relatedId)
+                    ->orWhereHas('file', function (Builder $fileQuery) use ($relatedId) {
+                        $fileQuery->where('files.provider_branch_id', $relatedId);
+                    });
             });
         }
 

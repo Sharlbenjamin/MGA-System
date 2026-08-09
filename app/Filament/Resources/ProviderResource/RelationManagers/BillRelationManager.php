@@ -27,15 +27,18 @@ class BillRelationManager extends RelationManager
             ->columns(BillTable::relationManagerColumns())
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->multiple()
                     ->options([
                         'Paid' => 'Paid',
                         'Unpaid' => 'Unpaid',
                         'Partial' => 'Partial',
                     ])
                     ->query(function (Builder $query, array $data): Builder {
+                        $statuses = $data['values'] ?? [];
+
                         return $query->when(
-                            $data['value'],
-                            fn (Builder $query, $value): Builder => $query->where('bills.status', $value),
+                            filled($statuses),
+                            fn (Builder $query): Builder => $query->whereIn('bills.status', $statuses),
                         );
                     }),
             ])

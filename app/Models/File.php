@@ -169,12 +169,12 @@ class File extends Model
     public function provider(): HasOneThrough
     {
         return $this->hasOneThrough(
-            Provider::class,        // Final model (Provider)
-            ProviderBranch::class,  // Intermediate model (ProviderBranch)
-            'provider_id',          // Foreign key on ProviderBranch (ProviderBranch.provider_id)
-            'id',                   // Foreign key on Provider (Provider.id)
-            'provider_branch_id',    // Local key on DrFiles (DrFiles.provider_branch_id)
-            'id'                    // Local key on ProviderBranch (ProviderBranch.id)
+            Provider::class,
+            ProviderBranch::class,
+            'id',                 // ProviderBranch.id ← File.provider_branch_id
+            'id',                 // Provider.id ← ProviderBranch.provider_id
+            'provider_branch_id', // Local key on files
+            'provider_id'         // Local key on provider_branches
         );
     }
     public function comments()

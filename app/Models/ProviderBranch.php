@@ -25,7 +25,7 @@ class ProviderBranch extends Model
     use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
 
     protected $fillable = [
-        'provider_id', 'branch_name', 'email', 'phone', 'address', 'website', 'city_id', 'province_id', 'status',
+        'provider_id', 'branch_name', 'email', 'phone', 'address', 'request_comment', 'website', 'city_id', 'province_id', 'status',
         'priority', 'all_country',
         'communication_method', 'emergency', 'pediatrician_emergency', 'dental',
         'pediatrician', 'gynecology', 'urology', 'cardiology', 'ophthalmology',

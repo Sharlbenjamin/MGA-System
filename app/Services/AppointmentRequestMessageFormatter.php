@@ -36,11 +36,36 @@ class AppointmentRequestMessageFormatter
             "Date & Time: {$dateTime}",
             "Cost: {$cost}",
             "Requested GOP: {$requestedGop}",
-            '',
-            'Please let us know if these details suits the patient in order to proceed with the booking or check for another appointment',
         ];
 
+        $requestComment = $this->resolveRequestComment($branch);
+        if ($requestComment !== null) {
+            $lines[] = '';
+            $lines[] = $requestComment;
+        }
+
+        $lines[] = '';
+        $lines[] = 'Please let us know if these details suits the patient in order to proceed with the booking or check for another appointment';
+
         return implode("\n", $lines);
+    }
+
+    /**
+     * Branch request comment takes precedence over the parent provider's.
+     */
+    protected function resolveRequestComment(ProviderBranch $branch): ?string
+    {
+        if (filled($branch->request_comment)) {
+            return trim((string) $branch->request_comment);
+        }
+
+        $branch->loadMissing('provider');
+
+        if (filled($branch->provider?->request_comment)) {
+            return trim((string) $branch->provider->request_comment);
+        }
+
+        return null;
     }
 
     public function resolveServiceLabel(File $file, ?Gop $acceptedGopIn = null): string

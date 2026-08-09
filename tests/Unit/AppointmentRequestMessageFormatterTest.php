@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\File;
 use App\Models\Gop;
+use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\ServiceType;
 use App\Services\AppointmentRequestMessageFormatter;
@@ -142,5 +143,59 @@ class AppointmentRequestMessageFormatterTest extends TestCase
 
         $this->assertStringContainsString('Cost: 100€', $message);
         $this->assertStringContainsString('Requested GOP: 150€', $message);
+    }
+
+    public function test_it_includes_branch_request_comment_when_set(): void
+    {
+        $file = new File([
+            'service_type_id' => 5,
+            'service_date' => now()->parse('2026-07-10'),
+        ]);
+        $file->setRelation('serviceType', new ServiceType(['name' => 'Clinic Visit']));
+
+        $branch = new ProviderBranch([
+            'id' => 11,
+            'branch_name' => 'City Clinic',
+            'address' => 'Main St',
+            'request_comment' => 'Please note: bring passport.',
+        ]);
+        $branch->setRelation('provider', new Provider([
+            'request_comment' => 'Provider-level note should be ignored.',
+        ]));
+
+        $offerService = Mockery::mock(GopInOfferService::class);
+        $offerService->shouldReceive('resolveGopInForAppointmentMessage')->once()->andReturn(null);
+        $offerService->shouldReceive('resolveCostAndTotalForBranch')->once()->andReturn([null, null]);
+
+        $message = (new AppointmentRequestMessageFormatter($offerService))->format($file, $branch);
+
+        $this->assertStringContainsString("Requested GOP: N/A\n\nPlease note: bring passport.\n\nPlease let us know", $message);
+        $this->assertStringNotContainsString('Provider-level note should be ignored.', $message);
+    }
+
+    public function test_it_falls_back_to_provider_request_comment(): void
+    {
+        $file = new File([
+            'service_type_id' => 5,
+            'service_date' => now()->parse('2026-07-10'),
+        ]);
+        $file->setRelation('serviceType', new ServiceType(['name' => 'Clinic Visit']));
+
+        $branch = new ProviderBranch([
+            'id' => 12,
+            'branch_name' => 'City Clinic',
+            'address' => 'Main St',
+        ]);
+        $branch->setRelation('provider', new Provider([
+            'request_comment' => 'Ask for reception desk B.',
+        ]));
+
+        $offerService = Mockery::mock(GopInOfferService::class);
+        $offerService->shouldReceive('resolveGopInForAppointmentMessage')->once()->andReturn(null);
+        $offerService->shouldReceive('resolveCostAndTotalForBranch')->once()->andReturn([null, null]);
+
+        $message = (new AppointmentRequestMessageFormatter($offerService))->format($file, $branch);
+
+        $this->assertStringContainsString('Ask for reception desk B.', $message);
     }
 }

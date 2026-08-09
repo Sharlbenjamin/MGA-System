@@ -37,6 +37,10 @@ class ProviderBranchRelationManager extends RelationManager
     return $form
         ->schema([
             TextInput::make('branch_name')->label('Branch Name')->required()->maxLength(255),
+            Textarea::make('request_comment')
+                ->label('Request Comment')
+                ->helperText('Included in the Request Appointment copy message when set. Overrides the provider-level request comment.')
+                ->nullable(),
             Select::make('cities')
                     ->label('Branch Cities')
                     ->multiple()

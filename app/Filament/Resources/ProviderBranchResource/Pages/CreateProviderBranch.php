@@ -26,6 +26,7 @@ class CreateProviderBranch extends CreateRecord
                 'payment_due' => $data['new_provider_payment_due'] ?? null,
                 'payment_method' => $data['new_provider_payment_method'] ?? null,
                 'comment' => $data['new_provider_comment'] ?? null,
+                'request_comment' => $data['new_provider_request_comment'] ?? null,
             ]);
 
             $data['provider_id'] = $provider->id;
@@ -41,6 +42,7 @@ class CreateProviderBranch extends CreateRecord
             unset($data['new_provider_payment_due']);
             unset($data['new_provider_payment_method']);
             unset($data['new_provider_comment']);
+            unset($data['new_provider_request_comment']);
 
             Notification::make()
                 ->title('Provider Created')

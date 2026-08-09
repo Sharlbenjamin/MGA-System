@@ -75,6 +75,10 @@ class ProviderResource extends Resource
                 ->label('Needs Payment')
                 ->default(false),
             Textarea::make('comment')->label('Comment')->nullable(),
+            Textarea::make('request_comment')
+                ->label('Request Comment')
+                ->helperText('Included in the Request Appointment copy message when set. Branch-level comment overrides this.')
+                ->nullable(),
             Select::make('gop_contact_id')->label('GOP Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
             Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
             Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
