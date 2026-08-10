@@ -3,9 +3,11 @@
 namespace App\Filament\Widgets\Traits;
 
 use App\Models\Bill;
+use App\Models\File;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 
@@ -183,58 +185,30 @@ trait HasDashboardFilters
     }
 
     /**
-     * Cases used for the Assisted profit reference: Assisted with both invoice and bill.
+     * Files created in the given range — the base set for revenue/cost attribution.
      */
-    protected function applyAssistedWithInvoiceAndBillScope($query)
+    protected function selectedFilesQuery(Carbon $start, Carbon $end): Builder
     {
-        return $query
-            ->where('status', 'Assisted')
-            ->whereHas('invoices')
-            ->whereHas('bills');
+        return File::query()->whereBetween('created_at', [$start, $end]);
     }
 
-    /**
-     * Hour buckets need a time component; invoice_date/bill_date are dates only,
-     * so sub-day ranges attribute amounts by record created_at within that invoice/bill date.
-     */
-    protected function isSubDayRange(Carbon $start, Carbon $end): bool
+    protected function selectedFileIdsSubquery(Carbon $start, Carbon $end)
     {
-        return $start->isSameDay($end)
-            && ! ($start->isStartOfDay() && $end->isEndOfDay());
+        return $this->selectedFilesQuery($start, $end)->select('id');
     }
 
     protected function getRevenueBetween(Carbon $start, Carbon $end): float
     {
-        $query = Invoice::query();
-
-        if ($this->isSubDayRange($start, $end)) {
-            $query->whereDate('invoice_date', $start->toDateString())
-                ->whereBetween('created_at', [$start, $end]);
-        } else {
-            $query->whereBetween('invoice_date', [
-                $start->toDateString(),
-                $end->toDateString(),
-            ]);
-        }
-
-        return (float) $query->sum('total_amount');
+        return (float) Invoice::query()
+            ->whereIn('file_id', $this->selectedFileIdsSubquery($start, $end))
+            ->sum('total_amount');
     }
 
     protected function getCostBetween(Carbon $start, Carbon $end): float
     {
-        $query = Bill::query();
-
-        if ($this->isSubDayRange($start, $end)) {
-            $query->whereDate('bill_date', $start->toDateString())
-                ->whereBetween('created_at', [$start, $end]);
-        } else {
-            $query->whereBetween('bill_date', [
-                $start->toDateString(),
-                $end->toDateString(),
-            ]);
-        }
-
-        return (float) $query->sum('total_amount');
+        return (float) Bill::query()
+            ->whereIn('file_id', $this->selectedFileIdsSubquery($start, $end))
+            ->sum('total_amount');
     }
 
     protected function getExpensesBetween(Carbon $start, Carbon $end): float
@@ -277,7 +251,8 @@ trait HasDashboardFilters
     }
 
     /**
-     * Revenue by invoice_date, cost by bill_date, expenses by transaction date.
+     * Selected files by created_at: revenue/cost from their invoices/bills;
+     * expenses by transaction date (type Expense); income/profit/outflow derived.
      */
     protected function getFileBasedFinancials(string $period = 'current'): array
     {
@@ -292,30 +267,19 @@ trait HasDashboardFilters
     }
 
     /**
-     * Profit for Assisted cases that have both an invoice and a bill,
-     * attributed by invoice_date / bill_date in the selected period.
+     * Sum of invoice totals (Paid or Partial) for files created in the period.
      */
-    protected function getAssistedProfitForPeriod(string $period = 'current'): float
+    protected function getPaidPartialInvoicesForPeriod(string $period = 'current'): float
     {
         $dateRange = $this->getDateRange();
-        $start = $dateRange[$period]['start']->toDateString();
-        $end = $dateRange[$period]['end']->toDateString();
 
-        $assistedFileScope = fn ($query) => $this->applyAssistedWithInvoiceAndBillScope($query);
-
-        $revenue = (float) Invoice::query()
-            ->whereBetween('invoice_date', [$start, $end])
-            ->whereHas('file', $assistedFileScope)
+        return (float) Invoice::query()
+            ->whereIn('status', ['Paid', 'Partial'])
+            ->whereIn('file_id', $this->selectedFileIdsSubquery(
+                $dateRange[$period]['start'],
+                $dateRange[$period]['end'],
+            ))
             ->sum('total_amount');
-
-        $cost = (float) Bill::query()
-            ->whereBetween('bill_date', [$start, $end])
-            ->whereHas('file', $assistedFileScope)
-            ->sum('total_amount');
-
-        $expenses = $this->getExpensesForPeriod($period);
-
-        return ($revenue - $cost) - $expenses;
     }
 
     protected function getFileBasedChartData(string $metric): array
@@ -323,19 +287,18 @@ trait HasDashboardFilters
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
         $table = $metric === 'revenue' ? 'invoices' : 'bills';
-        $dateField = $metric === 'revenue' ? 'invoice_date' : 'bill_date';
-        $amountField = 'total_amount';
+        $amountField = $table . '.total_amount';
 
         $query = DB::table($table)
-            ->whereBetween($dateField, [
-                $dateRange['current']['start']->toDateString(),
-                $dateRange['current']['end']->toDateString(),
+            ->join('files', 'files.id', '=', $table . '.file_id')
+            ->whereBetween('files.created_at', [
+                $dateRange['current']['start'],
+                $dateRange['current']['end'],
             ]);
 
         if ($filters['duration'] === 'Day') {
-            // Date fields have no time — distribute the day's amounts by created_at hour.
             return $query
-                ->selectRaw('HOUR(created_at) as bucket, SUM(' . $amountField . ') as total')
+                ->selectRaw('HOUR(files.created_at) as bucket, SUM(' . $amountField . ') as total')
                 ->groupBy('bucket')
                 ->orderBy('bucket')
                 ->pluck('total')
@@ -344,7 +307,7 @@ trait HasDashboardFilters
 
         if ($filters['duration'] === 'Month') {
             return $query
-                ->selectRaw('DATE(' . $dateField . ') as bucket, SUM(' . $amountField . ') as total')
+                ->selectRaw('DATE(files.created_at) as bucket, SUM(' . $amountField . ') as total')
                 ->groupBy('bucket')
                 ->orderBy('bucket')
                 ->pluck('total')
@@ -352,7 +315,7 @@ trait HasDashboardFilters
         }
 
         return $query
-            ->selectRaw('DATE_FORMAT(' . $dateField . ', "%Y-%m") as bucket, SUM(' . $amountField . ') as total')
+            ->selectRaw('DATE_FORMAT(files.created_at, "%Y-%m") as bucket, SUM(' . $amountField . ') as total')
             ->groupBy('bucket')
             ->orderBy('bucket')
             ->pluck('total')

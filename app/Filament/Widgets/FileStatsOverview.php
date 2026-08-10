@@ -25,7 +25,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $filters = $this->getDashboardFilters();
         $dateRange = $this->getDateRange();
 
-        // Revenue by invoice_date, cost by bill_date; income = revenue - cost; profit = income - expenses
+        // Selected files by created_at: revenue/cost from their invoices/bills; expenses by trx date
         $current = $this->getFileBasedFinancials('current');
         $revenue = $current['revenue'];
         $cost = $current['cost'];
@@ -50,7 +50,7 @@ class FileStatsOverview extends  StatsOverviewWidget
         $expensesComparison = $this->calculateComparison($expenses, $previousExpenses);
         $outflowComparison = $this->calculateComparison($outflow, $previousOutflow);
 
-        // Chart data (bucketed by invoice_date / bill_date, transaction date for expenses)
+        // Chart data (revenue/cost by file created_at; expenses by transaction date)
         $revenueChart = $this->getFileBasedChartData('revenue');
         $costChart = $this->getFileBasedChartData('cost');
         $expensesChart = $this->getExpensesChartData();
@@ -116,8 +116,8 @@ class FileStatsOverview extends  StatsOverviewWidget
             default => 'Year',
         };
 
-        $assistedProfit = $this->getAssistedProfitForPeriod('current');
-        $assistedProfitLabel = '€' . number_format($assistedProfit);
+        $paidPartialInvoices = $this->getPaidPartialInvoicesForPeriod('current');
+        $paidPartialInvoicesLabel = '€' . number_format($paidPartialInvoices);
 
         return [
             Stat::make("Revenue this {$periodLabel}", '€' . number_format($revenue))
@@ -132,7 +132,7 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->color($this->getComparisonColor($incomeComparison))
                 ->chart($incomeChart),
 
-            Stat::make("Profit this {$periodLabel} ({$assistedProfitLabel})", '€' . number_format($profit))
+            Stat::make("Profit this {$periodLabel} ({$paidPartialInvoicesLabel})", '€' . number_format($profit))
                 ->description($this->formatComparisonDescription($profitComparison))
                 ->descriptionIcon($profitComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($profitComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($profitComparison))
