@@ -450,5 +450,6 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/CommunicationTemplate.php": "0786a620bbc923f36381087ca7f689b72ddc6e589510bce0b252fa026016f8d6",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/CommunicationTemplatePolicy.php": "e4ca66be6b616152ef706b5d8480f1a239d806754824a562258e6d9504a9d10f",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_08_10_000001_create_communication_templates_and_logs_tables.php": "479e51513147d314ba1bc3b12994db9dff507651afea145ded9df4849734c35a",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/communications.php": "efe2f9bdad4d3fbdc41a550ac4b9704627122c2a666190f82581c9bc5a449607"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/communications.php": "efe2f9bdad4d3fbdc41a550ac4b9704627122c2a666190f82581c9bc5a449607",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_08_25_120000_add_communication_template_permissions.php": "30a5e3e241aeb5e17c6bb719bac1513ac5bfa81afd7c5dbc38e1767e94cae19c"
 }
