@@ -106,6 +106,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasAnyRole(['admin', 'Admin']);
     }
 
+    public function canEditGopSellingCost(): bool
+    {
+        return \App\Services\OfferPricingCalculator::userCanEditSellingCost($this);
+    }
+
     public function getProfilePhotoUrlAttribute(): string
     {
         return asset('/publiclogo.png'); // ✅ Use your logo.png as the default image

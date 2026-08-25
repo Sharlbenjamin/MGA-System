@@ -38,6 +38,7 @@ class FileWorkflowGapServiceTest extends TestCase
         $this->assertTrue(FileWorkflowGapService::hasAnyInvoiceGap($file));
     }
 
+<<<<<<< HEAD
     public function test_assisted_file_without_accepted_gop_in_is_flagged(): void
     {
         $gop = new Gop(['type' => 'In', 'status' => Gop::IN_STATUS_OFFERED, 'gop_google_drive_link' => 'https://drive.example/gop']);
@@ -81,6 +82,22 @@ class FileWorkflowGapServiceTest extends TestCase
             FileWorkflowGapService::GAP_NO_GOP_ACCEPTED,
             FileWorkflowGapService::describeAssistedGaps($file),
         );
+=======
+    public function test_missing_client_offer_when_only_draft_gop_in_exists(): void
+    {
+        $gop = new Gop(['type' => 'In', 'status' => Gop::IN_STATUS_DRAFT]);
+        $file = $this->makeFileWithRelations(gops: collect([$gop]));
+
+        $this->assertTrue(FileWorkflowGapService::missingClientOffer($file));
+    }
+
+    public function test_client_offer_is_present_when_gop_in_is_offered(): void
+    {
+        $gop = new Gop(['type' => 'In', 'status' => Gop::IN_STATUS_OFFERED]);
+        $file = $this->makeFileWithRelations(gops: collect([$gop]));
+
+        $this->assertFalse(FileWorkflowGapService::missingClientOffer($file));
+>>>>>>> staging
     }
 
     /**

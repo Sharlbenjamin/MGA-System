@@ -27,6 +27,10 @@ class FileWorkflowGapService
 
     public const INVOICE_GAP_ANY = 'any';
 
+    public const OFFER_GAP_OFFER = 'offer';
+
+    public const OFFER_GAP_ANY = 'any';
+
     /**
      * @return array<string, string>
      */
@@ -306,6 +310,55 @@ class FileWorkflowGapService
         return $query
             ->whereIn('status', ['Assisted', 'Waiting MR'])
             ->tap(fn (Builder $scoped) => self::scopeWithAnyInvoiceGap($scoped));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function clientOfferCheckpointOptions(): array
+    {
+        return [
+            self::OFFER_GAP_ANY => 'Any offer gap',
+            self::OFFER_GAP_OFFER => 'Missing client offer',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function clientOfferStatuses(): array
+    {
+        return ['New', 'Handling', 'Available', 'Confirmed'];
+    }
+
+    public static function missingClientOffer(File $file): bool
+    {
+        if ($file->relationLoaded('gops')) {
+            return $file->gops
+                ->where('type', 'In')
+                ->whereIn('status', [Gop::IN_STATUS_OFFERED, Gop::IN_STATUS_ACCEPTED])
+                ->isEmpty();
+        }
+
+        return ! $file->gops()
+            ->where('type', 'In')
+            ->whereIn('status', [Gop::IN_STATUS_OFFERED, Gop::IN_STATUS_ACCEPTED])
+            ->exists();
+    }
+
+    public static function scopeMissingClientOffer(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('gops', function (Builder $gopQuery): void {
+            $gopQuery->where('type', 'In')
+                ->whereIn('status', [Gop::IN_STATUS_OFFERED, Gop::IN_STATUS_ACCEPTED]);
+        });
+    }
+
+    public static function scopeClientOfferChecklistBase(Builder $query): Builder
+    {
+        return $query
+            ->whereIn('status', self::clientOfferStatuses())
+            ->tap(fn (Builder $scoped) => self::scopeMissingClientOffer($scoped));
     }
 
     public static function firstGopInNeedingDocument(File $file): ?Gop

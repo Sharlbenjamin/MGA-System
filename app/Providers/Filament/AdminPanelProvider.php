@@ -83,6 +83,7 @@ class AdminPanelProvider extends PanelProvider
                 // Workflow pipeline (7 items)
                 \App\Filament\Resources\AssistedFileChecklistResource::class,
                 \App\Filament\Resources\InvoiceChecklistResource::class,
+                \App\Filament\Resources\ClientOfferChecklistResource::class,
                 \App\Filament\Resources\BillsWithoutDocumentsResource::class,
                 \App\Filament\Resources\TransactionsOutWithoutBillsResource::class,
                 \App\Filament\Resources\TransactionsInWithoutInvoicesResource::class,

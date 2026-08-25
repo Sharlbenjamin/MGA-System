@@ -25,7 +25,7 @@ class BillsWithoutDocumentsResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-magnifying-glass';
     protected static ?string $navigationGroup = 'Workflow';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
     protected static ?string $navigationLabel = 'Bills ≠ Docs';
     protected static ?string $modelLabel = 'Bill ≠ Doc';
     protected static ?string $pluralModelLabel = 'Bills ≠ Docs';
