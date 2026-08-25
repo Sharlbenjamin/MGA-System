@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\ProviderResource\RelationManagers;
+namespace App\Filament\Resources\ProviderBranchResource\RelationManagers;
 
 use App\Filament\Support\ContactProviderCommunications;
 use App\Models\Transaction;
@@ -10,7 +10,7 @@ use Filament\Tables\Table;
 
 class TransactionRelationManager extends RelationManager
 {
-    protected static string $relationship = 'transactions';
+    protected static string $relationship = 'branchTransactions';
 
     protected static ?string $title = 'Transactions';
 
@@ -32,12 +32,9 @@ class TransactionRelationManager extends RelationManager
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('attachment_path')
-                    ->label('Attachment')
-                    ->state(fn (Transaction $record): string => $record->getAttachmentUrl() ? 'View Attachment' : 'No Attachment')
-                    ->url(fn (Transaction $record): ?string => $record->getAttachmentUrl())
-                    ->openUrlInNewTab()
-                    ->color('info'),
+                Tables\Columns\TextColumn::make('reference')
+                    ->label('Reference')
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -46,8 +43,8 @@ class TransactionRelationManager extends RelationManager
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     ContactProviderCommunications::makeTransactionBulkAction(
+                        fn () => $this->getOwnerRecord()->provider,
                         fn () => $this->getOwnerRecord(),
-                        fn () => null,
                     ),
                 ]),
             ]);

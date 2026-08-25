@@ -2,38 +2,38 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\ProviderResource;
-use App\Filament\Resources\ProviderBranchResource\RelationManagers\BillRelationManager;
-use App\Filament\Resources\ProviderBranchResource\Pages;
-use App\Filament\Resources\ProviderBranchResource\RelationManagers\ContactRelationManager;
-use App\Filament\Resources\ProviderBranchResource\RelationManagers\BankAccountRelationManager;
-use App\Filament\Resources\ProviderBranchResource\RelationManagers\BranchServicesRelationManager;
 use App\Filament\RelationManagers\ActivityLogRelationManager;
-use App\Models\ProviderBranch;
-use App\Models\Provider;
-use App\Models\ServiceType;
+use App\Filament\Resources\ProviderBranchResource\Pages;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\BankAccountRelationManager;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\BillRelationManager;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\BranchServicesRelationManager;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\ContactRelationManager;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\FileRelationManager;
+use App\Filament\Resources\ProviderBranchResource\RelationManagers\TransactionRelationManager;
 use App\Models\City;
 use App\Models\Contact;
-use App\Models\Province;
 use App\Models\Country;
+use App\Models\Provider;
+use App\Models\ProviderBranch;
+use App\Models\ServiceType;
 use Filament\Forms;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
 
 class ProviderBranchResource extends Resource
@@ -41,8 +41,11 @@ class ProviderBranchResource extends Resource
     protected static ?string $model = ProviderBranch::class;
 
     protected static ?string $navigationGroup = 'PRM';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationIcon = 'heroicon-o-home-modern';
+
     protected static ?string $recordTitleAttribute = 'branch_name';
 
     public static function form(Forms\Form $form): Forms\Form
@@ -69,8 +72,8 @@ class ProviderBranchResource extends Resource
                             ->options(Provider::pluck('name', 'id'))
                             ->searchable()
                             ->reactive()
-                            ->visible(fn (Get $get) => !$get('create_new_provider'))
-                            ->required(fn (Get $get) => !$get('create_new_provider'))
+                            ->visible(fn (Get $get) => ! $get('create_new_provider'))
+                            ->required(fn (Get $get) => ! $get('create_new_provider'))
                             ->afterStateUpdated(fn (callable $set) => $set('cities', [])),
 
                         // New Provider Creation Fields
@@ -176,10 +179,10 @@ class ProviderBranchResource extends Resource
                             ->options(function (Get $get) {
                                 $providerId = $get('provider_id');
                                 $countryId = $get('new_provider_country_id');
-                                
+
                                 if ($providerId) {
                                     return City::query()
-                                        ->whereIn('country_id', function($query) use ($providerId) {
+                                        ->whereIn('country_id', function ($query) use ($providerId) {
                                             $query->select('country_id')
                                                 ->from('providers')
                                                 ->where('id', $providerId);
@@ -191,7 +194,7 @@ class ProviderBranchResource extends Resource
                                         ->orderBy('name')
                                         ->pluck('name', 'id');
                                 }
-                                
+
                                 return [];
                             })
                             ->searchable()
@@ -199,9 +202,9 @@ class ProviderBranchResource extends Resource
                             ->relationship('cities', 'name', function (Builder $query, Get $get) {
                                 $providerId = $get('provider_id');
                                 $countryId = $get('new_provider_country_id');
-                                
+
                                 if ($providerId) {
-                                    $query->whereIn('country_id', function($subquery) use ($providerId) {
+                                    $query->whereIn('country_id', function ($subquery) use ($providerId) {
                                         $subquery->select('country_id')
                                             ->from('providers')
                                             ->where('id', $providerId);
@@ -358,7 +361,7 @@ class ProviderBranchResource extends Resource
                     ->label('Website')
                     ->searchable()
                     ->toggleable()
-                    ->url(fn ($record) => $record->website ? (str_starts_with($record->website, 'http://') || str_starts_with($record->website, 'https://') ? $record->website : 'https://' . $record->website) : null)
+                    ->url(fn ($record) => $record->website ? (str_starts_with($record->website, 'http://') || str_starts_with($record->website, 'https://') ? $record->website : 'https://'.$record->website) : null)
                     ->openUrlInNewTab(),
 
                 BadgeColumn::make('status')
@@ -402,11 +405,12 @@ class ProviderBranchResource extends Resource
                     ->searchable()
                     ->preload()
                     ->query(function (Builder $query, array $data): Builder {
-                        if (!empty($data['value'])) {
+                        if (! empty($data['value'])) {
                             return $query->whereHas('services', function (Builder $query) use ($data) {
                                 $query->where('service_type_id', $data['value']);
                             });
                         }
+
                         return $query;
                     }),
 
@@ -441,7 +445,7 @@ class ProviderBranchResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('Overview')
-                ->url(fn (ProviderBranch $record) => ProviderBranchResource::getUrl('overview', ['record' => $record]))->color('success'),
+                    ->url(fn (ProviderBranch $record) => ProviderBranchResource::getUrl('overview', ['record' => $record]))->color('success'),
                 Tables\Actions\Action::make('Add Services')
                     ->icon('heroicon-o-plus')
                     ->color('info')
@@ -455,7 +459,7 @@ class ProviderBranchResource extends Resource
                             ->preload()
                             ->required()
                             ->helperText('Select multiple service types to add to this branch'),
-                        
+
                         Forms\Components\Section::make('Default Costs (Optional)')
                             ->description('Set default costs for all selected services. You can modify individual costs later.')
                             ->schema([
@@ -468,7 +472,7 @@ class ProviderBranchResource extends Resource
                                             ->step(0.01)
                                             ->nullable()
                                             ->helperText('Will be applied to all services if set'),
-                                        
+
                                         Forms\Components\TextInput::make('default_max_cost')
                                             ->label('Default Selling Cost')
                                             ->numeric()
@@ -484,14 +488,15 @@ class ProviderBranchResource extends Resource
                     ->action(function (ProviderBranch $record, array $data) {
                         $addedCount = 0;
                         $skippedCount = 0;
-                        
+
                         foreach ($data['service_types'] as $serviceTypeId) {
                             // Check if service is already associated
                             if ($record->services()->where('service_type_id', $serviceTypeId)->exists()) {
                                 $skippedCount++;
+
                                 continue;
                             }
-                            
+
                             // Attach the service with default costs
                             $record->services()->attach($serviceTypeId, [
                                 'min_cost' => $data['default_min_cost'] ?? null,
@@ -499,17 +504,17 @@ class ProviderBranchResource extends Resource
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ]);
-                            
+
                             $addedCount++;
                         }
-                        
+
                         // Show notification with results
                         if ($addedCount > 0) {
                             $message = "Successfully added {$addedCount} service(s) to {$record->branch_name}";
                             if ($skippedCount > 0) {
                                 $message .= " ({$skippedCount} service(s) were already associated)";
                             }
-                            
+
                             Notification::make()
                                 ->title('Services Added Successfully')
                                 ->body($message)
@@ -543,7 +548,7 @@ class ProviderBranchResource extends Resource
                             ->preload()
                             ->required()
                             ->helperText('Select multiple service types to add to all selected branches'),
-                        
+
                         Forms\Components\Section::make('Default Costs (Optional)')
                             ->description('Set default costs for all selected services. You can modify individual costs later.')
                             ->schema([
@@ -556,7 +561,7 @@ class ProviderBranchResource extends Resource
                                             ->step(0.01)
                                             ->nullable()
                                             ->helperText('Will be applied to all services if set'),
-                                        
+
                                         Forms\Components\TextInput::make('default_max_cost')
                                             ->label('Default Selling Cost')
                                             ->numeric()
@@ -573,18 +578,19 @@ class ProviderBranchResource extends Resource
                         $totalAdded = 0;
                         $totalSkipped = 0;
                         $processedBranches = 0;
-                        
+
                         foreach ($records as $branch) {
                             $branchAdded = 0;
                             $branchSkipped = 0;
-                            
+
                             foreach ($data['service_types'] as $serviceTypeId) {
                                 // Check if service is already associated
                                 if ($branch->services()->where('service_type_id', $serviceTypeId)->exists()) {
                                     $branchSkipped++;
+
                                     continue;
                                 }
-                                
+
                                 // Attach the service with default costs
                                 $branch->services()->attach($serviceTypeId, [
                                     'min_cost' => $data['default_min_cost'] ?? null,
@@ -592,22 +598,22 @@ class ProviderBranchResource extends Resource
                                     'created_at' => now(),
                                     'updated_at' => now(),
                                 ]);
-                                
+
                                 $branchAdded++;
                             }
-                            
+
                             $totalAdded += $branchAdded;
                             $totalSkipped += $branchSkipped;
                             $processedBranches++;
                         }
-                        
+
                         // Show notification with results
                         if ($totalAdded > 0) {
                             $message = "Successfully added {$totalAdded} service(s) to {$processedBranches} branch(es)";
                             if ($totalSkipped > 0) {
                                 $message .= " ({$totalSkipped} service(s) were already associated)";
                             }
-                            
+
                             Notification::make()
                                 ->title('Services Added Successfully')
                                 ->body($message)
@@ -632,7 +638,9 @@ class ProviderBranchResource extends Resource
         return [
             ContactRelationManager::class,
             BankAccountRelationManager::class,
+            FileRelationManager::class,
             BillRelationManager::class,
+            TransactionRelationManager::class,
             BranchServicesRelationManager::class,
             ActivityLogRelationManager::class,
         ];
@@ -650,7 +658,7 @@ class ProviderBranchResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return ($record->branch_name ?? 'Unknown') . ' - ' . ($record->provider?->name ?? 'Unknown Provider');
+        return ($record->branch_name ?? 'Unknown').' - '.($record->provider?->name ?? 'Unknown Provider');
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array

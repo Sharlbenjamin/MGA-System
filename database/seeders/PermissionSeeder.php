@@ -36,6 +36,7 @@ class PermissionSeeder extends Seeder
             'PriceList',
             'Employee',
             'JobTitle',
+            'CommunicationTemplate',
         ];
 
         $actions = ['view', 'create', 'edit', 'delete'];
@@ -44,10 +45,15 @@ class PermissionSeeder extends Seeder
             foreach ($actions as $action) {
                 Permission::firstOrCreate([
                     'name' => "{$action} {$resource}",
-                    'guard_name' => 'web'
+                    'guard_name' => 'web',
                 ]);
             }
         }
+
+        Permission::firstOrCreate([
+            'name' => 'contact providers',
+            'guard_name' => 'web',
+        ]);
 
         $this->command->info('Permissions seeded successfully.');
     }

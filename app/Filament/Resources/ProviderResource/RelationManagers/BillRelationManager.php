@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProviderResource\RelationManagers;
 
 use App\Filament\Support\BillTable;
+use App\Filament\Support\ContactProviderCommunications;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -53,6 +54,14 @@ class BillRelationManager extends RelationManager
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    ContactProviderCommunications::makeOutstandingBillsBulkAction(
+                        fn () => $this->getOwnerRecord(),
+                        fn () => null,
+                    ),
+                    ContactProviderCommunications::makeMissingBillsBulkAction(
+                        fn () => $this->getOwnerRecord(),
+                        fn () => null,
+                    ),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);

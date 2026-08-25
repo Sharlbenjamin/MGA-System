@@ -126,13 +126,13 @@ class FileStatsOverview extends  StatsOverviewWidget
                 ->color($this->getComparisonColor($revenueComparison))
                 ->chart($revenueChart),
 
-            Stat::make("Income this {$periodLabel}", '€' . number_format($income))
+            Stat::make("Income this {$periodLabel} ({$paidPartialInvoicesLabel})", '€' . number_format($income))
                 ->description($this->formatComparisonDescription($incomeComparison))
                 ->descriptionIcon($incomeComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($incomeComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($incomeComparison))
                 ->chart($incomeChart),
 
-            Stat::make("Profit this {$periodLabel} ({$paidPartialInvoicesLabel})", '€' . number_format($profit))
+            Stat::make("Profit this {$periodLabel}", '€' . number_format($profit))
                 ->description($this->formatComparisonDescription($profitComparison))
                 ->descriptionIcon($profitComparison['trend'] === 'up' ? 'heroicon-m-arrow-trending-up' : ($profitComparison['trend'] === 'down' ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-minus'))
                 ->color($this->getComparisonColor($profitComparison))
