@@ -2,27 +2,20 @@
 
 namespace App\Models;
 
+use App\Traits\HasContacts;
+use App\Traits\LogsActivity;
+use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
-use Filament\Notifications\Notification;
-use App\Mail\NotifyBranchMailable;
-use App\Mail\NotifyUsMailable;
-use Illuminate\Support\Facades\Auth;
-use App\Traits\HasContacts;
-use App\Traits\NotifiableEntity;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Support\Facades\Schema;
-use App\Traits\LogsActivity;
 
 class ProviderBranch extends Model
 {
-    use HasFactory, HasContacts, NotifiableEntity, LogsActivity;
+    use HasContacts, HasFactory, LogsActivity, NotifiableEntity;
 
     protected $fillable = [
         'provider_id', 'branch_name', 'email', 'phone', 'address', 'website', 'city_id', 'province_id', 'status',
@@ -30,7 +23,7 @@ class ProviderBranch extends Model
         'communication_method', 'emergency', 'pediatrician_emergency', 'dental',
         'pediatrician', 'gynecology', 'urology', 'cardiology', 'ophthalmology',
         'trauma_orthopedics', 'surgery', 'intensive_care', 'obstetrics_delivery',
-        'hyperbaric_chamber','gop_contact_id','operation_contact_id','financial_contact_id'
+        'hyperbaric_chamber', 'gop_contact_id', 'operation_contact_id', 'financial_contact_id',
     ];
 
     protected $casts = [
@@ -41,7 +34,8 @@ class ProviderBranch extends Model
 
     public function getActivityReference(): ?string
     {
-        $provider = $this->provider?->name ?? 'Provider #' . $this->provider_id;
+        $provider = $this->provider?->name ?? 'Provider #'.$this->provider_id;
+
         return "{$this->branch_name} ({$provider})";
     }
 
@@ -95,8 +89,6 @@ class ProviderBranch extends Model
         return $this->belongsTo(Contact::class, 'financial_contact_id');
     }
 
-
-
     public function tasks()
     {
         return $this->morphMany(Task::class, 'taskable');
@@ -133,7 +125,7 @@ class ProviderBranch extends Model
         $service = $this->services()
             ->where('service_type_id', $serviceTypeId)
             ->first();
-        
+
         return $service ? $service->pivot->$costType : null;
     }
 
@@ -145,11 +137,11 @@ class ProviderBranch extends Model
         $service = $this->services()
             ->where('service_type_id', $serviceTypeId)
             ->first();
-        
-        if (!$service) {
+
+        if (! $service) {
             return null;
         }
-        
+
         return [
             'min_cost' => $service->pivot->min_cost,
             'max_cost' => $service->pivot->max_cost,
@@ -164,20 +156,20 @@ class ProviderBranch extends Model
         if ($this->email) {
             return $this->email;
         }
-        
+
         // Priority: Operation Contact > GOP Contact > Financial Contact
         if ($this->operationContact && $this->operationContact->email) {
             return $this->operationContact->email;
         }
-        
+
         if ($this->gopContact && $this->gopContact->email) {
             return $this->gopContact->email;
         }
-        
+
         if ($this->financialContact && $this->financialContact->email) {
             return $this->financialContact->email;
         }
-        
+
         return null;
     }
 
@@ -189,24 +181,22 @@ class ProviderBranch extends Model
         if ($this->phone) {
             return $this->phone;
         }
-        
+
         // Priority: Operation Contact > GOP Contact > Financial Contact
         if ($this->operationContact && $this->operationContact->phone_number) {
             return $this->operationContact->phone_number;
         }
-        
+
         if ($this->gopContact && $this->gopContact->phone_number) {
             return $this->gopContact->phone_number;
         }
-        
+
         if ($this->financialContact && $this->financialContact->phone_number) {
             return $this->financialContact->phone_number;
         }
-        
+
         return null;
     }
-
-
 
     public function cities()
     {
@@ -261,11 +251,16 @@ class ProviderBranch extends Model
         return $this->hasManyThrough(Bill::class, File::class);
     }
 
-    public function transactions()
+    public function branchTransactions(): HasMany
     {
-        return Transaction::where('related_type', 'Branch')->where('related_id', $this->id);
+        return $this->hasMany(Transaction::class, 'related_id')
+            ->where('related_type', 'Branch');
     }
 
+    public function transactions()
+    {
+        return $this->branchTransactions();
+    }
 
     // Calculated Attributes Calculated Attributes Calculated Attributes Calculated Attributes Calculated Attributes
     public function getFilesCountAttribute()

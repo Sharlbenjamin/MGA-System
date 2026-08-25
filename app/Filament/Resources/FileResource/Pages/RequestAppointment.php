@@ -2,10 +2,14 @@
 
 namespace App\Filament\Resources\FileResource\Pages;
 
+use App\Enums\CommunicationContextType;
 use App\Filament\Resources\FileResource;
+use App\Filament\Support\ContactProviderCommunications;
 use App\Jobs\SendAppointmentRequestsJob;
 use App\Models\Gop;
+use App\Models\ProviderBranch;
 use App\Services\AppointmentRequestMessageFormatter;
+use App\Services\Communications\CommunicationContextFactory;
 use App\Services\DistanceCalculationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
@@ -15,10 +19,10 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
@@ -88,9 +92,10 @@ class RequestAppointment extends Page implements HasForms
                             ->label('Filter by City')
                             ->options(function () {
                                 $countryId = $this->record->country_id ?? null;
-                                if (!$countryId) {
+                                if (! $countryId) {
                                     return \App\Models\City::orderBy('name')->pluck('name', 'id');
                                 }
+
                                 return \App\Models\City::where('country_id', $countryId)
                                     ->orderBy('name')
                                     ->pluck('name', 'id');
@@ -353,6 +358,104 @@ class RequestAppointment extends Page implements HasForms
                     $this->sendRequest($data);
                 })
                 ->color('primary'),
+            Action::make('messageDoctor')
+                ->label('Message Doctor')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color('success')
+                ->visible(fn (): bool => ContactProviderCommunications::canContact())
+                ->modalHeading('Message Doctor via WhatsApp')
+                ->modalSubmitActionLabel('Open WhatsApp')
+                ->modalWidth('3xl')
+                ->form(function (): array {
+                    $branchOptions = ProviderBranch::query()
+                        ->whereIn('id', array_map('intval', $this->selectedBranchIds))
+                        ->with('provider')
+                        ->get()
+                        ->mapWithKeys(fn (ProviderBranch $branch) => [
+                            $branch->id => $branch->branch_name.' ('.($branch->provider?->name ?? 'Provider').')',
+                        ])
+                        ->all();
+
+                    $defaultBranchId = (int) ($this->selectedBranchIds[0] ?? 0);
+                    $context = $defaultBranchId
+                        ? app(CommunicationContextFactory::class)->forAppointmentRequest(
+                            $this->getRecord(),
+                            ProviderBranch::query()->with('provider')->find($defaultBranchId),
+                            Auth::user(),
+                        )
+                        : null;
+
+                    $fields = $context
+                        ? ContactProviderCommunications::buildPreviewFormFields(
+                            CommunicationContextType::AppointmentRequest,
+                            $context,
+                        )
+                        : [];
+
+                    if (count($branchOptions) > 1) {
+                        array_unshift($fields, Select::make('provider_branch_id')
+                            ->label('Provider Branch')
+                            ->options($branchOptions)
+                            ->default($defaultBranchId)
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, \Filament\Forms\Set $set): void {
+                                $branch = ProviderBranch::query()->with('provider')->find((int) $state);
+                                if (! $branch) {
+                                    return;
+                                }
+                                $context = app(CommunicationContextFactory::class)->forAppointmentRequest(
+                                    $this->getRecord(),
+                                    $branch,
+                                    Auth::user(),
+                                );
+                                ContactProviderCommunications::refreshMessageBody(
+                                    $set,
+                                    CommunicationContextType::AppointmentRequest,
+                                    $context,
+                                );
+                            }));
+                    } else {
+                        array_unshift($fields, \Filament\Forms\Components\Hidden::make('provider_branch_id')
+                            ->default($defaultBranchId));
+                    }
+
+                    return $fields;
+                })
+                ->action(function (array $data): void {
+                    if ($this->selectedBranchIds === []) {
+                        Notification::make()
+                            ->title('Select a branch')
+                            ->body('Please select at least one provider branch first.')
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
+
+                    $branchId = (int) ($data['provider_branch_id'] ?? $this->selectedBranchIds[0]);
+                    $branch = ProviderBranch::query()->with('provider')->find($branchId);
+
+                    if (! $branch) {
+                        Notification::make()->title('Branch not found')->danger()->send();
+
+                        return;
+                    }
+
+                    $url = ContactProviderCommunications::executeWhatsAppOpen(
+                        $data,
+                        fn () => app(CommunicationContextFactory::class)->forAppointmentRequest(
+                            $this->getRecord(),
+                            $branch,
+                            Auth::user(),
+                        ),
+                        CommunicationContextType::AppointmentRequest,
+                    );
+
+                    if ($url) {
+                        $this->js('window.open('.json_encode($url).', "_blank")');
+                    }
+                }),
             Action::make('back')
                 ->label('Back to file')
                 ->url(FileResource::getUrl('view', ['record' => $this->getRecord()]))
@@ -362,7 +465,7 @@ class RequestAppointment extends Page implements HasForms
 
     public function getTitle(): string
     {
-        return 'Request Appointment – ' . $this->getRecord()->mga_reference;
+        return 'Request Appointment – '.$this->getRecord()->mga_reference;
     }
 
     public function getBreadcrumb(): string
@@ -416,6 +519,7 @@ class RequestAppointment extends Page implements HasForms
                     'sort_value' => 999999,
                     'display' => '<span class="text-gray-400 text-sm">No branch address</span>',
                 ];
+
                 continue;
             }
 
@@ -442,8 +546,9 @@ class RequestAppointment extends Page implements HasForms
                 if ($minutes !== null) {
                     $this->branchDistanceCache[$branchId] = [
                         'sort_value' => $minutes,
-                        'display' => $minutes . ' min by car',
+                        'display' => $minutes.' min by car',
                     ];
+
                     continue;
                 }
             }
@@ -485,7 +590,7 @@ class RequestAppointment extends Page implements HasForms
                 if ($minutes !== null) {
                     return $this->branchDistanceCache[$branch->id] = [
                         'sort_value' => $minutes,
-                        'display' => $minutes . ' min by car',
+                        'display' => $minutes.' min by car',
                     ];
                 }
             }
@@ -514,7 +619,7 @@ class RequestAppointment extends Page implements HasForms
 
     protected function createGopIfRequested(array $confirmationData): ?Gop
     {
-        if (!($confirmationData['send_gop'] ?? false)) {
+        if (! ($confirmationData['send_gop'] ?? false)) {
             return null;
         }
 
@@ -528,7 +633,7 @@ class RequestAppointment extends Page implements HasForms
                 ->whereKey($selectedGopId)
                 ->first();
 
-            if (!$existingOutGop) {
+            if (! $existingOutGop) {
                 Notification::make()
                     ->title('GOP Not Found')
                     ->body('Please choose a valid Out GOP from the list or create a new Out GOP.')

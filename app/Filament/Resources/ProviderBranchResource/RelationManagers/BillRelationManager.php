@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProviderBranchResource\RelationManagers;
 
 use App\Filament\Support\BillTable;
+use App\Filament\Support\ContactProviderCommunications;
 use Filament\Forms;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -45,7 +46,17 @@ class BillRelationManager extends RelationManager
                 DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    ContactProviderCommunications::makeOutstandingBillsBulkAction(
+                        fn () => $this->getOwnerRecord()->provider,
+                        fn () => $this->getOwnerRecord(),
+                    ),
+                    ContactProviderCommunications::makeMissingBillsBulkAction(
+                        fn () => $this->getOwnerRecord()->provider,
+                        fn () => $this->getOwnerRecord(),
+                    ),
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
     }
 }

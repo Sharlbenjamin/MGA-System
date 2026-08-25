@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -27,6 +26,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             ProviderDraftMailSeeder::class,
             FileDraftMailSeeder::class,
+            CommunicationTemplateSeeder::class,
             ProviderBranchSeeder::class,
             ProvinceSeeder::class,
         ]);

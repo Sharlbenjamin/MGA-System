@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\ProviderResource\RelationManagers;
+namespace App\Filament\Resources\ProviderBranchResource\RelationManagers;
 
 use App\Filament\Resources\FileResource;
 use App\Filament\Support\ContactProviderCommunications;
@@ -39,26 +39,9 @@ class FileRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('status')
                     ->sortable()
                     ->searchable()
-                    ->badge()
-                    ->color(fn ($state) => match ($state) {
-                        'New' => 'success',
-                        'Handling' => 'info',
-                        'Available' => 'info',
-                        'Confirmed' => 'success',
-                        'Assisted' => 'success',
-                        'Hold' => 'warning',
-                        'Waiting MR' => 'primary',
-                        'Refund' => 'primary',
-                        'Cancelled' => 'danger',
-                        'Void' => 'gray',
-                        default => 'gray',
-                    }),
+                    ->badge(),
                 Tables\Columns\TextColumn::make('serviceType.name')
                     ->label('Service Type')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('country.name')
-                    ->label('Country')
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('service_date')
@@ -81,30 +64,21 @@ class FileRelationManager extends RelationManager
                         'Cancelled' => 'Cancelled',
                         'Void' => 'Void',
                     ]),
-                SelectFilter::make('country_id')
-                    ->label('Country')
-                    ->options(\App\Models\Country::pluck('name', 'id')),
-                SelectFilter::make('service_type_id')
-                    ->label('Service Type')
-                    ->options(\App\Models\ServiceType::pluck('name', 'id')),
             ])
             ->actions([
                 Tables\Actions\Action::make('View')
                     ->url(fn (File $record) => FileResource::getUrl('view', ['record' => $record]))
                     ->icon('heroicon-o-eye'),
-                Tables\Actions\Action::make('Edit')
-                    ->url(fn (File $record) => FileResource::getUrl('edit', ['record' => $record]))
-                    ->icon('heroicon-o-pencil'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     ContactProviderCommunications::makeMissingDocumentsBulkAction(
+                        fn () => $this->getOwnerRecord()->provider,
                         fn () => $this->getOwnerRecord(),
-                        fn () => null,
                     ),
                     ContactProviderCommunications::makeMissingBillsBulkAction(
+                        fn () => $this->getOwnerRecord()->provider,
                         fn () => $this->getOwnerRecord(),
-                        fn () => null,
                     ),
                 ]),
             ]);
