@@ -12,14 +12,14 @@
     @if ($livewire->distancesLoading)
         <div class="mb-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <x-filament::loading-indicator class="h-4 w-4" />
-            <span>Sorting branches by driving distance…</span>
+            <span>Loading branch distances…</span>
         </div>
     @endif
 
     @if ($livewire->branchTableRows === [])
         <p class="text-sm text-gray-500 dark:text-gray-400 py-4">No eligible provider branches found for this file.</p>
     @else
-        <table class="w-full min-w-[900px] text-sm">
+        <table class="w-full min-w-[1100px] text-sm">
             <thead>
                 <tr class="bg-gray-50 border-b-2 border-gray-200 font-semibold text-left dark:bg-white/5 dark:border-white/10">
                     <th class="px-2 py-2 w-10">
@@ -32,6 +32,9 @@
                         />
                     </th>
                     <th class="px-2 py-2">Branch</th>
+                    <th class="px-2 py-2 w-16">Priority</th>
+                    <th class="px-2 py-2 w-24">Contact</th>
+                    <th class="px-2 py-2 w-24">Selling Cost</th>
                     <th class="px-2 py-2 w-16">Phone</th>
                     <th class="px-2 py-2 w-24">Address</th>
                     <th class="px-2 py-2 w-20">Website</th>
@@ -61,6 +64,9 @@
                                 'providerComment' => $row['provider_comment'],
                             ])
                         </td>
+                        <td class="px-2 py-2 align-top text-center">{{ $row['priority'] }}</td>
+                        <td class="px-2 py-2 align-top">{{ $row['communication_method'] }}</td>
+                        <td class="px-2 py-2 align-top">{{ $row['selling_cost'] }}</td>
                         <td class="px-2 py-2 align-top">
                             @include('filament.forms.components.copiable-field', [
                                 'label' => 'phone',

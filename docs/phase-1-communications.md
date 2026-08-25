@@ -3,16 +3,21 @@
 ## Deployment
 
 1. Pull the branch and install dependencies (no new Composer packages).
-2. Run migrations:
+2. Run migrations (includes communication permissions):
    ```bash
    php artisan migrate
    ```
-3. Seed communication templates and permissions (production-safe — uses `updateOrCreate` / `firstOrCreate`):
+   If you deployed before this migration existed, run instead:
+   ```bash
+   php artisan db:seed --class=PermissionSeeder
+   php artisan db:seed --class=RoleSeeder
+   php artisan permission:cache-reset
+   ```
+3. Seed communication templates (production-safe — uses `updateOrCreate`):
    ```bash
    php artisan db:seed --class=CommunicationTemplateSeeder
-   php artisan db:seed --class=PermissionSeeder
    ```
-4. Assign permissions to roles:
+4. Assign permissions to roles (admin receives them automatically from the migration):
    - `contact providers` — users who may open WhatsApp from MGA
    - `view/edit CommunicationTemplate` — admins who manage templates
 5. Optional `.env`:

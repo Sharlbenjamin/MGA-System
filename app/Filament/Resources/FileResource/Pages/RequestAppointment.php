@@ -177,6 +177,7 @@ class RequestAppointment extends Page implements HasForms
             })
             ->sortBy([
                 fn ($branch) => (int) ($branch->priority ?? 999),
+                fn ($branch) => $branch->sort_distance ?? 999999,
                 fn ($branch) => $branch->status === 'Active' ? 0 : 1,
             ])
             ->values();
@@ -223,7 +224,7 @@ class RequestAppointment extends Page implements HasForms
         $branches = $this->getEligibleProviderBranches($this->record, $cityFilter)
             ->sortBy([
                 fn ($branch) => (int) ($branch->priority ?? 999),
-                fn ($branch) => $branch->status === 'Active' ? 0 : 1,
+                fn ($branch) => $branch->branch_name,
             ])
             ->values();
 
@@ -241,12 +242,32 @@ class RequestAppointment extends Page implements HasForms
             'branch_name' => $branch->branch_name,
             'provider_name' => $branch->provider?->name,
             'provider_comment' => $branch->provider?->comment,
+            'priority' => $branch->priority ?? 'N/A',
+            'communication_method' => $branch->communication_method ?? 'N/A',
+            'selling_cost' => $this->formatBranchSellingCost($branch),
             'phone' => $branch->phone ?? ($branch->getPrimaryPhoneAttribute() ?? 'N/A'),
             'address' => $branch->address ?? 'N/A',
             'website' => $branch->website ?? 'N/A',
             'appointment_text' => $this->formatAppointmentRequestText($branch),
             'distance_display' => $this->branchDistanceCache[$branch->id]['display'] ?? 'N/A',
         ];
+    }
+
+    protected function formatBranchSellingCost(ProviderBranch $branch): string
+    {
+        $serviceTypeId = $this->record->service_type_id;
+
+        if (! $serviceTypeId) {
+            return 'N/A';
+        }
+
+        $costs = $branch->getCostsForService($serviceTypeId);
+
+        if (! $costs || blank($costs['max_cost'])) {
+            return 'N/A';
+        }
+
+        return '€'.number_format((float) $costs['max_cost'], 2);
     }
 
     public function sendRequest(array $confirmationData = []): void

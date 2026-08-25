@@ -2,33 +2,36 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Filament\Facades\Filament;
-use App\Providers\Filament\AdminPanelProvider;
-use Illuminate\Notifications\DatabaseNotification as LaravelDatabaseNotification;
-use Filament\Notifications\DatabaseNotification as FilamentDatabaseNotification;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use App\Models\Client;
+use App\Models\Patient;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
-use App\Models\Patient;
 use App\Models\Task;
 use App\Models\Transaction;
 use App\Observers\TaskObserver;
 use App\Observers\TransactionObserver;
+use App\Services\Communications\Transports\WhatsAppDeepLinkTransport;
+use App\Services\Communications\Transports\WhatsAppTransportInterface;
+use Filament\Facades\Filament;
+use Filament\Notifications\DatabaseNotification as FilamentDatabaseNotification;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Notifications\DatabaseNotification as LaravelDatabaseNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     public const HOME = '/'; // Redirect to Filament dashboard after login
+
     /**
      * Register any application services.
      */
     public function register(): void
     {
         $this->app->register(AuthServiceProvider::class);
+
+        $this->app->bind(WhatsAppTransportInterface::class, WhatsAppDeepLinkTransport::class);
     }
 
     /**
@@ -36,8 +39,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //FilamentDatabaseNotification::resolveUsing(function ($attributes) {return new LaravelDatabaseNotification($attributes);});
-        
+        // FilamentDatabaseNotification::resolveUsing(function ($attributes) {return new LaravelDatabaseNotification($attributes);});
+
         // Map morphTo relationship types to their model classes (non-enforcing)
         // This allows Transaction model to resolve short names like 'Client' to Client::class
         // while still allowing other morphTo relationships to use full class names
@@ -60,16 +63,16 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function registerPerfLogging(): void
     {
-        if (!config('app.perf_log', false)) {
+        if (! config('app.perf_log', false)) {
             return;
         }
 
         DB::listen(function ($event) {
             $routeName = request()->route()?->getName() ?? '';
-            if (!(str_contains($routeName, 'filament') && str_contains($routeName, 'files') && str_contains($routeName, 'view'))) {
+            if (! (str_contains($routeName, 'filament') && str_contains($routeName, 'files') && str_contains($routeName, 'view'))) {
                 return;
             }
-            if (!request()->attributes->has('perf_query_count')) {
+            if (! request()->attributes->has('perf_query_count')) {
                 request()->attributes->set('perf_query_count', 0);
             }
             request()->attributes->set('perf_query_count', request()->attributes->get('perf_query_count') + 1);
