@@ -4,11 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillResource\Pages;
 use App\Filament\Resources\BillResource\RelationManagers\ItemsRelationManager;
-<<<<<<< HEAD
-use App\Filament\Resources\BillResource\RelationManagers\TransactionRelationManager;
-=======
 use App\Filament\Support\BillTable;
->>>>>>> staging
 use App\Models\BankAccount;
 use App\Models\Bill;
 use Filament\Forms;
@@ -270,7 +266,6 @@ class BillResource extends Resource
     {
         return [
             ItemsRelationManager::class,
-            TransactionRelationManager::class,
         ];
     }
 

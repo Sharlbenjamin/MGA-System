@@ -37,16 +37,6 @@ class AppointmentRequestMessageFormatter
             "Address: {$address}",
             "Distance: {$distanceText}",
             "Date & Time: {$dateTime}",
-<<<<<<< HEAD
-            "Cost: {$cost}",
-            "Requested GOP: {$requestedGop}",
-        ];
-
-        $requestComment = $this->resolveRequestComment($branch);
-        if ($requestComment !== null) {
-            $lines[] = '';
-            $lines[] = $requestComment;
-=======
         ];
 
         if ($kind === \App\Services\OfferPricingCalculator::SERVICE_HOUSE_VISIT) {
@@ -56,31 +46,12 @@ class AppointmentRequestMessageFormatter
             [$cost, $requestedGop] = $this->formatCostAndGopForMessage($file, $branch, $gopIn);
             $lines[] = "Cost: {$cost}";
             $lines[] = "Requested GOP: {$requestedGop}";
->>>>>>> staging
         }
 
         $lines[] = '';
         $lines[] = 'Please let us know if these details suits the patient in order to proceed with the booking or check for another appointment';
 
         return implode("\n", $lines);
-    }
-
-    /**
-     * Branch request comment takes precedence over the parent provider's.
-     */
-    protected function resolveRequestComment(ProviderBranch $branch): ?string
-    {
-        if (filled($branch->request_comment)) {
-            return trim((string) $branch->request_comment);
-        }
-
-        $branch->loadMissing('provider');
-
-        if (filled($branch->provider?->request_comment)) {
-            return trim((string) $branch->provider->request_comment);
-        }
-
-        return null;
     }
 
     public function resolveServiceLabel(File $file, ?Gop $acceptedGopIn = null): string
