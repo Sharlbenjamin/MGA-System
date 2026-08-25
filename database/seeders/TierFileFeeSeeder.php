@@ -20,10 +20,14 @@ class TierFileFeeSeeder extends Seeder
             ->whereRaw('LOWER(name) IN (?, ?)', ['united kingdom', 'uk'])
             ->first();
 
+        $greece = Country::query()
+            ->whereRaw('LOWER(name) IN (?, ?)', ['greece', 'hellas'])
+            ->first();
+
         $tiers = [
-            'Simple' => ['uk' => 85, 'rest' => 50],
-            'Middle' => ['uk' => 200, 'rest' => 150],
-            'Complex' => ['uk' => 350, 'rest' => 300],
+            'Simple' => ['uk' => 85, 'greece' => 70, 'rest' => 50],
+            'Middle' => ['uk' => 200, 'greece' => 180, 'rest' => 150],
+            'Complex' => ['uk' => 350, 'greece' => 320, 'rest' => 300],
         ];
 
         foreach ($tiers as $name => $amounts) {
@@ -37,6 +41,17 @@ class TierFileFeeSeeder extends Seeder
                         'city_id' => null,
                     ],
                     ['amount' => $amounts['uk']],
+                );
+            }
+
+            if ($greece) {
+                FileFee::updateOrCreate(
+                    [
+                        'service_type_id' => $serviceType->id,
+                        'country_id' => $greece->id,
+                        'city_id' => null,
+                    ],
+                    ['amount' => $amounts['greece']],
                 );
             }
 

@@ -55,6 +55,19 @@ class PermissionSeeder extends Seeder
             'guard_name' => 'web',
         ]);
 
+        $sellingCostPermission = Permission::firstOrCreate([
+            'name' => 'edit Gop selling cost',
+            'guard_name' => 'web',
+        ]);
+
+        $adminRole = \Spatie\Permission\Models\Role::query()
+            ->whereIn('name', ['admin', 'Admin', 'super-admin', 'Super Admin'])
+            ->get();
+
+        foreach ($adminRole as $role) {
+            $role->givePermissionTo($sellingCostPermission);
+        }
+
         $this->command->info('Permissions seeded successfully.');
     }
 }

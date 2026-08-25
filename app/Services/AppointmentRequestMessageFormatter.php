@@ -25,7 +25,10 @@ class AppointmentRequestMessageFormatter
         $branchName = $branch->branch_name ?? 'N/A';
         $dateTime = $this->formatDateTime($file, $serviceLabel);
 
-        [$cost, $requestedGop] = $this->formatCostAndGopForMessage($file, $branch, $gopIn);
+        $kind = app(\App\Services\OfferPricingCalculator::class)->classifyService(
+            $gopIn?->service_type_id ? (int) $gopIn->service_type_id : $file->service_type_id,
+            $serviceLabel,
+        );
 
         $lines = [
             $intro,
@@ -34,11 +37,19 @@ class AppointmentRequestMessageFormatter
             "Address: {$address}",
             "Distance: {$distanceText}",
             "Date & Time: {$dateTime}",
-            "Cost: {$cost}",
-            "Requested GOP: {$requestedGop}",
-            '',
-            'Please let us know if these details suits the patient in order to proceed with the booking or check for another appointment',
         ];
+
+        if ($kind === \App\Services\OfferPricingCalculator::SERVICE_HOUSE_VISIT) {
+            [$merged] = $this->formatCostAndGopForMessage($file, $branch, $gopIn);
+            $lines[] = ((string) config('offer.house_visit.merged_label', 'Cost & GOP')).": {$merged}";
+        } else {
+            [$cost, $requestedGop] = $this->formatCostAndGopForMessage($file, $branch, $gopIn);
+            $lines[] = "Cost: {$cost}";
+            $lines[] = "Requested GOP: {$requestedGop}";
+        }
+
+        $lines[] = '';
+        $lines[] = 'Please let us know if these details suits the patient in order to proceed with the booking or check for another appointment';
 
         return implode("\n", $lines);
     }
@@ -83,6 +94,27 @@ class AppointmentRequestMessageFormatter
      */
     protected function formatCostAndGopForMessage(File $file, ProviderBranch $branch, ?Gop $gopIn): array
     {
+        $serviceLabel = $this->resolveServiceLabel($file, $gopIn);
+        $kind = app(\App\Services\OfferPricingCalculator::class)->classifyService(
+            $gopIn?->service_type_id ? (int) $gopIn->service_type_id : $file->service_type_id,
+            $serviceLabel,
+        );
+
+        if ($kind === \App\Services\OfferPricingCalculator::SERVICE_HOUSE_VISIT && $gopIn) {
+            $selling = round((float) ($gopIn->offered_cost ?? $gopIn->amount ?? 0), 2);
+
+            if ($selling <= 0) {
+                [$cost, $total] = $this->gopInOfferService->resolveCostAndTotalForBranch($file, $branch, $gopIn);
+                $selling = (float) ($total ?: $cost ?: 0);
+            }
+
+            if ($selling > 0) {
+                $merged = number_format($selling, 0).'€';
+
+                return [$merged, $merged];
+            }
+        }
+
         [$cost, $total] = $this->gopInOfferService->resolveCostAndTotalForBranch($file, $branch, $gopIn);
 
         if ($cost === null || $cost <= 0) {

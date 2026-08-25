@@ -210,7 +210,7 @@
                 are collected unless explicitly pre-approved by our operations department.
             </p>
             <p class="terms">
-                Finally, all invoices should be directed to "mga.providers.bills@medguarda.com".
+                Finally, all invoices should be directed to "mga.operation@medguarda.com".
             </p>
         </div>
 
@@ -229,7 +229,7 @@
             </div>
             <div class="footer-item">
                 <span class="footer-label">Provider Billing:</span>
-                mga.providers.bills@medguarda.com
+                mga.operation@medguarda.com
             </div>
         </div>
     </div>

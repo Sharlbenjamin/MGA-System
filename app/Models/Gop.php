@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Mail\GopMailable;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Mail;
@@ -41,6 +42,7 @@ class Gop extends Model
         'offered_cost',
         'file_fee',
         'notes',
+        'offer_sections',
         'status',
         'date',
         'gop_google_drive_link',
@@ -55,6 +57,7 @@ class Gop extends Model
         'amount' => 'float',
         'offered_cost' => 'float',
         'file_fee' => 'float',
+        'offer_sections' => 'array',
         'date' => 'date',
         'status' => 'string',
     ];
@@ -143,6 +146,11 @@ class Gop extends Model
     public function serviceType(): BelongsTo
     {
         return $this->belongsTo(ServiceType::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(GopItem::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function getEffectiveServiceTypeNameAttribute(): string

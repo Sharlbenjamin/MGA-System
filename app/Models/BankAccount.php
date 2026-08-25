@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Traits\LogsActivity;
 
 class BankAccount extends Model
 {
     use LogsActivity;
+
     protected $fillable = [
         'type',
         'client_id',
@@ -23,13 +24,15 @@ class BankAccount extends Model
         'beneficiary_address',
         'iban',
         'swift',
-        'balance'
+        'balance',
     ];
+
     protected $casts = ['balance' => 'decimal:2'];
 
     public function getActivityReference(): ?string
     {
         $owner = $this->owner_name ?? 'Unknown';
+
         return "Bank Account #{$this->id} ({$owner})";
     }
 
@@ -43,10 +46,11 @@ class BankAccount extends Model
             'Client' => 'client',
             'Provider' => 'provider',
             'Branch' => 'branch',
-            'File' => 'file'
+            'File' => 'file',
         ];
 
         $relation = $relations[$this->type] ?? null;
+
         return $relation ? ($this->$relation?->name ?? $this->$relation?->company_name ?? $this->$relation?->mga_reference ?? '') : '';
     }
 
@@ -135,8 +139,12 @@ class BankAccount extends Model
         self::$calculatingBalance[$this->id] = true;
 
         try {
-            $totalIncome = $this->transactions()->where('type', 'Income')->sum('amount');
-            $totalOutflow = $this->transactions()->whereIn('type', ['Outflow', 'Expense'])->sum('amount');
+            $issued = $this->transactions()->where(function ($query) {
+                $query->whereNull('status')->orWhere('status', '!=', 'Draft');
+            });
+
+            $totalIncome = (clone $issued)->where('type', 'Income')->sum('amount');
+            $totalOutflow = (clone $issued)->whereIn('type', ['Outflow', 'Expense'])->sum('amount');
             $this->balance = $totalIncome - $totalOutflow;
             $this->saveQuietly();
         } finally {
@@ -153,12 +161,16 @@ class BankAccount extends Model
 
         $transactions = $this->transactions()
             ->whereDate('date', '<=', $month->endOfMonth())
+            ->where(function ($query) {
+                $query->whereNull('status')->orWhere('status', '!=', 'Draft');
+            })
             ->get();
 
         $totalIncome = $transactions->where('type', 'Income')->sum('amount');
         $totalOutflow = $transactions->where('type', 'Outflow')->sum('amount');
         $totalExpenses = $transactions->where('type', 'Expense')->sum('amount');
         $balance = $totalIncome - $totalOutflow - $totalExpenses;
-        return number_format($balance, 2, '.', ',') . '€';
+
+        return number_format($balance, 2, '.', ',').'€';
     }
 }

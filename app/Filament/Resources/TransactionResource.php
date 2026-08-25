@@ -5,9 +5,9 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManager;
 use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
-use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\BillTable;
 use App\Filament\Support\TransactionBillLinkForm;
+use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\TransactionInvoiceLinkForm;
 use App\Models\BankAccount;
 use App\Models\Bill;
@@ -23,16 +23,16 @@ use App\Services\TransactionDocumentationStatsService;
 use App\Services\TransactionIntegrityService;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Forms\Get;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class TransactionResource extends Resource
 {
@@ -120,7 +120,7 @@ class TransactionResource extends Resource
                     ->relationship('bankAccount', 'beneficiary_name', function ($query) {
                         return $query->where('type', 'Internal');
                     })
-                    ->required()
+                    ->required(fn (Get $get, ?Transaction $record): bool => ($get('status') ?? $record?->status) !== 'Draft')
                     ->default(fn () => request()->get('bank_account_id')),
 
                 // Display provider/branch bank account details for Outflow transactions

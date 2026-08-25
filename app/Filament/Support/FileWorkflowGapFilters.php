@@ -42,6 +42,22 @@ class FileWorkflowGapFilters
     }
 
     /**
+     * @return array<int, Filter>
+     */
+    public static function forClientOfferChecklist(): array
+    {
+        return [
+            self::checkpointFilter(
+                'offer_checkpoint',
+                'Checkpoint',
+                FileWorkflowGapService::clientOfferCheckpointOptions(),
+                fn (Builder $query, string $gapKey): Builder => FileWorkflowGapService::scopeMissingClientOffer($query),
+            ),
+            ...self::sharedFileFilters(includeClient: true),
+        ];
+    }
+
+    /**
      * @param  callable(Builder, string): Builder  $scopeApplier
      */
     protected static function checkpointFilter(

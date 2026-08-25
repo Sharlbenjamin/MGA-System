@@ -3,19 +3,14 @@
 namespace App\Filament\Resources\FileResource\RelationManagers;
 
 use Filament\Forms;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\TextColumn;
+use App\Filament\Support\GopInOfferForm;
 use App\Models\Gop;
-use App\Models\ProviderBranch;
-use App\Models\ServiceType;
-use App\Services\GopInOfferService;
+use App\Services\ClientOfferMessageFormatter;
 use App\Services\UploadGopToGoogleDrive;
 use Filament\Notifications\Notification;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -40,7 +35,7 @@ class GopRelationManager extends RelationManager
     public function table(Tables\Table $table): Tables\Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client', 'providerBranch', 'serviceType']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['file.patient.client', 'providerBranch', 'serviceType', 'items']))
             ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('type'),
@@ -60,15 +55,12 @@ class GopRelationManager extends RelationManager
             ->headerActions([
                 // Create via modal action
                 Action::make('create')->label('Add GOP')->icon('heroicon-o-plus')->modalHeading('Add GOP')
+                ->modalWidth('7xl')
                 ->modalButton('Create')
-                    ->fillForm(fn (): array => $this->defaultGopInFormState())
-                    ->form($this->gopFormSchema())
+                    ->fillForm(fn (): array => GopInOfferForm::defaultInState($this->ownerRecord))
+                    ->form(fn (): array => GopInOfferForm::schema($this->ownerRecord))
                     ->action(function (array $data) {
-                        if (($data['type'] ?? null) === 'In') {
-                            $data = $this->normalizeInGopData($data);
-                        }
-
-                        $this->ownerRecord->gops()->create($data);
+                        GopInOfferForm::persist($this->ownerRecord, $data);
                     })
             ])
             ->actions([
@@ -249,20 +241,61 @@ class GopRelationManager extends RelationManager
                     ->action(function ($record) {
                         $record->sendGopToBranch();
                     }),
+                Action::make('copyOffer')
+                    ->label('Copy offer')
+                    ->icon('heroicon-o-clipboard-document')
+                    ->color('gray')
+                    ->visible(fn (Gop $record): bool => $record->type === 'In')
+                    ->fillForm(fn (Gop $record): array => [
+                        'offer_sections' => app(ClientOfferMessageFormatter::class)->normalizeSections($record->offer_sections),
+                        'message' => app(ClientOfferMessageFormatter::class)->formatOffer($record->file ?? $this->ownerRecord, $record),
+                    ])
+                    ->form(fn (Gop $record): array => GopInOfferForm::copyFormSchema(
+                        $record->file ?? $this->ownerRecord,
+                        $record,
+                        ClientOfferMessageFormatter::MODE_OFFER,
+                    ))
+                    ->modalSubmitActionLabel('Copy')
+                    ->action(function (Gop $record, array $data): void {
+                        GopInOfferForm::copyToClipboard(
+                            (string) ($data['message'] ?? ''),
+                            'Client offer',
+                            $this,
+                        );
+                    }),
+                Action::make('copyRequest')
+                    ->label('Copy GOP')
+                    ->icon('heroicon-o-clipboard')
+                    ->color('gray')
+                    ->visible(fn (Gop $record): bool => $record->type === 'In')
+                    ->fillForm(fn (Gop $record): array => [
+                        'offer_sections' => app(ClientOfferMessageFormatter::class)->normalizeSections($record->offer_sections),
+                        'message' => app(ClientOfferMessageFormatter::class)->formatRequest($record->file ?? $this->ownerRecord, $record),
+                    ])
+                    ->form(fn (Gop $record): array => GopInOfferForm::copyFormSchema(
+                        $record->file ?? $this->ownerRecord,
+                        $record,
+                        ClientOfferMessageFormatter::MODE_REQUEST,
+                    ))
+                    ->modalSubmitActionLabel('Copy')
+                    ->action(function (Gop $record, array $data): void {
+                        GopInOfferForm::copyToClipboard(
+                            (string) ($data['message'] ?? ''),
+                            'GOP request',
+                            $this,
+                        );
+                    }),
                 // Edit via modal action
                 Action::make('edit')
                     ->label('Edit')
                     ->icon('heroicon-o-pencil')
                     ->modalHeading('Edit GOP')
+                    ->modalWidth('7xl')
                     ->modalButton('Update')
-                    ->fillForm(fn (Gop $record) => $record->toArray())
-                    ->form($this->gopFormSchema(isEdit: true))
+                    ->fillForm(fn (Gop $record) => GopInOfferForm::fillFromGop($record))
+                    ->form(fn (): array => GopInOfferForm::schema($this->ownerRecord, isEdit: true))
                     ->action(function (Gop $record, array $data) {
-                        if (($data['type'] ?? $record->type) === 'In') {
-                            $data = $this->normalizeInGopData($data);
-                        }
-
-                        $record->update($data);
+                        GopInOfferForm::persist($this->ownerRecord, $data, $record);
                     }),
                 // Delete action
                 \Filament\Tables\Actions\Action::make('deleteCustom')
@@ -277,151 +310,5 @@ class GopRelationManager extends RelationManager
             ->bulkActions([
                 DeleteBulkAction::make(),
             ]);
-    }
-
-    protected function gopFormSchema(bool $isEdit = false): array
-    {
-        return [
-            Hidden::make('file_id')->default(fn () => $this->ownerRecord->getKey()),
-            Select::make('type')
-                ->options(['In' => 'In', 'Out' => 'Out'])
-                ->required()
-                ->live()
-                ->disabled($isEdit),
-            Select::make('provider_branch_id')
-                ->label('Provider branch')
-                ->options(fn () => ProviderBranch::query()->orderBy('branch_name')->pluck('branch_name', 'id'))
-                ->searchable()
-                ->default(fn () => $this->ownerRecord->provider_branch_id)
-                ->live()
-                ->afterStateUpdated(fn (Forms\Set $set, Forms\Get $get) => $this->applySuggestedGopInCosts($set, $get))
-                ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
-            Select::make('service_type_id')
-                ->label('Service type')
-                ->options(fn () => ServiceType::query()->orderBy('name')->pluck('name', 'id'))
-                ->searchable()
-                ->placeholder('Select from list')
-                ->default(fn () => $this->ownerRecord->service_type_id)
-                ->live()
-                ->visible(fn (Forms\Get $get) => $get('type') === 'In')
-                ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get): void {
-                    $set('service_type_other', null);
-                    $this->applySuggestedGopInCosts($set, $get);
-                }),
-            Forms\Components\TextInput::make('service_type_other')
-                ->label('Other service type')
-                ->placeholder('e.g. Cardiology specialist')
-                ->maxLength(255)
-                ->visible(fn (Forms\Get $get) => $get('type') === 'In')
-                ->helperText('Use when the service is not in the list above.'),
-            TextInput::make('offered_cost')
-                ->label('Offered cost')
-                ->numeric()
-                ->helperText('Pre-filled from branch service pricing when a provider branch is selected. You can override.')
-                ->live(onBlur: true)
-                ->afterStateUpdated(fn (Forms\Set $set, Forms\Get $get) => $this->syncInGopTotal($set, $get))
-                ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
-            TextInput::make('file_fee')
-                ->label('File fee')
-                ->numeric()
-                ->default(0)
-                ->live(onBlur: true)
-                ->afterStateUpdated(fn (Forms\Set $set, Forms\Get $get) => $this->syncInGopTotal($set, $get))
-                ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
-            TextInput::make('amount')
-                ->label(fn (Forms\Get $get) => $get('type') === 'In' ? 'Total (auto for In)' : 'Amount')
-                ->numeric()
-                ->required(fn (Forms\Get $get) => $get('type') === 'Out')
-                ->disabled(fn (Forms\Get $get) => $get('type') === 'In'),
-            Forms\Components\Textarea::make('notes')
-                ->rows(2)
-                ->visible(fn (Forms\Get $get) => $get('type') === 'In'),
-            DatePicker::make('date')->required(),
-            Select::make('status')
-                ->options(fn (Forms\Get $get) => $get('type') === 'In'
-                    ? Gop::inStatusOptions()
-                    : Gop::outStatusOptions())
-                ->default(fn (Forms\Get $get) => $get('type') === 'In'
-                    ? Gop::IN_STATUS_DRAFT
-                    : Gop::OUT_STATUS_NOT_SENT)
-                ->required(),
-            TextInput::make('gop_google_drive_link')->label('Google Drive Link')->nullable(),
-        ];
-    }
-
-    protected function normalizeInGopData(array $data): array
-    {
-        $data['amount'] = round(
-            (float) ($data['offered_cost'] ?? 0) + (float) ($data['file_fee'] ?? 0),
-            2,
-        );
-
-        if (filled($data['service_type_id'] ?? null)) {
-            $data['service_type_other'] = null;
-        } elseif (filled($data['service_type_other'] ?? null)) {
-            $data['service_type_id'] = null;
-            $data['service_type_other'] = trim((string) $data['service_type_other']);
-        } else {
-            $data['service_type_id'] = null;
-            $data['service_type_other'] = null;
-        }
-
-        return $data;
-    }
-
-    protected function defaultGopInFormState(): array
-    {
-        $file = $this->ownerRecord;
-        $branchId = $file->provider_branch_id;
-        $serviceTypeId = $file->service_type_id;
-        $suggested = app(GopInOfferService::class)->suggestCostsForGopForm(
-            $file,
-            filled($branchId) ? (int) $branchId : null,
-            filled($serviceTypeId) ? (int) $serviceTypeId : null,
-        );
-
-        return [
-            'type' => 'In',
-            'provider_branch_id' => $branchId,
-            'service_type_id' => $serviceTypeId,
-            'offered_cost' => $suggested['offered_cost'],
-            'file_fee' => $suggested['file_fee'] ?? 0,
-            'amount' => $suggested['total'],
-            'date' => now()->toDateString(),
-            'status' => Gop::IN_STATUS_DRAFT,
-        ];
-    }
-
-    protected function applySuggestedGopInCosts(Forms\Set $set, Forms\Get $get): void
-    {
-        if ($get('type') !== 'In') {
-            return;
-        }
-
-        $suggested = app(GopInOfferService::class)->suggestCostsForGopForm(
-            $this->ownerRecord,
-            filled($get('provider_branch_id')) ? (int) $get('provider_branch_id') : null,
-            filled($get('service_type_id')) ? (int) $get('service_type_id') : null,
-        );
-
-        if ($suggested['offered_cost'] === null) {
-            return;
-        }
-
-        $set('offered_cost', $suggested['offered_cost']);
-        $set('file_fee', $suggested['file_fee'] ?? 0);
-        $set('amount', $suggested['total']);
-    }
-
-    protected function syncInGopTotal(Forms\Set $set, Forms\Get $get): void
-    {
-        if ($get('type') !== 'In') {
-            return;
-        }
-
-        $set('amount', round(
-            (float) ($get('offered_cost') ?? 0) + (float) ($get('file_fee') ?? 0),
-            2,
-        ));
     }
 }

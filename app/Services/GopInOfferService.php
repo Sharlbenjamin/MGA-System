@@ -5,51 +5,39 @@ namespace App\Services;
 use App\Models\File;
 use App\Models\FileFee;
 use App\Models\Gop;
+use App\Models\GopItem;
 use App\Models\ProviderBranch;
 use Illuminate\Support\Facades\DB;
 
 class GopInOfferService
 {
+    public function __construct(
+        protected OfferPricingCalculator $pricing = new OfferPricingCalculator,
+    ) {}
+
+    /**
+     * @return array{offered_cost: ?float, file_fee: ?float, total: ?float, items: list<array<string, mixed>>}
+     */
     public function suggestCostsForBranch(File $file, ProviderBranch $branch, ?int $serviceTypeId = null): array
     {
-        $serviceTypeId = $serviceTypeId ?? $file->service_type_id;
-        $offeredCost = null;
-        $fileFee = null;
+        $serviceTypeId = $serviceTypeId ?? ($file->service_type_id ? (int) $file->service_type_id : null);
+        $items = $this->pricing->buildSuggestedItems($file, $branch, $serviceTypeId);
+        $totals = $this->pricing->totals($items);
 
-        if ($serviceTypeId) {
-            $service = $branch->services->firstWhere('id', $serviceTypeId)
-                ?? $branch->services()->where('service_types.id', $serviceTypeId)->first();
-
-            if ($service) {
-                $minCost = $service->pivot->min_cost ?? null;
-                $maxCost = $service->pivot->max_cost ?? null;
-                $fileFeeAmount = $this->resolveFileFeeAmount($file, $serviceTypeId);
-
-                if ($serviceTypeId == 2 && $fileFeeAmount) {
-                    $offeredCost = (float) $fileFeeAmount;
-                    $fileFee = 0.0;
-                } elseif ($serviceTypeId == 1 && ($minCost || $maxCost)) {
-                    $base = $minCost ?? $maxCost ?? 0;
-                    $offeredCost = (float) ($base < 200 ? 300 : ceil($base / 100) * 100);
-                    $fileFee = 0.0;
-                } elseif ($fileFeeAmount) {
-                    $max = (float) ($maxCost ?? $minCost ?? 0);
-                    $mult = (int) ceil($max / 250);
-                    $offeredCost = $max;
-                    $fileFee = (float) ($fileFeeAmount * $mult);
-                } elseif ($minCost) {
-                    $offeredCost = (float) $minCost;
-                    $fileFee = 0.0;
-                }
-            }
+        if ($items === []) {
+            return [
+                'offered_cost' => null,
+                'file_fee' => null,
+                'total' => null,
+                'items' => [],
+            ];
         }
 
         return [
-            'offered_cost' => $offeredCost,
-            'file_fee' => $fileFee,
-            'total' => $offeredCost !== null
-                ? round($offeredCost + ($fileFee ?? 0), 2)
-                : null,
+            'offered_cost' => $totals['offered_cost'],
+            'file_fee' => $totals['file_fee'],
+            'total' => $totals['total'],
+            'items' => $items,
         ];
     }
 
@@ -62,6 +50,8 @@ class GopInOfferService
         ?string $notes = null,
         ?int $serviceTypeId = null,
         ?string $serviceTypeOther = null,
+        array $items = [],
+        ?array $offerSections = null,
     ): Gop {
         return DB::transaction(function () use (
             $file,
@@ -72,12 +62,14 @@ class GopInOfferService
             $notes,
             $serviceTypeId,
             $serviceTypeOther,
+            $items,
+            $offerSections,
         ) {
             if ($status === Gop::IN_STATUS_ACCEPTED) {
                 $this->clearAcceptedOffers($file);
             }
 
-            return $file->gops()->create([
+            $gop = $file->gops()->create([
                 'type' => 'In',
                 'provider_branch_id' => $providerBranchId,
                 'service_type_id' => $serviceTypeId,
@@ -88,8 +80,118 @@ class GopInOfferService
                 'status' => $status,
                 'date' => now()->toDateString(),
                 'notes' => $notes,
+                'offer_sections' => $offerSections,
             ]);
+
+            if ($items !== []) {
+                $this->syncItems($gop, $items, $fileFee);
+            }
+
+            return $gop->fresh(['items', 'providerBranch.provider']);
         });
+    }
+
+    /**
+     * Persist GOP In form data (including draft-bill items) and keep totals in sync.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function saveInOffer(File $file, array $data, ?Gop $existing = null): Gop
+    {
+        return DB::transaction(function () use ($file, $data, $existing) {
+            $items = array_values($data['items'] ?? []);
+            unset($data['items']);
+
+            $data['type'] = 'In';
+            $data['file_id'] = $file->getKey();
+
+            if (($data['status'] ?? null) === Gop::IN_STATUS_ACCEPTED) {
+                $this->clearAcceptedOffers($file);
+            }
+
+            $fileFee = array_key_exists('file_fee', $data)
+                ? round((float) ($data['file_fee'] ?? 0), 2)
+                : null;
+
+            if ($existing) {
+                $existing->fill($data);
+                $existing->save();
+                $gop = $existing;
+            } else {
+                $gop = $file->gops()->create($data);
+            }
+
+            return $this->syncItems($gop, $items, $fileFee);
+        });
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    public function syncItems(Gop $gop, array $items, ?float $fileFeeOverride = null): Gop
+    {
+        $gop->loadMissing('file.serviceType');
+        $file = $gop->file;
+        $serviceTypeId = $gop->service_type_id ? (int) $gop->service_type_id : $file?->service_type_id;
+        $serviceTypeName = $gop->effective_service_type_name ?: $file?->serviceType?->name;
+
+        $normalized = [];
+
+        if ($file) {
+            $normalized = $this->pricing->withFileFeeItem(
+                $items,
+                $file,
+                $serviceTypeId ? (int) $serviceTypeId : null,
+                $serviceTypeName,
+            );
+
+            if ($fileFeeOverride !== null) {
+                $normalized = array_values(array_filter(
+                    $normalized,
+                    fn (array $item): bool => ($item['item_type'] ?? '') !== GopItem::TYPE_FILE_FEE,
+                ));
+
+                if ($fileFeeOverride > 0) {
+                    $normalized[] = [
+                        'description' => 'File fee',
+                        'cost' => 0.0,
+                        'selling_cost' => $fileFeeOverride,
+                        'item_type' => GopItem::TYPE_FILE_FEE,
+                        'sort_order' => count($normalized),
+                    ];
+                }
+            }
+        } else {
+            foreach (array_values($items) as $index => $item) {
+                $normalized[] = [
+                    'description' => trim((string) ($item['description'] ?? '')) ?: 'Item',
+                    'cost' => round((float) ($item['cost'] ?? 0), 2),
+                    'selling_cost' => round((float) ($item['selling_cost'] ?? 0), 2),
+                    'item_type' => $item['item_type'] ?? GopItem::TYPE_SERVICE,
+                    'sort_order' => (int) ($item['sort_order'] ?? $index),
+                ];
+            }
+        }
+
+        $gop->items()->delete();
+
+        foreach ($normalized as $index => $item) {
+            $gop->items()->create([
+                'description' => $item['description'],
+                'cost' => $item['cost'],
+                'selling_cost' => $item['selling_cost'],
+                'item_type' => $item['item_type'],
+                'sort_order' => $item['sort_order'] ?? $index,
+            ]);
+        }
+
+        $totals = $this->pricing->totals($normalized);
+        $gop->offered_cost = $totals['offered_cost'];
+        $gop->file_fee = $fileFeeOverride !== null ? $fileFeeOverride : $totals['file_fee'];
+        $gop->amount = round((float) $gop->offered_cost + (float) $gop->file_fee, 2);
+        $gop->save();
+
+        return $gop->fresh(['items', 'providerBranch.provider', 'serviceType']);
     }
 
     public function markOffered(Gop $gop): Gop
@@ -241,16 +343,19 @@ class GopInOfferService
     }
 
     /**
-     * @return array{offered_cost: ?float, file_fee: ?float, total: ?float}
+     * @return array{offered_cost: ?float, file_fee: ?float, total: ?float, items: list<array<string, mixed>>}
      */
     public function suggestCostsForGopForm(File $file, ?int $providerBranchId, ?int $serviceTypeId = null): array
     {
+        $empty = [
+            'offered_cost' => null,
+            'file_fee' => null,
+            'total' => null,
+            'items' => [],
+        ];
+
         if (! $providerBranchId) {
-            return [
-                'offered_cost' => null,
-                'file_fee' => null,
-                'total' => null,
-            ];
+            return $empty;
         }
 
         $branch = ProviderBranch::query()
@@ -261,11 +366,7 @@ class GopInOfferService
             ->find($providerBranchId);
 
         if (! $branch) {
-            return [
-                'offered_cost' => null,
-                'file_fee' => null,
-                'total' => null,
-            ];
+            return $empty;
         }
 
         return $this->suggestCostsForBranch($file, $branch, $serviceTypeId);
@@ -273,26 +374,12 @@ class GopInOfferService
 
     public function formatTeamCopyText(File $file, Gop $gop): string
     {
-        $gop->loadMissing('providerBranch.provider');
+        return app(ClientOfferMessageFormatter::class)->formatOffer($file, $gop);
+    }
 
-        $provider = $gop->providerBranch?->branch_name ?? 'Unknown provider';
-        $cost = number_format((float) $gop->offered_cost, 2);
-        $fee = number_format((float) ($gop->file_fee ?? 0), 2);
-        $total = number_format((float) $gop->amount, 2);
-
-        $lines = [
-            "File: {$file->mga_reference}",
-            "Provider: {$provider}",
-            "Cost: €{$cost}",
-            "File fee: €{$fee}",
-            "Total: €{$total}",
-        ];
-
-        if (filled($gop->notes)) {
-            $lines[] = 'Notes: ' . $gop->notes;
-        }
-
-        return implode("\n", $lines);
+    public function formatRequestCopyText(File $file, Gop $gop): string
+    {
+        return app(ClientOfferMessageFormatter::class)->formatRequest($file, $gop);
     }
 
     protected function clearAcceptedOffers(File $file): void

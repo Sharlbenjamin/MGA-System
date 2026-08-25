@@ -20,7 +20,7 @@ class FilesWithBillingIssuesResource extends Resource
 
     protected static ?string $navigationGroup = 'Workflow';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 8;
 
     protected static ?string $navigationLabel = 'Billing Mismatches';
 

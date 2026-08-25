@@ -4,32 +4,32 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BillResource\Pages;
 use App\Filament\Resources\BillResource\RelationManagers\ItemsRelationManager;
+use App\Filament\Support\BillTable;
 use App\Models\BankAccount;
 use App\Models\Bill;
 use Filament\Forms;
-use Filament\Tables\Grouping\Group;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables\Table;
 use Filament\Tables;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
-use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Grouping\Group;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Filament\Support\BillTable;
-use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
-
 
 class BillResource extends Resource
 {
     protected static ?string $model = Bill::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
+
     protected static ?int $navigationSort = 3;
+
     protected static ?string $navigationGroup = 'Ops';
+
     protected static ?string $recordTitleAttribute = null;
 
-    public static function getRecordTitle(?\Illuminate\Database\Eloquent\Model $record): string | \Illuminate\Contracts\Support\Htmlable | null
+    public static function getRecordTitle(?\Illuminate\Database\Eloquent\Model $record): string|\Illuminate\Contracts\Support\Htmlable|null
     {
         if ($record instanceof Bill) {
             return $record->display_name;
@@ -43,10 +43,6 @@ class BillResource extends Resource
         return ['name'];
     }
 
-
-
-
-
     public static function form(Form $form): Form
     {
         return $form
@@ -58,7 +54,7 @@ class BillResource extends Resource
                             ->maxLength(255)
                             ->placeholder(fn (?Bill $record): string => $record?->display_name ?? '')
                             ->helperText(fn (?Bill $record): string => $record
-                                ? 'Auto-generated: ' . $record->display_name . '. Leave empty to keep using it.'
+                                ? 'Auto-generated: '.$record->display_name.'. Leave empty to keep using it.'
                                 : 'Leave empty to use the auto-generated bill number.')
                             ->afterStateHydrated(function (Forms\Components\TextInput $component, ?Bill $record): void {
                                 if ($record && ! $record->hasCustomName()) {
@@ -113,8 +109,7 @@ class BillResource extends Resource
                             ->relationship('bankAccount', 'owner_name', function ($query) {
                                 return $query->where('type', 'Provider')->with(['provider']);
                             })
-                            ->getOptionLabelFromRecordUsing(fn (BankAccount $record): string =>
-                                $record->provider?->name ?? 'Unknown Provider'
+                            ->getOptionLabelFromRecordUsing(fn (BankAccount $record): string => $record->provider?->name ?? 'Unknown Provider'
                             )
                             ->searchable()
                             ->preload()
@@ -127,7 +122,13 @@ class BillResource extends Resource
                                 'Partial' => 'Partial',
                                 'Paid' => 'Paid',
                             ])->default('Unpaid')
-                            ->required(),
+                            ->required()
+                            ->live(),
+                        Forms\Components\DatePicker::make('payment_date')
+                            ->label('Payment date')
+                            ->visible(fn (Forms\Get $get): bool => in_array($get('status'), ['Paid', 'Partial'], true))
+                            ->dehydrated(fn (Forms\Get $get): bool => in_array($get('status'), ['Paid', 'Partial'], true))
+                            ->default(now()),
                         Forms\Components\TextInput::make('bill_google_link')
                             ->label('Google Drive Link')
                             ->helperText('Google Drive link for this bill'),
@@ -135,7 +136,7 @@ class BillResource extends Resource
                 Forms\Components\Card::make()
                     ->schema([
                         Forms\Components\Placeholder::make('created_at')->label('Created at')->content(fn (?Bill $record): string => $record ? $record->created_at->diffForHumans() : '-'),
-                        Forms\Components\Placeholder::make('due_date')->label('Due date')->content(fn (?Bill $record): string => $record ? '(' . $record->due_date->format('d/m/Y') . ')' . ' - ' . abs((int)$record->due_date->diffInDays(now())) . ' days' : '-'),
+                        Forms\Components\Placeholder::make('due_date')->label('Due date')->content(fn (?Bill $record): string => $record ? '('.$record->due_date->format('d/m/Y').')'.' - '.abs((int) $record->due_date->diffInDays(now())).' days' : '-'),
                         Forms\Components\Placeholder::make('subtotal')->label('Subtotal')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->subtotal, 2) : '0.00'),
                         Forms\Components\Placeholder::make('discount')->label('Discount')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->discount, 2) : '0.00'),
                         Forms\Components\Placeholder::make('total_amount')->label('Total Amount')->content(fn (?Bill $record): string => $record ? '€'.number_format($record->total_amount, 2) : '0.00'),
@@ -182,7 +183,7 @@ class BillResource extends Resource
                     ->date()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
-                Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid','success' => 'Paid','primary' => 'Partial',])->summarize(Count::make('status')->label('Number of Bills')),
+                Tables\Columns\BadgeColumn::make('status')->colors(['danger' => 'Unpaid', 'success' => 'Paid', 'primary' => 'Partial'])->summarize(Count::make('status')->label('Number of Bills')),
                 Tables\Columns\TextColumn::make('total_amount')->money('EUR')->sortable()->summarize(Sum::make('total_amount')->label('Total Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('paid_amount')->money('EUR')->sortable()->summarize(Sum::make('paid_amount')->label('Paid Amount')->prefix('€')),
                 Tables\Columns\TextColumn::make('remaining_amount')->money('EUR')->sortable()->state(fn (Bill $record) => $record->total_amount - $record->paid_amount),
@@ -232,7 +233,7 @@ class BillResource extends Resource
                     ->form([
                         Forms\Components\Checkbox::make('missing_document')
                             ->label('Missing Document')
-                            ->default(true)
+                            ->default(true),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
@@ -244,8 +245,9 @@ class BillResource extends Resource
                         if ($data['missing_document'] ?? false) {
                             return 'Missing Document';
                         }
+
                         return null;
-                    })
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -279,7 +281,7 @@ class BillResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return ($record->display_name ?? 'Unknown') . ' - ' . ($record->file?->mga_reference ?? 'Unknown File');
+        return ($record->display_name ?? 'Unknown').' - '.($record->file?->mga_reference ?? 'Unknown File');
     }
 
     public static function getGlobalSearchResultDetails(\Illuminate\Database\Eloquent\Model $record): array
@@ -289,7 +291,7 @@ class BillResource extends Resource
             'Provider' => $record->provider?->name ?? 'Unknown',
             'Branch' => $record->branch?->branch_name ?? 'Unknown',
             'Status' => $record->status ?? 'Unknown',
-            'Total Amount' => '€' . number_format($record->total_amount ?? 0, 2),
+            'Total Amount' => '€'.number_format($record->total_amount ?? 0, 2),
             'Due Date' => $record->due_date?->format('d/m/Y') ?? 'Unknown',
         ];
     }

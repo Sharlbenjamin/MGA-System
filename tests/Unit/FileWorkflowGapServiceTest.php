@@ -38,6 +38,22 @@ class FileWorkflowGapServiceTest extends TestCase
         $this->assertTrue(FileWorkflowGapService::hasAnyInvoiceGap($file));
     }
 
+    public function test_missing_client_offer_when_only_draft_gop_in_exists(): void
+    {
+        $gop = new Gop(['type' => 'In', 'status' => Gop::IN_STATUS_DRAFT]);
+        $file = $this->makeFileWithRelations(gops: collect([$gop]));
+
+        $this->assertTrue(FileWorkflowGapService::missingClientOffer($file));
+    }
+
+    public function test_client_offer_is_present_when_gop_in_is_offered(): void
+    {
+        $gop = new Gop(['type' => 'In', 'status' => Gop::IN_STATUS_OFFERED]);
+        $file = $this->makeFileWithRelations(gops: collect([$gop]));
+
+        $this->assertFalse(FileWorkflowGapService::missingClientOffer($file));
+    }
+
     /**
      * @param  \Illuminate\Support\Collection<int, mixed>  $gops
      * @param  \Illuminate\Support\Collection<int, mixed>  $invoices

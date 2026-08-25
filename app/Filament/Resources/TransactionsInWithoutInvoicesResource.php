@@ -22,7 +22,7 @@ class TransactionsInWithoutInvoicesResource extends Resource
 
     protected static ?string $navigationGroup = 'Workflow';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 6;
 
     protected static ?string $navigationLabel = 'Trx In ≠ Invoices';
 
