@@ -251,7 +251,19 @@ class BillResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('view_transaction')
+                    ->label('View Transaction')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->color('primary')
+                    ->visible(fn (Bill $record): bool => $record->transactions()->exists() || filled($record->transaction_id))
+                    ->url(function (Bill $record): ?string {
+                        $transaction = $record->transactions()->orderByDesc('transactions.id')->first()
+                            ?? \App\Models\Transaction::query()->find($record->transaction_id);
 
+                        return $transaction
+                            ? TransactionResource::getUrl('edit', ['record' => $transaction])
+                            : null;
+                    }),
                 Tables\Actions\Action::make('download')
                     ->icon('heroicon-o-pencil')
                     ->url(fn (Bill $record) => $record->draft_path)

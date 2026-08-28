@@ -2,22 +2,20 @@
 
 namespace App\Filament\Resources\BillResource\RelationManagers;
 
+use App\Filament\Support\FileBillingWarnings;
+use App\Models\BillItem;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Components\TextInput;
-use Filament\Support\RawJs;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Table;
 use Filament\Tables;
-use App\Filament\Support\FileBillingWarnings;
-use App\Models\BranchService;
-use App\Models\ServiceType;
-use App\Models\BillItem;
+use Filament\Tables\Table;
 
 class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
+
     protected static ?string $recordTitleAttribute = 'description';
+
     protected static ?string $model = BillItem::class;
 
     public function form(Form $form): Form
@@ -28,7 +26,7 @@ class ItemsRelationManager extends RelationManager
                     ->label('Select Service')
                     ->options(function () {
                         $bill = $this->getOwnerRecord();
-                        if (!$bill || !$bill->branch_id) {
+                        if (! $bill || ! $bill->branch_id) {
                             return ['custom' => 'Custom Item'];
                         }
 
@@ -38,12 +36,13 @@ class ItemsRelationManager extends RelationManager
                             ->mapWithKeys(function ($serviceType) {
                                 $serviceName = $serviceType->name;
                                 $cost = $serviceType->pivot->min_cost ?? 0;
+
                                 return ["service_{$serviceType->id}" => "{$serviceName} - €{$cost}"];
                             });
 
                         // Add custom option
                         $services->put('custom', 'Custom Item');
-                        
+
                         return $services;
                     })
                     ->searchable()
@@ -62,7 +61,7 @@ class ItemsRelationManager extends RelationManager
                                     $serviceName = $serviceType->name;
                                     $serviceDate = $bill->file->service_date ?? now();
                                     $description = "{$serviceName} on {$serviceDate->format('d/m/Y')}";
-                                    
+
                                     $set('description', $description);
                                     $set('amount', $serviceType->pivot->min_cost ?? 0);
                                 }
@@ -124,15 +123,16 @@ class ItemsRelationManager extends RelationManager
                                 }
                             }
                         }
-                        
+
                         // Remove the service_selector field as it's not part of the model
                         unset($data['service_selector']);
-                        
+
                         return $this->getRelationship()->create($data);
                     })
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
                         FileBillingWarnings::notifyIfBillChangedOnFile($record->bill->file, 'update');
+                        $this->dispatch('refreshBillHeader');
                     }),
             ])
             ->actions([
@@ -140,16 +140,19 @@ class ItemsRelationManager extends RelationManager
                     ->mutateFormDataUsing(function (array $data): array {
                         // Remove service_selector if it exists (shouldn't be in edit mode, but just in case)
                         unset($data['service_selector']);
+
                         return $data;
                     })
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
                         FileBillingWarnings::notifyIfBillChangedOnFile($record->bill->file, 'update');
+                        $this->dispatch('refreshBillHeader');
                     }),
                 Tables\Actions\DeleteAction::make()
                     ->after(function ($record) {
                         $record->bill->calculateTotal();
                         FileBillingWarnings::notifyIfBillChangedOnFile($record->bill->file, 'update');
+                        $this->dispatch('refreshBillHeader');
                     }),
             ])
             ->bulkActions([
@@ -158,6 +161,7 @@ class ItemsRelationManager extends RelationManager
                         $bill = $this->getOwnerRecord();
                         $bill->calculateTotal();
                         FileBillingWarnings::notifyIfBillChangedOnFile($bill->file, 'update');
+                        $this->dispatch('refreshBillHeader');
                     }),
             ]);
     }

@@ -56,7 +56,7 @@ class PaidBillDraftOutflowServiceTest extends TestCase
 
         $name = $this->service->formatName($bill, now(), 80);
 
-        $this->assertStringContainsString('Paid 25/08/2026', $name);
+        $this->assertStringContainsString('Partial 25/08/2026', $name);
     }
 
     #[Test]
@@ -69,7 +69,7 @@ class PaidBillDraftOutflowServiceTest extends TestCase
         $name = $this->service->formatName($bill, now(), 10);
 
         $this->assertSame(
-            '25/08/2026 · Clinic Norte · Spain · Paid 20/08/2026 · €10.00',
+            '25/08/2026 · Clinic Norte · Spain · Partial 20/08/2026 · €10.00',
             $name,
         );
     }
@@ -141,10 +141,32 @@ class PaidBillDraftOutflowServiceTest extends TestCase
         $this->assertSame('Provider', $attributes['related_type']);
         $this->assertSame(42, $attributes['related_id']);
         $this->assertSame(150.0, $attributes['amount']);
-        $this->assertSame('2026-08-25', $attributes['date']);
+        $this->assertSame('2026-08-20', $attributes['date']);
         $this->assertSame(9, $attributes['bank_account_id']);
         $this->assertSame('provider_single', $attributes['documentation_category']);
         $this->assertSame('incomplete', $attributes['documentation_status']);
+    }
+
+    #[Test]
+    public function payment_status_label_is_partial_when_amount_is_below_bill_total(): void
+    {
+        $bill = $this->paidBill();
+
+        $this->assertSame('Partial', $this->service->paymentStatusLabel($bill, 40));
+        $this->assertSame('Paid', $this->service->paymentStatusLabel($bill, 150));
+    }
+
+    #[Test]
+    public function payment_defaults_use_bill_date_and_remaining_amount(): void
+    {
+        $bill = $this->paidBill();
+        $bill->setRawAttributes(array_merge($bill->getAttributes(), [
+            'bill_date' => '2026-08-18',
+            'total_amount' => 150,
+        ]), true);
+
+        $this->assertSame('2026-08-18', $this->service->paymentDateDefault($bill));
+        $this->assertSame(150.0, $this->service->paymentAmountDefault($bill));
     }
 
     #[Test]
