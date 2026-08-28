@@ -144,6 +144,16 @@ class Transaction extends Model
             }
 
             try {
+                if ($transaction->wasChanged('date')) {
+                    $transaction->syncLinkedBillPaymentDates();
+                }
+            } catch (\Exception $e) {
+                Log::error('Error syncing bill payment dates on transaction update: '.$e->getMessage(), [
+                    'transaction_id' => $transaction->id,
+                ]);
+            }
+
+            try {
                 if ($transaction->shouldClearProviderNeedsPaymentFlag()) {
                     $transaction->clearProviderNeedsPaymentFlag();
                 }
@@ -328,6 +338,40 @@ class Transaction extends Model
         if ($provider && $provider->needs_payment) {
             $provider->update(['needs_payment' => false]);
         }
+    }
+
+    /**
+     * Keep linked bill payment dates in sync with this transaction date.
+     */
+    public function syncLinkedBillPaymentDates(): void
+    {
+        if (! $this->date) {
+            return;
+        }
+
+        $paymentDate = $this->date->toDateString();
+        $linkedIds = [];
+
+        $this->bills()->each(function (Bill $bill) use ($paymentDate, &$linkedIds): void {
+            $linkedIds[] = $bill->id;
+            $this->applyPaymentDateToBill($bill, $paymentDate);
+        });
+
+        Bill::query()
+            ->where('transaction_id', $this->id)
+            ->when($linkedIds !== [], fn ($query) => $query->whereNotIn('id', $linkedIds))
+            ->each(fn (Bill $bill) => $this->applyPaymentDateToBill($bill, $paymentDate));
+    }
+
+    protected function applyPaymentDateToBill(Bill $bill, string $paymentDate): void
+    {
+        if ($bill->payment_date?->toDateString() === $paymentDate) {
+            return;
+        }
+
+        $bill->forceFill([
+            'payment_date' => $paymentDate,
+        ])->saveQuietly();
     }
 
     /**

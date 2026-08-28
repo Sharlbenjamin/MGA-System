@@ -4,10 +4,13 @@ namespace App\Filament\Support;
 
 use App\Exports\ProviderBillsExport;
 use App\Models\Bill;
+use App\Models\File;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
+use Filament\Forms\Components\Select;
 use Filament\Tables;
 use Filament\Tables\Columns\Column;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -147,6 +150,61 @@ class BillTable
     public static function configureRecordTitle(Tables\Table $table): Tables\Table
     {
         return $table->recordTitle(fn (Bill $record): string => $record->display_name);
+    }
+
+    public static function forProviderBranch(Builder $query, int $branchId): Builder
+    {
+        return $query->getModel()->newQuery()
+            ->whereIn(
+                'bills.file_id',
+                File::query()->select('id')->where('provider_branch_id', $branchId),
+            )
+            ->with(static::eagerLoadRelations());
+    }
+
+    public static function statusFilter(bool $multiple = false): Filter
+    {
+        $field = $multiple ? 'values' : 'value';
+
+        $select = Select::make($field)
+            ->label('Status')
+            ->options([
+                'Paid' => 'Paid',
+                'Unpaid' => 'Unpaid',
+                'Partial' => 'Partial',
+            ])
+            ->placeholder('All');
+
+        if ($multiple) {
+            $select->multiple();
+        }
+
+        return Filter::make('status')
+            ->form([$select])
+            ->query(function (Builder $query, array $data) use ($multiple, $field): Builder {
+                $value = $data[$field] ?? null;
+
+                if (blank($value)) {
+                    return $query;
+                }
+
+                if ($multiple) {
+                    return $query->whereIn('bills.status', (array) $value);
+                }
+
+                return $query->where('bills.status', $value);
+            })
+            ->indicateUsing(function (array $data) use ($multiple, $field): ?string {
+                $value = $data[$field] ?? null;
+
+                if (blank($value)) {
+                    return null;
+                }
+
+                $label = $multiple ? implode(', ', (array) $value) : $value;
+
+                return 'Status: '.$label;
+            });
     }
 
     public static function exportAction(): Tables\Actions\Action
