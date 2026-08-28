@@ -2,29 +2,24 @@
 
 namespace App\Filament\Resources\FileResource\RelationManagers;
 
-use App\Filament\Support\BillTable;
 use App\Filament\Resources\BillResource;
-use App\Filament\Resources\FileResource;
-use App\Filament\Resources\FileResource\Pages;
-use App\Filament\Resources\InvoiceResource;
+use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\BillTable;
 use App\Filament\Support\FileBillingWarnings;
-use App\Models\Country;
-use App\Models\File;
 use App\Models\Bill;
+use App\Models\File;
 use App\Models\Patient;
-use Filament\Tables\Actions\Action;
+use App\Services\UploadBillToGoogleDrive;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
-use Filament\Tables\Actions\CreateAction;
-use Filament\Tables\Table;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use App\Services\UploadBillToGoogleDrive;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Optimized: eager loading (file.patient.client) for client column and upload action, pagination 10.
@@ -55,14 +50,14 @@ class BillRelationManager extends RelationManager
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->color('info')
-                    ->url(fn ($record) => $record->bill_document_path ? asset('storage/' . $record->bill_document_path) : null)
+                    ->url(fn ($record) => $record->bill_document_path ? asset('storage/'.$record->bill_document_path) : null)
                     ->openUrlInNewTab()
                     ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('downloadDocument')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->url(fn ($record) => $record->bill_document_path ? asset('storage/' . $record->bill_document_path) : null)
+                    ->url(fn ($record) => $record->bill_document_path ? asset('storage/'.$record->bill_document_path) : null)
                     ->openUrlInNewTab()
                     ->visible(fn ($record) => $record->hasLocalDocument()),
                 Action::make('upload_bill_relation_manager')
@@ -91,32 +86,34 @@ class BillRelationManager extends RelationManager
                     ])
                     ->action(function ($record, array $data = []) {
                         try {
-                            if (!isset($data['bill_relation_document']) || empty($data['bill_relation_document'])) {
+                            if (! isset($data['bill_relation_document']) || empty($data['bill_relation_document'])) {
                                 Notification::make()
                                     ->danger()
                                     ->title('No document uploaded')
                                     ->body('Please upload a document first.')
                                     ->send();
+
                                 return;
                             }
 
                             // Handle the uploaded file properly
                             $uploadedFile = $data['bill_relation_document'];
-                            
+
                             // Log the uploaded file data for debugging
                             Log::info('Bill upload file data:', ['data' => $data, 'uploadedFile' => $uploadedFile]);
-                            
+
                             // If it's an array (multiple files), take the first one
                             if (is_array($uploadedFile)) {
                                 $uploadedFile = $uploadedFile[0] ?? null;
                             }
-                            
-                            if (!$uploadedFile) {
+
+                            if (! $uploadedFile) {
                                 Notification::make()
                                     ->danger()
                                     ->title('Invalid file data')
                                     ->body('The uploaded file data is invalid.')
                                     ->send();
+
                                 return;
                             }
 
@@ -124,7 +121,7 @@ class BillRelationManager extends RelationManager
                             try {
                                 // Get the file content using Storage facade
                                 $content = Storage::disk('public')->get($uploadedFile);
-                                
+
                                 if ($content === false) {
                                     Log::error('Bill file not found in storage:', ['path' => $uploadedFile]);
                                     Notification::make()
@@ -132,19 +129,20 @@ class BillRelationManager extends RelationManager
                                         ->title('File not found')
                                         ->body('The uploaded file could not be found in storage.')
                                         ->send();
+
                                     return;
                                 }
-                                
+
                                 // Generate the proper filename format
                                 $originalExtension = pathinfo($uploadedFile, PATHINFO_EXTENSION);
-                                $fileName = 'Bill ' . $record->file->mga_reference . ' - ' . $record->file->patient->name . '.' . $originalExtension;
+                                $fileName = 'Bill '.$record->file->mga_reference.' - '.$record->file->patient->name.'.'.$originalExtension;
                                 Log::info('Bill file successfully read:', ['fileName' => $fileName, 'size' => strlen($content)]);
-                                
+
                                 // Save to local storage using DocumentPathResolver (PRIMARY storage)
                                 $resolver = app(\App\Services\DocumentPathResolver::class);
                                 $localPath = $resolver->ensurePathFor($record->file, 'bills', $fileName);
                                 \Illuminate\Support\Facades\Storage::disk('public')->put($localPath, $content);
-                                
+
                                 // Update bill with local document path (PRIMARY)
                                 $record->bill_document_path = $localPath;
 
@@ -158,18 +156,18 @@ class BillRelationManager extends RelationManager
                                 }
 
                                 // Upload to Google Drive using the service (SECONDARY/BACKUP only)
-                                $uploadService = new UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService());
+                                $uploadService = new UploadBillToGoogleDrive(new \App\Services\GoogleDriveFolderService);
                                 $uploadResult = $uploadService->uploadBillToGoogleDrive($content, $fileName, $record);
-                                
+
                                 if ($uploadResult) {
                                     Log::info('Bill uploaded to Google Drive successfully:', ['result' => $uploadResult]);
-                                    
+
                                     // Update the bill record with the Google Drive link (backup only)
                                     $record->bill_google_link = $uploadResult;
                                 }
-                                
+
                                 $record->save();
-                                
+
                                 Notification::make()
                                     ->success()
                                     ->title('Bill document uploaded successfully')
@@ -177,14 +175,15 @@ class BillRelationManager extends RelationManager
                                     ->send();
 
                                 FileBillingWarnings::notifyIfBillChangedOnFile($record->file?->fresh(['invoices', 'bills']), 'update');
-                                    
+
                             } catch (\Exception $e) {
                                 Log::error('Bill file access error:', ['error' => $e->getMessage(), 'path' => $uploadedFile]);
                                 Notification::make()
                                     ->danger()
                                     ->title('File access error')
-                                    ->body('Error accessing uploaded file: ' . $e->getMessage())
+                                    ->body('Error accessing uploaded file: '.$e->getMessage())
                                     ->send();
+
                                 return;
                             }
                         } catch (\Exception $e) {
@@ -192,13 +191,26 @@ class BillRelationManager extends RelationManager
                             Notification::make()
                                 ->danger()
                                 ->title('Upload error')
-                                ->body('An error occurred during upload: ' . $e->getMessage())
+                                ->body('An error occurred during upload: '.$e->getMessage())
                                 ->send();
                         }
                     }),
+                Action::make('view_transaction')
+                    ->label('View Transaction')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->color('primary')
+                    ->visible(fn (Bill $record): bool => $record->transactions()->exists() || filled($record->transaction_id))
+                    ->url(function (Bill $record): ?string {
+                        $transaction = $record->transactions()->orderByDesc('transactions.id')->first()
+                            ?? \App\Models\Transaction::query()->find($record->transaction_id);
+
+                        return $transaction
+                            ? TransactionResource::getUrl('edit', ['record' => $transaction])
+                            : null;
+                    }),
                 Action::make('editBill')
                     ->url(fn ($record) => BillResource::getUrl('edit', [
-                        'record' => $record->id
+                        'record' => $record->id,
                     ])),
             ])
             ->bulkActions([
@@ -208,7 +220,7 @@ class BillRelationManager extends RelationManager
                 Action::make('createBill')->label('Create Bill')
                     ->openUrlInNewTab(false)
                     ->url(fn () => BillResource::getUrl('create', [
-                        'file_id' => $this->ownerRecord->id
+                        'file_id' => $this->ownerRecord->id,
                     ])),
             ]);
     }

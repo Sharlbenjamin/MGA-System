@@ -26,4 +26,9 @@ class CreateBill extends CreateRecord
     {
         FileBillingWarnings::notifyIfBillChangedOnFile($this->record->file, 'create');
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('edit', ['record' => $this->record]);
+    }
 }

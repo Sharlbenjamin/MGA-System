@@ -9,6 +9,7 @@ use Carbon\CarbonInterface;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class PaidBillDraftOutflowService
@@ -30,6 +31,92 @@ class PaidBillDraftOutflowService
         }
     }
 
+    public function pay(Bill $bill, float $amount, mixed $paymentDate): Transaction
+    {
+        if (! $bill->exists) {
+            throw ValidationException::withMessages([
+                'amount' => 'Save the bill before recording a payment.',
+            ]);
+        }
+
+        $bill->ensureProviderAndBranchRelationships();
+
+        if (! $bill->provider_id) {
+            throw ValidationException::withMessages([
+                'amount' => 'This bill has no provider, so a payment cannot be created.',
+            ]);
+        }
+
+        $remaining = $bill->remainingBalance();
+
+        if ($remaining <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => 'This bill is already fully paid.',
+            ]);
+        }
+
+        $amount = round($amount, 2);
+
+        if ($amount <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => 'Enter a payment amount greater than zero.',
+            ]);
+        }
+
+        if ($amount > $remaining) {
+            throw ValidationException::withMessages([
+                'amount' => 'The payment cannot exceed the remaining €'.number_format($remaining, 2).'.',
+            ]);
+        }
+
+        $parsedPaymentDate = $this->parseDate($paymentDate) ?? now();
+
+        if (self::$syncing) {
+            throw ValidationException::withMessages([
+                'amount' => 'A payment is already being recorded for this bill.',
+            ]);
+        }
+
+        self::$syncing = true;
+
+        try {
+            return DB::transaction(function () use ($bill, $amount, $parsedPaymentDate) {
+                $bill->forceFill([
+                    'payment_date' => $parsedPaymentDate->toDateString(),
+                ])->saveQuietly();
+
+                $bill->loadMissing([
+                    'provider.country',
+                    'branch.city',
+                    'file.country',
+                    'file.city',
+                ]);
+
+                return $this->createDraft($bill, $amount, $parsedPaymentDate);
+            });
+        } finally {
+            self::$syncing = false;
+        }
+    }
+
+    public function paymentAmountDefault(Bill $bill): float
+    {
+        $remaining = $bill->exists ? $bill->remainingBalance() : round((float) $bill->total_amount, 2);
+
+        if ($remaining > 0) {
+            return $remaining;
+        }
+
+        return round((float) $bill->total_amount, 2);
+    }
+
+    public function paymentDateDefault(Bill $bill): string
+    {
+        $billDate = $this->parseDate($bill->getAttributes()['bill_date'] ?? null);
+
+        return ($billDate ?? now())->toDateString();
+    }
+
     protected function syncForLocked(Bill $bill): ?Transaction
     {
         if ($bill->status !== 'Paid') {
@@ -38,13 +125,13 @@ class PaidBillDraftOutflowService
 
         $existing = $this->findLinkedOutflow($bill);
 
-        if ($existing && $existing->status !== 'Draft') {
+        if ($existing) {
             return $existing;
         }
 
-        $amount = round((float) $bill->total_amount, 2);
+        $amount = $this->paymentAmountDefault($bill);
 
-        if (! $existing && $amount <= 0) {
+        if ($amount <= 0) {
             return null;
         }
 
@@ -61,13 +148,17 @@ class PaidBillDraftOutflowService
             'file.city',
         ]);
 
-        if ($existing) {
-            $this->refreshDraft($existing, $bill, $amount);
+        $paymentDate = $this->parseDate($bill->getAttributes()['payment_date'] ?? null)
+            ?? $this->parseDate($bill->getAttributes()['bill_date'] ?? null)
+            ?? now();
 
-            return $existing->fresh();
+        if (! ($bill->getAttributes()['payment_date'] ?? null)) {
+            $bill->forceFill([
+                'payment_date' => $paymentDate->toDateString(),
+            ])->saveQuietly();
         }
 
-        return $this->createDraft($bill, $amount);
+        return $this->createDraft($bill, $amount, $paymentDate);
     }
 
     public function findLinkedOutflow(Bill $bill): ?Transaction
@@ -94,7 +185,7 @@ class PaidBillDraftOutflowService
             $createdAt->format('d/m/Y'),
             $bill->provider?->name,
             $location,
-            'Paid '.$paymentDate->format('d/m/Y'),
+            $this->paymentStatusLabel($bill, $amount).' '.$paymentDate->format('d/m/Y'),
             '€'.number_format($amount, 2),
         ], fn ($part): bool => filled($part)));
 
@@ -155,7 +246,7 @@ class PaidBillDraftOutflowService
             'related_id' => $bill->provider_id,
             'amount' => $amount,
             'type' => 'Outflow',
-            'date' => $createdAt->toDateString(),
+            'date' => $this->paymentDate($bill, $createdAt)->toDateString(),
             'notes' => $this->formatNotes($bill, $createdAt, $amount),
             'status' => 'Draft',
             'documentation_category' => 'provider_single',
@@ -165,12 +256,18 @@ class PaidBillDraftOutflowService
         ];
     }
 
-    protected function createDraft(Bill $bill, float $amount): Transaction
+    public function paymentStatusLabel(Bill $bill, float $amount): string
+    {
+        return round($amount, 2) < round((float) $bill->total_amount, 2) ? 'Partial' : 'Paid';
+    }
+
+    protected function createDraft(Bill $bill, float $amount, ?CarbonInterface $trxDate = null): Transaction
     {
         $createdAt = now();
+        $trxDate ??= $this->paymentDate($bill, $createdAt);
 
-        if (! $bill->payment_date) {
-            $bill->forceFill(['payment_date' => $createdAt->toDateString()])->saveQuietly();
+        if (! ($bill->getAttributes()['payment_date'] ?? null)) {
+            $bill->forceFill(['payment_date' => $trxDate->toDateString()])->saveQuietly();
         }
 
         $transaction = TransactionDocumentationService::withoutObserverSync(function () use ($bill, $amount, $createdAt) {
@@ -180,7 +277,10 @@ class PaidBillDraftOutflowService
             return $transaction;
         });
 
-        $bill->forceFill(['transaction_id' => $transaction->id])->saveQuietly();
+        if (! $bill->transaction_id) {
+            $bill->forceFill(['transaction_id' => $transaction->id])->saveQuietly();
+        }
+
         $bill->unsetRelation('transactions');
         $bill->recalculatePaidAmountFromTransactions();
 
@@ -189,29 +289,6 @@ class PaidBillDraftOutflowService
         $this->notifyDraftCreated($transaction, $bill);
 
         return $transaction->fresh();
-    }
-
-    protected function refreshDraft(Transaction $transaction, Bill $bill, float $amount): void
-    {
-        $createdAt = $transaction->date?->copy() ?? now();
-
-        $transaction->forceFill([
-            'name' => $this->formatName($bill, $createdAt, $amount),
-            'related_type' => 'Provider',
-            'related_id' => $bill->provider_id,
-            'amount' => $amount,
-            'notes' => $this->formatNotes($bill, $createdAt, $amount),
-            'updated_by' => $this->currentUserId(),
-        ])->saveQuietly();
-
-        $this->syncBillLink($transaction, $bill, $amount);
-
-        if (! $bill->transaction_id) {
-            $bill->forceFill(['transaction_id' => $transaction->id])->saveQuietly();
-        }
-
-        $bill->unsetRelation('transactions');
-        $bill->recalculatePaidAmountFromTransactions();
     }
 
     protected function syncBillLink(Transaction $transaction, Bill $bill, float $amount): void
@@ -245,17 +322,20 @@ class PaidBillDraftOutflowService
 
     protected function paymentDate(Bill $bill, CarbonInterface $fallback): CarbonInterface
     {
-        $raw = $bill->getAttributes()['payment_date'] ?? null;
+        return $this->parseDate($bill->getAttributes()['payment_date'] ?? null) ?? $fallback;
+    }
 
-        if ($raw instanceof CarbonInterface) {
-            return $raw->copy();
+    protected function parseDate(mixed $value): ?CarbonInterface
+    {
+        if ($value instanceof CarbonInterface) {
+            return $value->copy();
         }
 
-        if (is_string($raw) && $raw !== '') {
-            return \Carbon\Carbon::parse($raw);
+        if (is_string($value) && $value !== '') {
+            return \Carbon\Carbon::parse($value);
         }
 
-        return $fallback;
+        return null;
     }
 
     protected function billLabel(Bill $bill): string
