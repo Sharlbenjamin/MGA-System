@@ -27,18 +27,7 @@ class BillRelationManager extends RelationManager
             ->modifyQueryUsing(fn (Builder $query) => $query->with(BillTable::eagerLoadRelations()))
             ->columns(BillTable::relationManagerColumns())
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'Paid' => 'Paid',
-                        'Unpaid' => 'Unpaid',
-                        'Partial' => 'Partial',
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            $data['value'],
-                            fn (Builder $query, $value): Builder => $query->where('bills.status', $value),
-                        );
-                    }),
+                BillTable::statusFilter(),
             ])
             ->headerActions([
                 BillTable::exportAction(),

@@ -149,6 +149,26 @@ class BillTable
         return $table->recordTitle(fn (Bill $record): string => $record->display_name);
     }
 
+    public static function statusFilter(): Tables\Filters\SelectFilter
+    {
+        return Tables\Filters\SelectFilter::make('status')
+            ->options([
+                'Paid' => 'Paid',
+                'Unpaid' => 'Unpaid',
+                'Partial' => 'Partial',
+            ])
+            ->attribute('bills.status')
+            ->query(function (Builder $query, array $data): Builder {
+                $value = $data['value'] ?? null;
+
+                if (blank($value)) {
+                    return $query;
+                }
+
+                return $query->where('bills.status', $value);
+            });
+    }
+
     public static function exportAction(): Tables\Actions\Action
     {
         return Tables\Actions\Action::make('export')
