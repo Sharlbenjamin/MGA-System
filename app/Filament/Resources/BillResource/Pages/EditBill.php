@@ -55,14 +55,10 @@ class EditBill extends EditRecord
         return [
             Actions\Action::make('view_file')
                 ->label('View File')
-<<<<<<< HEAD
-                ->url(FileResource::getUrl('view', ['record' => $this->record->file_id]))->icon('heroicon-o-document-text'),
-=======
                 ->url(FileResource::getUrl('view', ['record' => $this->record->file_id]))
                 ->icon('heroicon-o-document-text'),
             $this->payBillAction(),
             ...$this->viewTransactionActions(),
->>>>>>> staging
             Actions\DeleteAction::make(),
         ];
     }
