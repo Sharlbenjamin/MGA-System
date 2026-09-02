@@ -10,7 +10,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/ActivityLog.php": "944a093ef957d39811e76b73c5f9d666c43d7446a72f8657f5bab619c5c344dc",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Appointment.php": "e92c44402fc9aa46e617b06e7594d7d34e58ef3d332eaa4918a74a8b4ce43bb5",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/BackfillLog.php": "e86a1245523a11caf3feb6747ce04b1aaf5bcd9454ae1ebc7c1ddb12b616b9a6",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/BankAccount.php": "77b47698ad6c4fce21acddbd909ce35acd87849604cd08b544eb26f1d8b0a418",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/BankAccount.php": "60f39a562e77aeb5ea39c392729dc70aa3536bd1375b5e9a60290a4e5e58b65e",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/BankDetail.php": "36a9e7f1c95b82ffb99743e0c5c4ce95d83c9a430aac59f84ef3cbfab6145068",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Bill.php": "58179f15ffeaa866e4ca2b891dcc404f2eafbf967e89947bbe55d94a6b7938fb",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/BillItem.php": "74c6ecd9cae1b72fc358b27080fc9b86d3f69f55f2e183131c3380bf9873ceb9",
@@ -33,7 +33,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/FileFee.php": "5a4e88f2f7f891d9d4888adcfd2c58eb90dacdc78036564404d7446a3a6a160d",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Gop.php": "9e9580b6d5db791a9e097327c5b13baa1f1339e5e5b06d06d68cbbf3d1c39b3a",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Interaction.php": "1e02333ba9550d07d00a2d1b35b09463c78315aa41fb322e3e17481e30c83454",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Invoice.php": "ec2c348495e85b57f7316f2106d93ba0d8d49cccf462d78d33a3e93d6e89979c",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Invoice.php": "22cba9c464397a60919ca570edae86b8102d648934a800c36f1c568af7f0e097",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/InvoiceItem.php": "0db2ba90f623f0345e72d6fcf057240434abf15da28d6ffbd70be5ef4a57838c",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/JobTitle.php": "498eaea3ebdce8c961d7a8f3099668b210fc1d969fdd60df63893e2c59d262f1",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Lead.php": "f59bf6c174aa8e28d50c6d05ba6afc65ae39835b6c6c49a1d02dc4d38ee3ccb1",
@@ -52,7 +52,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Task.php": "b7c314cd66a6ccdc5b002965271ddc4655cbb146f8d28909d2ab05f8c935d259",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Team.php": "f4ec54e071af4f4b82cc95ee4ab30be662b5a46bb1aaa22d0ed5378d63c533be",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/TeamInvitation.php": "e27ebc85ec5c963cff90950d2f0f6a9e7b55af398596844d9ea44cd2ece653ea",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Transaction.php": "05f78447345e9e4e4a6ca74dfb3dc04656a00ad1ce56dbe86035f33a6b9695ef",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Transaction.php": "90650270fa25ffb8072ad84451d969c2e86920ce2cb38f12e1974795ef405ef2",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/TransactionAttachment.php": "4a1bbe37b71110dc40d55f6c9d8d73c82c818b7bd4860b69f496ff2209e20ab6",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/TransactionImportBatch.php": "29f628d7eca5acb50dc881b329f43f59b8faae1055cea3232716f9d67736f11f",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/User.php": "5aa904de13004b3dc7a1d5b79bac01374291008880244d6598ba6690ea9dcf55",
@@ -458,5 +458,6 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Services\/PaidBillDraftOutflowService.php": "bc8aefa9981444c5a1566bb228d1a4d7dda1a02d7734dce66c6bf12d6fde0672",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_08_25_120000_make_transactions_bank_account_id_nullable.php": "1d6324e2a5694cd7ddba5a04379a7317829c04c1e8c41e4a216a0a1d8550db37",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_08_25_150000_create_gop_items_table.php": "1d62a526b678f303884f51978e6be4611d9d5e64219cde263b7ed8a9078fafc0",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/offer.php": "07c4ef80af67613c77d00b164ad7918cf4d4e9bfc0bed883baec5521f82dde66"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/offer.php": "07c4ef80af67613c77d00b164ad7918cf4d4e9bfc0bed883baec5521f82dde66",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_02_120000_set_null_on_delete_for_legacy_transaction_foreign_keys.php": "06d5eab1ccbb1c70f6ea469ec74260e6f76f9a5a451695fa306e93dc982e699d"
 }

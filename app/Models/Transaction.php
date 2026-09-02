@@ -14,6 +14,9 @@ class Transaction extends Model
     /** @var array<int, array<int, int>> */
     protected static array $invoiceIdsToRecalculateAfterDelete = [];
 
+    /** @var array<int, array<int, int>> */
+    protected static array $billIdsToRecalculateAfterDelete = [];
+
     protected $fillable = [
         'name',
         'bank_account_id',
@@ -188,17 +191,24 @@ class Transaction extends Model
 
         static::deleting(function (Transaction $transaction) {
             try {
-                $invoiceIds = $transaction->invoices()->pluck('invoices.id')->all();
+                $invoiceIds = array_values(array_unique(array_filter([
+                    ...$transaction->invoices()->pluck('invoices.id')->all(),
+                    ...Invoice::query()->where('transaction_id', $transaction->id)->pluck('id')->all(),
+                    $transaction->related_type === 'Invoice' ? $transaction->related_id : null,
+                ])));
+
+                $billIds = array_values(array_unique(array_filter([
+                    ...$transaction->bills()->pluck('bills.id')->all(),
+                    ...Bill::query()->where('transaction_id', $transaction->id)->pluck('id')->all(),
+                    $transaction->related_type === 'Bill' ? $transaction->related_id : null,
+                ])));
 
                 if ($invoiceIds !== []) {
                     static::$invoiceIdsToRecalculateAfterDelete[$transaction->id] = $invoiceIds;
                 }
 
-                if ($transaction->related_type === 'Invoice' && $transaction->related_id) {
-                    Invoice::find($transaction->related_id)?->update(['status' => 'Unpaid']);
-                }
-                if ($transaction->related_type === 'Bill' && $transaction->related_id) {
-                    Bill::find($transaction->related_id)?->update(['status' => 'Unpaid']);
+                if ($billIds !== []) {
+                    static::$billIdsToRecalculateAfterDelete[$transaction->id] = $billIds;
                 }
             } catch (\Exception $e) {
                 Log::error('Error in transaction deleting event: ' . $e->getMessage(), [
@@ -207,6 +217,11 @@ class Transaction extends Model
                     'related_id' => $transaction->related_id
                 ]);
             }
+
+            // Legacy bills.transaction_id / invoices.transaction_id may be RESTRICT
+            // on production even though the original migrations specified SET NULL.
+            Invoice::query()->where('transaction_id', $transaction->id)->update(['transaction_id' => null]);
+            Bill::query()->where('transaction_id', $transaction->id)->update(['transaction_id' => null]);
         });
 
         static::deleted(function (Transaction $transaction) {
@@ -217,18 +232,22 @@ class Transaction extends Model
             $invoiceIds = static::$invoiceIdsToRecalculateAfterDelete[$transaction->id] ?? [];
             unset(static::$invoiceIdsToRecalculateAfterDelete[$transaction->id]);
 
-            if ($invoiceIds === []) {
-                return;
-            }
+            $billIds = static::$billIdsToRecalculateAfterDelete[$transaction->id] ?? [];
+            unset(static::$billIdsToRecalculateAfterDelete[$transaction->id]);
 
             try {
                 foreach (Invoice::query()->whereIn('id', $invoiceIds)->get() as $invoice) {
                     $invoice->recalculatePaidAmountFromTransactions();
                 }
+
+                foreach (Bill::query()->whereIn('id', $billIds)->get() as $bill) {
+                    $bill->recalculatePaidAmountFromTransactions();
+                }
             } catch (\Exception $e) {
-                Log::error('Error recalculating invoices after transaction delete: ' . $e->getMessage(), [
+                Log::error('Error recalculating documents after transaction delete: ' . $e->getMessage(), [
                     'transaction_id' => $transaction->id,
                     'invoice_ids' => $invoiceIds,
+                    'bill_ids' => $billIds,
                 ]);
             }
         });
