@@ -66,6 +66,9 @@ class Invoice extends Model
             if (!$invoice->invoice_date) {
                 $invoice->invoice_date = $invoice->file?->service_date ?? now();
             }
+            if (! $invoice->bank_account_id) {
+                $invoice->bank_account_id = BankAccount::firstInternalId();
+            }
             $invoice->due_date = now()->addDays(30);
 
             static::guardPaidStatusRequiresTransaction($invoice);

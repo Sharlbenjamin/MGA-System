@@ -130,8 +130,13 @@ class InvoiceResource extends Resource
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')
                             ->options(function () {
-                                return BankAccount::where('type', 'Internal')->pluck('beneficiary_name', 'id');
+                                return BankAccount::query()
+                                    ->where('type', 'Internal')
+                                    ->orderBy('id')
+                                    ->pluck('beneficiary_name', 'id');
                             })
+                            ->default(fn () => BankAccount::firstInternalId())
+                            ->preload()
                             ->nullable(),
 
                         Forms\Components\DatePicker::make('invoice_date')

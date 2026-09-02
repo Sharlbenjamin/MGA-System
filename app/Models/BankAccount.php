@@ -100,6 +100,13 @@ class BankAccount extends Model
         return $this->where('type', 'Internal')->exists();
     }
 
+    public static function firstInternalId(): ?int
+    {
+        $id = static::query()->where('type', 'Internal')->orderBy('id')->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
     public function setTypeAttribute($value)
     {
         $this->attributes['type'] = $value;
