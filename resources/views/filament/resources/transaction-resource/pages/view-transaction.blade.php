@@ -198,6 +198,23 @@
                         @endif
                     </div>
                 </div>
+
+                @if($this->record->type === 'Outflow')
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Beneficiary Name</label>
+                    <div class="text-sm">{{ $providerBankAccount?->beneficiary_name ?? 'N/A' }}</div>
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium text-gray-500">IBAN</label>
+                    <div class="text-sm">{{ $providerBankAccount?->iban ?? 'N/A' }}</div>
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium text-gray-500">Country</label>
+                    <div class="text-sm">{{ $providerBankAccount?->country?->name ?? 'N/A' }}</div>
+                </div>
+                @endif
                 
                 <div>
                     <label class="text-sm font-medium text-gray-500">Bills Count</label>

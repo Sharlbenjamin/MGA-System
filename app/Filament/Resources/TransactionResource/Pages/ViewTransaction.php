@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
+use App\Models\BankAccount;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\Transaction;
@@ -124,9 +125,10 @@ class ViewTransaction extends ViewRecord
         $record = $this->record->load([
             'invoices.file.patient.client',
             'bills.file.patient.client',
-            'bills.provider',
-            'bills.branch',
-            'bankAccount'
+            'bills.provider.bankAccounts.country',
+            'bills.branch.bankAccounts.country',
+            'bills.branch.provider.bankAccounts.country',
+            'bankAccount',
         ]);
         
         // Calculate widgets data - using proper relationship loading
@@ -156,6 +158,7 @@ class ViewTransaction extends ViewRecord
             'totalCost' => $totalCost,
             'totalProfit' => $totalProfit,
             'totalInvoices' => $totalInvoices,
+            'providerBankAccount' => $this->resolveProviderBankAccount($record),
         ];
     }
 
@@ -198,5 +201,34 @@ class ViewTransaction extends ViewRecord
         }
 
         return null;
+    }
+
+    protected function resolveProviderBankAccount(Transaction $transaction): ?BankAccount
+    {
+        if ($transaction->related_type === 'Provider') {
+            $provider = Provider::with('bankAccounts.country')->find($transaction->related_id);
+
+            return $provider?->bankAccounts->first();
+        }
+
+        if ($transaction->related_type === 'Branch') {
+            $branch = ProviderBranch::with([
+                'bankAccounts.country',
+                'provider.bankAccounts.country',
+            ])->find($transaction->related_id);
+
+            return $branch?->bankAccounts->first()
+                ?? $branch?->provider?->bankAccounts->first();
+        }
+
+        $bill = $transaction->bills->first();
+
+        if (! $bill) {
+            return null;
+        }
+
+        return $bill->branch?->bankAccounts?->first()
+            ?? $bill->provider?->bankAccounts?->first()
+            ?? $bill->branch?->provider?->bankAccounts?->first();
     }
 } 
