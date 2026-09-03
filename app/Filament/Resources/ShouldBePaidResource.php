@@ -106,7 +106,14 @@ class ShouldBePaidResource extends Resource
                     ->url(fn (Bill $record) => $record->file?->google_drive_link)
                     ->openUrlInNewTab()
                     ->color(fn (Bill $record) => $record->file?->google_drive_link ? 'primary' : 'gray'),
-                Tables\Columns\TextColumn::make('due_date')->date()->sortable(),
+                Tables\Columns\TextColumn::make('bill_date')
+                    ->label('Bill Date')
+                    ->date()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('due_date')
+                    ->label('Due Date')
+                    ->date()
+                    ->sortable(),
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors(['danger' => 'Unpaid', 'warning' => 'Partial'])
                     ->summarize(Count::make()->label('Total Bills')),
