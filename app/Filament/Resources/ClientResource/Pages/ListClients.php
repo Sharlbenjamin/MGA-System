@@ -49,14 +49,14 @@ class ListClients extends ListRecords
                     $this->resetTable();
                 })
                 ->color('success'),
-            Actions\Action::make('resetSentInvoicesToNotSent')
-                ->label('Sent > 30 Days to Not Sent')
+            Actions\Action::make('resetSentInvoicesToUnpaid')
+                ->label('Sent > 30 Days to Unpaid')
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
                 ->requiresConfirmation()
-                ->modalHeading('Reset Old Sent Invoices')
-                ->modalDescription('This will change all invoices with status Sent and older than 30 days to Not Sent.')
-                ->modalSubmitActionLabel('Reset Statuses')
+                ->modalHeading('Mark Old Sent Invoices as Unpaid')
+                ->modalDescription('This will change all invoices with status Sent and older than 30 days to Unpaid.')
+                ->modalSubmitActionLabel('Update Statuses')
                 ->hidden(fn (): bool => $this->viewMode !== 'active')
                 ->action(function () {
                     $cutoffDate = now()->subDays(30)->startOfDay();
@@ -70,12 +70,12 @@ class ListClients extends ListRecords
                                         ->whereDate('created_at', '<=', $cutoffDate);
                                 });
                         })
-                        ->update(['status' => 'Not Sent']);
+                        ->update(['status' => 'Unpaid']);
 
                     Notification::make()
                         ->success()
                         ->title('Old sent invoices updated')
-                        ->body("{$updatedCount} invoice(s) were changed to Not Sent.")
+                        ->body("{$updatedCount} invoice(s) were changed to Unpaid.")
                         ->send();
 
                     $this->resetTable();
