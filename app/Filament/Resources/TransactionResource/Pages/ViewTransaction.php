@@ -8,8 +8,8 @@ use App\Models\BankAccount;
 use App\Models\Provider;
 use App\Models\ProviderBranch;
 use App\Models\Transaction;
-use Filament\Actions\Action;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -99,7 +99,7 @@ class ViewTransaction extends ViewRecord
                         ],
                         function ($message) use ($provider, $transaction, $attachmentPath): void {
                             $message->to($provider->email)
-                                ->subject('Proof of Payment - ' . ($transaction->name ?? ('Transaction #' . $transaction->id)));
+                                ->subject('Proof of Payment - '.($transaction->name ?? ('Transaction #'.$transaction->id)));
 
                             if (! empty($attachmentPath) && Storage::disk('public')->exists($attachmentPath)) {
                                 $message->attachData(
@@ -113,7 +113,7 @@ class ViewTransaction extends ViewRecord
                     Notification::make()
                         ->success()
                         ->title('Proof email sent')
-                        ->body('Proof of payment email was sent to ' . $provider->email . '.')
+                        ->body('Proof of payment email was sent to '.$provider->email.'.')
                         ->send();
                 }),
         ];
@@ -130,17 +130,17 @@ class ViewTransaction extends ViewRecord
             'bills.branch.provider.bankAccounts.country',
             'bankAccount',
         ]);
-        
+
         // Calculate widgets data - using proper relationship loading
         $invoices = $record->invoices()->with(['file.bills'])->get();
-        
+
         // Debug: Check what we have
-        $invoicesWithFiles = $invoices->filter(function($invoice) {
+        $invoicesWithFiles = $invoices->filter(function ($invoice) {
             return $invoice->file !== null;
         });
-        
+
         $filesCount = $invoicesWithFiles->pluck('file_id')->unique()->count();
-        
+
         // Calculate total cost by iterating through invoices manually
         $totalCost = 0;
         foreach ($invoicesWithFiles as $invoice) {
@@ -148,10 +148,10 @@ class ViewTransaction extends ViewRecord
                 $totalCost += $invoice->file->bills->sum('total_amount');
             }
         }
-        
+
         $totalInvoices = $invoices->sum('total_amount');
         $totalProfit = $totalInvoices - $totalCost;
-        
+
         return [
             'record' => $record,
             'filesCount' => $filesCount,
@@ -205,20 +205,13 @@ class ViewTransaction extends ViewRecord
 
     protected function resolveProviderBankAccount(Transaction $transaction): ?BankAccount
     {
-        if ($transaction->related_type === 'Provider') {
-            $provider = Provider::with('bankAccounts.country')->find($transaction->related_id);
+        $account = TransactionResource::resolveRelatedPartyBankAccount(
+            $transaction->related_type,
+            $transaction->related_id,
+        );
 
-            return $provider?->bankAccounts->first();
-        }
-
-        if ($transaction->related_type === 'Branch') {
-            $branch = ProviderBranch::with([
-                'bankAccounts.country',
-                'provider.bankAccounts.country',
-            ])->find($transaction->related_id);
-
-            return $branch?->bankAccounts->first()
-                ?? $branch?->provider?->bankAccounts->first();
+        if ($account) {
+            return $account;
         }
 
         $bill = $transaction->bills->first();
@@ -231,4 +224,4 @@ class ViewTransaction extends ViewRecord
             ?? $bill->provider?->bankAccounts?->first()
             ?? $bill->branch?->provider?->bankAccounts?->first();
     }
-} 
+}
