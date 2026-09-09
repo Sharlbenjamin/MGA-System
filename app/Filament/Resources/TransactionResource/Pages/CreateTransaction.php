@@ -73,7 +73,14 @@ class CreateTransaction extends CreateRecord
             }
         }
 
-        unset($data['bill_links'], $data['invoice_links']);
+        unset(
+            $data['bill_links'],
+            $data['invoice_links'],
+            $data['provider_iban_display'],
+            $data['provider_beneficiary_display'],
+            $data['provider_swift_display'],
+            $data['provider_country_display'],
+        );
 
         if (blank($data['documentation_category'] ?? null)) {
             $data['documentation_category'] = TransactionDocumentationStatsService::defaultCategoryFor(
