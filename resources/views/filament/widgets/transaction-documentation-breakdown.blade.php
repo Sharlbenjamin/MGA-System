@@ -12,8 +12,10 @@
                 'done' => 'Done',
                 'unlinked' => 'Not linked',
                 'incomplete' => 'Incomplete',
+                'sum' => 'Sum',
             ];
             $hasActiveFilter = filled($this->activeTypeScope) || filled($this->activeStatus);
+            $tableScopeLabel = $this->tableScopeLabel;
         @endphp
 
         @if ($summary === null)
@@ -40,8 +42,18 @@
                 </div>
             @endif
 
+            @if (filled($tableScopeLabel))
+                <div class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <x-heroicon-o-calendar-days class="h-5 w-5 shrink-0 text-gray-400" />
+                    <span>
+                        Summary for
+                        <span class="font-semibold text-gray-950 dark:text-white">{{ $tableScopeLabel }}</span>
+                    </span>
+                </div>
+            @endif
+
             <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                <table class="w-full min-w-[32rem] divide-y divide-gray-200 text-sm dark:divide-gray-700">
+                <table class="w-full min-w-[36rem] divide-y divide-gray-200 text-sm dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-800/60">
                         <tr>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -57,7 +69,7 @@
                     <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
                         @foreach ($rows as $scopeKey => $row)
                             @php
-                                $counts = $summary[$scopeKey] ?? ['total' => 0, 'done' => 0, 'unlinked' => 0, 'incomplete' => 0];
+                                $counts = $summary[$scopeKey] ?? ['total' => 0, 'done' => 0, 'unlinked' => 0, 'incomplete' => 0, 'sum' => 0];
                             @endphp
                             <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-800/40">
                                 <td class="whitespace-nowrap px-4 py-3 font-medium text-gray-950 dark:text-white">
@@ -68,8 +80,7 @@
                                 </td>
                                 @foreach ($columns as $statKey => $statLabel)
                                     @php
-                                        $count = (int) ($counts[$statKey] ?? 0);
-                                        $filterStatus = $statKey === 'total' ? null : $statKey;
+                                        $filterStatus = in_array($statKey, ['total', 'sum'], true) ? null : $statKey;
                                         $isActive = $hasActiveFilter
                                             && (
                                                 ($scopeKey === 'all' && blank($this->activeTypeScope))
@@ -80,8 +91,14 @@
                                             'done' => 'text-success-700 dark:text-success-400',
                                             'unlinked' => 'text-warning-700 dark:text-warning-400',
                                             'incomplete' => 'text-danger-700 dark:text-danger-400',
+                                            'sum' => ((float) ($counts['sum'] ?? 0) < 0)
+                                                ? 'text-danger-700 dark:text-danger-400'
+                                                : 'text-gray-950 dark:text-white',
                                             default => 'text-gray-950 dark:text-white',
                                         };
+                                        $displayValue = $statKey === 'sum'
+                                            ? $this->formatMoney($counts['sum'] ?? 0)
+                                            : (int) ($counts[$statKey] ?? 0);
                                     @endphp
                                     <td class="px-4 py-3 text-center">
                                         <button
@@ -90,7 +107,7 @@
                                             class="inline-flex min-w-[2.5rem] items-center justify-center rounded-lg px-3 py-1.5 text-base font-bold tabular-nums transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-gray-800 {{ $cellColor }} {{ $isActive ? 'bg-primary-50 ring-2 ring-primary-500 ring-offset-1 dark:bg-primary-950/40 dark:ring-offset-gray-900' : '' }}"
                                             wire:click="applyStatFilter('{{ $scopeKey }}', {{ $filterStatus === null ? 'null' : "'{$filterStatus}'" }})"
                                         >
-                                            {{ $count }}
+                                            {{ $displayValue }}
                                         </button>
                                     </td>
                                 @endforeach
@@ -102,7 +119,7 @@
 
             <div class="mt-3 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <x-heroicon-o-cursor-arrow-rays class="h-4 w-4" />
-                <span>Click a number to filter the table below.</span>
+                <span>Click a number to filter the table below. Counts and sums follow the current table filters. All Sum is net (Trx In minus Trx Out). Group by Month to see In, Out, and Net for each month.</span>
             </div>
         @endif
     </x-filament::section>

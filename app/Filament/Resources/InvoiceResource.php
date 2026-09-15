@@ -37,7 +37,7 @@ class InvoiceResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         $count = static::getModel()::query()
-            ->whereIn('status', ['Draft', 'Posted', 'Not Sent'])
+            ->whereIn('status', ['Draft', 'Posted'])
             ->count();
 
         return $count > 0 ? (string) $count : null;
@@ -155,7 +155,6 @@ class InvoiceResource extends Resource
                             ->options([
                                 'Draft' => 'Draft',
                                 'Posted' => 'Posted',
-                                'Not Sent' => 'Not Sent',
                                 'Sent' => 'Sent',
                                 'Unpaid' => 'Unpaid',
                                 'Partial' => 'Partial',
@@ -373,7 +372,6 @@ class InvoiceResource extends Resource
                     ->options([
                         'Draft' => 'Draft',
                         'Posted' => 'Posted',
-                        'Not Sent' => 'Not Sent',
                         'Sent' => 'Sent',
                         'Unpaid' => 'Unpaid',
                         'Paid' => 'Paid',
@@ -389,7 +387,7 @@ class InvoiceResource extends Resource
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['show_draft_posted'] ?? false,
-                            fn (Builder $query): Builder => $query->whereIn('status', ['Draft', 'Posted', 'Not Sent']),
+                            fn (Builder $query): Builder => $query->whereIn('status', ['Draft', 'Posted']),
                         );
                     }),
                 Tables\Filters\Filter::make('invoice_date')
@@ -492,7 +490,7 @@ class InvoiceResource extends Resource
                     ->modalHeading('Mark Invoice as Sent')
                     ->modalDescription('Are you sure you want to mark this invoice as Sent?')
                     ->modalSubmitActionLabel('Mark as Sent')
-                    ->visible(fn (Invoice $record): bool => in_array($record->status, ['Posted', 'Not Sent'], true))
+                    ->visible(fn (Invoice $record): bool => $record->status === 'Posted')
                     ->action(function (Invoice $record) {
                         $record->status = 'Sent';
                         $record->save();

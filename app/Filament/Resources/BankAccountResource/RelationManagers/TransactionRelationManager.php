@@ -13,6 +13,7 @@ use Filament\Forms\Form;
 use Filament\Forms\Components\TextInput;
 use Filament\Support\RawJs;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Table;
 use Filament\Tables;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,7 +30,28 @@ class TransactionRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('date')->date()->sortable(),
                 Tables\Columns\TextColumn::make('related_type')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('related_id')->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('amount')->money('EUR')->sortable(),
+                Tables\Columns\TextColumn::make('amount')
+                    ->money('EUR')
+                    ->sortable()
+                    ->summarize([
+                        Summarizer::make('trx_in')
+                            ->label('Trx In')
+                            ->money('EUR')
+                            ->using(fn ($query): float => (float) (clone $query)->where('type', 'Income')->sum('amount')),
+                        Summarizer::make('trx_out')
+                            ->label('Trx Out')
+                            ->money('EUR')
+                            ->using(fn ($query): float => (float) (clone $query)->whereIn('type', ['Outflow', 'Expense'])->sum('amount')),
+                        Summarizer::make('net')
+                            ->label('Net')
+                            ->money('EUR')
+                            ->using(function ($query): float {
+                                $income = (float) (clone $query)->where('type', 'Income')->sum('amount');
+                                $outflow = (float) (clone $query)->whereIn('type', ['Outflow', 'Expense'])->sum('amount');
+
+                                return $income - $outflow;
+                            }),
+                    ]),
                 Tables\Columns\TextColumn::make('type')->searchable()->sortable()
                 ->color(fn ($record) => match ($record->type) {'Income' => 'success','Outflow' => 'warning','Expense' => 'danger',})->badge(),
                 Tables\Columns\TextColumn::make('attachment_path')->searchable(),
@@ -39,17 +61,25 @@ class TransactionRelationManager extends RelationManager
             ->groups([
                 Tables\Grouping\Group::make('date')
                     ->label('Month')
-                    ->date()
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Transaction $record) => $record->date->format('F Y'))
+                    ->titlePrefixedWithLabel(false)
+                    ->getKeyFromRecordUsing(fn (Transaction $record): string => $record->date?->format('Y-m') ?? 'unknown')
+                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date?->format('F Y') ?? 'Unknown')
                     ->getDescriptionFromRecordUsing(function (Transaction $record): string {
-                        $month = $record->date->format('F Y');
-
                         if (! auth()->user()?->isAdmin()) {
-                            return $month;
+                            return '';
                         }
 
-                        return $month.' Balance: '.$record->bankAccount->monthlyBalance($record->date);
+                        return 'Balance: '.$record->bankAccount->monthlyBalance($record->date);
+                    })
+                    ->scopeQueryUsing(function (Builder $query, $record): Builder {
+                        if (! $record instanceof Transaction || $record->date === null) {
+                            return $query->whereNull('transactions.date');
+                        }
+
+                        return $query
+                            ->whereYear('transactions.date', $record->date->year)
+                            ->whereMonth('transactions.date', $record->date->month);
                     }),
             ])
             ->defaultGroup('date')

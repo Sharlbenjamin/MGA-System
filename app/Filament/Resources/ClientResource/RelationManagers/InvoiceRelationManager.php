@@ -100,7 +100,6 @@ class InvoiceRelationManager extends RelationManager
                     }),
                 Tables\Columns\TextColumn::make('status')->sortable()->searchable()->badge()->color(fn ($state) => match ($state) {
                     'Draft' => 'gray',
-                    'Not Sent' => 'gray',
                     'Sent' => 'info',
                     'Overdue' => 'danger',
                     'Paid' => 'success',
@@ -148,7 +147,6 @@ class InvoiceRelationManager extends RelationManager
                     ->multiple()
                     ->options([
                         'Draft' => 'Draft',
-                        'Not Sent' => 'Not Sent',
                         'Posted' => 'Posted',
                         'Sent' => 'Sent',
                         'Unpaid' => 'Unpaid',
@@ -218,7 +216,7 @@ class InvoiceRelationManager extends RelationManager
                     ->modalHeading('Mark Invoice as Sent')
                     ->modalDescription('Are you sure you want to mark this invoice as Sent?')
                     ->modalSubmitActionLabel('Mark as Sent')
-                    ->visible(fn (Invoice $record): bool => in_array($record->status, ['Posted', 'Not Sent'], true))
+                    ->visible(fn (Invoice $record): bool => $record->status === 'Posted')
                     ->action(function (Invoice $record) {
                         $record->status = 'Sent';
                         $record->save();
@@ -247,7 +245,6 @@ class InvoiceRelationManager extends RelationManager
                             ->label('New Status')
                             ->options([
                                 'Draft' => 'Draft',
-                                'Not Sent' => 'Not Sent',
                                 'Posted' => 'Posted',
                                 'Sent' => 'Sent',
                                 'Unpaid' => 'Unpaid',

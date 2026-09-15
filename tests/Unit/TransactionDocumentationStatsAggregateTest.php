@@ -4,7 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\TransactionDocumentationStatsService;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use PHPUnit\Framework\TestCase;
 
 class TransactionDocumentationStatsAggregateTest extends TestCase
 {
@@ -46,5 +46,44 @@ class TransactionDocumentationStatsAggregateTest extends TestCase
         $this->assertSame(4, $breakdown['provider_single']['total']);
         $this->assertSame(3, $breakdown['provider_single']['completed']);
         $this->assertSame(1, $breakdown['provider_single']['uncompleted']);
+    }
+
+    #[Test]
+    public function map_simple_summary_row_includes_net_and_direction_sums(): void
+    {
+        $summary = TransactionDocumentationStatsService::mapSimpleSummaryRow((object) [
+            'all_total' => 5,
+            'all_done' => 3,
+            'all_unlinked' => 1,
+            'all_incomplete' => 1,
+            'income_total' => 2,
+            'income_done' => 1,
+            'income_unlinked' => 1,
+            'income_incomplete' => 0,
+            'outflow_total' => 3,
+            'outflow_done' => 2,
+            'outflow_unlinked' => 0,
+            'outflow_incomplete' => 1,
+            'income_sum' => '1500.50',
+            'outflow_sum' => '400.25',
+        ]);
+
+        $this->assertSame(5, $summary['all']['total']);
+        $this->assertSame(1100.25, $summary['all']['sum']);
+        $this->assertSame(1500.50, $summary['income']['sum']);
+        $this->assertSame(400.25, $summary['outflow']['sum']);
+        $this->assertSame(2, $summary['income']['total']);
+        $this->assertSame(3, $summary['outflow']['total']);
+    }
+
+    #[Test]
+    public function map_simple_summary_row_defaults_empty_row_to_zeros(): void
+    {
+        $summary = TransactionDocumentationStatsService::mapSimpleSummaryRow(null);
+
+        $this->assertSame(0, $summary['all']['total']);
+        $this->assertSame(0.0, $summary['all']['sum']);
+        $this->assertSame(0.0, $summary['income']['sum']);
+        $this->assertSame(0.0, $summary['outflow']['sum']);
     }
 }

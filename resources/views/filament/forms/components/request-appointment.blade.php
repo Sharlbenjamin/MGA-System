@@ -56,6 +56,6 @@
         :class="copied ? 'text-success-600 font-semibold' : 'text-primary-600 hover:text-primary-700 hover:underline'"
         class="cursor-pointer text-sm font-medium"
         title="Click to copy appointment details">
-        <span x-text="copied ? 'Copied!' : 'Request'"></span>
+        <span x-text="copied ? 'Copied!' : 'Copy Request'"></span>
     </button>
 </div>

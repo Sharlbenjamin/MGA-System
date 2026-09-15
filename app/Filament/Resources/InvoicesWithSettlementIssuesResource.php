@@ -148,7 +148,6 @@ class InvoicesWithSettlementIssuesResource extends Resource
                     ->options([
                         'Draft' => 'Draft',
                         'Posted' => 'Posted',
-                        'Not Sent' => 'Not Sent',
                         'Sent' => 'Sent',
                         'Unpaid' => 'Unpaid',
                         'Partial' => 'Partial',

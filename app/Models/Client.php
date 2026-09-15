@@ -278,7 +278,7 @@ class Client extends Model
 
     public function getUnsentInvoicesCountAttribute()
     {
-        return $this->invoices()->whereIn('status', ['Draft', 'Posted', 'Not Sent'])->count();
+        return $this->invoices()->whereIn('status', ['Draft', 'Posted'])->count();
     }
 
     public function getInvoicesTotalAttribute()

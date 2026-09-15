@@ -249,7 +249,7 @@ class FileWorkflowGapService
 
     public static function missingInvoiceDocument(File $file): bool
     {
-        $pendingStatuses = ['Draft', 'Posted', 'Not Sent'];
+        $pendingStatuses = ['Draft', 'Posted'];
 
         if ($file->relationLoaded('invoices')) {
             return $file->invoices->contains(
@@ -280,7 +280,7 @@ class FileWorkflowGapService
     public static function scopeMissingInvoiceDocument(Builder $query): Builder
     {
         return $query->whereHas('invoices', function (Builder $invoiceQuery): void {
-            $invoiceQuery->whereIn('status', ['Draft', 'Posted', 'Not Sent'])
+            $invoiceQuery->whereIn('status', ['Draft', 'Posted'])
                 ->where(function (Builder $linkQuery): void {
                     $linkQuery->whereNull('invoice_google_link')
                         ->orWhere('invoice_google_link', '');
@@ -375,7 +375,7 @@ class FileWorkflowGapService
     public static function firstInvoiceNeedingDocument(File $file): ?Invoice
     {
         return $file->invoices()
-            ->whereIn('status', ['Draft', 'Posted', 'Not Sent'])
+            ->whereIn('status', ['Draft', 'Posted'])
             ->where(function (Builder $query): void {
                 $query->whereNull('invoice_google_link')
                     ->orWhere('invoice_google_link', '');
