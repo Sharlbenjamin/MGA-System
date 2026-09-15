@@ -16,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\On;
@@ -23,6 +24,10 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ListTransactions extends ListRecords
 {
+    use ExposesTableToWidgets {
+        getWidgetData as getTableWidgetData;
+    }
+
     protected static string $resource = TransactionResource::class;
 
     public BankAccount $bankAccount;
@@ -242,18 +247,41 @@ class ListTransactions extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            TransactionDocumentationStatsWidget::make([
-                'bankAccountId' => $this->bankAccount->id,
-                'activeTypeScope' => $this->activeWidgetTypeScope,
-                'activeStatus' => $this->activeWidgetStatus,
-            ]),
+            TransactionDocumentationStatsWidget::class,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getWidgetData(): array
+    {
+        return array_merge($this->getTableWidgetData(), [
+            'bankAccountId' => $this->bankAccount->id,
+            'activeTypeScope' => $this->activeWidgetTypeScope,
+            'activeStatus' => $this->activeWidgetStatus,
+        ]);
+    }
+
+    public function getTableQueryForDocumentationStats(): Builder
+    {
+        $original = $this->tableFilters;
+        $filters = $this->tableFilters ?? [];
+        unset($filters['type'], $filters['documentation_status']);
+        $this->tableFilters = $filters === [] ? null : $filters;
+
+        try {
+            return $this->getFilteredTableQuery();
+        } finally {
+            $this->tableFilters = $original;
+        }
     }
 
     #[On('apply-transaction-stat-filter')]
     public function applyStatFilter(string $typeScope = 'all', ?string $status = null): void
     {
-        $filters = [];
+        $filters = $this->tableFilters ?? [];
+        unset($filters['type'], $filters['documentation_status']);
 
         if ($typeScope === 'income') {
             $filters['type'] = ['values' => ['Income']];
@@ -271,16 +299,19 @@ class ListTransactions extends ListRecords
 
         $this->activeWidgetTypeScope = in_array($typeScope, ['income', 'outflow'], true) ? $typeScope : null;
         $this->activeWidgetStatus = $status;
-        $this->tableFilters = $filters;
+        $this->tableFilters = $filters === [] ? null : $filters;
         $this->resetTable();
     }
 
     #[On('clear-transaction-stat-filter')]
     public function clearStatFilter(): void
     {
+        $filters = $this->tableFilters ?? [];
+        unset($filters['type'], $filters['documentation_status']);
+
         $this->activeWidgetTypeScope = null;
         $this->activeWidgetStatus = null;
-        $this->tableFilters = [];
+        $this->tableFilters = $filters === [] ? null : $filters;
         $this->resetTable();
     }
 }

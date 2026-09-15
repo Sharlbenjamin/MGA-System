@@ -11,7 +11,7 @@ class FileBillingIntegrityService
 {
     public const AMOUNT_TOLERANCE = 0.01;
 
-    public const COMMITTED_INVOICE_STATUSES = ['Posted', 'Not Sent', 'Sent', 'Unpaid', 'Partial', 'Paid'];
+    public const COMMITTED_INVOICE_STATUSES = ['Posted', 'Sent', 'Unpaid', 'Partial', 'Paid'];
 
     public const SENT_INVOICE_STATUSES = ['Sent', 'Paid', 'Partial'];
 

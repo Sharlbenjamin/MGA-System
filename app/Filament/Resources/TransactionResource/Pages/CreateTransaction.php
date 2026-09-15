@@ -90,7 +90,16 @@ class CreateTransaction extends CreateRecord
         }
 
         $requestedStatus = request()->get('status') ?? $data['status'] ?? 'Completed';
-        $data['status'] = $requestedStatus === 'Draft' ? 'Draft' : ($data['status'] ?? 'Completed');
+        $allowedStatuses = ['Draft', 'Completed', 'Pending'];
+
+        if ($requestedStatus === 'Draft') {
+            $data['status'] = 'Draft';
+        } else {
+            $data['status'] = in_array($data['status'] ?? '', $allowedStatuses, true)
+                ? $data['status']
+                : 'Completed';
+        }
+
         $this->isDraftPayment = $data['status'] === 'Draft';
 
         $data['created_by'] = Auth::id();

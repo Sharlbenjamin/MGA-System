@@ -21,6 +21,7 @@ use App\Services\BulkTransactionPdfService;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
 use App\Services\TransactionIntegrityService;
+use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -29,6 +30,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -215,23 +217,16 @@ class TransactionResource extends Resource
                     ])
                     ->default(fn () => request()->get('status', 'Completed'))
                     ->required()
-                    ->helperText(fn (Get $get): ?string => $get('status') === 'Draft'
-                        ? 'Draft — awaiting bank statement confirmation. Bills will not be marked paid until you finalize.'
-                        : null)
-                    ->visible(fn ($livewire) => $livewire instanceof Pages\CreateTransaction),
+                    ->live()
+                    ->helperText(fn (Get $get): ?string => match ($get('status')) {
+                        'Draft' => 'Draft — awaiting bank statement confirmation. Bills will not be marked paid until you finalize.',
+                        'Pending' => 'Pending — payment has not been completed yet.',
+                        default => null,
+                    }),
                 Forms\Components\Placeholder::make('draft_payment_notice')
                     ->label('Draft payment')
                     ->content('This is a draft payment awaiting bank statement confirmation. Enter the transaction name manually or update it after import.')
                     ->visible(fn (Get $get, $livewire): bool => $livewire instanceof Pages\CreateTransaction && $get('status') === 'Draft')
-                    ->columnSpanFull(),
-                Forms\Components\Placeholder::make('payment_status_display')
-                    ->label('Payment status')
-                    ->content(fn (?Transaction $record): string => match ($record?->status) {
-                        'Draft' => 'Draft (awaiting bank) — bills are not marked paid until you confirm payment.',
-                        'Pending' => 'Pending',
-                        default => 'Completed',
-                    })
-                    ->visible(fn ($livewire, ?Transaction $record): bool => $livewire instanceof Pages\EditTransaction && $record?->status === 'Draft')
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('name')->required()->maxLength(255)->default(fn () => request()->get('name')),
                 Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
@@ -693,7 +688,28 @@ class TransactionResource extends Resource
                     ->placeholder('—')
                     ->limit(30)
                     ->tooltip(fn (Transaction $record): ?string => $record->related_party_label ?? $record->getRelatedPartyLabel()),
-                Tables\Columns\TextColumn::make('amount'),
+                Tables\Columns\TextColumn::make('amount')
+                    ->money('EUR')
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('transactions.amount', $direction))
+                    ->summarize([
+                        Summarizer::make('trx_in')
+                            ->label('Trx In')
+                            ->money('EUR')
+                            ->using(fn ($query): float => (float) (clone $query)->where('type', 'Income')->sum('amount')),
+                        Summarizer::make('trx_out')
+                            ->label('Trx Out')
+                            ->money('EUR')
+                            ->using(fn ($query): float => (float) (clone $query)->whereIn('type', ['Outflow', 'Expense'])->sum('amount')),
+                        Summarizer::make('net')
+                            ->label('Net')
+                            ->money('EUR')
+                            ->using(function ($query): float {
+                                $income = (float) (clone $query)->where('type', 'Income')->sum('amount');
+                                $outflow = (float) (clone $query)->whereIn('type', ['Outflow', 'Expense'])->sum('amount');
+
+                                return $income - $outflow;
+                            }),
+                    ]),
                 Tables\Columns\TextColumn::make('linking_status')
                     ->label('Linking status')
                     ->badge()
@@ -731,6 +747,8 @@ class TransactionResource extends Resource
                     ->label('Payment status')
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'Draft' => 'Draft (awaiting bank)',
+                        'Pending' => 'Pending',
+                        'Completed' => 'Completed',
                         default => $state ?? '—',
                     })
                     ->badge()
@@ -750,6 +768,38 @@ class TransactionResource extends Resource
                 ? 'bg-warning-50 dark:bg-warning-950/30'
                 : null)
             ->filters([
+                Tables\Filters\SelectFilter::make('month')
+                    ->label('Month')
+                    ->placeholder('All months')
+                    ->searchable()
+                    ->options(function (): array {
+                        $options = [];
+                        $cursor = Carbon::now()->startOfMonth();
+
+                        for ($i = 0; $i < 36; $i++) {
+                            $options[$cursor->format('Y-m')] = $cursor->format('F Y');
+                            $cursor->subMonth();
+                        }
+
+                        return $options;
+                    })
+                    ->query(function (Builder $query, array $data): Builder {
+                        $month = $data['value'] ?? null;
+
+                        if (! filled($month)) {
+                            return $query;
+                        }
+
+                        try {
+                            $start = Carbon::createFromFormat('Y-m', (string) $month)->startOfMonth();
+                        } catch (\Throwable) {
+                            return $query;
+                        }
+
+                        return $query
+                            ->whereDate('transactions.date', '>=', $start->toDateString())
+                            ->whereDate('transactions.date', '<=', $start->copy()->endOfMonth()->toDateString());
+                    }),
                 Tables\Filters\Filter::make('transaction_date')
                     ->label('Transaction date')
                     ->form([
@@ -877,9 +927,25 @@ class TransactionResource extends Resource
                     ->collapsible(),
                 Tables\Grouping\Group::make('date')
                     ->label('Month')
-                    ->date()
                     ->collapsible()
-                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date->format('F Y')),
+                    ->titlePrefixedWithLabel(false)
+                    ->getKeyFromRecordUsing(fn (Transaction $record): string => $record->date?->format('Y-m') ?? 'unknown')
+                    ->getTitleFromRecordUsing(fn (Transaction $record): string => $record->date?->format('F Y') ?? 'Unknown')
+                    ->groupQueryUsing(fn (Builder $query) => $query->groupByRaw("DATE_FORMAT(transactions.date, '%Y-%m')"))
+                    ->orderQueryUsing(function (Builder $query, string $direction): Builder {
+                        $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
+
+                        return $query->orderByRaw("DATE_FORMAT(transactions.date, '%Y-%m') {$direction}");
+                    })
+                    ->scopeQueryUsing(function (Builder $query, Model $record): Builder {
+                        if (! $record instanceof Transaction || $record->date === null) {
+                            return $query->whereNull('transactions.date');
+                        }
+
+                        return $query
+                            ->whereYear('transactions.date', $record->date->year)
+                            ->whereMonth('transactions.date', $record->date->month);
+                    }),
             ])
             ->actions([
                 TransactionDocumentationForm::makeTableAction(),

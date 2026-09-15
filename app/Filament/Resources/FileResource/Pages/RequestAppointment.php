@@ -502,7 +502,7 @@ class RequestAppointment extends Page implements HasForms
         return \App\Models\ProviderBranch::query()
             ->eligibleForFile($serviceTypeId, $record->country_id, $filterCityId)
             ->with([
-                'provider:id,name,comment,country_id',
+                'provider:id,name,comment,request_comment,country_id',
                 'city:id,name',
                 'gopContact:id,address',
                 'operationContact:id,address',

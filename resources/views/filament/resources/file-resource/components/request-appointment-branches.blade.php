@@ -39,7 +39,7 @@
                     <th class="px-2 py-2 w-24">Address</th>
                     <th class="px-2 py-2 w-20">Website</th>
                     <th class="px-2 py-2 w-20">Distance</th>
-                    <th class="px-2 py-2 w-20">Request</th>
+                    <th class="px-2 py-2 w-28">Copy Request</th>
                 </tr>
             </thead>
             <tbody>
