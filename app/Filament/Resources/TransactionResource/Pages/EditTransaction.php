@@ -5,6 +5,7 @@ namespace App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\TransactionEditPageRefresh;
+use App\Filament\Support\TransactionSendProofAction;
 use App\Services\GenerateTrxInPdfService;
 use App\Services\GenerateTrxOutPdfService;
 use App\Services\TransactionBillAmountSyncService;
@@ -165,35 +166,10 @@ class EditTransaction extends EditRecord
                 TransactionDocumentationForm::makeSkipHeaderAction(),
                 TransactionDocumentationForm::makeUndoSkipHeaderAction(),
             ],
-            $this->relatedPartyHeaderActions(),
             $this->trxInHeaderActions($category),
             $this->trxOutHeaderActions($category),
             $this->utilityHeaderActions(),
         );
-    }
-
-    /**
-     * @return array<int, Action>
-     */
-    protected function relatedPartyHeaderActions(): array
-    {
-        if (! in_array($this->record->related_type, ['Provider', 'Branch'], true)) {
-            return [];
-        }
-
-        $url = TransactionResource::relatedPartyViewUrl($this->record);
-
-        if (! $url) {
-            return [];
-        }
-
-        return [
-            Action::make('viewRelatedProvider')
-                ->label('View Provider')
-                ->icon('heroicon-o-eye')
-                ->color('info')
-                ->url($url),
-        ];
     }
 
     /**
@@ -378,6 +354,7 @@ class EditTransaction extends EditRecord
                             ->send();
                     }
                 }),
+            TransactionSendProofAction::make(),
             Action::make('viewDocument')
                 ->label('View Document')
                 ->icon('heroicon-o-eye')
