@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\TransactionResource\Pages;
 
-use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\TransactionEditPageRefresh;
@@ -43,11 +42,7 @@ class EditTransaction extends EditRecord
 
     public function getBreadcrumbs(): array
     {
-        return [
-            BankAccountResource::getUrl('index') => BankAccountResource::getBreadcrumb(),
-            TransactionResource::indexUrlFor($this->record->bank_account_id) => 'Bank Transactions',
-            '#' => $this->getTitle(),
-        ];
+        return TransactionResource::recordBreadcrumbs($this->record, $this->getTitle());
     }
 
     protected function getRedirectUrl(): ?string
@@ -170,10 +165,35 @@ class EditTransaction extends EditRecord
                 TransactionDocumentationForm::makeSkipHeaderAction(),
                 TransactionDocumentationForm::makeUndoSkipHeaderAction(),
             ],
+            $this->relatedPartyHeaderActions(),
             $this->trxInHeaderActions($category),
             $this->trxOutHeaderActions($category),
             $this->utilityHeaderActions(),
         );
+    }
+
+    /**
+     * @return array<int, Action>
+     */
+    protected function relatedPartyHeaderActions(): array
+    {
+        if (! in_array($this->record->related_type, ['Provider', 'Branch'], true)) {
+            return [];
+        }
+
+        $url = TransactionResource::relatedPartyViewUrl($this->record);
+
+        if (! $url) {
+            return [];
+        }
+
+        return [
+            Action::make('viewRelatedProvider')
+                ->label('View Provider')
+                ->icon('heroicon-o-eye')
+                ->color('info')
+                ->url($url),
+        ];
     }
 
     /**

@@ -71,6 +71,56 @@ class TransactionResource extends Resource
         return parent::getUrl($name, $parameters, $isAbsolute, $panel, $tenant);
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public static function recordBreadcrumbs(Transaction $record, string $currentTitle): array
+    {
+        $breadcrumbs = [
+            BankAccountResource::getUrl('index') => BankAccountResource::getBreadcrumb(),
+        ];
+
+        if ($record->bank_account_id) {
+            $breadcrumbs[static::indexUrlFor($record->bank_account_id)] = 'Bank Transactions';
+        }
+
+        $relatedUrl = static::relatedPartyViewUrl($record);
+        $relatedLabel = $record->getRelatedPartyLabel();
+
+        if ($relatedUrl && filled($relatedLabel)) {
+            $breadcrumbs[$relatedUrl] = $relatedLabel;
+        }
+
+        $breadcrumbs['#'] = $currentTitle;
+
+        return $breadcrumbs;
+    }
+
+    public static function relatedPartyViewUrl(?Transaction $record): ?string
+    {
+        if (! $record?->related_id) {
+            return null;
+        }
+
+        return match ($record->related_type) {
+            'Provider' => ProviderResource::getUrl('overview', ['record' => $record->related_id]),
+            'Branch' => static::providerOverviewUrlForBranch((int) $record->related_id),
+            'Client' => ClientResource::getUrl('overview', ['record' => $record->related_id]),
+            default => null,
+        };
+    }
+
+    protected static function providerOverviewUrlForBranch(int $branchId): ?string
+    {
+        $providerId = ProviderBranch::query()->whereKey($branchId)->value('provider_id');
+
+        if ($providerId) {
+            return ProviderResource::getUrl('overview', ['record' => $providerId]);
+        }
+
+        return ProviderBranchResource::getUrl('overview', ['record' => $branchId]);
+    }
+
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationBadge(): ?string
@@ -456,7 +506,16 @@ class TransactionResource extends Resource
             })
             ->afterStateUpdated(function ($state, callable $set, Get $get): void {
                 static::syncProviderBankDisplayFields($set, $get('related_type'), $state);
-            });
+            })
+            ->suffixAction(
+                Forms\Components\Actions\Action::make('view_provider')
+                    ->icon('heroicon-o-eye')
+                    ->tooltip('View provider')
+                    ->url(fn (Get $get): ?string => filled($get('related_id'))
+                        ? ProviderResource::getUrl('overview', ['record' => $get('related_id')])
+                        : null)
+                    ->visible(fn (Get $get): bool => filled($get('related_id')))
+            );
     }
 
     public static function relatedBranchSelect(): Forms\Components\Select
@@ -475,7 +534,20 @@ class TransactionResource extends Resource
             })
             ->afterStateUpdated(function ($state, callable $set, Get $get): void {
                 static::syncProviderBankDisplayFields($set, $get('related_type'), $state);
-            });
+            })
+            ->suffixAction(
+                Forms\Components\Actions\Action::make('view_provider_from_branch')
+                    ->icon('heroicon-o-eye')
+                    ->tooltip('View provider')
+                    ->url(function (Get $get): ?string {
+                        if (! filled($get('related_id'))) {
+                            return null;
+                        }
+
+                        return static::providerOverviewUrlForBranch((int) $get('related_id'));
+                    })
+                    ->visible(fn (Get $get): bool => filled($get('related_id')))
+            );
     }
 
     public static function relatedPatientSelect(): Forms\Components\Select

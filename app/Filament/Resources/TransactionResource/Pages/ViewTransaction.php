@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\TransactionResource\Pages;
 
-use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Models\BankAccount;
 use App\Models\Provider;
@@ -23,11 +22,7 @@ class ViewTransaction extends ViewRecord
 
     public function getBreadcrumbs(): array
     {
-        return [
-            BankAccountResource::getUrl('index') => BankAccountResource::getBreadcrumb(),
-            TransactionResource::indexUrlFor($this->record->bank_account_id) => 'Bank Transactions',
-            '#' => $this->getTitle(),
-        ];
+        return TransactionResource::recordBreadcrumbs($this->record, $this->getTitle());
     }
 
     protected function getHeaderActions(): array
