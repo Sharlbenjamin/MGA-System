@@ -38,7 +38,7 @@ class GenerateTrxOutPdfService
             throw new \RuntimeException('No mergeable bill PDF files found for this transaction.');
         }
 
-        $pdf = new Fpdi;
+        $pdf = $this->makeFpdi();
 
         foreach ($billPaths as $billPath) {
             try {
@@ -71,6 +71,35 @@ class GenerateTrxOutPdfService
         $this->documentationService->syncAndRecalculate($transaction);
 
         return $path;
+    }
+
+    protected function makeFpdi(): Fpdi
+    {
+        if (! class_exists(Fpdi::class, true)) {
+            $this->registerFpdiAutoload();
+        }
+
+        if (! class_exists(Fpdi::class, true)) {
+            throw new \RuntimeException(
+                'PDF merge library is not installed on this server. SSH into public_html and run: composer install --no-dev --optimize-autoloader'
+            );
+        }
+
+        return new Fpdi;
+    }
+
+    protected function registerFpdiAutoload(): void
+    {
+        $fpdf = base_path('vendor/setasign/fpdf/fpdf.php');
+        $fpdi = base_path('vendor/setasign/fpdi/src/autoload.php');
+
+        if (is_file($fpdf)) {
+            require_once $fpdf;
+        }
+
+        if (is_file($fpdi)) {
+            require_once $fpdi;
+        }
     }
 
     /**

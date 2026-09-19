@@ -281,12 +281,18 @@ class TransactionDocumentationForm
 
         $record->refresh();
 
-        if (! empty($data['generate_trx_in_pdf']) && $record->type === 'Income') {
-            app(GenerateTrxInPdfService::class)->generate($record);
-        }
+        $pdfError = null;
 
-        if (! empty($data['generate_trx_out_pdf']) && $record->type === 'Outflow' && $record->bills()->exists()) {
-            app(GenerateTrxOutPdfService::class)->generate($record);
+        try {
+            if (! empty($data['generate_trx_in_pdf']) && $record->type === 'Income') {
+                app(GenerateTrxInPdfService::class)->generate($record);
+            }
+
+            if (! empty($data['generate_trx_out_pdf']) && $record->type === 'Outflow' && $record->bills()->exists()) {
+                app(GenerateTrxOutPdfService::class)->generate($record);
+            }
+        } catch (\Throwable $e) {
+            $pdfError = $e->getMessage();
         }
 
         $record->refresh();
@@ -301,6 +307,17 @@ class TransactionDocumentationForm
 
         if ($record->bank_account_id) {
             TransactionDocumentationStatsService::forgetBankAccountCache((int) $record->bank_account_id);
+        }
+
+        if ($pdfError) {
+            Notification::make()
+                ->danger()
+                ->title('Documentation saved, but PDF failed')
+                ->body($pdfError)
+                ->persistent()
+                ->send();
+
+            return;
         }
 
         Notification::make()
