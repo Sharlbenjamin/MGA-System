@@ -51,7 +51,16 @@ class InvoiceChecklistResource extends Resource
             return false;
         }
 
-        return $user->hasAnyRole(['admin', 'Financial']);
+        return $user->hasAnyRole([
+            'admin',
+            'Admin',
+            'Financial',
+            'financial',
+            'Financial Manager',
+            'financial manager',
+            'Financial Supervisor',
+            'Financial Department',
+        ]);
     }
 
     public static function getNavigationBadge(): ?string
@@ -111,6 +120,16 @@ class InvoiceChecklistResource extends Resource
                     ->date('d/m/Y')
                     ->sortable()
                     ->description(fn (File $record): string => $record->serviceType?->name ?? '—'),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->sortable()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'Assisted' => 'success',
+                        'Waiting MR' => 'primary',
+                        'Hold' => 'warning',
+                        'Cancelled' => 'danger',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('bill_amount')
                     ->label('Bill')
                     ->state(function (File $record): string {

@@ -5,6 +5,7 @@ namespace App\Filament\Support;
 use App\Services\FileWorkflowGapService;
 use Filament\Forms;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 
 class FileWorkflowGapFilters
@@ -37,6 +38,10 @@ class FileWorkflowGapFilters
                 FileWorkflowGapService::invoiceCheckpointOptions(),
                 fn (Builder $query, string $gapKey): Builder => FileWorkflowGapService::scopeWithInvoiceGap($query, $gapKey),
             ),
+            SelectFilter::make('status')
+                ->label('Status')
+                ->options(FileWorkflowGapService::invoiceChecklistStatusOptions())
+                ->multiple(),
             ...self::sharedFileFilters(includeClient: true),
         ];
     }
