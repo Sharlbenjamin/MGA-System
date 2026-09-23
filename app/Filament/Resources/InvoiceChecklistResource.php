@@ -38,6 +38,11 @@ class InvoiceChecklistResource extends Resource
         return static::userCanAccess();
     }
 
+    public static function canAccess(): bool
+    {
+        return static::userCanAccess();
+    }
+
     public static function canViewAny(): bool
     {
         return static::userCanAccess();
@@ -51,21 +56,14 @@ class InvoiceChecklistResource extends Resource
             return false;
         }
 
-        return $user->hasAnyRole([
-            'admin',
-            'Admin',
-            'Financial',
-            'financial',
-            'Financial Manager',
-            'financial manager',
-            'Financial Supervisor',
-            'Financial Department',
-        ]);
+        return $user->canAccessInvoiceChecklist();
     }
 
     public static function getNavigationBadge(): ?string
     {
-        return (string) FileWorkflowGapService::scopeInvoiceChecklistBase(File::query())->count();
+        return (string) FileWorkflowGapService::scopeInvoiceChecklistBase(File::query())
+            ->whereIn('status', FileWorkflowGapService::invoiceChecklistStatuses())
+            ->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -121,11 +119,13 @@ class InvoiceChecklistResource extends Resource
                     ->sortable()
                     ->description(fn (File $record): string => $record->serviceType?->name ?? '—'),
                 Tables\Columns\TextColumn::make('status')
+                    ->label('Case Status')
                     ->badge()
                     ->sortable()
                     ->color(fn (?string $state): string => match ($state) {
-                        'Assisted' => 'success',
-                        'Waiting MR' => 'primary',
+                        'New', 'Confirmed', 'Assisted' => 'success',
+                        'Handling', 'Available' => 'info',
+                        'Waiting MR', 'Refund' => 'primary',
                         'Hold' => 'warning',
                         'Cancelled' => 'danger',
                         default => 'gray',

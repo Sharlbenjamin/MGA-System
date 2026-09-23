@@ -39,9 +39,11 @@ class FileWorkflowGapFilters
                 fn (Builder $query, string $gapKey): Builder => FileWorkflowGapService::scopeWithInvoiceGap($query, $gapKey),
             ),
             SelectFilter::make('status')
-                ->label('Status')
-                ->options(FileWorkflowGapService::invoiceChecklistStatusOptions())
-                ->multiple(),
+                ->label('Case Status')
+                ->options(FileWorkflowGapService::caseStatusOptions())
+                ->multiple()
+                ->searchable()
+                ->default(FileWorkflowGapService::invoiceChecklistStatuses()),
             ...self::sharedFileFilters(includeClient: true),
         ];
     }
