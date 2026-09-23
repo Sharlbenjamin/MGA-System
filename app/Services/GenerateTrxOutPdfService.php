@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use PdfDecompressor\Normalizer;
 use setasign\Fpdi\Fpdi;
-use Symfony\Component\Process\Process;
 
 class GenerateTrxOutPdfService
 {
@@ -84,7 +83,16 @@ class GenerateTrxOutPdfService
 
             return;
         } catch (\Throwable $original) {
-            $normalizedPath = $this->normalizePdfForFpdi($billPath, $original);
+            try {
+                $normalizedPath = $this->normalizePdfForFpdi($billPath, $original);
+            } catch (\Throwable $normalizeError) {
+                Log::warning('Trx Out PDF: normalize threw unexpectedly', [
+                    'path' => $billPath,
+                    'error' => $normalizeError->getMessage(),
+                ]);
+
+                throw $original;
+            }
 
             if ($normalizedPath === null) {
                 throw $original;
@@ -140,6 +148,14 @@ class GenerateTrxOutPdfService
     protected function normalizeWithPhpDecompressor(string $sourcePath): ?string
     {
         if (! class_exists(Normalizer::class, true)) {
+            $this->registerPdfDecompressorAutoload();
+        }
+
+        if (! class_exists(Normalizer::class, true)) {
+            Log::warning('Trx Out PDF: php-pdf-decompressor is not installed', [
+                'path' => $sourcePath,
+            ]);
+
             return null;
         }
 
@@ -150,11 +166,10 @@ class GenerateTrxOutPdfService
                 return null;
             }
 
-            if (! Normalizer::isCompressed($bytes)) {
-                return null;
-            }
-
             $outputPath = $this->makeTempPdfPath();
+
+            // Always rewrite when FPDI already failed — the compression heuristic
+            // misses some modern PDFs that still need classic xref conversion.
             (new Normalizer)->normalizeFile($sourcePath, $outputPath);
 
             if (! is_file($outputPath) || filesize($outputPath) === 0) {
@@ -170,12 +185,24 @@ class GenerateTrxOutPdfService
                 'error' => $e->getMessage(),
             ]);
 
+            if (isset($outputPath)) {
+                @unlink($outputPath);
+            }
+
             return null;
         }
     }
 
+    /**
+     * Optional fallback. Many hosts (including Cloudways) disable proc_open/exec,
+     * so this is skipped entirely when shell execution is unavailable.
+     */
     protected function normalizeWithGhostscript(string $sourcePath): ?string
     {
+        if (! $this->canRunShellCommands()) {
+            return null;
+        }
+
         $binary = $this->findGhostscriptBinary();
 
         if ($binary === null) {
@@ -183,21 +210,18 @@ class GenerateTrxOutPdfService
         }
 
         $outputPath = $this->makeTempPdfPath();
+        $command = sprintf(
+            '%s -dBATCH -dNOPAUSE -dQUIET -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=%s %s',
+            escapeshellarg($binary),
+            escapeshellarg($outputPath),
+            escapeshellarg($sourcePath)
+        );
 
-        $process = new Process([
-            $binary,
-            '-dBATCH',
-            '-dNOPAUSE',
-            '-dQUIET',
-            '-sDEVICE=pdfwrite',
-            '-dCompatibilityLevel=1.4',
-            '-sOutputFile='.$outputPath,
-            $sourcePath,
-        ]);
-        $process->setTimeout(120);
+        $exitCode = 1;
+        $output = [];
 
         try {
-            $process->run();
+            @exec($command, $output, $exitCode);
         } catch (\Throwable $e) {
             @unlink($outputPath);
 
@@ -209,13 +233,13 @@ class GenerateTrxOutPdfService
             return null;
         }
 
-        if (! $process->isSuccessful() || ! is_file($outputPath) || filesize($outputPath) === 0) {
+        if ($exitCode !== 0 || ! is_file($outputPath) || filesize($outputPath) === 0) {
             @unlink($outputPath);
 
             Log::warning('Trx Out PDF: Ghostscript normalize failed', [
                 'path' => $sourcePath,
-                'exit_code' => $process->getExitCode(),
-                'error' => $process->getErrorOutput() ?: $process->getOutput(),
+                'exit_code' => $exitCode,
+                'error' => implode("\n", $output),
             ]);
 
             return null;
@@ -224,15 +248,32 @@ class GenerateTrxOutPdfService
         return $outputPath;
     }
 
+    protected function canRunShellCommands(): bool
+    {
+        if (! function_exists('exec') || ! function_exists('proc_open')) {
+            return false;
+        }
+
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+
+        return ! in_array('exec', $disabled, true)
+            && ! in_array('proc_open', $disabled, true);
+    }
+
     protected function findGhostscriptBinary(): ?string
     {
+        if (! $this->canRunShellCommands()) {
+            return null;
+        }
+
         foreach (['gs', 'ghostscript'] as $binary) {
-            $process = Process::fromShellCommandline('command -v '.escapeshellarg($binary));
-            $process->run();
+            $output = [];
+            $exitCode = 1;
+            @exec('command -v '.escapeshellarg($binary).' 2>/dev/null', $output, $exitCode);
 
-            $path = trim($process->getOutput());
+            $path = trim($output[0] ?? '');
 
-            if ($process->isSuccessful() && $path !== '') {
+            if ($exitCode === 0 && $path !== '') {
                 return $path;
             }
         }
@@ -272,6 +313,37 @@ class GenerateTrxOutPdfService
         if (is_file($fpdi)) {
             require_once $fpdi;
         }
+    }
+
+    protected function registerPdfDecompressorAutoload(): void
+    {
+        static $registered = false;
+
+        if ($registered) {
+            return;
+        }
+
+        $registered = true;
+        $base = base_path('vendor/drainerlight/php-pdf-decompressor/src');
+
+        if (! is_dir($base)) {
+            return;
+        }
+
+        spl_autoload_register(static function (string $class) use ($base): void {
+            $prefix = 'PdfDecompressor\\';
+
+            if (! str_starts_with($class, $prefix)) {
+                return;
+            }
+
+            $relative = str_replace('\\', '/', substr($class, strlen($prefix)));
+            $file = $base.'/'.$relative.'.php';
+
+            if (is_file($file)) {
+                require_once $file;
+            }
+        });
     }
 
     /**
