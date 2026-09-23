@@ -39,23 +39,16 @@ class FileWorkflowGapFilters
                 FileWorkflowGapService::invoiceCheckpointOptions(),
                 fn (Builder $query, string $gapKey): Builder => FileWorkflowGapService::scopeWithInvoiceGap($query, $gapKey),
             ),
-<<<<<<< HEAD
-            Filter::make('with_bills')
-                ->label('With bills')
-                ->query(fn (Builder $query): Builder => $query->whereHas('bills'))
-                ->toggle(),
-=======
             SelectFilter::make('status')
                 ->label('Case Status')
                 ->options(FileWorkflowGapService::caseStatusOptions())
                 ->multiple()
                 ->searchable()
                 ->default(FileWorkflowGapService::invoiceChecklistStatuses()),
-<<<<<<< HEAD
->>>>>>> staging
-            ...self::sharedFileFilters(includeClient: true),
-=======
->>>>>>> staging
+            Filter::make('with_bills')
+                ->label('With bills')
+                ->query(fn (Builder $query): Builder => $query->whereHas('bills'))
+                ->toggle(),
         ];
 
         return array_merge($filters, self::sharedFileFilters(true));
