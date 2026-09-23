@@ -54,6 +54,30 @@ class FileWorkflowGapServiceTest extends TestCase
         $this->assertFalse(FileWorkflowGapService::missingClientOffer($file));
     }
 
+    public function test_invoice_checklist_default_statuses_are_assisted_and_waiting_mr(): void
+    {
+        $this->assertSame(
+            ['Assisted', 'Waiting MR'],
+            FileWorkflowGapService::invoiceChecklistStatuses(),
+        );
+    }
+
+    public function test_case_status_options_include_all_file_statuses(): void
+    {
+        $this->assertSame([
+            'New' => 'New',
+            'Handling' => 'Handling',
+            'Available' => 'Available',
+            'Confirmed' => 'Confirmed',
+            'Assisted' => 'Assisted',
+            'Hold' => 'Hold',
+            'Waiting MR' => 'Waiting MR',
+            'Refund' => 'Refund',
+            'Cancelled' => 'Cancelled',
+            'Void' => 'Void',
+        ], FileWorkflowGapService::caseStatusOptions());
+    }
+
     /**
      * @param  \Illuminate\Support\Collection<int, mixed>  $gops
      * @param  \Illuminate\Support\Collection<int, mixed>  $invoices

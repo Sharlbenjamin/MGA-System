@@ -305,11 +305,36 @@ class FileWorkflowGapService
         };
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function invoiceChecklistStatuses(): array
+    {
+        return ['Assisted', 'Waiting MR'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function caseStatusOptions(): array
+    {
+        return [
+            'New' => 'New',
+            'Handling' => 'Handling',
+            'Available' => 'Available',
+            'Confirmed' => 'Confirmed',
+            'Assisted' => 'Assisted',
+            'Hold' => 'Hold',
+            'Waiting MR' => 'Waiting MR',
+            'Refund' => 'Refund',
+            'Cancelled' => 'Cancelled',
+            'Void' => 'Void',
+        ];
+    }
+
     public static function scopeInvoiceChecklistBase(Builder $query): Builder
     {
-        return $query
-            ->whereIn('status', ['Assisted', 'Waiting MR'])
-            ->tap(fn (Builder $scoped) => self::scopeWithAnyInvoiceGap($scoped));
+        return $query->tap(fn (Builder $scoped) => self::scopeWithAnyInvoiceGap($scoped));
     }
 
     /**

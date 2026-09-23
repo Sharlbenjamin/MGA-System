@@ -106,6 +106,63 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasAnyRole(['admin', 'Admin']);
     }
 
+    public function isFinancial(): bool
+    {
+        if ($this->roleNamesContainFinancial()) {
+            return true;
+        }
+
+        $this->loadMissing(['employee.jobTitle', 'signature']);
+
+        foreach ([
+            $this->employee?->department,
+            $this->employee?->jobTitle?->name,
+            $this->signature?->department,
+            $this->signature?->job_title,
+        ] as $value) {
+            if (self::textLooksFinancial($value)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function canAccessInvoiceChecklist(): bool
+    {
+        try {
+            if ($this->isAdmin()) {
+                return true;
+            }
+        } catch (\Throwable) {
+            // Fall through to financial matching if Spatie role checks fail.
+        }
+
+        return $this->isFinancial();
+    }
+
+    protected function roleNamesContainFinancial(): bool
+    {
+        $roleNames = $this->relationLoaded('roles')
+            ? $this->roles->pluck('name')
+            : $this->getRoleNames();
+
+        return $roleNames
+            ->contains(fn ($name): bool => self::textLooksFinancial($name));
+    }
+
+    protected static function textLooksFinancial(mixed $value): bool
+    {
+        $normalized = mb_strtolower(trim((string) $value));
+
+        if ($normalized === '') {
+            return false;
+        }
+
+        return str_contains($normalized, 'financial')
+            || str_contains($normalized, 'finance');
+    }
+
     public function canEditGopSellingCost(): bool
     {
         return \App\Services\OfferPricingCalculator::userCanEditSellingCost($this);
