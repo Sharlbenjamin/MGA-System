@@ -11,27 +11,28 @@ use Illuminate\Database\Eloquent\Builder;
 class FileWorkflowGapFilters
 {
     /**
-     * @return array<int, Filter>
+     * @return array<int, Filter|SelectFilter>
      */
     public static function forAssistedChecklist(): array
     {
-        return [
+        $filters = [
             self::checkpointFilter(
                 'assisted_checkpoint',
                 'Checkpoint',
                 FileWorkflowGapService::assistedCheckpointOptions(),
                 fn (Builder $query, string $gapKey): Builder => FileWorkflowGapService::scopeWithGap($query, $gapKey),
             ),
-            ...self::sharedFileFilters(),
         ];
+
+        return array_merge($filters, self::sharedFileFilters());
     }
 
     /**
-     * @return array<int, Filter>
+     * @return array<int, Filter|SelectFilter>
      */
     public static function forInvoiceChecklist(): array
     {
-        return [
+        $filters = [
             self::checkpointFilter(
                 'invoice_checkpoint',
                 'Checkpoint',
@@ -50,25 +51,31 @@ class FileWorkflowGapFilters
                 ->multiple()
                 ->searchable()
                 ->default(FileWorkflowGapService::invoiceChecklistStatuses()),
+<<<<<<< HEAD
 >>>>>>> staging
             ...self::sharedFileFilters(includeClient: true),
+=======
+>>>>>>> staging
         ];
+
+        return array_merge($filters, self::sharedFileFilters(true));
     }
 
     /**
-     * @return array<int, Filter>
+     * @return array<int, Filter|SelectFilter>
      */
     public static function forClientOfferChecklist(): array
     {
-        return [
+        $filters = [
             self::checkpointFilter(
                 'offer_checkpoint',
                 'Checkpoint',
                 FileWorkflowGapService::clientOfferCheckpointOptions(),
                 fn (Builder $query, string $gapKey): Builder => FileWorkflowGapService::scopeMissingClientOffer($query),
             ),
-            ...self::sharedFileFilters(includeClient: true),
         ];
+
+        return array_merge($filters, self::sharedFileFilters(true));
     }
 
     /**
@@ -78,7 +85,7 @@ class FileWorkflowGapFilters
         string $name,
         string $label,
         array $options,
-        callable $scopeApplier,
+        callable $scopeApplier
     ): Filter {
         return Filter::make($name)
             ->label($label)
@@ -110,14 +117,14 @@ class FileWorkflowGapFilters
     }
 
     /**
-     * @return array<int, \Filament\Tables\Filters\SelectFilter>
+     * @return array<int, SelectFilter>
      */
     protected static function sharedFileFilters(bool $includeClient = false): array
     {
         $filters = [];
 
         if ($includeClient) {
-            $filters[] = \Filament\Tables\Filters\SelectFilter::make('client')
+            $filters[] = SelectFilter::make('client')
                 ->relationship(
                     'patient.client',
                     'company_name',
@@ -129,15 +136,15 @@ class FileWorkflowGapFilters
                 ->multiple();
         }
 
-        $filters[] = \Filament\Tables\Filters\SelectFilter::make('country_id')
+        $filters[] = SelectFilter::make('country_id')
             ->relationship('country', 'name')
             ->label('Country');
 
-        $filters[] = \Filament\Tables\Filters\SelectFilter::make('city_id')
+        $filters[] = SelectFilter::make('city_id')
             ->relationship('city', 'name')
             ->label('City');
 
-        $filters[] = \Filament\Tables\Filters\SelectFilter::make('service_type_id')
+        $filters[] = SelectFilter::make('service_type_id')
             ->relationship('serviceType', 'name')
             ->label('Service Type');
 
