@@ -36,7 +36,7 @@ class PdfFpdiCompatibilityService
         if (! $this->ensureNormalizerAvailable()) {
             return [
                 'path' => null,
-                'error' => 'PDF compatibility library (drainerlight/php-pdf-decompressor) is not installed. Run: composer install --no-dev --optimize-autoloader',
+                'error' => 'PDF compatibility library source is missing (expected third-party/php-pdf-decompressor).',
             ];
         }
 
@@ -100,6 +100,21 @@ class PdfFpdiCompatibilityService
         return $directory.'/norm_'.uniqid('', true).'.pdf';
     }
 
+    /**
+     * @return list<string>
+     */
+    public function sourceDirectories(): array
+    {
+        $root = dirname(__DIR__, 2);
+
+        return array_values(array_filter([
+            // Prefer the vendored copy shipped with the app (no Composer install needed).
+            $root.'/third-party/php-pdf-decompressor/src',
+            // Fall back to the Composer package if present.
+            $root.'/vendor/drainerlight/php-pdf-decompressor/src',
+        ], 'is_dir'));
+    }
+
     protected function registerAutoload(): void
     {
         if (self::$autoloaderRegistered) {
@@ -107,24 +122,30 @@ class PdfFpdiCompatibilityService
         }
 
         self::$autoloaderRegistered = true;
-        $base = base_path('vendor/drainerlight/php-pdf-decompressor/src');
 
-        if (! is_dir($base)) {
+        $bases = $this->sourceDirectories();
+
+        if ($bases === []) {
             return;
         }
 
-        spl_autoload_register(static function (string $class) use ($base): void {
+        spl_autoload_register(static function (string $class) use ($bases): void {
             $prefix = 'PdfDecompressor\\';
 
             if (! str_starts_with($class, $prefix)) {
                 return;
             }
 
-            $relative = str_replace('\\', '/', substr($class, strlen($prefix)));
-            $file = $base.'/'.$relative.'.php';
+            $relative = str_replace('\\', '/', substr($class, strlen($prefix))).'.php';
 
-            if (is_file($file)) {
-                require_once $file;
+            foreach ($bases as $base) {
+                $file = $base.'/'.$relative;
+
+                if (is_file($file)) {
+                    require_once $file;
+
+                    return;
+                }
             }
         });
     }
