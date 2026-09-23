@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\GenerateTrxOutPdfService;
+use App\Services\PdfFpdiCompatibilityService;
 use App\Services\TransactionDocumentationService;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -50,10 +51,40 @@ class GenerateTrxOutPdfServiceTest extends TestCase
         }
     }
 
+    #[Test]
+    public function compatibility_service_writes_temp_files_under_storage(): void
+    {
+        $service = new PdfFpdiCompatibilityService;
+        $path = $service->makeTempPdfPath();
+
+        $this->assertStringContainsString('/storage/app/tmp/pdf-fpdi/', $path);
+        $this->assertDirectoryExists(dirname($path));
+    }
+
+    #[Test]
+    public function it_normalizes_compressed_pdfs_for_fpdi(): void
+    {
+        $source = dirname(__DIR__, 2).'/vendor/drainerlight/php-pdf-decompressor/tests/fixtures/compressed.pdf';
+        $this->assertFileExists($source);
+
+        $result = (new PdfFpdiCompatibilityService)->normalizeForFpdi($source);
+
+        $this->assertNull($result['error'], $result['error'] ?? '');
+        $this->assertNotNull($result['path']);
+        $this->assertFileExists($result['path']);
+
+        $pdf = new Fpdi;
+        $pages = $pdf->setSourceFile($result['path']);
+        $this->assertGreaterThanOrEqual(1, $pages);
+
+        @unlink($result['path']);
+    }
+
     private function makeService(): GenerateTrxOutPdfService
     {
         return new GenerateTrxOutPdfService(
-            $this->createMock(TransactionDocumentationService::class)
+            $this->createMock(TransactionDocumentationService::class),
+            new PdfFpdiCompatibilityService,
         );
     }
 
