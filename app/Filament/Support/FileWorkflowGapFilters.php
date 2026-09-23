@@ -45,6 +45,10 @@ class FileWorkflowGapFilters
                 ->multiple()
                 ->searchable()
                 ->default(FileWorkflowGapService::invoiceChecklistStatuses()),
+            Filter::make('with_bills')
+                ->label('With bills')
+                ->query(fn (Builder $query): Builder => $query->whereHas('bills'))
+                ->toggle(),
         ];
 
         return array_merge($filters, self::sharedFileFilters(true));
