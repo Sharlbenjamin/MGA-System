@@ -5,13 +5,13 @@ namespace App\Services;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use PdfDecompressor\Normalizer;
 use setasign\Fpdi\Fpdi;
 
 class GenerateTrxOutPdfService
 {
     public function __construct(
-        protected TransactionDocumentationService $documentationService
+        protected TransactionDocumentationService $documentationService,
+        protected PdfFpdiCompatibilityService $pdfCompatibility,
     ) {}
 
     public function generate(Transaction $transaction): string
@@ -37,6 +37,12 @@ class GenerateTrxOutPdfService
             $this->documentationService->syncAndRecalculate($transaction);
 
             throw new \RuntimeException('No mergeable bill PDF files found for this transaction.');
+        }
+
+        if (! $this->pdfCompatibility->ensureNormalizerAvailable()) {
+            throw new \RuntimeException(
+                'PDF compatibility library is not installed on this server. SSH into public_html and run: composer install --no-dev --optimize-autoloader'
+            );
         }
 
         $pdf = $this->makeFpdi();
@@ -83,25 +89,23 @@ class GenerateTrxOutPdfService
 
             return;
         } catch (\Throwable $original) {
-            try {
-                $normalizedPath = $this->normalizePdfForFpdi($billPath, $original);
-            } catch (\Throwable $normalizeError) {
-                Log::warning('Trx Out PDF: normalize threw unexpectedly', [
-                    'path' => $billPath,
-                    'error' => $normalizeError->getMessage(),
-                ]);
+            $result = $this->pdfCompatibility->normalizeForFpdi($billPath);
 
-                throw $original;
+            if ($result['path'] === null) {
+                throw new \RuntimeException(
+                    $original->getMessage().' ('.$result['error'].')'
+                );
             }
 
-            if ($normalizedPath === null) {
-                throw $original;
-            }
+            Log::info('Trx Out PDF: normalized bill PDF for FPDI', [
+                'path' => $billPath,
+                'original_error' => $original->getMessage(),
+            ]);
 
             try {
-                $this->appendPagesFromFile($pdf, $normalizedPath);
+                $this->appendPagesFromFile($pdf, $result['path']);
             } finally {
-                @unlink($normalizedPath);
+                @unlink($result['path']);
             }
         }
     }
@@ -116,174 +120,6 @@ class GenerateTrxOutPdfService
             $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
             $pdf->useTemplate($templateId);
         }
-    }
-
-    protected function normalizePdfForFpdi(string $sourcePath, \Throwable $original): ?string
-    {
-        $normalized = $this->normalizeWithPhpDecompressor($sourcePath);
-
-        if ($normalized !== null) {
-            Log::info('Trx Out PDF: normalized bill PDF with pure-PHP decompressor', [
-                'path' => $sourcePath,
-                'original_error' => $original->getMessage(),
-            ]);
-
-            return $normalized;
-        }
-
-        $normalized = $this->normalizeWithGhostscript($sourcePath);
-
-        if ($normalized !== null) {
-            Log::info('Trx Out PDF: normalized bill PDF with Ghostscript', [
-                'path' => $sourcePath,
-                'original_error' => $original->getMessage(),
-            ]);
-
-            return $normalized;
-        }
-
-        return null;
-    }
-
-    protected function normalizeWithPhpDecompressor(string $sourcePath): ?string
-    {
-        if (! class_exists(Normalizer::class, true)) {
-            $this->registerPdfDecompressorAutoload();
-        }
-
-        if (! class_exists(Normalizer::class, true)) {
-            Log::warning('Trx Out PDF: php-pdf-decompressor is not installed', [
-                'path' => $sourcePath,
-            ]);
-
-            return null;
-        }
-
-        try {
-            $bytes = @file_get_contents($sourcePath);
-
-            if ($bytes === false || $bytes === '') {
-                return null;
-            }
-
-            $outputPath = $this->makeTempPdfPath();
-
-            // Always rewrite when FPDI already failed — the compression heuristic
-            // misses some modern PDFs that still need classic xref conversion.
-            (new Normalizer)->normalizeFile($sourcePath, $outputPath);
-
-            if (! is_file($outputPath) || filesize($outputPath) === 0) {
-                @unlink($outputPath);
-
-                return null;
-            }
-
-            return $outputPath;
-        } catch (\Throwable $e) {
-            Log::warning('Trx Out PDF: pure-PHP PDF normalize failed', [
-                'path' => $sourcePath,
-                'error' => $e->getMessage(),
-            ]);
-
-            if (isset($outputPath)) {
-                @unlink($outputPath);
-            }
-
-            return null;
-        }
-    }
-
-    /**
-     * Optional fallback. Many hosts (including Cloudways) disable proc_open/exec,
-     * so this is skipped entirely when shell execution is unavailable.
-     */
-    protected function normalizeWithGhostscript(string $sourcePath): ?string
-    {
-        if (! $this->canRunShellCommands()) {
-            return null;
-        }
-
-        $binary = $this->findGhostscriptBinary();
-
-        if ($binary === null) {
-            return null;
-        }
-
-        $outputPath = $this->makeTempPdfPath();
-        $command = sprintf(
-            '%s -dBATCH -dNOPAUSE -dQUIET -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=%s %s',
-            escapeshellarg($binary),
-            escapeshellarg($outputPath),
-            escapeshellarg($sourcePath)
-        );
-
-        $exitCode = 1;
-        $output = [];
-
-        try {
-            @exec($command, $output, $exitCode);
-        } catch (\Throwable $e) {
-            @unlink($outputPath);
-
-            Log::warning('Trx Out PDF: Ghostscript normalize threw', [
-                'path' => $sourcePath,
-                'error' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
-
-        if ($exitCode !== 0 || ! is_file($outputPath) || filesize($outputPath) === 0) {
-            @unlink($outputPath);
-
-            Log::warning('Trx Out PDF: Ghostscript normalize failed', [
-                'path' => $sourcePath,
-                'exit_code' => $exitCode,
-                'error' => implode("\n", $output),
-            ]);
-
-            return null;
-        }
-
-        return $outputPath;
-    }
-
-    protected function canRunShellCommands(): bool
-    {
-        if (! function_exists('exec') || ! function_exists('proc_open')) {
-            return false;
-        }
-
-        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
-
-        return ! in_array('exec', $disabled, true)
-            && ! in_array('proc_open', $disabled, true);
-    }
-
-    protected function findGhostscriptBinary(): ?string
-    {
-        if (! $this->canRunShellCommands()) {
-            return null;
-        }
-
-        foreach (['gs', 'ghostscript'] as $binary) {
-            $output = [];
-            $exitCode = 1;
-            @exec('command -v '.escapeshellarg($binary).' 2>/dev/null', $output, $exitCode);
-
-            $path = trim($output[0] ?? '');
-
-            if ($exitCode === 0 && $path !== '') {
-                return $path;
-            }
-        }
-
-        return null;
-    }
-
-    protected function makeTempPdfPath(): string
-    {
-        return sys_get_temp_dir().'/trx_out_norm_'.uniqid('', true).'.pdf';
     }
 
     protected function makeFpdi(): Fpdi
@@ -313,37 +149,6 @@ class GenerateTrxOutPdfService
         if (is_file($fpdi)) {
             require_once $fpdi;
         }
-    }
-
-    protected function registerPdfDecompressorAutoload(): void
-    {
-        static $registered = false;
-
-        if ($registered) {
-            return;
-        }
-
-        $registered = true;
-        $base = base_path('vendor/drainerlight/php-pdf-decompressor/src');
-
-        if (! is_dir($base)) {
-            return;
-        }
-
-        spl_autoload_register(static function (string $class) use ($base): void {
-            $prefix = 'PdfDecompressor\\';
-
-            if (! str_starts_with($class, $prefix)) {
-                return;
-            }
-
-            $relative = str_replace('\\', '/', substr($class, strlen($prefix)));
-            $file = $base.'/'.$relative.'.php';
-
-            if (is_file($file)) {
-                require_once $file;
-            }
-        });
     }
 
     /**
