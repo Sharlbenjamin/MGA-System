@@ -64,7 +64,7 @@ class GenerateTrxOutPdfServiceTest extends TestCase
     #[Test]
     public function it_normalizes_compressed_pdfs_for_fpdi(): void
     {
-        $source = dirname(__DIR__, 2).'/vendor/drainerlight/php-pdf-decompressor/tests/fixtures/compressed.pdf';
+        $source = dirname(__DIR__, 2).'/third-party/php-pdf-decompressor/fixtures/compressed.pdf';
         $this->assertFileExists($source);
 
         $result = (new PdfFpdiCompatibilityService)->normalizeForFpdi($source);

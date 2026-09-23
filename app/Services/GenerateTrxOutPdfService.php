@@ -41,7 +41,7 @@ class GenerateTrxOutPdfService
 
         if (! $this->pdfCompatibility->ensureNormalizerAvailable()) {
             throw new \RuntimeException(
-                'PDF compatibility library is not installed on this server. SSH into public_html and run: composer install --no-dev --optimize-autoloader'
+                'PDF compatibility library is missing. Deploy third-party/php-pdf-decompressor (git pull) or run composer install.'
             );
         }
 
