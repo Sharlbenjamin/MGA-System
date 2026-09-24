@@ -371,10 +371,11 @@
                         <tbody>
                             @forelse($this->record->bills as $bill)
                                 <tr class="bg-white border-b hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap">
+                                    <td class="px-6 py-4">
                                         <a href="{{ route('filament.admin.resources.bills.edit', $bill) }}"
                                            class="text-blue-600 hover:text-blue-800 underline">
-                                            {{ $bill->name }}
+                                            <span class="block">{{ $bill->generatedName() }}</span>
+                                            <span class="block text-sm text-gray-500">{{ $bill->writtenName() }}</span>
                                         </a>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
