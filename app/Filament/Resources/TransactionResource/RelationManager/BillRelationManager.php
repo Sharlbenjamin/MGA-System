@@ -54,6 +54,8 @@ class BillRelationManager extends RelationManager
             })
             ->columns([
                 BillTable::nameColumn()
+                    ->state(fn (Bill $record): string => $record->generatedName())
+                    ->description(fn (Bill $record): string => $record->writtenName())
                     ->url(fn (Bill $record): string => BillResource::getUrl('edit', ['record' => $record]))
                     ->color('primary'),
                 TextColumn::make('total_amount')

@@ -75,6 +75,20 @@ class Bill extends Model
         return static::generateBillNumberForBill($this);
     }
 
+    public function generatedName(): string
+    {
+        return static::generateBillNumberForBill($this);
+    }
+
+    public function writtenName(): string
+    {
+        if ($this->hasCustomName()) {
+            return (string) $this->name;
+        }
+
+        return $this->generatedName();
+    }
+
     // relations      relations      relations       relations        relations        relations
 
     public function getActivityReference(): ?string
