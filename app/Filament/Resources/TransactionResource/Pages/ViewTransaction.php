@@ -22,7 +22,8 @@ class ViewTransaction extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\EditAction::make(),
+            Actions\EditAction::make()
+                ->label('Edit Trx'),
             Action::make('viewTrxInPdf')
                 ->label('View Trx In PDF')
                 ->icon('heroicon-o-document-text')
