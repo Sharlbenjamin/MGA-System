@@ -21,8 +21,15 @@ class LawyerDocumentationExportService
         float $ivaPercent,
         string $nifSource,
         ?int $bankAccountId = null,
+        ?int $month = null,
     ): array {
-        [$startDate, $endDate] = TaxExportHelpers::resolvePeriodDates($year, $quarter);
+        if ($month !== null) {
+            [$startDate, $endDate] = TaxExportHelpers::resolveMonthDates($year, $month);
+            $filenamePeriod = sprintf('%02d', $month);
+        } else {
+            [$startDate, $endDate] = TaxExportHelpers::resolvePeriodDates($year, $quarter);
+            $filenamePeriod = $quarter === 'full' ? 'full' : 'Q'.$quarter;
+        }
         $ivaRate = $ivaPercent / 100;
 
         $transactions = $this->loadPeriodTransactions($startDate, $endDate, $bankAccountId);
@@ -31,8 +38,7 @@ class LawyerDocumentationExportService
 
         $receivableInvoices = $this->collectReceivableInvoices($incomeTransactions);
 
-        $filenameQuarter = $quarter === 'full' ? 'full' : 'Q'.$quarter;
-        $filename = "lawyer_documentation_{$year}_{$filenameQuarter}_".now()->format('Y-m-d_H-i-s').'.xlsx';
+        $filename = "lawyer_documentation_{$year}_{$filenamePeriod}_".now()->format('Y-m-d_H-i-s').'.xlsx';
 
         return [
             'filename' => $filename,

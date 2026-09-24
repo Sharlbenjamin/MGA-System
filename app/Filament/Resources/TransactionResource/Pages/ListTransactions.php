@@ -15,6 +15,7 @@ use Filament\Actions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
@@ -173,6 +174,15 @@ class ListTransactions extends ListRecords
                         ->numeric()
                         ->default(Carbon::now()->year)
                         ->required(),
+                    Select::make('period')
+                        ->label('Filter by')
+                        ->options([
+                            'quarter' => 'Quarter',
+                            'month' => 'Month',
+                        ])
+                        ->default('quarter')
+                        ->live()
+                        ->required(),
                     Select::make('quarter')
                         ->label('Quarter')
                         ->options([
@@ -183,7 +193,27 @@ class ListTransactions extends ListRecords
                             'full' => 'Full Year',
                         ])
                         ->default((string) Carbon::now()->quarter)
-                        ->required(),
+                        ->visible(fn (Get $get): bool => ($get('period') ?? 'quarter') !== 'month')
+                        ->required(fn (Get $get): bool => ($get('period') ?? 'quarter') !== 'month'),
+                    Select::make('month')
+                        ->label('Month')
+                        ->options([
+                            '1' => 'January',
+                            '2' => 'February',
+                            '3' => 'March',
+                            '4' => 'April',
+                            '5' => 'May',
+                            '6' => 'June',
+                            '7' => 'July',
+                            '8' => 'August',
+                            '9' => 'September',
+                            '10' => 'October',
+                            '11' => 'November',
+                            '12' => 'December',
+                        ])
+                        ->default((string) Carbon::now()->month)
+                        ->visible(fn (Get $get): bool => $get('period') === 'month')
+                        ->required(fn (Get $get): bool => $get('period') === 'month'),
                     TextInput::make('iva_percent')
                         ->label('IVA %')
                         ->numeric()
@@ -201,15 +231,20 @@ class ListTransactions extends ListRecords
                         ->required(),
                 ])
                 ->action(function (array $data) use ($bankAccountId) {
-                    $url = route('lawyer.export', [
+                    $params = [
                         'year' => $data['year'],
-                        'quarter' => $data['quarter'],
                         'iva_percent' => $data['iva_percent'] ?? 21,
                         'nif_source' => $data['nif_source'] ?? 'country',
                         'bank_account_id' => $bankAccountId,
-                    ]);
+                    ];
 
-                    return redirect($url);
+                    if (($data['period'] ?? 'quarter') === 'month') {
+                        $params['month'] = $data['month'];
+                    } else {
+                        $params['quarter'] = $data['quarter'];
+                    }
+
+                    return redirect(route('lawyer.export', $params));
                 }),
             Actions\Action::make('exportBankFormat')
                 ->label('Export bank format')

@@ -15,6 +15,7 @@ class LawyerExportController extends Controller
         $validated = $request->validate([
             'year' => ['nullable', 'integer'],
             'quarter' => ['nullable', 'string'],
+            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
             'iva_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'nif_source' => ['nullable', 'in:country,niv_number'],
             'bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
@@ -22,11 +23,12 @@ class LawyerExportController extends Controller
 
         $year = (int) ($validated['year'] ?? Carbon::now()->year);
         $quarter = (string) ($validated['quarter'] ?? '1');
+        $month = isset($validated['month']) ? (int) $validated['month'] : null;
         $ivaPercent = (float) ($validated['iva_percent'] ?? 21);
         $nifSource = (string) ($validated['nif_source'] ?? 'country');
         $bankAccountId = isset($validated['bank_account_id']) ? (int) $validated['bank_account_id'] : null;
 
-        $payload = $exportService->buildExportPayload($year, $quarter, $ivaPercent, $nifSource, $bankAccountId);
+        $payload = $exportService->buildExportPayload($year, $quarter, $ivaPercent, $nifSource, $bankAccountId, $month);
 
         return Excel::download(
             new LawyerDocumentationExport($payload),

@@ -30,6 +30,17 @@ class TaxExportHelpers
         ];
     }
 
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public static function resolveMonthDates(int $year, int $month): array
+    {
+        return [
+            Carbon::create($year, $month, 1)->startOfMonth(),
+            Carbon::create($year, $month, 1)->endOfMonth(),
+        ];
+    }
+
     public static function resolveNifValue(Invoice $invoice, string $nifSource): string
     {
         $clientCountry = self::resolveClientCountryFromInvoice($invoice);
