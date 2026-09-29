@@ -459,7 +459,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_08_25_120000_make_transactions_bank_account_id_nullable.php": "1d6324e2a5694cd7ddba5a04379a7317829c04c1e8c41e4a216a0a1d8550db37",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_08_25_150000_create_gop_items_table.php": "1d62a526b678f303884f51978e6be4611d9d5e64219cde263b7ed8a9078fafc0",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/offer.php": "07c4ef80af67613c77d00b164ad7918cf4d4e9bfc0bed883baec5521f82dde66",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_02_120000_set_null_on_delete_for_legacy_transaction_foreign_keys.php": "06d5eab1ccbb1c70f6ea469ec74260e6f76f9a5a451695fa306e93dc982e699d",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_02_120000_set_null_on_delete_for_legacy_transaction_foreign_keys.php": "40db0e60f73785d233dd93df2aa3d86e663b7ff2cabed69b4759051121fffd38",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_09_140000_change_not_sent_invoices_to_unpaid.php": "bb3cc4615f2a8706b280fb4582f3586c89fa6e89606015be6b6edbba11d17e02",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Services\/PdfFpdiCompatibilityService.php": "0b347391dd5039de7dd894bb5aa932c77be0bb814be85f35a5d0c76acdc25932",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_29_100000_add_contract_salary_columns_to_employees_table.php": "d7ff7fb1eb1e87e714b122f02129a642703951e6fd6cae99f024b94b63defc05",
