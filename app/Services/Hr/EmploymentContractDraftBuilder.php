@@ -23,19 +23,15 @@ class EmploymentContractDraftBuilder
         }
 
         if (blank($employee->social_insurance_number)) {
-            $missing[] = 'Social insurance number';
-        }
-
-        if (! $this->positiveAmount($employee->full_salary)) {
-            $missing[] = 'Full salary';
+            $missing[] = 'Social insurance number (employee record)';
         }
 
         if (! $this->positiveAmount($employee->social_insurance_salary)) {
-            $missing[] = 'Social insurance salary';
+            $missing[] = 'Social insurance salary (employee record)';
         }
 
         if (blank(config('hr.salary_currency'))) {
-            $missing[] = 'Salary currency (HR_SALARY_CURRENCY)';
+            $missing[] = 'Salary currency';
         }
 
         $startDate = $this->resolveStartDate($employee, $choices);
@@ -43,20 +39,20 @@ class EmploymentContractDraftBuilder
             $missing[] = 'Contract start date';
         }
 
-        if (blank(config('hr.employer.legal_name'))) {
-            $missing[] = 'Employer legal name (HR_EMPLOYER_LEGAL_NAME)';
+        if (blank($choices->employerLegalName)) {
+            $missing[] = 'Employer legal name';
         }
 
-        if (blank(config('hr.employer.address'))) {
-            $missing[] = 'Employer address (HR_EMPLOYER_ADDRESS)';
+        if (blank($choices->employerAddress)) {
+            $missing[] = 'Employer address';
         }
 
-        if (blank(config('hr.employer.signatory_name'))) {
-            $missing[] = 'Signatory name (HR_SIGNATORY_NAME)';
+        if (blank($choices->signatoryName)) {
+            $missing[] = 'Signatory name';
         }
 
-        if (blank(config('hr.employer.signatory_title'))) {
-            $missing[] = 'Signatory title (HR_SIGNATORY_TITLE)';
+        if (blank($choices->signatoryTitle)) {
+            $missing[] = 'Signatory title';
         }
 
         if (! $this->logoExists()) {
@@ -93,6 +89,7 @@ class EmploymentContractDraftBuilder
         $draftDate = Carbon::now();
         $currency = (string) config('hr.salary_currency');
         $logoPath = $this->resolveLogoPath();
+        $contractWage = (float) $employee->social_insurance_salary;
 
         $payload = [
             'is_draft' => true,
@@ -102,8 +99,8 @@ class EmploymentContractDraftBuilder
             'employee_job_title' => $employee->jobTitle?->name ?? '',
             'employee_national_id' => filled($employee->national_id) ? $employee->national_id : null,
             'social_insurance_number' => $employee->social_insurance_number,
-            'full_salary' => $this->formatMoney($employee->full_salary),
-            'full_salary_raw' => (float) $employee->full_salary,
+            'full_salary' => $this->formatMoney($contractWage),
+            'full_salary_raw' => $contractWage,
             'social_insurance_salary' => $this->formatMoney($employee->social_insurance_salary),
             'social_insurance_salary_raw' => (float) $employee->social_insurance_salary,
             'salary_currency' => $currency,
@@ -113,13 +110,13 @@ class EmploymentContractDraftBuilder
             'is_fixed_term' => $choices->isFixedTerm(),
             'fixed_term_months' => $choices->fixedTermMonths,
             'fixed_term_reason' => $choices->fixedTermReason,
-            'employer_legal_name' => config('hr.employer.legal_name'),
-            'employer_address' => config('hr.employer.address'),
-            'employer_registration' => config('hr.employer.registration'),
-            'signatory_name' => config('hr.employer.signatory_name'),
-            'signatory_title' => config('hr.employer.signatory_title'),
+            'employer_legal_name' => $choices->employerLegalName,
+            'employer_address' => $choices->employerAddress,
+            'employer_registration' => $choices->employerRegistration,
+            'signatory_name' => $choices->signatoryName,
+            'signatory_title' => $choices->signatoryTitle,
             'logo_path' => $logoPath,
-            'review_notices' => $this->reviewNotices($employee),
+            'review_notices' => $this->reviewNotices($employee, $choices),
         ];
 
         if ($choices->isFixedTerm()) {
@@ -218,18 +215,19 @@ class EmploymentContractDraftBuilder
     /**
      * @return list<string>
      */
-    protected function reviewNotices(Employee $employee): array
+    protected function reviewNotices(Employee $employee, EmploymentContractExportChoices $choices): array
     {
         $notices = [];
 
-        if (blank(config('hr.employer.registration'))) {
-            $notices[] = 'Employer registration details are not configured. Confirm the legal entity, Egyptian registration (if applicable), and social insurance establishment subscription with counsel before use.';
+        if (blank($choices->employerRegistration)) {
+            $notices[] = 'Employer registration was not provided for this export. Confirm the legal entity, Egyptian registration (if applicable), and social insurance establishment subscription with counsel before use.';
         }
 
-        $notices[] = 'Minimum wage compliance has not been verified by this system. Review the full salary against applicable Egyptian minimum wage rules.';
+        $notices[] = 'Minimum wage compliance has not been verified by this system. Review the social insurance salary against applicable Egyptian minimum wage rules.';
 
-        if (blank($employee->social_insurance_number)) {
-            $notices[] = 'Social insurance number is missing on the employee record.';
+        if ($this->positiveAmount($employee->full_salary)
+            && (float) $employee->full_salary !== (float) $employee->social_insurance_salary) {
+            $notices[] = 'Employee full salary on file differs from social insurance salary used in this contract. Confirm both amounts with counsel and payroll.';
         }
 
         $notices[] = 'This document is a draft only. Obtain review by an Egyptian employment lawyer before first use. Prepare four Arabic originals and required filings per Egyptian labour and social insurance law.';

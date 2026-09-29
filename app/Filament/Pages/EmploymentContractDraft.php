@@ -49,6 +49,11 @@ class EmploymentContractDraft extends Page
             'fixed_term_months' => 12,
             'fixed_term_reason' => null,
             'start_date_override' => null,
+            'employer_legal_name' => EmploymentContractExportChoices::defaultEmployerLegalName(),
+            'employer_address' => EmploymentContractExportChoices::defaultEmployerAddress(),
+            'employer_registration' => EmploymentContractExportChoices::defaultEmployerRegistration(),
+            'signatory_name' => EmploymentContractExportChoices::defaultSignatoryName(),
+            'signatory_title' => EmploymentContractExportChoices::defaultSignatoryTitle(),
         ]);
     }
 
@@ -132,13 +137,38 @@ class EmploymentContractDraft extends Page
                             ->required(fn (Forms\Get $get) => $this->employeeNeedsStartDate($get('employee_id')))
                             ->helperText('Used for this export only; the employee record is not updated.'),
                     ]),
-                Forms\Components\Section::make('Employer configuration')
-                    ->description('Set these in .env (HR_* variables). Generation is blocked until required values are present.')
+                Forms\Components\Section::make('Employer details for this export')
+                    ->description('Legal name and signatory are prefilled from system defaults. Enter address and registration before downloading. Contract wage uses the employee’s social insurance salary from HR → Employees.')
                     ->schema([
-                        Forms\Components\Placeholder::make('employer_config')
-                            ->label('Current settings')
-                            ->content(fn () => $this->formatEmployerConfigSummary()),
-                    ]),
+                        Forms\Components\TextInput::make('employer_legal_name')
+                            ->label('Legal name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Textarea::make('employer_address')
+                            ->label('Address')
+                            ->required()
+                            ->rows(3)
+                            ->helperText('Registered or workplace address for the employer entity on this contract.'),
+                        Forms\Components\TextInput::make('employer_registration')
+                            ->label('Registration')
+                            ->maxLength(255)
+                            ->helperText('Commercial registration or tax ID (optional; left blank adds a review notice on the draft).'),
+                        Forms\Components\TextInput::make('signatory_name')
+                            ->label('Signatory name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('signatory_title')
+                            ->label('Signatory title')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Placeholder::make('salary_source')
+                            ->label('Contract wage')
+                            ->content(fn (Forms\Get $get) => $this->formatContractWageSummary($get('employee_id'))),
+                        Forms\Components\Placeholder::make('logo_note')
+                            ->label('Logo')
+                            ->content(fn (): string => 'Using logo file: '.(config('hr.logo_path') ?: 'siglogo.png').' (from public/). Currency: '.(config('hr.salary_currency') ?: 'EGP')),
+                    ])
+                    ->columns(2),
             ]);
     }
 
@@ -222,6 +252,13 @@ class EmploymentContractDraft extends Page
                 ? ($state['fixed_term_reason'] ?? null)
                 : null,
             startDateOverride: $override,
+            employerLegalName: trim((string) ($state['employer_legal_name'] ?? '')),
+            employerAddress: trim((string) ($state['employer_address'] ?? '')),
+            employerRegistration: filled($state['employer_registration'] ?? null)
+                ? trim((string) $state['employer_registration'])
+                : null,
+            signatoryName: trim((string) ($state['signatory_name'] ?? '')),
+            signatoryTitle: trim((string) ($state['signatory_title'] ?? '')),
         );
     }
 
@@ -250,8 +287,8 @@ class EmploymentContractDraft extends Page
         $lines = [
             'Name: '.$employee->name,
             'Job title: '.($employee->jobTitle?->name ?? '—'),
-            'Full salary: '.($employee->full_salary !== null ? number_format((float) $employee->full_salary, 2) : '—'),
-            'Social insurance salary: '.($employee->social_insurance_salary !== null ? number_format((float) $employee->social_insurance_salary, 2) : '—'),
+            'Social insurance salary (used in contract): '.($employee->social_insurance_salary !== null ? number_format((float) $employee->social_insurance_salary, 2).' '.config('hr.salary_currency', 'EGP') : '— missing'),
+            'Full salary on file (reference only): '.($employee->full_salary !== null ? number_format((float) $employee->full_salary, 2) : '—'),
             'Social insurance number: '.($employee->social_insurance_number ?: '—'),
             'Start date: '.($employee->start_date?->format('Y-m-d') ?? '— (will ask below)'),
         ];
@@ -259,17 +296,21 @@ class EmploymentContractDraft extends Page
         return implode("\n", $lines);
     }
 
-    protected function formatEmployerConfigSummary(): string
+    protected function formatContractWageSummary(?int $employeeId): string
     {
-        $items = [
-            'Legal name: '.(config('hr.employer.legal_name') ?: '— missing'),
-            'Address: '.(config('hr.employer.address') ?: '— missing'),
-            'Registration: '.(config('hr.employer.registration') ?: '— not set (review flag)'),
-            'Signatory: '.(config('hr.employer.signatory_name') ?: '— missing').' / '.(config('hr.employer.signatory_title') ?: '— missing'),
-            'Salary currency: '.(config('hr.salary_currency') ?: '— missing'),
-            'Logo: '.(config('hr.logo_path') ?: 'siglogo.png'),
-        ];
+        if (! $employeeId) {
+            return 'Select an employee. The monthly wage in the PDF comes from Social insurance salary on the employee record.';
+        }
 
-        return implode("\n", $items);
+        $employee = Employee::query()->find($employeeId);
+        if (! $employee) {
+            return 'Employee not found.';
+        }
+
+        if (! $employee->social_insurance_salary || (float) $employee->social_insurance_salary <= 0) {
+            return 'Set Social insurance salary on the employee before downloading.';
+        }
+
+        return number_format((float) $employee->social_insurance_salary, 2).' '.config('hr.salary_currency', 'EGP').' per month (from employee record).';
     }
 }
