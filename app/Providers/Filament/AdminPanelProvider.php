@@ -2,54 +2,37 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\BulkAddBranches;
+use App\Filament\Pages\EmploymentContractDraft;
+use App\Filament\Resources\BranchAvailabilityResource;
 use App\Filament\Resources\CityResource;
 use App\Filament\Resources\ClientResource;
-use App\Filament\Resources\CountryResource;
-use App\Filament\Resources\DraftMailResource;
-use App\Filament\Resources\LeadResource;
-use App\Filament\Resources\ProviderBranchResource;
-use App\Filament\Resources\ProviderLeadResource;
-use App\Filament\Resources\ProviderResource;
 use App\Filament\Resources\ContactResource;
+use App\Filament\Resources\DraftMailResource;
 use App\Filament\Resources\DrugResource;
+use App\Filament\Resources\FileResource;
 use App\Filament\Resources\GopResource;
+use App\Filament\Resources\LeadResource;
 use App\Filament\Resources\MedicalReportResource;
 use App\Filament\Resources\PatientResource;
 use App\Filament\Resources\PrescriptionResource;
-use App\Filament\Resources\FileResource;
-use App\Filament\Resources\UserResource;
-use App\Filament\Resources\InvoiceResource;
-use App\Filament\Resources\BillResource;
-use App\Filament\Resources\TransactionResource;
-use App\Filament\Resources\BranchAvailabilityResource;
-use App\Filament\Pages\BulkAddBranches;
-use App\Filament\Widgets\FilesPerClient;
-use App\Filament\Widgets\FilesPerCountry;
-use App\Filament\Widgets\FilesPerMonth;
-use App\Filament\Widgets\FilesPerServiceType;
-use App\Filament\Widgets\FilesPerStatus;
-use App\Filament\Widgets\FileStatsOverview;
-use App\Filament\Widgets\TotalFile;
-use App\Filament\Widgets\CasesPerMonthStatus;
-use App\Filament\Widgets\MonthlyProfit;
+use App\Filament\Resources\ProviderBranchResource;
+use App\Filament\Resources\ProviderLeadResource;
+use App\Filament\Resources\ProviderResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
-use Filament\Navigation\NavigationGroup;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -97,6 +80,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 BulkAddBranches::class,
+                EmploymentContractDraft::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->middleware([

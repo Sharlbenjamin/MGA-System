@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Services\Hr\EmploymentContractDraftBuilder;
 use App\Services\Hr\EmploymentContractDraftException;
 use Carbon\Carbon;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -14,6 +15,7 @@ use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EmploymentContractDraft extends Page
@@ -30,6 +32,8 @@ class EmploymentContractDraft extends Page
     protected static ?string $navigationLabel = 'Employment contract draft';
 
     protected static ?string $title = 'Employment contract draft';
+
+    protected static ?string $slug = 'employment-contract-draft';
 
     protected static string $view = 'filament.pages.employment-contract-draft';
 
@@ -61,6 +65,21 @@ class EmploymentContractDraft extends Page
     public static function canAccess(): bool
     {
         return Auth::check() && Auth::user()?->roles?->contains('name', 'admin');
+    }
+
+    public static function urlForEmployee(?int $employeeId = null): string
+    {
+        $routeName = static::getRouteName('admin');
+
+        $base = Route::has($routeName)
+            ? route($routeName)
+            : url('/'.trim(Filament::getPanel('admin')->getPath(), '/').'/'.static::getSlug());
+
+        if ($employeeId === null) {
+            return $base;
+        }
+
+        return $base.(str_contains($base, '?') ? '&' : '?').'employee='.$employeeId;
     }
 
     public function form(Form $form): Form

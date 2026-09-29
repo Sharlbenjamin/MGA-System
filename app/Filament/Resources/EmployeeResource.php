@@ -151,7 +151,7 @@ class EmployeeResource extends Resource
                 Tables\Actions\Action::make('draftContract')
                     ->label('Draft contract')
                     ->icon('heroicon-o-document-text')
-                    ->url(fn (Employee $record): string => EmploymentContractDraft::getUrl().'?employee='.$record->id)
+                    ->url(fn (Employee $record): string => EmploymentContractDraft::urlForEmployee($record->id))
                     ->visible(fn (Employee $record): bool => Auth::user()?->can('generateContract', $record) ?? false),
                 Tables\Actions\EditAction::make(),
             ])
