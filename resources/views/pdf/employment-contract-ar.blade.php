@@ -3,19 +3,14 @@
 <head>
     <meta charset="utf-8">
     <title>مسودة عقد عمل</title>
-    @include('pdf.partials.employment-contract-styles')
+    @include('pdf.partials.employment-contract-styles-ar')
 </head>
-<body class="rtl">
-    <div class="draft-banner">مسودة — DRAFT — ليس عقداً موقعاً أو معتمداً قانونياً</div>
+<body>
+    <div class="draft-banner">مسودة — <span class="latin-inline">DRAFT</span> — ليس عقداً موقعاً أو معتمداً قانونياً</div>
 
     <div class="header">
         <table class="header-table">
             <tr>
-                <td class="logo-cell">
-                    @if(!empty($logo_path))
-                        <img src="{{ $logo_path }}" alt="Logo">
-                    @endif
-                </td>
                 <td class="company-block">
                     <div class="name">{{ $employer_legal_name }}</div>
                     <div>{{ $employer_address }}</div>
@@ -23,6 +18,11 @@
                         <div>سجل تجاري / تسجيل: {{ $employer_registration }}</div>
                     @endif
                     <div>الممثل القانوني: {{ $signatory_name }} — {{ $signatory_title }}</div>
+                </td>
+                <td class="logo-cell">
+                    @if(!empty($logo_path))
+                        <img src="{{ $logo_path }}" alt="Logo">
+                    @endif
                 </td>
             </tr>
         </table>
