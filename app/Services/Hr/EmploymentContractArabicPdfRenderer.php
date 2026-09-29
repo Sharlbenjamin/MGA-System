@@ -23,10 +23,10 @@ class EmploymentContractArabicPdfRenderer
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 18,
-            'margin_bottom' => 18,
+            'margin_left' => 16,
+            'margin_right' => 16,
+            'margin_top' => 16,
+            'margin_bottom' => 16,
             'margin_header' => 0,
             'margin_footer' => 0,
             'tempDir' => $tempDir,
@@ -34,6 +34,7 @@ class EmploymentContractArabicPdfRenderer
             'autoArabic' => true,
             'autoLangToFont' => true,
             'useSubstitutions' => true,
+            'shrink_tables_to_fit' => 1,
         ]);
 
         $mpdf->SetDirectionality('rtl');
