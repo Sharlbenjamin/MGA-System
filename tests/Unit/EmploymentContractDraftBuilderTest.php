@@ -124,6 +124,10 @@ class EmploymentContractDraftBuilderTest extends TestCase
 
     public function test_dompdf_outputs_pdf_for_both_languages(): void
     {
+        if (! class_exists(\Mpdf\Mpdf::class)) {
+            $this->markTestSkipped('mPDF not available; run composer install.');
+        }
+
         if (! class_exists(\Barryvdh\DomPDF\ServiceProvider::class)) {
             $this->markTestSkipped('DomPDF not available.');
         }

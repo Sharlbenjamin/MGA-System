@@ -137,9 +137,7 @@ class EmploymentContractDraftBuilder
     {
         $payload = $this->buildPayload($employee, $choices);
 
-        return Pdf::loadView('pdf.employment-contract-ar', $payload)
-            ->setPaper('a4')
-            ->output();
+        return app(EmploymentContractArabicPdfRenderer::class)->render($payload);
     }
 
     public function renderEnglishPdf(Employee $employee, EmploymentContractExportChoices $choices): string
