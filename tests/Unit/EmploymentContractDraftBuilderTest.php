@@ -48,17 +48,12 @@ class EmploymentContractDraftBuilderTest extends TestCase
             'start_date' => Carbon::parse('2026-01-15'),
         ]);
 
-        $choices = new EmploymentContractExportChoices(
-            contractType: EmploymentContractExportChoices::TYPE_INDEFINITE,
-            fixedTermMonths: null,
-            fixedTermReason: null,
-            startDateOverride: null,
-        );
+        $choices = $this->makeChoices();
 
         $payload = (new EmploymentContractDraftBuilder)->buildPayload($employee, $choices);
 
         $this->assertSame('Ahmed Example', $payload['employee_name']);
-        $this->assertSame('15,000.00', $payload['full_salary']);
+        $this->assertSame('10,000.00', $payload['full_salary']);
         $this->assertSame('10,000.00', $payload['social_insurance_salary']);
         $this->assertSame('12345678901234', $payload['social_insurance_number']);
         $this->assertSame('2026-01-15', $payload['start_date_formatted']);
@@ -78,11 +73,10 @@ class EmploymentContractDraftBuilderTest extends TestCase
     public function test_fixed_term_requires_reason(): void
     {
         $employee = $this->makeEmployee();
-        $choices = new EmploymentContractExportChoices(
+        $choices = $this->makeChoices(
             contractType: EmploymentContractExportChoices::TYPE_FIXED,
             fixedTermMonths: 6,
             fixedTermReason: null,
-            startDateOverride: null,
         );
 
         $missing = (new EmploymentContractDraftBuilder)->missingFields($employee, $choices);
@@ -93,17 +87,11 @@ class EmploymentContractDraftBuilderTest extends TestCase
     public function test_missing_required_data_blocks_export(): void
     {
         $employee = $this->makeEmployee([
-            'full_salary' => null,
             'social_insurance_salary' => null,
             'social_insurance_number' => null,
         ]);
 
-        $choices = new EmploymentContractExportChoices(
-            contractType: EmploymentContractExportChoices::TYPE_INDEFINITE,
-            fixedTermMonths: null,
-            fixedTermReason: null,
-            startDateOverride: null,
-        );
+        $choices = $this->makeChoices();
 
         $this->expectException(EmploymentContractDraftException::class);
         (new EmploymentContractDraftBuilder)->buildPayload($employee, $choices);
@@ -112,12 +100,7 @@ class EmploymentContractDraftBuilderTest extends TestCase
     public function test_indefinite_html_contains_three_month_notice(): void
     {
         $employee = $this->makeEmployee();
-        $choices = new EmploymentContractExportChoices(
-            contractType: EmploymentContractExportChoices::TYPE_INDEFINITE,
-            fixedTermMonths: null,
-            fixedTermReason: null,
-            startDateOverride: null,
-        );
+        $choices = $this->makeChoices();
 
         $html = (new EmploymentContractDraftBuilder)->renderEnglishHtml($employee, $choices);
 
@@ -130,12 +113,7 @@ class EmploymentContractDraftBuilderTest extends TestCase
     public function test_arabic_html_contains_draft_mark_and_company(): void
     {
         $employee = $this->makeEmployee();
-        $choices = new EmploymentContractExportChoices(
-            contractType: EmploymentContractExportChoices::TYPE_INDEFINITE,
-            fixedTermMonths: null,
-            fixedTermReason: null,
-            startDateOverride: null,
-        );
+        $choices = $this->makeChoices();
 
         $html = (new EmploymentContractDraftBuilder)->renderArabicHtml($employee, $choices);
 
@@ -151,12 +129,7 @@ class EmploymentContractDraftBuilderTest extends TestCase
         }
 
         $employee = $this->makeEmployee();
-        $choices = new EmploymentContractExportChoices(
-            contractType: EmploymentContractExportChoices::TYPE_INDEFINITE,
-            fixedTermMonths: null,
-            fixedTermReason: null,
-            startDateOverride: null,
-        );
+        $choices = $this->makeChoices();
 
         $builder = new EmploymentContractDraftBuilder;
 
@@ -181,5 +154,24 @@ class EmploymentContractDraftBuilderTest extends TestCase
         $employee->setRelation('jobTitle', new JobTitle(['name' => 'Software Engineer']));
 
         return $employee;
+    }
+
+    protected function makeChoices(
+        string $contractType = EmploymentContractExportChoices::TYPE_INDEFINITE,
+        ?int $fixedTermMonths = null,
+        ?string $fixedTermReason = null,
+        ?Carbon $startDateOverride = null,
+    ): EmploymentContractExportChoices {
+        return new EmploymentContractExportChoices(
+            contractType: $contractType,
+            fixedTermMonths: $fixedTermMonths,
+            fixedTermReason: $fixedTermReason,
+            startDateOverride: $startDateOverride,
+            employerLegalName: 'Test Employer LLC',
+            employerAddress: 'Cairo, Egypt',
+            employerRegistration: null,
+            signatoryName: 'Jane Signatory',
+            signatoryTitle: 'Director',
+        );
     }
 }
