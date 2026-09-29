@@ -23,4 +23,4 @@ class ListNotifications extends ListRecords
                 ->requiresConfirmation(),
         ];
     }
-} 
+}

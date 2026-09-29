@@ -27,7 +27,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Country.php": "0b0844beadc1912a2247ac07367e846a09532a6a87091d8829b69acb6d72ebc8",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/DraftMail.php": "8c55ffcf1c5eeede8bdcbddad49744c74936868f167790519b3d056e4535a04c",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Drug.php": "8ff3a19de561090728b2f370b64b78025ca59ab5e37ab11b88095c2902b0646d",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Employee.php": "094f527069a3edcf5b5dac2694c2a068f6db3c1cdf84b631f5ab9e134e8cfde7",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Employee.php": "31b0bc901690a85cb5c7b9e18c7abdd6b74ced75834f365563571d85c3661b45",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/File.php": "3fe78edb713a9f4e32c7f811d44690c9f81faa75dc8c495925619ba5397f1b9e",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/FileAssignment.php": "0c8a67c9c25c96cdc5c8b7a674de9ce2c33c5ba685c6232a940765014180700b",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/FileFee.php": "5a4e88f2f7f891d9d4888adcfd2c58eb90dacdc78036564404d7446a3a6a160d",
@@ -197,7 +197,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/CountryPolicy.php": "b141517b770d3aafb88a1c6b8a4eb6a01addcde8ee9b674ee5802dbf984555f4",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/DraftMailPolicy.php": "cd9358cd689bd9e11151cbcd9fac2e2e42ceffb6144c094188d38b8bf347acec",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/DrugPolicy.php": "efe08e12376daa692829915d8c09b6ac678d05bc8416431ab5a88222a2f3a8db",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/EmployeePolicy.php": "aec5619640aad4cce676bc794487a2b9f68f400c86920937a32faed7bc745959",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/EmployeePolicy.php": "c4fe6e60f2f52ac2d6647e8f6fe2533ede8ad65063b85d2b8d824a1c0635ef46",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/FileFeePolicy.php": "7634a7ce7f1d51585a1b5a12bd374d02a8f60a08d329f5ea80beeba6e931e399",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/FilePolicy.php": "6f72a0d3374ad8e1e6dcd7f5e676f31a8a4c49e3fece358be6f1f0b3950345d5",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Policies\/GopPolicy.php": "1fd6a739dc460ba2fe3a45c142eeabd1036ec7b830451c618fff2e9094c980b0",
@@ -461,5 +461,9 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/offer.php": "07c4ef80af67613c77d00b164ad7918cf4d4e9bfc0bed883baec5521f82dde66",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_02_120000_set_null_on_delete_for_legacy_transaction_foreign_keys.php": "06d5eab1ccbb1c70f6ea469ec74260e6f76f9a5a451695fa306e93dc982e699d",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_09_140000_change_not_sent_invoices_to_unpaid.php": "bb3cc4615f2a8706b280fb4582f3586c89fa6e89606015be6b6edbba11d17e02",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Services\/PdfFpdiCompatibilityService.php": "0b347391dd5039de7dd894bb5aa932c77be0bb814be85f35a5d0c76acdc25932"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Services\/PdfFpdiCompatibilityService.php": "0b347391dd5039de7dd894bb5aa932c77be0bb814be85f35a5d0c76acdc25932",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_29_100000_add_contract_salary_columns_to_employees_table.php": "d7ff7fb1eb1e87e714b122f02129a642703951e6fd6cae99f024b94b63defc05",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/hr.php": "0de58622a7b40b938ece326086a369c1f6d46716480e68f5c47faedc1d17ab8d",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/employment-contract-ar.blade.php": "2fb49a6223f0492538a05ba7874c5fce8acb946cd95b67fd75b0ebff62de5935",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/employment-contract-en.blade.php": "9d777126bba2444b658342f591ab18e5169b34fc22c34f04acd7717a43e99987"
 }

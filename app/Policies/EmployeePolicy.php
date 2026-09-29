@@ -36,4 +36,9 @@ class EmployeePolicy
     {
         return $user->roles?->contains('name', 'admin') ?? false;
     }
+
+    public function generateContract(User $user, Employee $employee): bool
+    {
+        return $user->roles?->contains('name', 'admin') ?? false;
+    }
 }

@@ -16,4 +16,4 @@ class EditNotification extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
-} 
+}
