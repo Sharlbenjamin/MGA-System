@@ -117,6 +117,7 @@ class EmploymentContractDraftBuilder
             'signatory_title' => $choices->signatoryTitle,
             'logo_path' => $logoPath,
             'review_notices' => $this->reviewNotices($employee, $choices),
+            'review_notices_ar' => $this->reviewNoticesAr($employee, $choices),
         ];
 
         if ($choices->isFixedTerm()) {
@@ -229,6 +230,29 @@ class EmploymentContractDraftBuilder
         }
 
         $notices[] = 'This document is a draft only. Obtain review by an Egyptian employment lawyer before first use. Prepare four Arabic originals and required filings per Egyptian labour and social insurance law.';
+
+        return $notices;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function reviewNoticesAr(Employee $employee, EmploymentContractExportChoices $choices): array
+    {
+        $notices = [];
+
+        if (blank($choices->employerRegistration)) {
+            $notices[] = 'لم يُذكر رقم تسجيل صاحب العمل في هذا التصدير. يُرجى التحقق من الكيان القانوني والتسجيل المصري (إن وجد) وملف اشتراك المنشأة لدى التأمينات مع المستشار القانوني قبل الاستخدام.';
+        }
+
+        $notices[] = 'لم يَتحقق النظام من مطابقة الأجر للحد الأدنى للأجور في مصر. راجع أجر التأمين الاجتماعي المستخدم في هذا العقد.';
+
+        if ($this->positiveAmount($employee->full_salary)
+            && (float) $employee->full_salary !== (float) $employee->social_insurance_salary) {
+            $notices[] = 'الراتب الكامل المسجل للموظف يختلف عن أجر التأمين المستخدم في هذا العقد. يُرجى مراجعة المبالغ مع المستشار ومسؤول الرواتب.';
+        }
+
+        $notices[] = 'هذه الوثيقة مسودة فقط. يجب مراجعتها من محامٍ مصري متخصص في العمل قبل أول استخدام، وإعداد أربع نسخ عربية أصلية والإيداعات المطلوبة وفق قانون العمل والتأمينات.';
 
         return $notices;
     }
