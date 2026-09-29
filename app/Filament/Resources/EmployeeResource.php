@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Pages\EmploymentContractDraft;
 use App\Filament\Resources\EmployeeResource\Pages;
 use App\Filament\Resources\EmployeeResource\RelationManagers\SalaryRelationManager;
 use App\Filament\Resources\EmployeeResource\RelationManagers\ShiftScheduleRelationManager;
 use App\Models\Employee;
-use App\Models\JobTitle;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -19,9 +19,13 @@ class EmployeeResource extends Resource
     protected static ?string $model = Employee::class;
 
     protected static ?string $navigationGroup = 'HR';
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
     protected static ?string $modelLabel = 'Employee';
+
     protected static ?string $pluralModelLabel = 'Employees';
 
     public static function shouldRegisterNavigation(): bool
@@ -84,6 +88,16 @@ class EmployeeResource extends Resource
                             ->minValue(0)
                             ->default(0)
                             ->required(),
+                        Forms\Components\TextInput::make('full_salary')
+                            ->label('Full salary (contract wage)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->nullable(),
+                        Forms\Components\TextInput::make('social_insurance_salary')
+                            ->label('Social insurance salary')
+                            ->numeric()
+                            ->minValue(0)
+                            ->nullable(),
                         Forms\Components\Select::make('bank_account_id')
                             ->relationship('bankAccount', 'beneficiary_name')
                             ->searchable()
@@ -134,6 +148,11 @@ class EmployeeResource extends Resource
                     ->options(['active' => 'Active', 'inactive' => 'Inactive']),
             ])
             ->actions([
+                Tables\Actions\Action::make('draftContract')
+                    ->label('Draft contract')
+                    ->icon('heroicon-o-document-text')
+                    ->url(fn (Employee $record): string => EmploymentContractDraft::getUrl().'?employee='.$record->id)
+                    ->visible(fn (Employee $record): bool => Auth::user()?->can('generateContract', $record) ?? false),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

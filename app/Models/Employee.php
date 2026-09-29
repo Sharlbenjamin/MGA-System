@@ -21,6 +21,8 @@ class Employee extends Model
         'national_id',
         'phone',
         'basic_salary',
+        'full_salary',
+        'social_insurance_salary',
         'start_date',
         'signed_contract_path',
         'signed_contract',
@@ -37,6 +39,8 @@ class Employee extends Model
             'start_date' => 'date',
             'signed_contract' => 'boolean',
             'basic_salary' => 'decimal:2',
+            'full_salary' => 'decimal:2',
+            'social_insurance_salary' => 'decimal:2',
         ];
     }
 
