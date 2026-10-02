@@ -71,7 +71,10 @@ class Lead extends Model
     public function scopeExcludingRejectedClients(Builder $query): Builder
     {
         return $query->whereHas('client', function (Builder $clientQuery) {
-            $clientQuery->whereRaw('LOWER(clients.status) != ?', ['rejected']);
+            $clientQuery->whereRaw(
+                'LOWER(clients.status) NOT IN (?, ?, ?, ?)',
+                ['rejected', 'active', 'black list', 'blacklist'],
+            );
         });
     }
 

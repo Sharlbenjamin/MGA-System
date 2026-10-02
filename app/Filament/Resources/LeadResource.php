@@ -226,6 +226,8 @@ class LeadResource extends Resource
                         'Sent' => 'success',
                         'Rejected' => 'gray',
                         'Active' => 'success',
+                        'Black list' => 'danger',
+                        'Blacklist' => 'danger',
                         'On Hold' => 'gray',
                         'Broker' => 'success',
                         'No Reply' => 'danger',
@@ -334,6 +336,40 @@ class LeadResource extends Resource
                         }
 
                         return $query->excludingRejectedClients();
+                    }),
+                SelectFilter::make('follow_up')
+                    ->label('Follow-up')
+                    ->options([
+                        'overdue' => 'Past due',
+                        'due_today' => 'Due today',
+                        'remaining' => 'Days remaining',
+                        'no_date' => 'No contact date',
+                    ])
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $selected = array_values(array_filter((array) ($data['values'] ?? [])));
+
+                        if ($selected === []) {
+                            return $query;
+                        }
+
+                        $dueOn = Carbon::today()->subWeek()->toDateString();
+
+                        return $query->where(function (Builder $query) use ($selected, $dueOn): void {
+                            foreach ($selected as $value) {
+                                $query->orWhere(function (Builder $query) use ($value, $dueOn): void {
+                                    if ($value === 'overdue') {
+                                        $query->whereDate('leads.last_contact_date', '<', $dueOn);
+                                    } elseif ($value === 'due_today') {
+                                        $query->whereDate('leads.last_contact_date', '=', $dueOn);
+                                    } elseif ($value === 'remaining') {
+                                        $query->whereDate('leads.last_contact_date', '>', $dueOn);
+                                    } elseif ($value === 'no_date') {
+                                        $query->whereNull('leads.last_contact_date');
+                                    }
+                                });
+                            }
+                        });
                     }),
                 Filter::make('needs_action')
                     ->label('Needs Action')
@@ -503,6 +539,7 @@ class LeadResource extends Resource
             'Sent' => 'Sent',
             'Rejected' => 'Rejected',
             'Active' => 'Active',
+            'Black list' => 'Black list',
             'On Hold' => 'On Hold',
             'Broker' => 'Broker',
             'No Reply' => 'No Reply',

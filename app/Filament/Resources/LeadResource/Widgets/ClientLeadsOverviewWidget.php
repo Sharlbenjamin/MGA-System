@@ -12,7 +12,7 @@ class ClientLeadsOverviewWidget extends BaseWidget
 {
     protected ?string $heading = 'Client leads';
 
-    protected ?string $description = 'Rejected clients stay hidden until you filter for that status.';
+    protected ?string $description = 'Rejected, Black list, and Active clients stay hidden until you filter for that status.';
 
     protected function getColumns(): int
     {
@@ -25,7 +25,7 @@ class ClientLeadsOverviewWidget extends BaseWidget
         $actionStatuses = ['Introduction', 'Reminder', 'Presentation', 'Price List', 'Contract'];
 
         return [
-            $this->pipelineStat('Leads', (clone $visibleLeads)->count(), 'Excludes rejected clients'),
+            $this->pipelineStat('Leads', (clone $visibleLeads)->count(), 'Excludes rejected, black list, and active clients'),
             $this->leadStat(
                 'Needs Action',
                 (clone $visibleLeads)->whereIn('leads.status', $actionStatuses)->count(),
