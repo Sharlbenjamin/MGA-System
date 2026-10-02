@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Mail\TailoredMailable;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -51,6 +52,55 @@ class Lead extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Leads whose client is still in the outreach pipeline.
+     * Active, On Hold, and Rejected clients are handled elsewhere.
+     */
+    public function scopeInClientPipeline(Builder $query): Builder
+    {
+        return $query->whereHas('client', function (Builder $clientQuery) {
+            $clientQuery->whereRaw(
+                'LOWER(clients.status) NOT IN (?, ?, ?)',
+                ['active', 'on hold', 'rejected'],
+            );
+        });
+    }
+
+    public function scopeExcludingRejectedClients(Builder $query): Builder
+    {
+        return $query->whereHas('client', function (Builder $clientQuery) {
+            $clientQuery->whereRaw('LOWER(clients.status) != ?', ['rejected']);
+        });
+    }
+
+    /**
+     * @param  array<int, string>  $statuses
+     */
+    public function scopeForClientStatuses(Builder $query, array $statuses): Builder
+    {
+        $normalized = [];
+
+        foreach ($statuses as $status) {
+            $status = strtolower(trim((string) $status));
+
+            if ($status !== '') {
+                $normalized[] = $status;
+            }
+        }
+
+        $normalized = array_values(array_unique($normalized));
+
+        if ($normalized === []) {
+            return $query;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($normalized), '?'));
+
+        return $query->whereHas('client', function (Builder $clientQuery) use ($normalized, $placeholders) {
+            $clientQuery->whereRaw('LOWER(clients.status) IN ('.$placeholders.')', $normalized);
+        });
     }
 
     public function interactions()

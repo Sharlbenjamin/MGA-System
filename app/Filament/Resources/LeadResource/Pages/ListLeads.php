@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LeadResource\Pages;
 
 use App\Filament\Resources\LeadResource;
+use App\Filament\Resources\LeadResource\Widgets\ClientLeadsOverviewWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -17,6 +18,13 @@ class ListLeads extends ListRecords
             Actions\Action::make('Send Email')
             ->action(fn ($record) => $this->sendEmailToLead($record))
             ->requiresConfirmation(),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            ClientLeadsOverviewWidget::class,
         ];
     }
 }

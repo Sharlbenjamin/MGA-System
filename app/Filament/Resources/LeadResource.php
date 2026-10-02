@@ -32,10 +32,13 @@ use Illuminate\Support\Facades\Config;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class LeadResource extends Resource
 {
+    public const DEFAULT_CLIENT_STATUS = 'Interested';
+
     protected static ?string $model = Lead::class;
     protected static ?string $navigationGroup = 'CRM';
     protected static ?int $navigationSort = 2;
@@ -55,13 +58,21 @@ class LeadResource extends Resource
                         Toggle::make('create_new_client')
                             ->label('Create New Client')
                             ->default(false)
-                            ->reactive()
-                            ->afterStateUpdated(function (Set $set) {
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, ?bool $state) {
                                 $set('client_id', null);
                                 $set('new_client_company_name', null);
+                                $set('new_client_initials', null);
+
+                                if ($state) {
+                                    $set('new_client_type', 'Assistance');
+                                    $set('new_client_status', self::DEFAULT_CLIENT_STATUS);
+
+                                    return;
+                                }
+
                                 $set('new_client_type', null);
                                 $set('new_client_status', null);
-                                $set('new_client_initials', null);
                             }),
 
                         // Existing Client Selection
@@ -80,7 +91,11 @@ class LeadResource extends Resource
                                     ->label('Company Name')
                                     ->required(fn (Get $get) => $get('create_new_client'))
                                     ->visible(fn (Get $get) => $get('create_new_client'))
-                                    ->unique('clients', 'company_name', ignoreRecord: true),
+                                    ->unique('clients', 'company_name', ignoreRecord: true)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (Set $set, ?string $state) {
+                                        $set('new_client_initials', self::initialsFromCompanyName($state));
+                                    }),
 
                                 Select::make('new_client_type')
                                     ->label('Client Type')
@@ -89,6 +104,7 @@ class LeadResource extends Resource
                                         'Insurance' => 'Insurance',
                                         'Agency' => 'Agency',
                                     ])
+                                    ->default('Assistance')
                                     ->required(fn (Get $get) => $get('create_new_client'))
                                     ->visible(fn (Get $get) => $get('create_new_client')),
                             ])
@@ -109,6 +125,7 @@ class LeadResource extends Resource
                                         'Broker' => 'Broker',
                                         'No Reply' => 'No Reply',
                                     ])
+                                    ->default(self::DEFAULT_CLIENT_STATUS)
                                     ->required(fn (Get $get) => $get('create_new_client'))
                                     ->visible(fn (Get $get) => $get('create_new_client')),
 
@@ -118,43 +135,6 @@ class LeadResource extends Resource
                                     ->required(fn (Get $get) => $get('create_new_client'))
                                     ->visible(fn (Get $get) => $get('create_new_client')),
                             ])
-                            ->visible(fn (Get $get) => $get('create_new_client')),
-
-                        Grid::make(2)
-                            ->schema([
-                                TextInput::make('new_client_email')
-                                    ->label('Client Email')
-                                    ->email()
-                                    ->unique('clients', 'email', ignoreRecord: true)
-                                    ->visible(fn (Get $get) => $get('create_new_client'))
-                                    ->reactive()
-                                    ->afterStateUpdated(function (Set $set, Get $get) {
-                                        $email = $get('new_client_email');
-                                        if ($email) {
-                                            $exists = Client::where('email', $email)->exists();
-                                            if ($exists) {
-                                                $set('new_client_email', null);
-                                                Notification::make()
-                                                    ->title('Email Already Exists')
-                                                    ->body('This email is already registered with another client.')
-                                                    ->danger()
-                                                    ->send();
-                                            }
-                                        }
-                                    }),
-
-                                TextInput::make('new_client_phone')
-                                    ->label('Client Phone')
-                                    ->tel()
-                                    ->visible(fn (Get $get) => $get('create_new_client')),
-                            ])
-                            ->visible(fn (Get $get) => $get('create_new_client')),
-
-                        TextInput::make('new_client_number_requests')
-                            ->label('Number of Requests')
-                            ->numeric()
-                            ->default(0)
-                            ->minValue(0)
                             ->visible(fn (Get $get) => $get('create_new_client')),
                     ])
                     ->collapsible(),
@@ -202,6 +182,7 @@ class LeadResource extends Resource
                         Select::make('status')
                             ->label('Status')
                             ->options($leadStatuses)
+                            ->default('Introduction')
                             ->required()
                             ->preload()
                             ->searchable(),
@@ -224,16 +205,36 @@ class LeadResource extends Resource
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
-        ->query(Lead::query()->whereHas('client', function ($query) {$query->whereNotIn('status', ['Active', 'On Hold', 'Rejected']);}))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('client'))
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderByRaw('leads.last_contact_date IS NULL')
+                ->orderBy('leads.last_contact_date'))
             ->columns([
                 TextColumn::make('client.company_name')
+                    ->label('Client')
                     ->sortable()
                     ->searchable()
                     ->url(fn (Lead $record): ?string => $record->client ? ClientResource::getUrl('overview', ['record' => $record->client]) : null),
+                TextColumn::make('client.status')
+                    ->label('Client Status')
+                    ->badge()
+                    ->sortable()
+                    ->searchable()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'Searching' => 'danger',
+                        'Interested' => 'warning',
+                        'Sent' => 'success',
+                        'Rejected' => 'gray',
+                        'Active' => 'success',
+                        'On Hold' => 'gray',
+                        'Broker' => 'success',
+                        'No Reply' => 'danger',
+                        default => 'gray',
+                    }),
                 TextColumn::make('email')->sortable()->searchable(),
                 TextColumn::make('first_name')->sortable()->searchable(),
                 TextColumn::make('contact_method')->sortable()->searchable(),
-                TextColumn::make('status')->badge()->sortable()->color(fn (string $state): string => match ($state) {
+                TextColumn::make('status')->label('Lead Status')->badge()->sortable()->color(fn (string $state): string => match ($state) {
                     'Introduction' => 'warning',
                         'Introduction Sent' => 'info',
                         'Reminder' => 'warning',
@@ -250,14 +251,98 @@ class LeadResource extends Resource
                         'Rejected' => 'gray',
                         default => 'gray',
             }),
-                TextColumn::make('last_contact_date')->date()->sortable()->searchable(),
+                TextColumn::make('last_contact_date')
+                    ->label('Follow-up')
+                    ->badge()
+                    ->sortable()
+                    ->formatStateUsing(fn ($state): string => self::followUpCountdownLabel($state))
+                    ->color(fn ($state): string => self::followUpCountdownColor($state)),
             ])
             ->actions([
+                Action::make('viewClient')
+                    ->label('View Client')
+                    ->icon('heroicon-o-users')
+                    ->color('success')
+                    ->url(function (Lead $record): ?string {
+                        if ($record->client === null) {
+                            return null;
+                        }
+
+                        return ClientResource::getUrl('overview', ['record' => $record->client]);
+                    })
+                    ->visible(fn (Lead $record): bool => $record->client !== null),
+                Action::make('editLead')
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('gray')
+                    ->modalHeading('Edit lead')
+                    ->modalSubmitActionLabel('Save')
+                    ->modalWidth('2xl')
+                    ->authorize(fn (Lead $record): bool => auth()->user()?->can('update', $record) ?? false)
+                    ->fillForm(fn (Lead $record): array => [
+                        'client_id' => $record->client_id,
+                        'first_name' => $record->first_name,
+                        'email' => $record->email,
+                        'phone' => $record->phone,
+                        'linked_in' => $record->linked_in,
+                        'status' => $record->status,
+                        'contact_method' => $record->contact_method,
+                        'last_contact_date' => $record->last_contact_date?->toDateString(),
+                    ])
+                    ->form(fn (Lead $record): array => self::editableLeadForm($record))
+                    ->action(function (Lead $record, array $data): void {
+                        $record->update($data);
+
+                        Notification::make()
+                            ->title('Lead updated')
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('Send Email')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->action(fn ($record) => self::sendEmails($record))->color('success'),
             ]) ->filters([
-                SelectFilter::make('client_id')->label('Client Status')->options(Client::query()->distinct()->orderBy('status')->pluck('status', 'id')->unique()->toArray())->searchable()->preload()->multiple(),
-                Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
-                SelectFilter::make('status')->multiple()->options($leadStatuses)->label('Filter by Status')->attribute('status'),
+                SelectFilter::make('client')
+                    ->label('Client')
+                    ->relationship(
+                        'client',
+                        'company_name',
+                        fn (Builder $query) => $query->whereHas('leads')->orderBy('company_name'),
+                    )
+                    ->searchable()
+                    ->multiple()
+                    ->native(false),
+                SelectFilter::make('client_status')
+                    ->label('Client Status')
+                    ->options(self::clientStatusOptions())
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->query(function (Builder $query, array $data, $livewire): Builder {
+                        $selected = array_values(array_filter(
+                            (array) ($data['values'] ?? []),
+                            fn ($status) => filled($status),
+                        ));
+
+                        if ($selected !== []) {
+                            return $query->forClientStatuses($selected);
+                        }
+
+                        $selectedClients = array_filter((array) data_get($livewire, 'tableFilters.client.values', []));
+
+                        if ($selectedClients !== []) {
+                            return $query;
+                        }
+
+                        return $query->excludingRejectedClients();
+                    }),
+                Filter::make('needs_action')
+                    ->label('Needs Action')
+                    ->query(fn (Builder $query): Builder => $query->whereIn('leads.status', $ActionStatuses)),
+                SelectFilter::make('status')
+                    ->multiple()
+                    ->options($leadStatuses)
+                    ->label('Lead Status')
+                    ->attribute('leads.status'),
             ])->bulkActions([
                 BulkAction::make('Send Bulk Emails')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->action(fn ($records) => self::sendEmails($records))->deselectRecordsAfterCompletion()->color('success'),
                     BulkAction::make('updateStatus')
@@ -291,6 +376,160 @@ class LeadResource extends Resource
                 ->modalButton('Send')
                 ->icon('heroicon-o-paper-airplane'),
         ]);
+    }
+
+    /**
+     * @return array<int, \Filament\Forms\Components\Component>
+     */
+    public static function editableLeadForm(Lead $record): array
+    {
+        $methods = ['Email' => 'Email', 'Phone' => 'Phone', 'Linked In' => 'Linked In', 'Other' => 'Other'];
+        $leadStatuses = \App\Filament\Resources\DraftMailResource::getAvailableStatuses('Client');
+
+        return [
+            Select::make('client_id')
+                ->label('Client')
+                ->options(fn (): array => Client::query()->orderBy('company_name')->pluck('company_name', 'id')->all())
+                ->searchable()
+                ->preload()
+                ->required(),
+            Grid::make(2)
+                ->schema([
+                    TextInput::make('first_name')
+                        ->label('First Name')
+                        ->required(),
+                    TextInput::make('email')
+                        ->label('Email')
+                        ->email()
+                        ->required()
+                        ->unique('leads', 'email', ignorable: $record),
+                    TextInput::make('phone')
+                        ->label('Phone')
+                        ->tel(),
+                    TextInput::make('linked_in')
+                        ->label('LinkedIn Profile'),
+                    Select::make('status')
+                        ->label('Status')
+                        ->options($leadStatuses)
+                        ->required()
+                        ->preload()
+                        ->searchable(),
+                    Select::make('contact_method')
+                        ->label('Contact Method')
+                        ->options($methods)
+                        ->preload()
+                        ->searchable(),
+                    DatePicker::make('last_contact_date')
+                        ->label('Last Contact Date'),
+                ]),
+        ];
+    }
+
+    public static function followUpDaysRemaining(mixed $lastContactDate): ?int
+    {
+        if (blank($lastContactDate)) {
+            return null;
+        }
+
+        $dueDate = Carbon::parse($lastContactDate)->startOfDay()->addWeek();
+
+        return (int) round(Carbon::today()->diffInDays($dueDate, false));
+    }
+
+    public static function followUpCountdownLabel(mixed $lastContactDate): string
+    {
+        $days = self::followUpDaysRemaining($lastContactDate);
+
+        if ($days === null) {
+            return 'No contact date';
+        }
+
+        if ($days === 0) {
+            return 'Due today';
+        }
+
+        if ($days > 0) {
+            return $days === 1 ? '1 day remaining' : "{$days} days remaining";
+        }
+
+        $past = abs($days);
+
+        return $past === 1 ? '1 day past' : "{$past} days past";
+    }
+
+    public static function followUpCountdownColor(mixed $lastContactDate): string
+    {
+        $days = self::followUpDaysRemaining($lastContactDate);
+
+        if ($days === null) {
+            return 'gray';
+        }
+
+        if ($days < 0) {
+            return 'danger';
+        }
+
+        if ($days <= 2) {
+            return 'warning';
+        }
+
+        return 'success';
+    }
+
+    public static function initialsFromCompanyName(?string $name): string
+    {
+        $words = preg_split('/\s+/', trim((string) $name)) ?: [];
+        $letters = [];
+
+        foreach ($words as $word) {
+            if (preg_match('/\p{L}|\p{N}/u', $word, $match) !== 1) {
+                continue;
+            }
+
+            $letters[] = mb_strtoupper($match[0]);
+        }
+
+        return mb_substr(implode('', $letters), 0, 10);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function clientStatusOptions(): array
+    {
+        $options = [
+            'Searching' => 'Searching',
+            'Interested' => 'Interested',
+            'Sent' => 'Sent',
+            'Rejected' => 'Rejected',
+            'Active' => 'Active',
+            'On Hold' => 'On Hold',
+            'Broker' => 'Broker',
+            'No Reply' => 'No Reply',
+        ];
+
+        $storedStatuses = Client::query()
+            ->whereNotNull('status')
+            ->distinct()
+            ->orderBy('status')
+            ->pluck('status');
+
+        foreach ($storedStatuses as $status) {
+            $status = trim((string) $status);
+
+            if ($status === '') {
+                continue;
+            }
+
+            $canonical = collect($options)->first(
+                fn (string $option): bool => strcasecmp($option, $status) === 0,
+            );
+
+            $label = $canonical ?? $status;
+            $options[$label] = $label;
+        }
+
+        return $options;
     }
 
     public static function getPages(): array

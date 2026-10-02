@@ -16,14 +16,19 @@ class CreateLead extends CreateRecord
     {
         // Handle new client creation
         if (isset($data['create_new_client']) && $data['create_new_client']) {
+            $companyName = (string) ($data['new_client_company_name'] ?? '');
+            $initials = trim((string) ($data['new_client_initials'] ?? ''));
+
+            if ($initials === '') {
+                $initials = LeadResource::initialsFromCompanyName($companyName);
+            }
+
             $client = Client::create([
-                'company_name' => $data['new_client_company_name'],
-                'type' => $data['new_client_type'],
-                'status' => $data['new_client_status'],
-                'initials' => $data['new_client_initials'],
-                'number_requests' => $data['new_client_number_requests'] ?? 0,
-                'email' => $data['new_client_email'] ?? null,
-                'phone' => $data['new_client_phone'] ?? null,
+                'company_name' => $companyName,
+                'type' => $data['new_client_type'] ?? 'Assistance',
+                'status' => $data['new_client_status'] ?? LeadResource::DEFAULT_CLIENT_STATUS,
+                'initials' => $initials,
+                'number_requests' => 0,
             ]);
 
             $data['client_id'] = $client->id;
@@ -34,9 +39,6 @@ class CreateLead extends CreateRecord
             unset($data['new_client_type']);
             unset($data['new_client_status']);
             unset($data['new_client_initials']);
-            unset($data['new_client_number_requests']);
-            unset($data['new_client_email']);
-            unset($data['new_client_phone']);
 
             Notification::make()
                 ->title('Client Created')
