@@ -27,7 +27,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Country.php": "0b0844beadc1912a2247ac07367e846a09532a6a87091d8829b69acb6d72ebc8",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/DraftMail.php": "8c55ffcf1c5eeede8bdcbddad49744c74936868f167790519b3d056e4535a04c",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Drug.php": "8ff3a19de561090728b2f370b64b78025ca59ab5e37ab11b88095c2902b0646d",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Employee.php": "31b0bc901690a85cb5c7b9e18c7abdd6b74ced75834f365563571d85c3661b45",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Employee.php": "c467c6b931d47dadb259742425c939c2bbb53088b7c9b5b843c5d3639f2d74cd",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/File.php": "3fe78edb713a9f4e32c7f811d44690c9f81faa75dc8c495925619ba5397f1b9e",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/FileAssignment.php": "0c8a67c9c25c96cdc5c8b7a674de9ce2c33c5ba685c6232a940765014180700b",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/FileFee.php": "5a4e88f2f7f891d9d4888adcfd2c58eb90dacdc78036564404d7446a3a6a160d",
@@ -465,5 +465,6 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_09_29_100000_add_contract_salary_columns_to_employees_table.php": "d7ff7fb1eb1e87e714b122f02129a642703951e6fd6cae99f024b94b63defc05",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/config\/hr.php": "5b9647c34c46227af05edb0d96f1d349573b3b88c7748d3b6e41d1a3a419b65a",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/employment-contract-ar.blade.php": "5e46e84bef6b1c6c17a5a3b65d5edd9fbb3bae95e8a084bcb62ff5c71e779d67",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/employment-contract-en.blade.php": "9d777126bba2444b658342f591ab18e5169b34fc22c34f04acd7717a43e99987"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/employment-contract-en.blade.php": "9d777126bba2444b658342f591ab18e5169b34fc22c34f04acd7717a43e99987",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_03_100000_add_application_fields_to_employees_table.php": "c70d357fc1181e46d6d4d16dd060b932be7f97d22dc9a87c250f0efcd6be4a4a"
 }
