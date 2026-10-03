@@ -29,6 +29,7 @@ class SalaryRelationManager extends RelationManager
                     ->minValue(0)
                     ->required(),
                 Forms\Components\TextInput::make('adjustments')
+                    ->label('Bonus')
                     ->numeric()
                     ->default(0),
                 Forms\Components\TextInput::make('deductions')
@@ -51,7 +52,7 @@ class SalaryRelationManager extends RelationManager
                     ->formatStateUsing(fn (int $state): string => now()->month($state)->format('F'))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('base_salary')->money()->sortable(),
-                Tables\Columns\TextColumn::make('adjustments')->money(),
+                Tables\Columns\TextColumn::make('adjustments')->label('Bonus')->money(),
                 Tables\Columns\TextColumn::make('deductions')->money(),
                 Tables\Columns\TextColumn::make('net_salary')->money()->sortable(),
                 Tables\Columns\IconColumn::make('is_locked')
