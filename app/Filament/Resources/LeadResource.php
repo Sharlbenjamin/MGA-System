@@ -253,6 +253,54 @@ class LeadResource extends Resource
                 TextColumn::make('last_contact_date')->date()->sortable()->searchable(),
             ])
             ->actions([
+                Action::make('editClientStatus')
+                    ->label('Client status')
+                    ->icon('heroicon-o-tag')
+                    ->color('info')
+                    ->modalHeading(fn (Lead $record): string => 'Client status: '.($record->client?->company_name ?? 'Unknown'))
+                    ->modalSubmitActionLabel('Save')
+                    ->visible(fn (Lead $record): bool => $record->client !== null)
+                    ->authorize(fn (Lead $record): bool => $record->client !== null && (auth()->user()?->can('update', $record->client) ?? false))
+                    ->fillForm(fn (Lead $record): array => [
+                        'status' => $record->client?->status,
+                    ])
+                    ->form([
+                        Select::make('status')
+                            ->label('Client status')
+                            ->options([
+                                'Searching' => 'Searching',
+                                'Interested' => 'Interested',
+                                'Sent' => 'Sent',
+                                'Rejected' => 'Rejected',
+                                'Active' => 'Active',
+                                'On Hold' => 'On Hold',
+                                'Closed' => 'Closed',
+                                'Broker' => 'Broker',
+                                'No Reply' => 'No Reply',
+                            ])
+                            ->required()
+                            ->searchable()
+                            ->preload(),
+                    ])
+                    ->action(function (Lead $record, array $data): void {
+                        $client = $record->client;
+
+                        if ($client === null) {
+                            Notification::make()
+                                ->title('Client not found')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $client->update(['status' => $data['status']]);
+
+                        Notification::make()
+                            ->title('Client status updated')
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('Send Email')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->action(fn ($record) => self::sendEmails($record))->color('success'),
             ]) ->filters([
                 SelectFilter::make('client_id')->label('Client Status')->options(Client::query()->distinct()->orderBy('status')->pluck('status', 'id')->unique()->toArray())->searchable()->preload()->multiple(),
