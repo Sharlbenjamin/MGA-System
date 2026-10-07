@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\LeadResource\Widgets;
 
 use App\Filament\Resources\LeadResource;
-use App\Models\Lead;
 use Carbon\Carbon;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -13,7 +12,7 @@ class ClientLeadsOverviewWidget extends BaseWidget
 {
     protected ?string $heading = 'Client leads';
 
-    protected ?string $description = 'Rejected, Black list, and Active clients stay hidden until you filter for that status.';
+    protected ?string $description = 'Error leads and On Hold, Rejected, Closed, and Black list clients stay out of this list.';
 
     protected function getColumns(): int
     {
@@ -22,11 +21,11 @@ class ClientLeadsOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $visibleLeads = Lead::query()->excludingRejectedClients();
+        $visibleLeads = LeadResource::getEloquentQuery();
         $actionStatuses = ['Introduction', 'Reminder', 'Presentation', 'Price List', 'Contract'];
 
         return [
-            $this->pipelineStat('Leads', (clone $visibleLeads)->count(), 'Excludes rejected, black list, and active clients'),
+            $this->pipelineStat('Leads', (clone $visibleLeads)->count(), 'Leads in this list'),
             $this->leadStat(
                 'Needs Action',
                 (clone $visibleLeads)->whereIn('leads.status', $actionStatuses)->count(),
@@ -61,14 +60,7 @@ class ClientLeadsOverviewWidget extends BaseWidget
 
     protected function pastDueLeads(): Builder
     {
-        return Lead::query()
-            ->whereRaw('LOWER(leads.status) != ?', ['error'])
-            ->whereHas('client', function (Builder $clientQuery): void {
-                $clientQuery->whereRaw(
-                    'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
-                    ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
-                );
-            })
+        return LeadResource::getEloquentQuery()
             ->whereDate('leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
     }
 
@@ -83,7 +75,7 @@ class ClientLeadsOverviewWidget extends BaseWidget
 
     protected function clientStatusStat(string $status, string $color, string $icon): Stat
     {
-        $query = Lead::query()->forClientStatuses([$status]);
+        $query = LeadResource::getEloquentQuery()->forClientStatuses([$status]);
         $leads = (clone $query)->count();
         $clients = $this->distinctClientCount(clone $query);
 

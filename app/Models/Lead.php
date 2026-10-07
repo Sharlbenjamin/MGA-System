@@ -68,6 +68,21 @@ class Lead extends Model
         });
     }
 
+    /**
+     * Client-leads list: hide Error leads and clients that are On Hold, Rejected, Closed, or Black list.
+     */
+    public function scopeInClientLeadList(Builder $query): Builder
+    {
+        return $query
+            ->whereRaw('LOWER(leads.status) != ?', ['error'])
+            ->whereHas('client', function (Builder $clientQuery): void {
+                $clientQuery->whereRaw(
+                    'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
+                    ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
+                );
+            });
+    }
+
     public function scopeExcludingRejectedClients(Builder $query): Builder
     {
         return $query->whereHas('client', function (Builder $clientQuery) {

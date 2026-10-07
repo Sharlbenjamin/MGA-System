@@ -42,6 +42,11 @@ class LeadResource extends Resource
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->inClientLeadList();
+    }
+
     public static function form(Forms\Form $form): Forms\Form
     {
         $methods = ['Email' => 'Email', 'Phone' => 'Phone', 'Linked In' => 'Linked In', 'Other' => 'Other',];
@@ -226,16 +231,6 @@ class LeadResource extends Resource
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
-            ->modifyQueryUsing(function (Builder $query): Builder {
-                return $query
-                    ->whereRaw('LOWER(leads.status) != ?', ['error'])
-                    ->whereHas('client', function (Builder $clientQuery): void {
-                        $clientQuery->whereRaw(
-                            'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
-                            ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
-                        );
-                    });
-            })
             ->columns([
                 TextColumn::make('client.company_name')
                     ->sortable()
@@ -314,7 +309,30 @@ class LeadResource extends Resource
                     }),
                 Action::make('Send Email')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->action(fn ($record) => self::sendEmails($record))->color('success'),
             ]) ->filters([
-                SelectFilter::make('client_id')->label('Client Status')->options(Client::query()->distinct()->orderBy('status')->pluck('status', 'id')->unique()->toArray())->searchable()->preload()->multiple(),
+                SelectFilter::make('client_status')
+                    ->label('Client Status')
+                    ->options([
+                        'Searching' => 'Searching',
+                        'Interested' => 'Interested',
+                        'Sent' => 'Sent',
+                        'Active' => 'Active',
+                        'Broker' => 'Broker',
+                        'No Reply' => 'No Reply',
+                    ])
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $selected = array_values(array_filter((array) ($data['values'] ?? [])));
+
+                        if ($selected === []) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('client', function (Builder $clientQuery) use ($selected): void {
+                            $clientQuery->whereIn('clients.status', $selected);
+                        });
+                    }),
                 Filter::make('past_due')
                     ->label('Past due')
                     ->query(function (Builder $query): Builder {
