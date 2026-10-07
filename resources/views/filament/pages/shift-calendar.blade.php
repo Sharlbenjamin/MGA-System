@@ -58,18 +58,20 @@
 
         {{-- Calendar grid --}}
         <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 overflow-hidden">
+            @php
+                $days = $this->getCalendarDays();
+            @endphp
             <div class="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
-                @foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $day)
+                @foreach (array_slice($days, 0, 7) as $headerDay)
                     <div class="border-r border-gray-200 bg-gray-50 px-2 py-2 text-center text-xs font-semibold uppercase text-gray-500 last:border-r-0 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-                        {{ $day }}
+                        {{ $headerDay['date']->format('D') }}
+                        @if ($viewMode === 'week')
+                            <span class="mt-0.5 block normal-case tracking-normal">{{ $headerDay['date']->format('d/m') }}</span>
+                        @endif
                     </div>
                 @endforeach
             </div>
             <div class="grid grid-cols-7 auto-rows-fr" style="min-height: 480px;">
-                @php
-                    $days = $this->getCalendarDays();
-                    $firstDayOfWeek = $days[0]['date']->dayOfWeek ?? 0;
-                @endphp
                 @foreach ($days as $day)
                     <div
                         class="group relative border-b border-r border-gray-200 p-2 dark:border-gray-700 {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-800/50' : '' }} {{ $day['isToday'] ? 'ring-1 ring-inset ring-primary-500 dark:ring-primary-400' : '' }}"
