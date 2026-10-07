@@ -205,23 +205,18 @@ class LeadResource extends Resource
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
-<<<<<<< HEAD
-            ->modifyQueryUsing(fn (Builder $query) => $query->with('client'))
+            ->modifyQueryUsing(fn (Builder $query) => $query
+                ->with('client')
+                ->whereRaw('LOWER(leads.status) != ?', ['error'])
+                ->whereHas('client', function ($query) {
+                    $query->whereRaw(
+                        'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
+                        ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
+                    );
+                }))
             ->defaultSort(fn (Builder $query): Builder => $query
                 ->orderByRaw('leads.last_contact_date IS NULL')
                 ->orderBy('leads.last_contact_date'))
-=======
-            ->query(
-                Lead::query()
-                    ->whereRaw('LOWER(leads.status) != ?', ['error'])
-                    ->whereHas('client', function ($query) {
-                        $query->whereRaw(
-                            'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
-                            ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
-                        );
-                    })
-            )
->>>>>>> staging
             ->columns([
                 TextColumn::make('client.company_name')
                     ->label('Client')
