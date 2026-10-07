@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ClientLeadsOverviewWidget extends BaseWidget
 {
+    protected static string $view = 'filament.widgets.client-leads-overview';
+
     protected ?string $heading = 'Client leads';
 
     protected ?string $description = 'Error leads and On Hold, Rejected, Closed, and Black list clients stay out of this list.';
