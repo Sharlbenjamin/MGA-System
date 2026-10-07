@@ -4,10 +4,7 @@ namespace App\Filament\Resources\LeadResource\Widgets;
 
 use App\Filament\Resources\LeadResource;
 use App\Models\Lead;
-<<<<<<< HEAD
-=======
 use Carbon\Carbon;
->>>>>>> staging
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
@@ -44,14 +41,6 @@ class ClientLeadsOverviewWidget extends BaseWidget
             $this->clientStatusStat('No Reply', 'danger', 'heroicon-m-no-symbol'),
             $this->clientStatusStat('Broker', 'info', 'heroicon-m-building-office'),
             $this->leadStat(
-<<<<<<< HEAD
-                'Errors',
-                (clone $visibleLeads)->where('leads.status', 'Error')->count(),
-                'Leads marked Error',
-                'danger',
-                'heroicon-m-exclamation-triangle',
-                ['status' => ['values' => ['Error']]],
-=======
                 'Follow up',
                 $this->pastDueCount(),
                 'Last contact more than a week ago',
@@ -61,13 +50,10 @@ class ClientLeadsOverviewWidget extends BaseWidget
                     'past_due' => ['isActive' => true],
                     'follow_up' => ['values' => ['overdue']],
                 ],
->>>>>>> staging
             ),
         ];
     }
 
-<<<<<<< HEAD
-=======
     protected function pastDueCount(): int
     {
         return $this->pastDueLeads()->count();
@@ -86,7 +72,6 @@ class ClientLeadsOverviewWidget extends BaseWidget
             ->whereDate('leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
     }
 
->>>>>>> staging
     protected function pipelineStat(string $label, int $count, string $description): Stat
     {
         return Stat::make($label, $count)
