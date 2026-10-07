@@ -266,21 +266,21 @@ class ShiftCalendar extends Page implements HasForms
         if ($this->viewMode === 'month') {
             return $date->format('F Y');
         }
-        $start = $date->copy()->startOfWeek();
-        $end = $date->copy()->endOfWeek();
+        $start = $this->startOfWeek($date);
+        $end = $this->endOfWeek($date);
 
-        return $start->format('M j') . ' – ' . $end->format('M j, Y');
+        return $start->format('d/m/Y') . ' – ' . $end->format('d/m/Y');
     }
 
     public function getCalendarDays(): array
     {
         $date = Carbon::parse($this->currentDate);
         if ($this->viewMode === 'month') {
-            $start = $date->copy()->startOfMonth()->startOfWeek();
-            $end = $date->copy()->endOfMonth()->endOfWeek();
+            $start = $this->startOfWeek($date->copy()->startOfMonth());
+            $end = $this->endOfWeek($date->copy()->endOfMonth());
         } else {
-            $start = $date->copy()->startOfWeek();
-            $end = $date->copy()->endOfWeek();
+            $start = $this->startOfWeek($date);
+            $end = $this->endOfWeek($date);
         }
 
         $schedules = ShiftSchedule::query()
@@ -311,5 +311,15 @@ class ShiftCalendar extends Page implements HasForms
     {
         ShiftSchedule::query()->where('id', $id)->delete();
         Notification::make()->title('Shift assignment removed.')->success()->send();
+    }
+
+    private function startOfWeek(Carbon $date): Carbon
+    {
+        return $date->copy()->startOfWeek(Carbon::MONDAY);
+    }
+
+    private function endOfWeek(Carbon $date): Carbon
+    {
+        return $date->copy()->endOfWeek(Carbon::SUNDAY);
     }
 }

@@ -224,7 +224,16 @@ class LeadResource extends Resource
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
-        ->query(Lead::query()->whereHas('client', function ($query) {$query->whereNotIn('status', ['Active', 'On Hold', 'Rejected']);}))
+            ->query(
+                Lead::query()
+                    ->whereRaw('LOWER(leads.status) != ?', ['error'])
+                    ->whereHas('client', function ($query) {
+                        $query->whereRaw(
+                            'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
+                            ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
+                        );
+                    })
+            )
             ->columns([
                 TextColumn::make('client.company_name')
                     ->sortable()
