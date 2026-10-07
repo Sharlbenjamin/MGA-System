@@ -202,6 +202,7 @@ class LeadResource extends Resource
     public static function table(Tables\Table $table): Tables\Table
     {
         $leadStatuses = \App\Filament\Resources\DraftMailResource::getAvailableStatuses('Client');
+        unset($leadStatuses['Error'], $leadStatuses['error']);
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
