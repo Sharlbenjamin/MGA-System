@@ -232,10 +232,18 @@ class LeadsRelationManager extends RelationManager
                 // Send the email
                 Mail::to($record->email)->send(new CustomLeadEmail($record, $draftMail, $user));
 
-                // Update the lead's status and last_contact_date
+                // The fourth reminder in a row becomes No Reply instead of the draft's next status.
                 $record->update([
-                    'status' => $draftMail->new_status,
+                    'status' => $record->statusAfterOutgoingEmail($draftMail->new_status),
                     'last_contact_date' => now()->toDateString(),
+                ]);
+
+                $record->interactions()->create([
+                    'lead_id' => $record->id,
+                    'user_id' => Auth::id(),
+                    'method' => 'Email',
+                    'status' => $record->status,
+                    'interaction_date' => now(),
                 ]);
 
                 Log::info("Email successfully sent to: {$record->email}");

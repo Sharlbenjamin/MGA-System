@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\LeadResource\Widgets;
 
 use App\Filament\Resources\LeadResource;
-use App\Models\Lead;
 use Carbon\Carbon;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -13,43 +12,50 @@ class ClientLeadsOverviewWidget extends BaseWidget
 {
     protected ?string $heading = 'Client leads';
 
-    protected ?string $description = 'Rejected, Black list, and Active clients stay hidden until you filter for that status.';
+    protected ?string $description = 'Rejected, Black list, Active, and On Hold clients stay hidden until you filter for that status.';
 
     protected function getColumns(): int
     {
-        return 4;
+        return 5;
     }
 
     protected function getStats(): array
     {
-        $visibleLeads = Lead::query()->excludingRejectedClients();
+        $crmLeads = LeadResource::crmLeadsQuery();
         $actionStatuses = ['Introduction', 'Reminder', 'Presentation', 'Price List', 'Contract'];
+        $interestedPastDue = (clone $crmLeads)
+            ->forClientStatuses(['Interested'])
+            ->whereDate('leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
 
         return [
-            $this->pipelineStat('Leads', (clone $visibleLeads)->count(), 'Excludes rejected, black list, and active clients'),
+            $this->pipelineStat('Leads', (clone $crmLeads)->count(), 'Client leads'),
             $this->leadStat(
                 'Needs Action',
-                (clone $visibleLeads)->whereIn('leads.status', $actionStatuses)->count(),
+                (clone $crmLeads)->whereIn('leads.status', $actionStatuses)->count(),
                 'Still need a follow-up',
                 'warning',
                 'heroicon-m-bolt',
                 ['needs_action' => ['isActive' => true]],
             ),
             $this->clientStatusStat('Searching', 'danger', 'heroicon-m-magnifying-glass'),
-            $this->clientStatusStat('Interested', 'warning', 'heroicon-m-hand-raised'),
-            $this->clientStatusStat('Sent', 'success', 'heroicon-m-paper-airplane'),
-            $this->clientStatusStat('No Reply', 'danger', 'heroicon-m-no-symbol'),
-            $this->clientStatusStat('Broker', 'info', 'heroicon-m-building-office'),
+            $this->leadStat(
+                'Interested',
+                (clone $interestedPastDue)->count(),
+                $this->clientCountLabel(clone $interestedPastDue).', past due',
+                'warning',
+                'heroicon-m-hand-raised',
+                [
+                    'client_status' => ['values' => ['Interested']],
+                    'past_due' => ['isActive' => true],
+                ],
+            ),
             $this->leadStat(
                 'Follow up',
                 $this->pastDueCount(),
-                'Last contact more than a week ago',
+                'Past due',
                 'danger',
                 'heroicon-m-clock',
-                [
-                    'past_due' => ['isActive' => true],
-                    'follow_up' => ['values' => ['overdue']],
-                ],
+                ['past_due' => ['isActive' => true]],
             ),
         ];
     }
@@ -61,14 +67,7 @@ class ClientLeadsOverviewWidget extends BaseWidget
 
     protected function pastDueLeads(): Builder
     {
-        return Lead::query()
-            ->whereRaw('LOWER(leads.status) != ?', ['error'])
-            ->whereHas('client', function (Builder $clientQuery): void {
-                $clientQuery->whereRaw(
-                    'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
-                    ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
-                );
-            })
+        return LeadResource::crmLeadsQuery()
             ->whereDate('leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
     }
 
@@ -83,7 +82,7 @@ class ClientLeadsOverviewWidget extends BaseWidget
 
     protected function clientStatusStat(string $status, string $color, string $icon): Stat
     {
-        $query = Lead::query()->forClientStatuses([$status]);
+        $query = LeadResource::crmLeadsQuery()->forClientStatuses([$status]);
         $leads = (clone $query)->count();
         $clients = $this->distinctClientCount(clone $query);
 
@@ -117,5 +116,12 @@ class ClientLeadsOverviewWidget extends BaseWidget
     protected function distinctClientCount(Builder $query): int
     {
         return (int) $query->distinct()->count('leads.client_id');
+    }
+
+    protected function clientCountLabel(Builder $query): string
+    {
+        $clients = $this->distinctClientCount($query);
+
+        return $clients.' '.($clients === 1 ? 'client' : 'clients');
     }
 }

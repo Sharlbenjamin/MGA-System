@@ -68,6 +68,29 @@ class Lead extends Model
         });
     }
 
+    /**
+     * Client statuses kept out of the client-leads list until that status is filtered.
+     */
+    public function scopeHiddenFromCrmUntilFiltered(Builder $query): Builder
+    {
+        return $query->whereHas('client', function (Builder $clientQuery): void {
+            $clientQuery->whereRaw(
+                'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
+                ['rejected', 'black list', 'blacklist', 'active', 'on hold'],
+            );
+        });
+    }
+
+    /**
+     * $CRM_Leads: not Error, and the client is not Rejected, Black list, Active, or On Hold.
+     */
+    public function scopeInClientLeadList(Builder $query): Builder
+    {
+        return $query
+            ->whereRaw('LOWER(leads.status) != ?', ['error'])
+            ->hiddenFromCrmUntilFiltered();
+    }
+
     public function scopeExcludingRejectedClients(Builder $query): Builder
     {
         return $query->whereHas('client', function (Builder $clientQuery) {
@@ -116,6 +139,41 @@ class Lead extends Model
         return $this->morphMany(Task::class, 'taskable');
     }
 
+    public function isReminderEmailStatus(?string $status): bool
+    {
+        return str_contains(strtolower((string) $status), 'reminder');
+    }
+
+    public function consecutiveReminderEmailsSent(): int
+    {
+        $count = 0;
+
+        $interactions = $this->interactions()
+            ->where('method', 'Email')
+            ->orderByDesc('interaction_date')
+            ->orderByDesc('id')
+            ->get(['status']);
+
+        foreach ($interactions as $interaction) {
+            if (! $this->isReminderEmailStatus($interaction->status)) {
+                break;
+            }
+
+            $count++;
+        }
+
+        return $count;
+    }
+
+    public function statusAfterOutgoingEmail(string $intendedStatus): string
+    {
+        if ($this->isReminderEmailStatus($this->status) && $this->consecutiveReminderEmailsSent() >= 3) {
+            return 'No Reply';
+        }
+
+        return $intendedStatus;
+    }
+
     public static function sendTailoredMail(array $cc, string $subject, string $body)
     {
         Mail::cc($cc)->send(new TailoredMailable($subject, $body));
@@ -126,13 +184,19 @@ class Lead extends Model
     public static function boot()
     {
         parent::boot();
-        static::updated(function ($lead) {
-            // if lead status is Error or Missing Information
-            if($lead->client->leads->where('status', 'Error')->count() > 0) {
-                $lead->client->update([
-                    'status' => 'Searching'
-                ]);
+
+        static::saved(function (Lead $lead): void {
+            $lead->client?->syncStatusFromLeads();
+
+            $previousClientId = $lead->getOriginal('client_id');
+
+            if ($previousClientId && (int) $previousClientId !== (int) $lead->client_id) {
+                Client::query()->find($previousClientId)?->syncStatusFromLeads();
             }
+        });
+
+        static::deleted(function (Lead $lead): void {
+            Client::query()->find($lead->client_id)?->syncStatusFromLeads();
         });
     }
 }

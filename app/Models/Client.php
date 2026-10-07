@@ -104,6 +104,25 @@ class Client extends Model
         return $this->hasMany(Lead::class);
     }
 
+    /**
+     * Sent when any lead is past the Error / No Reply steps.
+     * Searching when the client has no leads, or only Error and No Reply leads.
+     */
+    public function syncStatusFromLeads(): void
+    {
+        $hasOutreachStep = $this->leads()
+            ->whereRaw('LOWER(leads.status) NOT IN (?, ?)', ['error', 'no reply'])
+            ->exists();
+
+        $status = $hasOutreachStep ? 'Sent' : 'Searching';
+
+        if ($this->status === $status) {
+            return;
+        }
+
+        $this->update(['status' => $status]);
+    }
+
     public function gopContact()
     {
         return $this->belongsTo(Contact::class, 'gop_contact_id');

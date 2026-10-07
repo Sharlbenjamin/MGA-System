@@ -44,6 +44,16 @@ class LeadResource extends Resource
     protected static ?int $navigationSort = 2;
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->whereRaw('LOWER(leads.status) != ?', ['error']);
+    }
+
+    public static function crmLeadsQuery(): Builder
+    {
+        return static::getEloquentQuery()->hiddenFromCrmUntilFiltered();
+    }
+
     public static function form(Forms\Form $form): Forms\Form
     {
         $methods = ['Email' => 'Email', 'Phone' => 'Phone', 'Linked In' => 'Linked In', 'Other' => 'Other',];
@@ -206,15 +216,7 @@ class LeadResource extends Resource
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query
-                ->with('client')
-                ->whereRaw('LOWER(leads.status) != ?', ['error'])
-                ->whereHas('client', function ($query) {
-                    $query->whereRaw(
-                        'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
-                        ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
-                    );
-                }))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('client'))
             ->defaultSort(fn (Builder $query): Builder => $query
                 ->orderByRaw('leads.last_contact_date IS NULL')
                 ->orderBy('leads.last_contact_date'))
@@ -392,7 +394,16 @@ class LeadResource extends Resource
                             return $query;
                         }
 
-                        return $query->excludingRejectedClients();
+                        return $query->hiddenFromCrmUntilFiltered();
+                    }),
+                Filter::make('past_due')
+                    ->label('Past due')
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (! ($data['isActive'] ?? false)) {
+                            return $query;
+                        }
+
+                        return $query->whereDate('leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
                     }),
                 SelectFilter::make('follow_up')
                     ->label('Follow-up')
@@ -676,9 +687,9 @@ class LeadResource extends Resource
                 // Send the email
                 Mail::to($record->email)->send(new CustomLeadEmail($record, $draftMail, $user));
     
-                // Update the lead's status and last_contact_date
+                // The fourth reminder in a row becomes No Reply instead of the draft's next status.
                 $record->update([
-                    'status' => $draftMail->new_status,
+                    'status' => $record->statusAfterOutgoingEmail($draftMail->new_status),
                     'last_contact_date' => now()->toDateString(),
                 ]);
                 $record->interactions()->create([
