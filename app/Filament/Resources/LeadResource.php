@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Config;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class LeadResource extends Resource
@@ -221,19 +222,20 @@ class LeadResource extends Resource
     public static function table(Tables\Table $table): Tables\Table
     {
         $leadStatuses = \App\Filament\Resources\DraftMailResource::getAvailableStatuses('Client');
+        unset($leadStatuses['Error'], $leadStatuses['error']);
         $ActionStatuses = ['Introduction','Reminder','Presentation','Price List','Contract',];
         
         return $table
-            ->query(
-                Lead::query()
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                return $query
                     ->whereRaw('LOWER(leads.status) != ?', ['error'])
-                    ->whereHas('client', function ($query) {
-                        $query->whereRaw(
+                    ->whereHas('client', function (Builder $clientQuery): void {
+                        $clientQuery->whereRaw(
                             'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
                             ['on hold', 'rejected', 'closed', 'black list', 'blacklist'],
                         );
-                    })
-            )
+                    });
+            })
             ->columns([
                 TextColumn::make('client.company_name')
                     ->sortable()
@@ -313,6 +315,11 @@ class LeadResource extends Resource
                 Action::make('Send Email')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->action(fn ($record) => self::sendEmails($record))->color('success'),
             ]) ->filters([
                 SelectFilter::make('client_id')->label('Client Status')->options(Client::query()->distinct()->orderBy('status')->pluck('status', 'id')->unique()->toArray())->searchable()->preload()->multiple(),
+                Filter::make('past_due')
+                    ->label('Past due')
+                    ->query(function (Builder $query): Builder {
+                        return $query->whereDate('leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
+                    }),
                 Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
                 SelectFilter::make('status')->multiple()->options($leadStatuses)->label('Filter by Status')->attribute('status'),
             ])->bulkActions([
