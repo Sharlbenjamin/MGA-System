@@ -461,5 +461,6 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/teams\/show.blade.php": "14838ef9beb71b1f80d83536dcf56c02192aadce9a5b0528657bf94cf05068e5",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/teams\/team-member-manager.blade.php": "49d92fe7be50735907992abe77df5379311b07c5bfee10ed8fc74ddb21cad2ae",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/teams\/update-team-name-form.blade.php": "6247075f737be81484822429ffb38d832105da830ba01576cb4d3bc45c0a7d1c",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_03_100000_add_application_fields_to_employees_table.php": "c70d357fc1181e46d6d4d16dd060b932be7f97d22dc9a87c250f0efcd6be4a4a"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_03_100000_add_application_fields_to_employees_table.php": "c70d357fc1181e46d6d4d16dd060b932be7f97d22dc9a87c250f0efcd6be4a4a",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/bill-extract.blade.php": "610bab38b2bea19d44dbb33513364b9e070598f8ad3a9a6ceb25a5c2040974b7"
 }
