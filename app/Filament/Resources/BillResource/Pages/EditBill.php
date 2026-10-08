@@ -8,6 +8,8 @@ use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\FileBillingWarnings;
 use App\Models\Transaction;
 use App\Services\PaidBillDraftOutflowService;
+use App\Support\BillExtractPdf;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -57,6 +59,18 @@ class EditBill extends EditRecord
                 ->label('View File')
                 ->url(FileResource::getUrl('view', ['record' => $this->record->file_id]))
                 ->icon('heroicon-o-document-text'),
+            Actions\Action::make('extract_bill')
+                ->label('Extract Bill')
+                ->icon('heroicon-o-document-arrow-down')
+                ->action(function () {
+                    $bill = $this->record;
+                    $pdf = Pdf::loadView('pdf.bill-extract', BillExtractPdf::data($bill));
+
+                    return response()->streamDownload(
+                        fn () => print($pdf->output()),
+                        BillExtractPdf::filename($bill),
+                    );
+                }),
             $this->payBillAction(),
             ...$this->viewTransactionActions(),
             Actions\DeleteAction::make(),
