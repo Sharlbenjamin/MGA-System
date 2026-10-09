@@ -251,18 +251,11 @@ class ListTransactions extends ListRecords
                         'year' => $data['year'],
                         'iva_percent' => $data['iva_percent'] ?? 21,
                         'nif_source' => $data['nif_source'] ?? 'country',
-<<<<<<< HEAD
-                        'bank_account_id' => $bankAccountId,
-                    ];
-=======
                     ];
 
                     if ($bankAccountId) {
                         $params['bank_account_id'] = $bankAccountId;
                     }
-
-                    $url = route('lawyer.export', $params);
->>>>>>> staging
 
                     if (($data['period'] ?? 'quarter') === 'month') {
                         $params['month'] = $data['month'];
