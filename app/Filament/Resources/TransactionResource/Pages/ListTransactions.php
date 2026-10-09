@@ -31,7 +31,7 @@ class ListTransactions extends ListRecords
 
     protected static string $resource = TransactionResource::class;
 
-    public BankAccount $bankAccount;
+    public ?BankAccount $bankAccount = null;
 
     public ?string $activeWidgetTypeScope = null;
 
@@ -71,23 +71,39 @@ class ListTransactions extends ListRecords
 
     public function getSubheading(): ?string
     {
+        if ($this->bankAccount === null) {
+            return 'Transactions from every bank account';
+        }
+
         return $this->bankAccount->beneficiary_name.($this->bankAccount->iban ? ' · '.$this->bankAccount->iban : '');
     }
 
     protected function getTableQuery(): ?Builder
     {
-        return parent::getTableQuery()
-            ->where('transactions.bank_account_id', $this->bankAccount->id);
+        $query = parent::getTableQuery();
+
+        if ($this->bankAccount !== null) {
+            $query->where('transactions.bank_account_id', $this->bankAccount->id);
+        }
+
+        return $query;
     }
 
     protected function getHeaderActions(): array
     {
-        $bankAccountId = $this->bankAccount->id;
+        $bankAccountId = $this->bankAccount?->id;
+
+        $actions = [
+            $this->makeNewTransactionAction(),
+        ];
+
+        if ($bankAccountId) {
+            $actions[] = ImportBankTransactionsAction::make($bankAccountId);
+            $actions[] = ImportBankTransactionsAction::downloadTemplateAction();
+        }
 
         return [
-            $this->makeNewTransactionAction(),
-            ImportBankTransactionsAction::make($bankAccountId),
-            ImportBankTransactionsAction::downloadTemplateAction(),
+            ...$actions,
             Actions\Action::make('bulkGeneratePdfs')
                 ->label('Bulk Generate PDFs')
                 ->icon('heroicon-o-document-plus')
@@ -235,8 +251,18 @@ class ListTransactions extends ListRecords
                         'year' => $data['year'],
                         'iva_percent' => $data['iva_percent'] ?? 21,
                         'nif_source' => $data['nif_source'] ?? 'country',
+<<<<<<< HEAD
                         'bank_account_id' => $bankAccountId,
                     ];
+=======
+                    ];
+
+                    if ($bankAccountId) {
+                        $params['bank_account_id'] = $bankAccountId;
+                    }
+
+                    $url = route('lawyer.export', $params);
+>>>>>>> staging
 
                     if (($data['period'] ?? 'quarter') === 'month') {
                         $params['month'] = $data['month'];
@@ -267,9 +293,15 @@ class ListTransactions extends ListRecords
             ->label('New transaction')
             ->icon('heroicon-o-plus')
             ->color('primary')
-            ->url(fn (): string => TransactionResource::getUrl('create', [
-                'bank_account_id' => $this->bankAccount->id,
-            ]));
+            ->url(function (): string {
+                $parameters = [];
+
+                if ($this->bankAccount !== null) {
+                    $parameters['bank_account_id'] = $this->bankAccount->id;
+                }
+
+                return TransactionResource::getUrl('create', $parameters);
+            });
     }
 
     protected function getTableEmptyStateActions(): array
@@ -292,7 +324,8 @@ class ListTransactions extends ListRecords
     public function getWidgetData(): array
     {
         return array_merge($this->getTableWidgetData(), [
-            'bankAccountId' => $this->bankAccount->id,
+            'bankAccountId' => $this->bankAccount?->id,
+            'scopeAllAccounts' => $this->bankAccount === null,
             'activeTypeScope' => $this->activeWidgetTypeScope,
             'activeStatus' => $this->activeWidgetStatus,
         ]);
