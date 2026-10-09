@@ -55,6 +55,17 @@ class TransactionResource extends Resource
         return false;
     }
 
+    public static function registerNavigationItems(): void
+    {
+        if (filled(static::getCluster()) || ! static::canAccess()) {
+            return;
+        }
+
+        Filament::getCurrentPanel()->navigationItems(
+            Pages\ListAllTransactions::getNavigationItems(),
+        );
+    }
+
     public static function indexUrlFor(BankAccount|int $bankAccount): string
     {
         $id = $bankAccount instanceof BankAccount ? $bankAccount->getKey() : $bankAccount;
@@ -176,10 +187,10 @@ class TransactionResource extends Resource
                 static::categorySelect(),
                 Forms\Components\Select::make('bank_account_id')
                     ->relationship('bankAccount', 'beneficiary_name', function ($query) {
-                        return $query->where('type', 'Internal');
+                        return $query->where('type', 'Internal')->orderBy('id');
                     })
                     ->required(fn (Get $get, ?Transaction $record): bool => ($get('status') ?? $record?->status) !== 'Draft')
-                    ->default(fn () => request()->get('bank_account_id')),
+                    ->default(fn () => request()->get('bank_account_id') ?: BankAccount::firstInternalId()),
 
                 // Display provider/branch bank account details for Outflow transactions
                 Forms\Components\Section::make('Provider Bank Account Details')
@@ -728,6 +739,42 @@ class TransactionResource extends Resource
                 Tables\Columns\TextColumn::make('date')
                     ->date()
                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('transactions.date', $direction)),
+                Tables\Columns\TextColumn::make('bankAccount.beneficiary_name')
+                    ->label('Bank account')
+                    ->placeholder('—')
+                    ->toggleable()
+                    ->visible(fn ($livewire): bool => $livewire instanceof Pages\ListAllTransactions)
+                    ->getStateUsing(function (Transaction $record): ?string {
+                        $account = $record->bankAccount;
+
+                        if (! $account) {
+                            return null;
+                        }
+
+                        return $account->iban
+                            ? $account->beneficiary_name.' · '.$account->iban
+                            : $account->beneficiary_name;
+                    })
+                    ->url(fn (Transaction $record): ?string => filled($record->bank_account_id)
+                        ? static::indexUrlFor((int) $record->bank_account_id)
+                        : null)
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('bankAccount', function (Builder $query) use ($search): void {
+                            $query->where('beneficiary_name', 'like', "%{$search}%")
+                                ->orWhere('iban', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable(query: function (Builder $query, string $direction): Builder {
+                        $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
+
+                        return $query->orderBy(
+                            BankAccount::query()
+                                ->select('beneficiary_name')
+                                ->whereColumn('bank_accounts.id', 'transactions.bank_account_id')
+                                ->limit(1),
+                            $direction,
+                        );
+                    }),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(
                         'transactions.name',
@@ -840,6 +887,19 @@ class TransactionResource extends Resource
                 ? 'bg-warning-50 dark:bg-warning-950/30'
                 : null)
             ->filters([
+                Tables\Filters\SelectFilter::make('bank_account_id')
+                    ->label('Bank account')
+                    ->relationship(
+                        'bankAccount',
+                        'beneficiary_name',
+                        fn (Builder $query) => $query->where('type', 'Internal')->orderBy('id'),
+                    )
+                    ->getOptionLabelFromRecordUsing(fn (BankAccount $record): string => $record->iban
+                        ? $record->beneficiary_name.' · '.$record->iban
+                        : (string) $record->beneficiary_name)
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn ($livewire): bool => $livewire instanceof Pages\ListAllTransactions),
                 Tables\Filters\SelectFilter::make('month')
                     ->label('Month')
                     ->placeholder('All months')
@@ -1150,6 +1210,7 @@ class TransactionResource extends Resource
     public static function getPages(): array
     {
         return [
+            'all' => Pages\ListAllTransactions::route('/all'),
             'index' => Pages\ListTransactions::route('/bank-account/{bankAccount}'),
             'create' => Pages\CreateTransaction::route('/create'),
             'edit' => Pages\EditTransaction::route('/{record}/edit'),

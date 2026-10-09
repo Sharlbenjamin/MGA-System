@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\TransactionResource\Pages\ListAllTransactions;
 use App\Filament\Resources\TransactionResource\Pages\ListTransactions;
 use App\Models\Transaction;
 use App\Services\TransactionDocumentationStatsService;
@@ -30,6 +31,9 @@ class TransactionDocumentationStatsWidget extends Widget
     public ?int $bankAccountId = null;
 
     #[Reactive]
+    public bool $scopeAllAccounts = false;
+
+    #[Reactive]
     public ?string $activeTypeScope = null;
 
     #[Reactive]
@@ -45,7 +49,9 @@ class TransactionDocumentationStatsWidget extends Widget
 
     protected function getTablePage(): string
     {
-        return ListTransactions::class;
+        return $this->scopeAllAccounts
+            ? ListAllTransactions::class
+            : ListTransactions::class;
     }
 
     /**
@@ -53,6 +59,10 @@ class TransactionDocumentationStatsWidget extends Widget
      */
     protected function getTablePageMountParameters(): array
     {
+        if ($this->scopeAllAccounts || $this->bankAccountId === null) {
+            return [];
+        }
+
         return [
             'bankAccountId' => $this->bankAccountId,
         ];
@@ -60,7 +70,11 @@ class TransactionDocumentationStatsWidget extends Widget
 
     public function getSummaryProperty(): ?array
     {
-        if (! Schema::hasColumn('transactions', 'documentation_status') || $this->bankAccountId === null) {
+        if (! Schema::hasColumn('transactions', 'documentation_status')) {
+            return null;
+        }
+
+        if (! $this->scopeAllAccounts && $this->bankAccountId === null) {
             return null;
         }
 
@@ -138,11 +152,18 @@ class TransactionDocumentationStatsWidget extends Widget
             typeScope: $typeScope,
             status: $status,
         )->to(ListTransactions::class);
+
+        $this->dispatch(
+            'apply-transaction-stat-filter',
+            typeScope: $typeScope,
+            status: $status,
+        )->to(ListAllTransactions::class);
     }
 
     public function clearStatFilter(): void
     {
         $this->dispatch('clear-transaction-stat-filter')->to(ListTransactions::class);
+        $this->dispatch('clear-transaction-stat-filter')->to(ListAllTransactions::class);
     }
 
     protected function getStatsQuery(): Builder
@@ -156,7 +177,11 @@ class TransactionDocumentationStatsWidget extends Widget
 
             return $page->getFilteredTableQuery();
         } catch (Throwable) {
-            return Transaction::query()->where('bank_account_id', $this->bankAccountId);
+            if ($this->bankAccountId !== null) {
+                return Transaction::query()->where('bank_account_id', $this->bankAccountId);
+            }
+
+            return Transaction::query();
         }
     }
 }
