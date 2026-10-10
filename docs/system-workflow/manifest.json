@@ -9,7 +9,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/BranchCity.php": "669e9aba68e43d12f1054f696c4d866d13851be51061fa4a284aa2990bbae33b",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/BranchService.php": "f1dda7f216fea9d6ca77ae49130ce7a006225ebeb74ec00dfea9bdc98b051b66",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/City.php": "407eb046e5ca71d83972b6a39470bcb2317c0a184a5ea98936a976b6e70d6e60",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Client.php": "b58e3b34186abe5d203d266d0227704599451f9fa8c58e37661e157efb655c20",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Client.php": "5f0d25e858848ccf074bfdf5beecc6439cb22d0628ecd6987126b9ee4d10c1cb",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Comment.php": "9e8c8bf91b0237197ee35246a9594fea2b01577f2243a7cf40b3e40493f05426",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/CommunicationAttachment.php": "694511a779b7b25f0baa10acb4f32151f6851db2a4e2c48a700cd1fe95bf18a1",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/CommunicationLog.php": "90748851aa11ae83a918a59ab2c47940003d571b98cfed4b168b186993824e77",
@@ -31,7 +31,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Invoice.php": "4ea630027d8f4c743611f0c858a2e0f3951988931c13d5f1559785a781c4b3d6",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/InvoiceItem.php": "0db2ba90f623f0345e72d6fcf057240434abf15da28d6ffbd70be5ef4a57838c",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/JobTitle.php": "498eaea3ebdce8c961d7a8f3099668b210fc1d969fdd60df63893e2c59d262f1",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Lead.php": "c0b32cb1684491e65170fe5f4b21512599ab71bc7a8fadefd44b9f2670c7abcb",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Lead.php": "5f0a80d558c9112c59dc6b4e65b09671d5afbf36e11f70567ea834ad01b29d41",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/MedicalReport.php": "cf07e9f2bee54c705b1fc5bd3a9125276f14249bdfc5d9cf187d8d8bf179f14e",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Patient.php": "d48d82779920e109ad805cba1a27b4158d8ea2142f2612a26e242b37f00a5d69",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Prescription.php": "b3eebde26f140e7e9a04d5c87f858357cc1414666bbb7e7d23966b8f1a8a6744",
@@ -462,5 +462,6 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/teams\/team-member-manager.blade.php": "49d92fe7be50735907992abe77df5379311b07c5bfee10ed8fc74ddb21cad2ae",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/teams\/update-team-name-form.blade.php": "6247075f737be81484822429ffb38d832105da830ba01576cb4d3bc45c0a7d1c",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_03_100000_add_application_fields_to_employees_table.php": "c70d357fc1181e46d6d4d16dd060b932be7f97d22dc9a87c250f0efcd6be4a4a",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/bill-extract.blade.php": "610bab38b2bea19d44dbb33513364b9e070598f8ad3a9a6ceb25a5c2040974b7"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/bill-extract.blade.php": "610bab38b2bea19d44dbb33513364b9e070598f8ad3a9a6ceb25a5c2040974b7",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_10_120000_change_clients_status_to_string.php": "61eca984243a197c304bf607e4e67c0e7613f78df2315bfb4d392ed5487504df"
 }

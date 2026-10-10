@@ -58,7 +58,7 @@ class LeadsRelationManager extends RelationManager
                     ->url(fn (Lead $record): string => LeadResource::getUrl('edit', ['record' => $record])),
                 TextColumn::make('first_name')->sortable()->searchable(),
                 TextColumn::make('contact_method')->sortable()->searchable(),
-                TextColumn::make('status')->badge()->sortable()->color(fn (string $state): string => match ($state) {
+                TextColumn::make('status')->badge()->sortable()->color(fn (?string $state): string => match ($state) {
                     'Introduction' => 'warning',
                         'Introduction Sent' => 'info',
                         'Reminder' => 'warning',
@@ -71,8 +71,10 @@ class LeadsRelationManager extends RelationManager
                         'Contract Sent' => 'info',
                         'Interested' => 'warning',
                         'Error' => 'danger',
+                        'No Reply' => 'danger',
                         'Partner' => 'success',
                         'Rejected' => 'gray',
+                        default => 'gray',
             }),
                 TextColumn::make('last_contact_date')->date()->sortable(),
             ])->bulkActions([

@@ -224,10 +224,11 @@ class ListClients extends ListRecords
                     ->searchable(),
                 TextColumn::make('type')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn (?string $state): string => match ($state) {
                         'Assistance' => 'success',
                         'Insurance' => 'warning',
                         'Agency' => 'info',
+                        default => 'gray',
                     }),
                 TextColumn::make('filesCount')
                     ->label('Total Files')
