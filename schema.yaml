@@ -2,7 +2,7 @@ models:
   Client:
     company_name: string
     type: enum:Assistance,Insurance,Agency
-    status: enum:Searching,Interested,Sent,Rejected,Active,On Hold
+    status: enum:Searching,Interested,Sent,Rejected,Active,On Hold,Closed,Broker,No Reply,Black list
     initials: string:10
     number_requests: integer
     relationships:

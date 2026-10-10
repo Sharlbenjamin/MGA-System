@@ -23,7 +23,18 @@ class ClientFactory extends Factory
         return [
             'company_name' => fake()->word(),
             'type' => fake()->randomElement(["Assistance","Insurance","Agency"]),
-            'status' => fake()->randomElement(["Searching","Interested","Sent","Rejected","Active","On"]),
+            'status' => fake()->randomElement([
+                'Searching',
+                'Interested',
+                'Sent',
+                'Rejected',
+                'Active',
+                'On Hold',
+                'Closed',
+                'Broker',
+                'No Reply',
+                'Black list',
+            ]),
             'initials' => fake()->regexify('[A-Za-z0-9]{10}'),
             'number_requests' => fake()->numberBetween(-10000, 10000),
         ];

@@ -124,17 +124,7 @@ class LeadResource extends Resource
                             ->schema([
                                 Select::make('new_client_status')
                                     ->label('Status')
-                                    ->options([
-                                        'Searching' => 'Searching',
-                                        'Interested' => 'Interested',
-                                        'Sent' => 'Sent',
-                                        'Rejected' => 'Rejected',
-                                        'Active' => 'Active',
-                                        'On Hold' => 'On Hold',
-                                        'Closed' => 'Closed',
-                                        'Broker' => 'Broker',
-                                        'No Reply' => 'No Reply',
-                                    ])
+                                    ->options(Client::statusOptions())
                                     ->default(self::DEFAULT_CLIENT_STATUS)
                                     ->required(fn (Get $get) => $get('create_new_client'))
                                     ->visible(fn (Get $get) => $get('create_new_client')),
@@ -231,17 +221,17 @@ class LeadResource extends Resource
                     ->badge()
                     ->sortable()
                     ->searchable()
-                    ->color(fn (?string $state): string => match ($state) {
-                        'Searching' => 'danger',
-                        'Interested' => 'warning',
-                        'Sent' => 'success',
-                        'Rejected' => 'gray',
-                        'Active' => 'success',
-                        'Black list' => 'danger',
-                        'Blacklist' => 'danger',
-                        'On Hold' => 'gray',
-                        'Broker' => 'success',
-                        'No Reply' => 'danger',
+                    ->color(fn (?string $state): string => match (Client::normalizeStatus($state)) {
+                        'searching' => 'danger',
+                        'interested' => 'warning',
+                        'sent' => 'success',
+                        'rejected' => 'gray',
+                        'active' => 'success',
+                        'black list' => 'danger',
+                        'on hold' => 'gray',
+                        'closed' => 'gray',
+                        'broker' => 'success',
+                        'no reply' => 'danger',
                         default => 'gray',
                     }),
                 TextColumn::make('email')->sortable()->searchable(),
@@ -325,17 +315,7 @@ class LeadResource extends Resource
                     ->form([
                         Select::make('status')
                             ->label('Client status')
-                            ->options([
-                                'Searching' => 'Searching',
-                                'Interested' => 'Interested',
-                                'Sent' => 'Sent',
-                                'Rejected' => 'Rejected',
-                                'Active' => 'Active',
-                                'On Hold' => 'On Hold',
-                                'Closed' => 'Closed',
-                                'Broker' => 'Broker',
-                                'No Reply' => 'No Reply',
-                            ])
+                            ->options(Client::statusOptions())
                             ->required()
                             ->searchable()
                             ->preload(),
@@ -601,17 +581,7 @@ class LeadResource extends Resource
      */
     public static function clientStatusOptions(): array
     {
-        $options = [
-            'Searching' => 'Searching',
-            'Interested' => 'Interested',
-            'Sent' => 'Sent',
-            'Rejected' => 'Rejected',
-            'Active' => 'Active',
-            'Black list' => 'Black list',
-            'On Hold' => 'On Hold',
-            'Broker' => 'Broker',
-            'No Reply' => 'No Reply',
-        ];
+        $options = Client::statusOptions();
 
         $storedStatuses = Client::query()
             ->whereNotNull('status')
