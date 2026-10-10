@@ -55,34 +55,29 @@ class Lead extends Model
     }
 
     /**
-     * Leads whose client is still in the outreach pipeline.
-     * Active, On Hold, and Rejected clients are handled elsewhere.
+     * Leads whose client is still in the outreach pipeline (Potential clients).
+     * Active and Inactive clients are handled elsewhere.
      */
     public function scopeInClientPipeline(Builder $query): Builder
     {
         return $query->whereHas('client', function (Builder $clientQuery) {
-            $clientQuery->whereRaw(
-                'LOWER(clients.status) NOT IN (?, ?, ?)',
-                ['active', 'on hold', 'rejected'],
-            );
+            $clientQuery->inStatusGroup(Client::STATUS_GROUP_POTENTIAL);
         });
     }
 
     /**
      * Client statuses kept out of the client-leads list until that status is filtered.
+     * Hides Active and Inactive groups; Potential clients remain visible by default.
      */
     public function scopeHiddenFromCrmUntilFiltered(Builder $query): Builder
     {
         return $query->whereHas('client', function (Builder $clientQuery): void {
-            $clientQuery->whereRaw(
-                'LOWER(clients.status) NOT IN (?, ?, ?, ?, ?)',
-                ['rejected', 'black list', 'blacklist', 'active', 'on hold'],
-            );
+            $clientQuery->inStatusGroup(Client::STATUS_GROUP_POTENTIAL);
         });
     }
 
     /**
-     * $CRM_Leads: not Error, and the client is not Rejected, Black list, Active, or On Hold.
+     * CRM leads: not Error, and the client is in the Potential group.
      */
     public function scopeInClientLeadList(Builder $query): Builder
     {
@@ -94,10 +89,13 @@ class Lead extends Model
     public function scopeExcludingRejectedClients(Builder $query): Builder
     {
         return $query->whereHas('client', function (Builder $clientQuery) {
-            $clientQuery->whereRaw(
-                'LOWER(clients.status) NOT IN (?, ?, ?, ?)',
-                ['rejected', 'active', 'black list', 'blacklist'],
+            $hidden = array_merge(
+                Client::normalizedStatusesForGroup(Client::STATUS_GROUP_ACTIVE),
+                Client::normalizedStatusesForGroup(Client::STATUS_GROUP_INACTIVE),
             );
+            $placeholders = implode(', ', array_fill(0, count($hidden), '?'));
+
+            $clientQuery->whereRaw('LOWER(clients.status) NOT IN ('.$placeholders.')', $hidden);
         });
     }
 

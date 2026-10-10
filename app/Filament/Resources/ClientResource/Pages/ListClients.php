@@ -30,25 +30,41 @@ class ListClients extends ListRecords
 {
     protected static string $resource = ClientResource::class;
 
-    public string $viewMode = 'active';
+    public string $viewMode = Client::STATUS_GROUP_ACTIVE;
 
     public function getTitle(): string
     {
-        return $this->viewMode === 'active'
-            ? 'Active Clients'
-            : 'Potential Clients';
+        return match ($this->viewMode) {
+            Client::STATUS_GROUP_INACTIVE => 'Inactive Clients',
+            Client::STATUS_GROUP_POTENTIAL => 'Potential Clients',
+            default => 'Active Clients',
+        };
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('toggleView')
-                ->label(fn () => $this->viewMode === 'active' ? 'Potential Clients' : 'Active Clients')
-                ->action(function () {
-                    $this->viewMode = $this->viewMode === 'active' ? 'crm' : 'active';
+            Actions\Action::make('viewActive')
+                ->label('Active Clients')
+                ->color(fn (): string => $this->viewMode === Client::STATUS_GROUP_ACTIVE ? 'success' : 'gray')
+                ->action(function (): void {
+                    $this->viewMode = Client::STATUS_GROUP_ACTIVE;
                     $this->resetTable();
-                })
-                ->color('success'),
+                }),
+            Actions\Action::make('viewInactive')
+                ->label('Inactive Clients')
+                ->color(fn (): string => $this->viewMode === Client::STATUS_GROUP_INACTIVE ? 'success' : 'gray')
+                ->action(function (): void {
+                    $this->viewMode = Client::STATUS_GROUP_INACTIVE;
+                    $this->resetTable();
+                }),
+            Actions\Action::make('viewPotential')
+                ->label('Potential Clients')
+                ->color(fn (): string => $this->viewMode === Client::STATUS_GROUP_POTENTIAL ? 'success' : 'gray')
+                ->action(function (): void {
+                    $this->viewMode = Client::STATUS_GROUP_POTENTIAL;
+                    $this->resetTable();
+                }),
             Actions\Action::make('resetSentInvoicesToUnpaid')
                 ->label('Sent > 30 Days to Unpaid')
                 ->icon('heroicon-o-arrow-path')
@@ -57,7 +73,7 @@ class ListClients extends ListRecords
                 ->modalHeading('Mark Old Sent Invoices as Unpaid')
                 ->modalDescription('This will change all invoices with status Sent and older than 30 days to Unpaid.')
                 ->modalSubmitActionLabel('Update Statuses')
-                ->hidden(fn (): bool => $this->viewMode !== 'active')
+                ->hidden(fn (): bool => $this->viewMode !== Client::STATUS_GROUP_ACTIVE)
                 ->action(function () {
                     $cutoffDate = now()->subDays(30)->startOfDay();
 
@@ -84,7 +100,7 @@ class ListClients extends ListRecords
                 ->label('Clients Outstandings')
                 ->icon('heroicon-o-document-currency-euro')
                 ->color('info')
-                ->hidden(fn (): bool => $this->viewMode !== 'active')
+                ->hidden(fn (): bool => $this->viewMode !== Client::STATUS_GROUP_ACTIVE)
                 ->modalHeading('Clients With Outstanding Invoices')
                 ->modalWidth('7xl')
                 ->modalSubmitAction(false)
@@ -96,7 +112,7 @@ class ListClients extends ListRecords
                 ->label('Export Active Clients')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->hidden(fn (): bool => $this->viewMode !== 'active')
+                ->hidden(fn (): bool => $this->viewMode !== Client::STATUS_GROUP_ACTIVE)
                 ->action(function () {
                     return Excel::download(
                         new ActiveClientsExport(),
@@ -216,24 +232,26 @@ class ListClients extends ListRecords
 
     public function table(Table $table): Table
     {
-        $statusOptions = [
-            'Searching' => 'Searching',
-            'Interested' => 'Interested',
-            'Sent' => 'Sent',
-            'Rejected' => 'Rejected',
-            'On Hold' => 'On Hold',
-            'Broker' => 'Broker',
-            'No Reply' => 'No Reply',
-            'Active' => 'Active',
-        ];
+        // Potential / Inactive: CRM-style columns (fine-grained status + lead activity)
+        if (in_array($this->viewMode, [Client::STATUS_GROUP_POTENTIAL, Client::STATUS_GROUP_INACTIVE], true)) {
+            $statusColor = fn (string $state): string => match (Client::normalizeStatus($state)) {
+                'searching' => 'danger',
+                'interested' => 'warning',
+                'sent' => 'success',
+                'rejected' => 'gray',
+                'on hold' => 'gray',
+                'closed' => 'gray',
+                'black list' => 'danger',
+                'broker' => 'success',
+                'no reply' => 'danger',
+                default => 'gray',
+            };
 
-        // Potential Clients View (shows non-active clients)
-        if ($this->viewMode === 'crm') {
             return $table
                 ->query(
                     ClientResource::getEloquentQuery()
                         ->with('country')
-                        ->whereRaw('LOWER(status) != ?', ['active'])
+                        ->inStatusGroup($this->viewMode)
                 )
                 ->columns([
                     TextColumn::make('company_name')->searchable()->sortable()->label('Client Name')->sortable(),
@@ -244,22 +262,13 @@ class ListClients extends ListRecords
                             'Insurance' => 'warning',
                             'Agency' => 'info',
                         }),
-                    TextColumn::make('status')->badge()->sortable()
-                        ->color(fn (string $state): string => match ($state) {
-                            'Searching' => 'danger',
-                            'Interested' => 'warning',
-                            'Sent' => 'success',
-                            'Rejected' => 'gray',
-                            'On Hold' => 'gray',
-                            'Broker' => 'success',
-                            'No Reply' => 'danger',
-                        }),
+                    TextColumn::make('status')->badge()->sortable()->color($statusColor),
                     TextColumn::make('leadsCount')->label('Leads')->sortable(),
                     TextColumn::make('leadsLastContactDate')->label('Last Contact')->date('d-m-Y')->sortable(),
                 ])->filters([
                     SelectFilter::make('status')
                         ->label('Status')
-                        ->options($statusOptions),
+                        ->options(Client::statusOptionsForGroup($this->viewMode)),
                 ])
                 ->defaultSort('company_name', 'asc');
         }
@@ -275,7 +284,7 @@ class ListClients extends ListRecords
                             ->join('patients', 'patients.id', '=', 'invoices.patient_id')
                             ->whereColumn('patients.client_id', 'clients.id'),
                     ])
-                    ->whereRaw('LOWER(status) = ?', ['active'])
+                    ->inStatusGroup(Client::STATUS_GROUP_ACTIVE)
             )
             ->columns([
                 TextColumn::make('company_name')

@@ -46,16 +46,7 @@ class ClientResource extends Resource
                         'Agency' => 'Agency',
                     ])->required()->default('Assistance'),
                 Select::make('status')
-                    ->options([
-                        'Searching' => 'Searching',
-                        'Interested' => 'Interested',
-                        'Sent' => 'Sent',
-                        'Rejected' => 'Rejected',
-                        'Active' => 'Active',
-                        'On Hold' => 'On Hold',
-                        'Broker' => 'Broker',
-                        'No Reply' => 'No Reply',
-                    ])
+                    ->options(Client::statusOptions())
                     ->required()->default('Searching'),
                 Select::make('country_id')
                     ->label('Country')
@@ -143,15 +134,18 @@ class ClientResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('address')->label('Client Address')->searchable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
-                ->badge()->color(fn (string $state): string => match ($state) {
-                        'Searching' => 'danger',
-                        'Interested' => 'warning',
-                        'Sent' => 'success',
-                        'Rejected' => 'gray',
-                        'Active' => 'success',
-                        'On Hold' => 'gray',
-                        'Broker' => 'success',
-                        'No Reply' => 'danger',
+                ->badge()->color(fn (string $state): string => match (Client::normalizeStatus($state)) {
+                        'searching' => 'danger',
+                        'interested' => 'warning',
+                        'sent' => 'success',
+                        'rejected' => 'gray',
+                        'active' => 'success',
+                        'on hold' => 'gray',
+                        'closed' => 'gray',
+                        'black list' => 'danger',
+                        'broker' => 'success',
+                        'no reply' => 'danger',
+                        default => 'gray',
                 }),
                 TextColumn::make('filesCount')->label('Files')->sortable()->counts('files'),
                 TextColumn::make('filesCancelledCount')->label('Canceled')->sortable(),
@@ -170,17 +164,7 @@ class ClientResource extends Resource
                     ->label('Country')
                     ->options(Country::pluck('name', 'id')),
                 SelectFilter::make('status')->multiple()
-                ->options([
-                        'Searching' => 'Searching',
-                        'Interested' => 'Interested',
-                        'Sent' => 'Sent',
-                        'Rejected' => 'Rejected',
-                        'Active' => 'Active',
-                        'On Hold' => 'On Hold',
-                        'Broker' => 'Broker',
-                        'No Reply' => 'No Reply',
-
-                ])
+                ->options(Client::statusOptions())
                 ->label('Filter by Status')->attribute('status')
             ])->actions([
                 Tables\Actions\Action::make('Overview')

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -27,6 +28,21 @@ class Client extends Model
     public const INVOICE_TEMPLATE_ITEMIZED = 'itemized';
 
     public const INVOICE_TEMPLATE_COMBINED = 'combined';
+
+    public const STATUS_GROUP_ACTIVE = 'active';
+
+    public const STATUS_GROUP_INACTIVE = 'inactive';
+
+    public const STATUS_GROUP_POTENTIAL = 'potential';
+
+    /** @var list<string> */
+    public const ACTIVE_STATUSES = ['Active'];
+
+    /** @var list<string> */
+    public const INACTIVE_STATUSES = ['Rejected', 'On Hold', 'Closed', 'Black list'];
+
+    /** @var list<string> */
+    public const POTENTIAL_STATUSES = ['Searching', 'Interested', 'Sent', 'Broker', 'No Reply'];
 
     protected $fillable = [
         'company_name',
@@ -105,11 +121,133 @@ class Client extends Model
     }
 
     /**
+     * @return array<string, string>
+     */
+    public static function statusOptions(): array
+    {
+        $options = [];
+
+        foreach ([...self::POTENTIAL_STATUSES, ...self::ACTIVE_STATUSES, ...self::INACTIVE_STATUSES] as $status) {
+            $options[$status] = $status;
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function statusOptionsForGroup(string $group): array
+    {
+        $options = [];
+
+        foreach (self::statusesForGroup($group) as $status) {
+            $options[$status] = $status;
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function statusesForGroup(string $group): array
+    {
+        return match ($group) {
+            self::STATUS_GROUP_ACTIVE => self::ACTIVE_STATUSES,
+            self::STATUS_GROUP_INACTIVE => self::INACTIVE_STATUSES,
+            self::STATUS_GROUP_POTENTIAL => self::POTENTIAL_STATUSES,
+            default => [],
+        };
+    }
+
+    public static function normalizeStatus(?string $status): string
+    {
+        $normalized = strtolower(trim((string) $status));
+
+        return match ($normalized) {
+            'black', 'blacklist', 'black list' => 'black list',
+            default => $normalized,
+        };
+    }
+
+    public static function statusGroup(?string $status): ?string
+    {
+        $normalized = self::normalizeStatus($status);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        foreach (self::ACTIVE_STATUSES as $activeStatus) {
+            if (self::normalizeStatus($activeStatus) === $normalized) {
+                return self::STATUS_GROUP_ACTIVE;
+            }
+        }
+
+        foreach (self::INACTIVE_STATUSES as $inactiveStatus) {
+            if (self::normalizeStatus($inactiveStatus) === $normalized) {
+                return self::STATUS_GROUP_INACTIVE;
+            }
+        }
+
+        foreach (self::POTENTIAL_STATUSES as $potentialStatus) {
+            if (self::normalizeStatus($potentialStatus) === $normalized) {
+                return self::STATUS_GROUP_POTENTIAL;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Lowercased status values used in SQL filters (includes Black-list aliases).
+     *
+     * @return list<string>
+     */
+    public static function normalizedStatusesForGroup(string $group): array
+    {
+        $normalized = array_map(
+            fn (string $status): string => self::normalizeStatus($status),
+            self::statusesForGroup($group),
+        );
+
+        if ($group === self::STATUS_GROUP_INACTIVE) {
+            $normalized = array_merge($normalized, ['blacklist', 'black']);
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    public function scopeInStatusGroup(Builder $query, string $group): Builder
+    {
+        $normalized = self::normalizedStatusesForGroup($group);
+
+        if ($normalized === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($normalized), '?'));
+
+        return $query->whereRaw('LOWER(clients.status) IN ('.$placeholders.')', $normalized);
+    }
+
+    public function isInStatusGroup(string $group): bool
+    {
+        return self::statusGroup($this->status) === $group;
+    }
+
+    /**
      * Sent when any lead is past the Error / No Reply steps.
      * Searching when the client has no leads, or only Error and No Reply leads.
+     * Only potential-pipeline clients are auto-synced; Active/Inactive stay fixed.
      */
     public function syncStatusFromLeads(): void
     {
+        if (! $this->isInStatusGroup(self::STATUS_GROUP_POTENTIAL)) {
+            return;
+        }
+
         $hasOutreachStep = $this->leads()
             ->whereRaw('LOWER(leads.status) NOT IN (?, ?)', ['error', 'no reply'])
             ->exists();
