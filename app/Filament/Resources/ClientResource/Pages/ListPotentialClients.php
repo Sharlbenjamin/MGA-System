@@ -33,19 +33,15 @@ class ListPotentialClients extends ListRecords
         return $table
             ->query(
                 ClientResource::getEloquentQuery()
-                    ->with(['country', 'leads'])
+                    ->with(['leads'])
                     ->withCount('leads')
                     ->inStatusGroup(Client::STATUS_GROUP_POTENTIAL)
             )
             ->columns([
                 TextColumn::make('company_name')
-                    ->label('Client (Project)')
+                    ->label('Client')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('country.name')
-                    ->label('Country')
-                    ->sortable()
-                    ->searchable(),
                 TextColumn::make('status')
                     ->badge()
                     ->sortable()
@@ -58,11 +54,22 @@ class ListPotentialClients extends ListRecords
                         default => 'gray',
                     }),
                 TextColumn::make('leads_count')
-                    ->label('Leads (Tasks)')
+                    ->label('Leads')
                     ->sortable(),
                 TextColumn::make('pipeline_progress')
                     ->label('Progress')
+                    ->badge()
                     ->state(fn (Client $record): string => $record->leadPipelineProgressPercent().'%')
+                    ->color(function (Client $record): string {
+                        $percent = $record->leadPipelineProgressPercent();
+
+                        return match (true) {
+                            $percent >= 100 => 'success',
+                            $percent >= 50 => 'info',
+                            $percent > 0 => 'warning',
+                            default => 'gray',
+                        };
+                    })
                     ->description(fn (Client $record): ?string => $record->mainLeadStatus())
                     ->sortable(query: function ($query, string $direction) {
                         $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
@@ -106,9 +113,9 @@ class ListPotentialClients extends ListRecords
                     ->label('LinkedIn')
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->color('info')
-                    ->url(fn (Client $record): ?string => $record->mainLead()?->linkedInUrl())
+                    ->url(fn (Client $record): ?string => $record->linkedInUrl())
                     ->openUrlInNewTab()
-                    ->visible(fn (Client $record): bool => filled($record->mainLead()?->linkedInUrl())),
+                    ->visible(fn (Client $record): bool => filled($record->linkedInUrl())),
                 Tables\Actions\Action::make('Overview')
                     ->url(fn (Client $record) => ClientResource::getUrl('overview', ['record' => $record]))
                     ->color('success'),

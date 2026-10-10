@@ -66,6 +66,11 @@ class ClientResource extends Resource
             Select::make('operation_contact_id')->label('Operation Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
             Select::make('financial_contact_id')->label('Financial Contact')->options(Contact::pluck('name', 'id'))->searchable()->nullable(),
                 TextInput::make('phone')->label('Phone')->tel()->nullable(),
+                TextInput::make('linkedin_url')
+                    ->label('LinkedIn')
+                    ->maxLength(255)
+                    ->nullable()
+                    ->helperText('The client company profile. Opens from Potential Clients.'),
                 TextInput::make('email')
                     ->label(fn (string $operation): string => $operation === 'edit' ? 'Financial Email' : 'Email')
                     ->email()

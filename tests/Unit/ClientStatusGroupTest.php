@@ -42,4 +42,17 @@ class ClientStatusGroupTest extends TestCase
         $this->assertArrayHasKey('Searching', $potential);
         $this->assertArrayNotHasKey('Rejected', $potential);
     }
+
+    public function test_linkedin_url_uses_the_client_profile(): void
+    {
+        $client = new Client(['linkedin_url' => 'linkedin.com/company/example']);
+
+        $this->assertSame('https://linkedin.com/company/example', $client->linkedInUrl());
+
+        $withScheme = new Client(['linkedin_url' => 'https://www.linkedin.com/company/example']);
+        $this->assertSame('https://www.linkedin.com/company/example', $withScheme->linkedInUrl());
+
+        $empty = new Client(['linkedin_url' => '']);
+        $this->assertNull($empty->linkedInUrl());
+    }
 }

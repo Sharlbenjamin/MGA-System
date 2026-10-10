@@ -56,6 +56,7 @@ class Client extends Model
         'operation_contact_id',
         'financial_contact_id',
         'phone',
+        'linkedin_url',
         'email',
         'operation_email',
         'invoice_cc_emails',
@@ -95,6 +96,21 @@ class Client extends Model
     public function getNameAttribute()
     {
         return $this->company_name;
+    }
+
+    public function linkedInUrl(): ?string
+    {
+        $value = trim((string) ($this->linkedin_url ?: ''));
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $value) === 1) {
+            return $value;
+        }
+
+        return 'https://'.$value;
     }
 
     /**
