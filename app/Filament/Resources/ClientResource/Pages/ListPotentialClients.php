@@ -110,6 +110,20 @@ class ListPotentialClients extends ListRecords
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(Client::statusOptionsForGroup(Client::STATUS_GROUP_POTENTIAL)),
+                Tables\Filters\TernaryFilter::make('linkedin_lead_search')
+                    ->label('Search for leads')
+                    ->placeholder('All clients')
+                    ->trueLabel('Search LinkedIn for leads')
+                    ->falseLabel('No LinkedIn profile')
+                    ->queries(
+                        true: fn ($query) => $query
+                            ->whereNotNull('clients.linkedin_url')
+                            ->where('clients.linkedin_url', '!=', ''),
+                        false: fn ($query) => $query->where(function ($query): void {
+                            $query->whereNull('clients.linkedin_url')
+                                ->orWhere('clients.linkedin_url', '');
+                        }),
+                    ),
             ])
             ->actions([
                 Tables\Actions\Action::make('linkedin')
