@@ -6,6 +6,9 @@ use App\Filament\Resources\ClientResource;
 use App\Filament\Resources\LeadResource;
 use App\Models\Client;
 use Filament\Actions;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -116,9 +119,40 @@ class ListPotentialClients extends ListRecords
                     ->url(fn (Client $record): ?string => $record->linkedInUrl())
                     ->openUrlInNewTab()
                     ->visible(fn (Client $record): bool => filled($record->linkedInUrl())),
-                Tables\Actions\Action::make('Overview')
-                    ->url(fn (Client $record) => ClientResource::getUrl('overview', ['record' => $record]))
-                    ->color('success'),
+                Tables\Actions\Action::make('editClient')
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('gray')
+                    ->modalHeading(fn (Client $record): string => 'Edit '.$record->company_name)
+                    ->modalSubmitActionLabel('Save')
+                    ->authorize(fn (Client $record): bool => auth()->user()?->can('update', $record) ?? false)
+                    ->fillForm(fn (Client $record): array => [
+                        'status' => $record->status,
+                        'linkedin_url' => $record->linkedin_url,
+                    ])
+                    ->form([
+                        Select::make('status')
+                            ->label('Status')
+                            ->options(Client::statusOptions())
+                            ->required()
+                            ->searchable()
+                            ->preload(),
+                        TextInput::make('linkedin_url')
+                            ->label('LinkedIn')
+                            ->maxLength(255)
+                            ->nullable(),
+                    ])
+                    ->action(function (Client $record, array $data): void {
+                        $record->update([
+                            'status' => $data['status'],
+                            'linkedin_url' => filled($data['linkedin_url'] ?? null) ? $data['linkedin_url'] : null,
+                        ]);
+
+                        Notification::make()
+                            ->title('Client updated')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->defaultSort('company_name', 'asc');
     }
