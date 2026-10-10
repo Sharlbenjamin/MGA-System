@@ -17,6 +17,26 @@ class Lead extends Model
     use HasFactory, LogsActivity;
 
     /**
+     * Ordered outreach steps for client-lead progress (task pipeline).
+     *
+     * @var list<string>
+     */
+    public const PIPELINE_STEPS = [
+        'Introduction',
+        'Introduction Sent',
+        'Reminder',
+        'Reminder Sent',
+        'Presentation',
+        'Presentation Sent',
+        'Price List',
+        'Price List Sent',
+        'Contract',
+        'Contract Sent',
+        'Interested',
+        'Partner',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array
@@ -47,6 +67,64 @@ class Lead extends Model
     {
         $client = $this->client?->company_name ?? 'Client #' . $this->client_id;
         return "Lead: " . ($this->first_name ?? $this->email ?? "#{$this->id}") . " ({$client})";
+    }
+
+    public static function pipelineStepIndex(?string $status): int
+    {
+        $normalized = strtolower(trim((string) $status));
+
+        if ($normalized === '') {
+            return -1;
+        }
+
+        foreach (self::PIPELINE_STEPS as $index => $step) {
+            if (strtolower($step) === $normalized) {
+                return $index;
+            }
+        }
+
+        return -1;
+    }
+
+    public function pipelineProgressPercent(): int
+    {
+        $index = self::pipelineStepIndex($this->status);
+
+        if ($index < 0) {
+            return 0;
+        }
+
+        $last = count(self::PIPELINE_STEPS) - 1;
+
+        return (int) round(($index / max($last, 1)) * 100);
+    }
+
+    public function displayName(): string
+    {
+        $name = trim((string) ($this->first_name ?: ''));
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        $email = trim((string) ($this->email ?: ''));
+
+        return $email !== '' ? $email : ('Lead #'.$this->getKey());
+    }
+
+    public function linkedInUrl(): ?string
+    {
+        $value = trim((string) ($this->linked_in ?: ''));
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $value) === 1) {
+            return $value;
+        }
+
+        return 'https://'.$value;
     }
 
     public function client(): BelongsTo

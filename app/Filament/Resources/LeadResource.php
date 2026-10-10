@@ -41,7 +41,7 @@ class LeadResource extends Resource
 
     protected static ?string $model = Lead::class;
     protected static ?string $navigationGroup = 'CRM';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 4;
     protected static ?string $navigationIcon = 'heroicon-o-light-bulb';
 
     public static function getEloquentQuery(): Builder

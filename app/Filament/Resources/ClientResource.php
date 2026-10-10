@@ -23,6 +23,7 @@ use App\Filament\RelationManagers\ActivityLogRelationManager;
 use Filament\Tables\Filters\SelectFilter;
 use App\Models\Contact;
 use App\Models\Country;
+use Filament\Navigation\NavigationItem;
 use Illuminate\Database\Eloquent\Builder;
 
 class ClientResource extends Resource
@@ -32,6 +33,7 @@ class ClientResource extends Resource
     protected static ?string $navigationGroup = 'CRM';
     protected static ?int $navigationSort = 1;
     protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static ?string $navigationLabel = 'Active Clients';
     protected static ?string $recordTitleAttribute = 'company_name';
 
     public static function form(Forms\Form $form): Forms\Form
@@ -189,9 +191,42 @@ class ClientResource extends Resource
     {
         return [
             'index' => Pages\ListClients::route('/'),
+            'potential' => Pages\ListPotentialClients::route('/potential'),
+            'all' => Pages\ListAllClients::route('/all'),
             'create' => Pages\CreateClient::route('/create'),
             'edit' => Pages\EditClient::route('/{record}/edit'),
             'overview' => Pages\ClientOverview::route('/{record}'),
+        ];
+    }
+
+    /**
+     * @return array<NavigationItem>
+     */
+    public static function getNavigationItems(): array
+    {
+        if (! static::canViewAny()) {
+            return [];
+        }
+
+        return [
+            NavigationItem::make('Active Clients')
+                ->group(static::getNavigationGroup())
+                ->icon(static::getNavigationIcon())
+                ->isActiveWhen(fn (): bool => request()->routeIs(static::getRouteBaseName().'.index'))
+                ->sort(1)
+                ->url(static::getUrl('index')),
+            NavigationItem::make('Potential Clients')
+                ->group(static::getNavigationGroup())
+                ->icon('heroicon-o-briefcase')
+                ->isActiveWhen(fn (): bool => request()->routeIs(static::getRouteBaseName().'.potential'))
+                ->sort(2)
+                ->url(static::getUrl('potential')),
+            NavigationItem::make('All Clients')
+                ->group(static::getNavigationGroup())
+                ->icon('heroicon-o-queue-list')
+                ->isActiveWhen(fn (): bool => request()->routeIs(static::getRouteBaseName().'.all'))
+                ->sort(3)
+                ->url(static::getUrl('all')),
         ];
     }
 

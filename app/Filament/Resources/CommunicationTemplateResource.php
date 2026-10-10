@@ -18,7 +18,7 @@ class CommunicationTemplateResource extends Resource
 
     protected static ?string $navigationGroup = 'CRM';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 7;
 
     protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 

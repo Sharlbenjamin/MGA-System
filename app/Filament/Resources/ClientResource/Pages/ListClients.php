@@ -18,7 +18,6 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
@@ -30,41 +29,14 @@ class ListClients extends ListRecords
 {
     protected static string $resource = ClientResource::class;
 
-    public string $viewMode = Client::STATUS_GROUP_ACTIVE;
-
     public function getTitle(): string
     {
-        return match ($this->viewMode) {
-            Client::STATUS_GROUP_INACTIVE => 'Inactive Clients',
-            Client::STATUS_GROUP_POTENTIAL => 'Potential Clients',
-            default => 'Active Clients',
-        };
+        return 'Active Clients';
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('viewActive')
-                ->label('Active Clients')
-                ->color(fn (): string => $this->viewMode === Client::STATUS_GROUP_ACTIVE ? 'success' : 'gray')
-                ->action(function (): void {
-                    $this->viewMode = Client::STATUS_GROUP_ACTIVE;
-                    $this->resetTable();
-                }),
-            Actions\Action::make('viewInactive')
-                ->label('Inactive Clients')
-                ->color(fn (): string => $this->viewMode === Client::STATUS_GROUP_INACTIVE ? 'success' : 'gray')
-                ->action(function (): void {
-                    $this->viewMode = Client::STATUS_GROUP_INACTIVE;
-                    $this->resetTable();
-                }),
-            Actions\Action::make('viewPotential')
-                ->label('Potential Clients')
-                ->color(fn (): string => $this->viewMode === Client::STATUS_GROUP_POTENTIAL ? 'success' : 'gray')
-                ->action(function (): void {
-                    $this->viewMode = Client::STATUS_GROUP_POTENTIAL;
-                    $this->resetTable();
-                }),
             Actions\Action::make('resetSentInvoicesToUnpaid')
                 ->label('Sent > 30 Days to Unpaid')
                 ->icon('heroicon-o-arrow-path')
@@ -73,7 +45,6 @@ class ListClients extends ListRecords
                 ->modalHeading('Mark Old Sent Invoices as Unpaid')
                 ->modalDescription('This will change all invoices with status Sent and older than 30 days to Unpaid.')
                 ->modalSubmitActionLabel('Update Statuses')
-                ->hidden(fn (): bool => $this->viewMode !== Client::STATUS_GROUP_ACTIVE)
                 ->action(function () {
                     $cutoffDate = now()->subDays(30)->startOfDay();
 
@@ -100,7 +71,6 @@ class ListClients extends ListRecords
                 ->label('Clients Outstandings')
                 ->icon('heroicon-o-document-currency-euro')
                 ->color('info')
-                ->hidden(fn (): bool => $this->viewMode !== Client::STATUS_GROUP_ACTIVE)
                 ->modalHeading('Clients With Outstanding Invoices')
                 ->modalWidth('7xl')
                 ->modalSubmitAction(false)
@@ -112,7 +82,6 @@ class ListClients extends ListRecords
                 ->label('Export Active Clients')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->hidden(fn (): bool => $this->viewMode !== Client::STATUS_GROUP_ACTIVE)
                 ->action(function () {
                     return Excel::download(
                         new ActiveClientsExport(),
@@ -232,48 +201,6 @@ class ListClients extends ListRecords
 
     public function table(Table $table): Table
     {
-        // Potential / Inactive: CRM-style columns (fine-grained status + lead activity)
-        if (in_array($this->viewMode, [Client::STATUS_GROUP_POTENTIAL, Client::STATUS_GROUP_INACTIVE], true)) {
-            $statusColor = fn (string $state): string => match (Client::normalizeStatus($state)) {
-                'searching' => 'danger',
-                'interested' => 'warning',
-                'sent' => 'success',
-                'rejected' => 'gray',
-                'on hold' => 'gray',
-                'closed' => 'gray',
-                'black list' => 'danger',
-                'broker' => 'success',
-                'no reply' => 'danger',
-                default => 'gray',
-            };
-
-            return $table
-                ->query(
-                    ClientResource::getEloquentQuery()
-                        ->with('country')
-                        ->inStatusGroup($this->viewMode)
-                )
-                ->columns([
-                    TextColumn::make('company_name')->searchable()->sortable()->label('Client Name')->sortable(),
-                    TextColumn::make('country.name')->label('Country')->sortable()->searchable(),
-                    TextColumn::make('type')->badge()->sortable()
-                        ->color(fn (string $state): string => match ($state) {
-                            'Assistance' => 'success',
-                            'Insurance' => 'warning',
-                            'Agency' => 'info',
-                        }),
-                    TextColumn::make('status')->badge()->sortable()->color($statusColor),
-                    TextColumn::make('leadsCount')->label('Leads')->sortable(),
-                    TextColumn::make('leadsLastContactDate')->label('Last Contact')->date('d-m-Y')->sortable(),
-                ])->filters([
-                    SelectFilter::make('status')
-                        ->label('Status')
-                        ->options(Client::statusOptionsForGroup($this->viewMode)),
-                ])
-                ->defaultSort('company_name', 'asc');
-        }
-
-        // Active Clients View (default - shows only active clients)
         return $table
             ->query(
                 ClientResource::getEloquentQuery()

@@ -495,4 +495,61 @@ class Client extends Model
     {
         return $this->leads()->latest()->first()?->last_contact_date;
     }
+
+    /**
+     * Main lead = furthest pipeline step (latest progress); ties use last contact then id.
+     */
+    public function mainLead(): ?Lead
+    {
+        if ($this->relationLoaded('leads')) {
+            return $this->leads
+                ->sort(function (Lead $a, Lead $b): int {
+                    $rank = Lead::pipelineStepIndex($b->status) <=> Lead::pipelineStepIndex($a->status);
+
+                    if ($rank !== 0) {
+                        return $rank;
+                    }
+
+                    $aDate = optional($a->last_contact_date)?->timestamp ?? 0;
+                    $bDate = optional($b->last_contact_date)?->timestamp ?? 0;
+
+                    if ($aDate !== $bDate) {
+                        return $bDate <=> $aDate;
+                    }
+
+                    return ($b->id ?? 0) <=> ($a->id ?? 0);
+                })
+                ->first();
+        }
+
+        return $this->leads()
+            ->get()
+            ->sort(function (Lead $a, Lead $b): int {
+                $rank = Lead::pipelineStepIndex($b->status) <=> Lead::pipelineStepIndex($a->status);
+
+                if ($rank !== 0) {
+                    return $rank;
+                }
+
+                $aDate = optional($a->last_contact_date)?->timestamp ?? 0;
+                $bDate = optional($b->last_contact_date)?->timestamp ?? 0;
+
+                if ($aDate !== $bDate) {
+                    return $bDate <=> $aDate;
+                }
+
+                return ($b->id ?? 0) <=> ($a->id ?? 0);
+            })
+            ->first();
+    }
+
+    public function leadPipelineProgressPercent(): int
+    {
+        return $this->mainLead()?->pipelineProgressPercent() ?? 0;
+    }
+
+    public function mainLeadStatus(): ?string
+    {
+        return $this->mainLead()?->status;
+    }
 }
