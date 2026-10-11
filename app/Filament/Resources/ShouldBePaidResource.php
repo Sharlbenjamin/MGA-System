@@ -25,19 +25,78 @@ class ShouldBePaidResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
     protected static ?string $navigationGroup = 'Finance';
     protected static ?int $navigationSort = 4; // After Invoices (3), before Transactions (5)
-    protected static ?string $navigationLabel = 'Should Be Paid';
-    protected static ?string $modelLabel = 'Bill';
-    protected static ?string $pluralModelLabel = 'Bills';
+    protected static ?string $navigationLabel = 'Payables';
+    protected static ?string $modelLabel = 'Payable';
+    protected static ?string $pluralModelLabel = 'Payables';
 
-    public static function getNavigationBadge(): ?string
+    public const STATE_ALL_UNPAID = 'all_unpaid';
+
+    public const STATE_PAYABLES = 'payables';
+
+    public const STATE_BK_RECEIVED = 'bk_received';
+
+    public const STATE_OVERDUE = 'overdue';
+
+    public const STATE_MISSING_DOCUMENT = 'missing_document';
+
+    public const STATE_HAS_BANK_ACCOUNT = 'has_bank_account';
+
+    /**
+     * @return array<string, string>
+     */
+    public static function payableStates(): array
     {
-        // Count unpaid bills that have files with paid invoices (BK received bills)
-        $count = static::getModel()::where('status', 'Unpaid')
-            ->whereHas('file', function (Builder $fileQuery) {
+        return [
+            self::STATE_ALL_UNPAID => 'All unpaid bills',
+            self::STATE_PAYABLES => 'Payables',
+            self::STATE_BK_RECEIVED => 'BK received',
+            self::STATE_OVERDUE => 'Overdue',
+            self::STATE_MISSING_DOCUMENT => 'Missing document',
+            self::STATE_HAS_BANK_ACCOUNT => 'Has a bank account',
+        ];
+    }
+
+    public static function allUnpaidBillsQuery(): Builder
+    {
+        return Bill::query()->whereIn('bills.status', ['Unpaid', 'Partial']);
+    }
+
+    public static function applyPayableState(Builder $query, ?string $state): Builder
+    {
+        return match ($state) {
+            self::STATE_ALL_UNPAID => $query,
+            self::STATE_BK_RECEIVED => $query->whereHas('file', function (Builder $fileQuery) {
                 $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
                     $invoiceQuery->where('status', 'Paid');
                 });
-            })->count();
+            }),
+            self::STATE_OVERDUE => $query->whereDate('bills.due_date', '<', today()),
+            self::STATE_MISSING_DOCUMENT => $query->where(function (Builder $subQuery) {
+                $subQuery->whereNull('bills.bill_google_link')
+                    ->orWhere('bills.bill_google_link', '');
+            }),
+            self::STATE_HAS_BANK_ACCOUNT => $query->whereNotNull('bills.bank_account_id'),
+            default => $query->whereHas('provider', function (Builder $providerQuery) {
+                $providerQuery->where('needs_payment', true);
+            }),
+        };
+    }
+
+    public static function payableStateQuery(string $state): Builder
+    {
+        return static::applyPayableState(static::allUnpaidBillsQuery(), $state);
+    }
+
+    public static function outstandingAmountForState(string $state): float
+    {
+        return (float) static::payableStateQuery($state)
+            ->sum(DB::raw('bills.total_amount - bills.paid_amount'));
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = static::payableStateQuery(self::STATE_PAYABLES)->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -49,7 +108,7 @@ class ShouldBePaidResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->whereIn('status', ['Unpaid', 'Partial'])
+            ->whereIn('bills.status', ['Unpaid', 'Partial'])
             ->with(['provider.bankAccounts', 'branch', 'file.providerBranch.provider', 'file.invoices', 'file.patient']);
     }
 
@@ -68,6 +127,7 @@ class ShouldBePaidResource extends Resource
                 Group::make('provider.name')->label('Provider')->collapsible(),
                 Group::make('branch.branch_name')->label('Branch')->collapsible(),
             ])
+            ->defaultGroup('provider.name')
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
                 'provider', 'branch', 'file.providerBranch.provider', 'file.invoices', 'file.patient'
             ]))
@@ -164,22 +224,24 @@ class ShouldBePaidResource extends Resource
 
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('payable_state')
+                    ->label('State')
+                    ->options(static::payableStates())
+                    ->default(self::STATE_PAYABLES)
+                    ->selectablePlaceholder(false)
+                    ->query(function (Builder $query, array $data): Builder {
+                        $state = $data['value'] ?? null;
+
+                        return static::applyPayableState(
+                            $query,
+                            is_string($state) && $state !== '' ? $state : self::STATE_PAYABLES,
+                        );
+                    }),
                 Tables\Filters\SelectFilter::make('provider')
                     ->relationship('provider', 'name')
                     ->label('Provider')
                     ->searchable()
                     ->multiple(),
-                Tables\Filters\Filter::make('providers_needing_payment')
-                    ->label('Providers Needing Payment')
-                    ->query(function (Builder $query): Builder {
-                        return $query->whereHas('provider', function (Builder $providerQuery) {
-                            $providerQuery->where('needs_payment', true);
-                        });
-                    })
-                    ->toggle()
-                    ->indicateUsing(function (): array {
-                        return ['providers_needing_payment' => 'Providers Needing Payment'];
-                    }),
                 Tables\Filters\SelectFilter::make('branch')
                     ->relationship('branch', 'branch_name')
                     ->label('Branch')
@@ -190,44 +252,6 @@ class ShouldBePaidResource extends Resource
                         'Unpaid' => 'Unpaid',
                         'Partial' => 'Partial',
                     ]),
-                // 1. Overdue Bills with status unpaid
-                Tables\Filters\Filter::make('overdue_unpaid')
-                    ->label('Overdue Bills (Unpaid/Partial)')
-                    ->query(function (Builder $query): Builder {
-                        return $query->where('due_date', '<', now());
-                    })
-                    ->toggle()
-                    ->indicateUsing(function (): array {
-                        return ['overdue_unpaid' => 'Overdue Bills (Unpaid/Partial)'];
-                    }),
-                // 2. BK Received Bills - Unpaid bills with files that have paid invoices
-                Tables\Filters\Filter::make('bk_received')
-                    ->label('BK Received Bills')
-                    ->query(function (Builder $query): Builder {
-                        return $query->whereHas('file', function (Builder $fileQuery) {
-                                       $fileQuery->whereHas('invoices', function (Builder $invoiceQuery) {
-                                           $invoiceQuery->where('status', 'Paid');
-                                       });
-                                   });
-                    })
-                    ->toggle()
-                    ->indicateUsing(function (): array {
-                        return ['bk_received' => 'BK Received Bills'];
-                    }),
-                // 3. Missing Documents - Bills without bill_google_link
-                Tables\Filters\Filter::make('missing_documents')
-                    ->label('Missing Documents')
-                    ->query(function (Builder $query): Builder {
-                        return $query->where(function (Builder $subQuery) {
-                            $subQuery->whereNull('bill_google_link')
-                                   ->orWhere('bill_google_link', '');
-                        });
-                    })
-                    ->toggle()
-                    ->indicateUsing(function (): array {
-                        return ['missing_documents' => 'Missing Documents'];
-                    }),
-
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

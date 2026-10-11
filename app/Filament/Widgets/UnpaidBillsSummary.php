@@ -2,110 +2,72 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Bill;
+use App\Filament\Resources\ShouldBePaidResource;
+use App\Filament\Resources\ShouldBePaidResource\Pages\ListShouldBePaid;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 
 class UnpaidBillsSummary extends BaseWidget
 {
-    public static function shouldLoad(): bool
+    protected static bool $isDiscovered = false;
+
+    protected int|string|array $columnSpan = 'full';
+
+    public string $activePayableState = ShouldBePaidResource::STATE_PAYABLES;
+
+    protected function getColumns(): int
     {
-        return Auth::user()?->roles->contains('name', 'admin') ?? false;
+        return 4;
+    }
+
+    public function showPayableState(string $state): void
+    {
+        $this->dispatch('apply-payable-state', state: $state)
+            ->to(ListShouldBePaid::class);
     }
 
     protected function getStats(): array
     {
-        // Get all unpaid/partial bills with relationships
-        $unpaidBills = Bill::whereIn('status', ['Unpaid', 'Partial'])
-            ->with(['provider', 'branch', 'file.invoices'])
-            ->get();
-
-        // Bills with paid invoices (BK received bills)
-        $billsWithPaidInvoices = $unpaidBills->filter(function ($bill) {
-            return $bill->file && $bill->file->invoices->where('status', 'Paid')->count() > 0;
-        });
-
-        // Providers needing payment (with paid invoices)
-        $providersNeedingPayment = $billsWithPaidInvoices
-            ->pluck('provider_id')
-            ->filter()
-            ->unique()
-            ->count();
-
-        // Total outstanding amount (with paid invoices)
-        $totalUnpaidAmount = $billsWithPaidInvoices->sum(function ($bill) {
-            return $bill->total_amount - $bill->paid_amount;
-        });
-
-        // Number of bills with paid invoices
-        $invoicePaidBills = $billsWithPaidInvoices->count();
-
-        // All providers needing payment (all unpaid bills)
-        $allProvidersNeedingPayment = $unpaidBills
-            ->pluck('provider_id')
-            ->filter()
-            ->unique()
-            ->count();
-
-        // Total outstanding amount (all unpaid bills)
-        $allTotalUnpaidAmount = $unpaidBills->sum(function ($bill) {
-            return $bill->total_amount - $bill->paid_amount;
-        });
-
-        // Number of all unpaid bills
-        $allUnpaidBills = $unpaidBills->count();
-
-        // Bills with bank accounts (for transfers)
-        $billsWithBankAccounts = $unpaidBills->whereNotNull('bank_account_id');
-        $totalTransfers = $billsWithBankAccounts->pluck('bank_account_id')->unique()->count();
-
-        return [
-            Stat::make('Providers Need Payment', $providersNeedingPayment)
-                ->description('Providers with unpaid bills')
-                ->descriptionIcon('heroicon-m-building-office')
-                ->color('danger'),
-
-            Stat::make('Total Outstanding', '€' . number_format($totalUnpaidAmount, 2))
-                ->description('Total amount to be paid')
-                ->descriptionIcon('heroicon-m-currency-euro')
-                ->color('danger'),
-
-            Stat::make('Invoice Paid Bills', $invoicePaidBills)
-                ->description('Bills with paid invoices')
-                ->descriptionIcon('heroicon-m-document-check')
-                ->color('success'),
-
-            Stat::make('All Providers Need Payment', $allProvidersNeedingPayment)
-                ->description('All providers with unpaid bills')
-                ->descriptionIcon('heroicon-m-building-office')
-                ->color('warning'),
-
-            Stat::make('All Total Outstanding', '€' . number_format($allTotalUnpaidAmount, 2))
-                ->description('All total amount to be paid')
-                ->descriptionIcon('heroicon-m-currency-euro')
-                ->color('warning'),
-
-            Stat::make('All Unpaid Bills', $allUnpaidBills)
-                ->description('All unpaid bills')
-                ->descriptionIcon('heroicon-m-document')
-                ->color('warning'),
-            
-            Stat::make('Invoice Paid Amount', '€' . number_format($totalUnpaidAmount, 2))
-                ->description('Amount with paid invoices')
-                ->descriptionIcon('heroicon-m-currency-euro')
-                ->color('success'),
-
-            Stat::make('All Unpaid Amount', '€' . number_format($allTotalUnpaidAmount, 2))
-                ->description('All unpaid amount')
-                ->descriptionIcon('heroicon-m-currency-euro')
-                ->color('warning'),
-
-            Stat::make('Total Transfers', $totalTransfers)
-                ->description('Bank account groups with unpaid bills')
-                ->descriptionIcon('heroicon-m-building-library')
-                ->color('info'),
+        $colors = [
+            ShouldBePaidResource::STATE_ALL_UNPAID => 'warning',
+            ShouldBePaidResource::STATE_PAYABLES => 'danger',
+            ShouldBePaidResource::STATE_BK_RECEIVED => 'success',
+            ShouldBePaidResource::STATE_OVERDUE => 'danger',
+            ShouldBePaidResource::STATE_MISSING_DOCUMENT => 'warning',
+            ShouldBePaidResource::STATE_HAS_BANK_ACCOUNT => 'info',
         ];
+
+        $icons = [
+            ShouldBePaidResource::STATE_ALL_UNPAID => 'heroicon-m-document',
+            ShouldBePaidResource::STATE_PAYABLES => 'heroicon-m-banknotes',
+            ShouldBePaidResource::STATE_BK_RECEIVED => 'heroicon-m-document-check',
+            ShouldBePaidResource::STATE_OVERDUE => 'heroicon-m-exclamation-triangle',
+            ShouldBePaidResource::STATE_MISSING_DOCUMENT => 'heroicon-m-document-minus',
+            ShouldBePaidResource::STATE_HAS_BANK_ACCOUNT => 'heroicon-m-building-library',
+        ];
+
+        $stats = [];
+
+        foreach (ShouldBePaidResource::payableStates() as $state => $label) {
+            $isActive = $this->activePayableState === $state;
+            $stats[] = Stat::make($label, ShouldBePaidResource::payableStateQuery($state)->count())
+                ->description($isActive ? 'Showing this list' : 'Show these bills')
+                ->descriptionIcon($icons[$state])
+                ->color($isActive ? 'primary' : $colors[$state])
+                ->extraAttributes([
+                    'class' => 'cursor-pointer',
+                    'wire:click' => "showPayableState('{$state}')",
+                ]);
+        }
+
+        $activeLabel = ShouldBePaidResource::payableStates()[$this->activePayableState] ?? 'Payables';
+        $outstanding = ShouldBePaidResource::outstandingAmountForState($this->activePayableState);
+
+        $stats[] = Stat::make('Outstanding', '€'.number_format($outstanding, 2))
+            ->description('Total still owed for '.$activeLabel)
+            ->descriptionIcon('heroicon-m-currency-euro')
+            ->color('gray');
+
+        return $stats;
     }
-} 
+}

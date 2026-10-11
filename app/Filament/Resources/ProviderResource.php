@@ -72,7 +72,7 @@ class ProviderResource extends Resource
                 'AEAT' => 'AEAT',
             ])->nullable(),
             Checkbox::make('needs_payment')
-                ->label('Needs Payment')
+                ->label('Payment Requested')
                 ->default(false),
             Textarea::make('comment')->label('Comment')->nullable(),
             Textarea::make('request_comment')
