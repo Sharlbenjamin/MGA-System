@@ -11,18 +11,6 @@ class ListShouldBePaid extends ListRecords
 {
     protected static string $resource = ShouldBePaidResource::class;
 
-    public function mount(): void
-    {
-        parent::mount();
-
-        if (blank(data_get($this->tableFilters, 'payable_state.value'))) {
-            $filters = $this->tableFilters ?? [];
-            $filters['payable_state'] = ['value' => ShouldBePaidResource::STATE_PAYABLES];
-            $this->tableFilters = $filters;
-            $this->getTableFiltersForm()->fill($this->tableFilters);
-        }
-    }
-
     protected function getHeaderWidgets(): array
     {
         return [
@@ -35,9 +23,12 @@ class ListShouldBePaid extends ListRecords
     public function getTitle(): string
     {
         $label = ShouldBePaidResource::payableStates()[$this->getActivePayableState()];
-        $count = $this->getTableQuery()->count();
 
-        return "{$label} ({$count})";
+        if (! isset($this->table)) {
+            return $label;
+        }
+
+        return "{$label} ({$this->getFilteredTableQuery()->count()})";
     }
 
     #[On('apply-payable-state')]
@@ -55,7 +46,8 @@ class ListShouldBePaid extends ListRecords
         $filters['payable_state'] = ['value' => $state];
         $this->tableFilters = $filters;
         $this->getTableFiltersForm()->fill($this->tableFilters);
-        $this->resetTable();
+        $this->flushCachedTableRecords();
+        $this->resetPage();
     }
 
     public function getActivePayableState(): string
