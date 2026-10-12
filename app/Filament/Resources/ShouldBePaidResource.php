@@ -93,6 +93,13 @@ class ShouldBePaidResource extends Resource
             ->sum(DB::raw('bills.total_amount - bills.paid_amount'));
     }
 
+    public static function providerIban(Bill $record): ?string
+    {
+        $iban = $record->provider?->bankAccounts?->first()?->iban;
+
+        return filled($iban) ? (string) $iban : null;
+    }
+
     public static function getNavigationBadge(): ?string
     {
         $count = static::payableStateQuery(self::STATE_PAYABLES)->count();
@@ -134,38 +141,53 @@ class ShouldBePaidResource extends Resource
             ->defaultSort('due_date', 'asc')
             ->columns([
                 Tables\Columns\TextColumn::make('provider.name')
-                    ->searchable()
+                    ->label('Provider / Branch')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $query) use ($search) {
+                            $query->whereHas('provider', function (Builder $providerQuery) use ($search) {
+                                $providerQuery->where('name', 'like', "%{$search}%");
+                            })->orWhereHas('branch', function (Builder $branchQuery) use ($search) {
+                                $branchQuery->where('branch_name', 'like', "%{$search}%");
+                            });
+                        });
+                    })
                     ->sortable()
-                    ->label('Provider'),
-                Tables\Columns\TextColumn::make('branch.branch_name')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Branch'),
+                    ->wrap()
+                    ->description(fn (Bill $record): ?string => filled($record->branch?->branch_name)
+                        ? $record->branch->branch_name
+                        : null),
                 Tables\Columns\TextColumn::make('file.patient.name')
-                    ->label('Patient')
-                    ->searchable(),
+                    ->label('Patient / File')
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function (Builder $query) use ($search) {
+                            $query->whereHas('file.patient', function (Builder $patientQuery) use ($search) {
+                                $patientQuery->where('name', 'like', "%{$search}%");
+                            })->orWhereHas('file', function (Builder $fileQuery) use ($search) {
+                                $fileQuery->where('mga_reference', 'like', "%{$search}%");
+                            });
+                        });
+                    })
+                    ->view('filament.tables.columns.payable-patient-file')
+                    ->disableClick(),
                 Tables\Columns\TextColumn::make('provider_bank_iban')
-                    ->label('Provider Bank IBAN')
+                    ->label('IBAN')
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->whereHas('provider.bankAccounts', function (Builder $bankAccountQuery) use ($search) {
                             $bankAccountQuery->where('iban', 'like', "%{$search}%");
                         });
                     })
                     ->sortable(false)
-                    ->copyable()
+                    ->formatStateUsing(fn (Bill $record): ?string => filled(static::providerIban($record))
+                        ? 'Click to copy IBAN'
+                        : null)
+                    ->placeholder('—')
+                    ->tooltip(fn (Bill $record): ?string => static::providerIban($record))
+                    ->copyable(fn (Bill $record): bool => filled(static::providerIban($record)))
+                    ->copyableState(fn (Bill $record): string => static::providerIban($record) ?? '')
                     ->copyMessage('IBAN copied to clipboard')
-                    ->copyMessageDuration(1500),
+                    ->copyMessageDuration(1500)
+                    ->color(fn (Bill $record): string => filled(static::providerIban($record)) ? 'primary' : 'gray'),
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('file.mga_reference')
-                    ->searchable()
-                    ->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query
-                            ->join('files', 'bills.file_id', '=', 'files.id')
-                            ->orderBy('files.mga_reference', $direction);
-                    })
-                    ->url(fn (Bill $record) => $record->file?->google_drive_link)
-                    ->openUrlInNewTab()
-                    ->color(fn (Bill $record) => $record->file?->google_drive_link ? 'primary' : 'gray'),
                 Tables\Columns\TextColumn::make('bill_date')
                     ->label('Bill Date')
                     ->date()
