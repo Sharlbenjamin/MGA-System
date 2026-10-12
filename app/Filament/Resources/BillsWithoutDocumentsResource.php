@@ -32,12 +32,9 @@ class BillsWithoutDocumentsResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::query()
-            ->where(function (Builder $query) {
-                $query->whereNull('bill_google_link')
-                    ->orWhere('bill_google_link', '');
-            })
-            ->count();
+        return (string) BillIntegrityService::scopeBillsWithoutDocuments(
+            static::getModel()::query()
+        )->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -47,7 +44,9 @@ class BillsWithoutDocumentsResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['file.comments', 'file.patient', 'provider']);
+        return parent::getEloquentQuery()
+            ->with(['file.comments', 'file.patient', 'provider'])
+            ->withCount('items');
     }
 
     public static function form(Form $form): Form
@@ -90,7 +89,7 @@ class BillsWithoutDocumentsResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => BillIntegrityService::scopeMissingDocument($query))
+            ->modifyQueryUsing(fn (Builder $query): Builder => BillIntegrityService::scopeBillsWithoutDocuments($query))
             ->columns([
                 Tables\Columns\TextColumn::make('file.mga_reference')
                     ->label('File Reference')
@@ -107,7 +106,19 @@ class BillsWithoutDocumentsResource extends Resource
                 Tables\Columns\TextColumn::make('provider.name')
                     ->label('Provider')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->placeholder('—'),
+                Tables\Columns\TextColumn::make('listing_gaps')
+                    ->label('Why listed')
+                    ->badge()
+                    ->getStateUsing(fn (Bill $record): array => BillIntegrityService::withoutDocumentsGaps($record))
+                    ->formatStateUsing(fn (string $state): string => BillIntegrityService::withoutDocumentsGapLabel($state))
+                    ->color(fn (string $state): string => match ($state) {
+                        BillIntegrityService::GAP_NO_PROVIDER => 'danger',
+                        BillIntegrityService::GAP_NO_ITEMS => 'warning',
+                        BillIntegrityService::GAP_MISSING_DOCUMENT => 'warning',
+                        default => 'gray',
+                    }),
                 BillTable::nameColumn(),
                 Tables\Columns\TextColumn::make('total_amount')
                     ->money('EUR')
@@ -156,7 +167,7 @@ class BillsWithoutDocumentsResource extends Resource
                 Tables\Filters\SelectFilter::make('documentation_path')
                     ->label('Documentation path')
                     ->options([
-                        'all' => 'All missing documents',
+                        'all' => 'All',
                         'comment_instead_of_transaction' => 'Comment instead of transaction link',
                         'no_transaction' => 'No transaction link',
                         'with_case_comment' => 'Has case comment',
