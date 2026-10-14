@@ -290,7 +290,14 @@ class TransactionResource extends Resource
                     ->visible(fn (Get $get, $livewire): bool => $livewire instanceof Pages\CreateTransaction && $get('status') === 'Draft')
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('name')->required()->maxLength(255)->default(fn () => request()->get('name')),
-                Forms\Components\TextInput::make('amount')->required()->numeric()->prefix('€')->default(fn () => request()->get('amount')),
+                Forms\Components\TextInput::make('amount')
+                    ->required()
+                    ->numeric()
+                    ->prefix('€')
+                    ->default(fn (?Transaction $record) => $record?->exists ? $record->amount : static::defaultCreateAmount())
+                    ->helperText(fn ($livewire): ?string => $livewire instanceof Pages\CreateTransaction
+                        ? 'Filled from the unpaid amount of each selected bill or invoice.'
+                        : null),
                 Forms\Components\DatePicker::make('date')->required()->default(fn () => request()->get('date') ?? now()),
                 Forms\Components\Textarea::make('notes')
                     ->label('Comment')
@@ -313,14 +320,9 @@ class TransactionResource extends Resource
                     ->label('Invoices')
                     ->addActionLabel('Add invoice')
                     ->schema(TransactionInvoiceLinkForm::createRepeaterSchema())
-                    ->default(function (): array {
-                        $invoiceId = request()->integer('invoice_id');
-
-                        if (! $invoiceId) {
-                            return [];
-                        }
-
-                        return [['invoice_id' => $invoiceId, 'amount_paid' => null]];
+                    ->default(fn (): array => static::invoiceLinksFromRequest())
+                    ->afterStateUpdated(function (callable $set, Get $get): void {
+                        static::pushCreateTransactionAmount($set, $get, fromRepeaterItem: false);
                     })
                     ->visible(fn ($get, $livewire) => $get('related_type') === 'Client'
                         && $livewire instanceof Pages\CreateTransaction)
@@ -329,22 +331,9 @@ class TransactionResource extends Resource
                     ->label('Bills')
                     ->addActionLabel('Add bill')
                     ->schema(TransactionBillLinkForm::createRepeaterSchema())
-                    ->default(function (): array {
-                        if (request()->get('bill_ids')) {
-                            return collect(explode(',', (string) request()->get('bill_ids')))
-                                ->filter()
-                                ->map(fn ($id) => ['bill_id' => (int) $id, 'amount_paid' => null])
-                                ->values()
-                                ->all();
-                        }
-
-                        $billId = request()->integer('bill_id');
-
-                        if (! $billId) {
-                            return [];
-                        }
-
-                        return [['bill_id' => $billId, 'amount_paid' => null]];
+                    ->default(fn (): array => static::billLinksFromRequest())
+                    ->afterStateUpdated(function (callable $set, Get $get): void {
+                        static::pushCreateTransactionAmount($set, $get, fromRepeaterItem: false);
                     })
                     ->visible(fn ($get, $livewire) => in_array($get('related_type'), ['Provider', 'Branch'], true)
                         && $livewire instanceof Pages\CreateTransaction)
@@ -675,11 +664,7 @@ class TransactionResource extends Resource
 
         $query = Invoice::query()
             ->select('invoices.*')
-            ->selectRaw('(invoices.total_amount - COALESCE((
-                SELECT SUM(it.amount_paid)
-                FROM invoice_transaction it
-                WHERE it.invoice_id = invoices.id
-            ), 0)) as invoice_remaining_balance')
+            ->selectRaw('('.static::invoiceRemainingBalanceSql().') as invoice_remaining_balance')
             ->whereHas('patient', fn (Builder $q) => $q->where('client_id', $clientId));
 
         static::applyAvailableInvoiceForTransactionScope($query, $transactionId);
@@ -1360,11 +1345,7 @@ class TransactionResource extends Resource
     {
         $query = Invoice::query()
             ->select('invoices.*')
-            ->selectRaw('(invoices.total_amount - COALESCE((
-                SELECT SUM(it.amount_paid)
-                FROM invoice_transaction it
-                WHERE it.invoice_id = invoices.id
-            ), 0)) as invoice_remaining_balance')
+            ->selectRaw('('.static::invoiceRemainingBalanceSql().') as invoice_remaining_balance')
             ->whereKey($invoiceId);
 
         if ($clientId) {
@@ -1436,7 +1417,7 @@ class TransactionResource extends Resource
         $date = $bill->bill_date ?? $bill->due_date;
         $dateStr = $date ? $date->format('d/m/Y') : '—';
         $amount = number_format((float) $bill->total_amount, 2);
-        $remaining = number_format($remainingBalance ?? $bill->remainingBalance(), 2);
+        $remaining = number_format($remainingBalance ?? $bill->amountStillUnpaid(), 2);
         $status = $bill->status ?: 'Unpaid';
 
         return "{$bill->display_name} · {$dateStr} · €{$amount} · {$status} · €{$remaining} left";
@@ -1446,19 +1427,211 @@ class TransactionResource extends Resource
     {
         $dateStr = $invoice->invoice_date?->format('d/m/Y') ?? '—';
         $amount = number_format((float) $invoice->total_amount, 2);
-        $remaining = number_format($remainingBalance ?? $invoice->remainingBalance(), 2);
+        $remaining = number_format($remainingBalance ?? $invoice->amountStillUnpaid(), 2);
         $status = $invoice->status ?: 'Unpaid';
 
         return "{$invoice->name} · {$dateStr} · €{$amount} · {$status} · €{$remaining} left";
     }
 
+    public static function defaultCreateAmount(): mixed
+    {
+        $billLinks = static::billLinksFromRequest();
+        $invoiceLinks = static::invoiceLinksFromRequest();
+
+        if ($billLinks !== [] || $invoiceLinks !== []) {
+            return round(
+                collect($billLinks)->sum('amount_paid') + collect($invoiceLinks)->sum('amount_paid'),
+                2,
+            );
+        }
+
+        $requested = request()->get('amount');
+
+        return ($requested === null || $requested === '') ? null : $requested;
+    }
+
+    /**
+     * @return array<int, array{bill_id: int, amount_paid: float}>
+     */
+    public static function billLinksFromRequest(): array
+    {
+        $ids = static::requestedBillIds();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $bills = Bill::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $linkedPaid = DB::table('bill_transaction')
+            ->whereIn('bill_id', $ids)
+            ->groupBy('bill_id')
+            ->selectRaw('bill_id, SUM(amount_paid) as paid')
+            ->pluck('paid', 'bill_id');
+
+        $links = [];
+
+        foreach ($ids as $id) {
+            $bill = $bills->get($id);
+
+            if (! $bill) {
+                continue;
+            }
+
+            $links[] = [
+                'bill_id' => (int) $bill->id,
+                'amount_paid' => Bill::unpaidFromAmounts(
+                    (float) $bill->total_amount,
+                    (float) ($bill->paid_amount ?? 0),
+                    (float) ($linkedPaid[$bill->id] ?? 0),
+                ),
+            ];
+        }
+
+        return $links;
+    }
+
+    /**
+     * @return array<int, array{invoice_id: int, amount_paid: float}>
+     */
+    public static function invoiceLinksFromRequest(): array
+    {
+        $invoiceId = request()->integer('invoice_id');
+
+        if (! $invoiceId) {
+            return [];
+        }
+
+        $invoice = Invoice::query()->find($invoiceId);
+
+        if (! $invoice) {
+            return [];
+        }
+
+        return [[
+            'invoice_id' => (int) $invoice->id,
+            'amount_paid' => $invoice->amountStillUnpaid(),
+        ]];
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    protected static function requestedBillIds(): array
+    {
+        if (request()->filled('bill_ids')) {
+            return array_values(array_unique(array_filter(array_map(
+                'intval',
+                explode(',', (string) request()->get('bill_ids')),
+            ))));
+        }
+
+        $billId = request()->integer('bill_id');
+
+        return $billId ? [$billId] : [];
+    }
+
+    public static function pushCreateTransactionAmount(
+        callable $set,
+        Get $get,
+        bool $fromRepeaterItem,
+        ?string $overrideKey = null,
+        ?int $overrideId = null,
+        ?float $overrideAmount = null,
+    ): void {
+        $prefix = $fromRepeaterItem ? '../../' : '';
+        $total = static::sumCreateDocumentPayments(
+            $get($prefix.'bill_links'),
+            $get($prefix.'invoice_links'),
+            $overrideKey,
+            $overrideId,
+            $overrideAmount,
+        );
+
+        if ($total === null) {
+            return;
+        }
+
+        $set($prefix.'amount', $total);
+    }
+
+    /**
+     * Sum of the paid amounts on the selected bills and invoices.
+     * Null when a line is still blank, so a typed transaction amount is left alone.
+     */
+    public static function sumCreateDocumentPayments(
+        mixed $billLinks,
+        mixed $invoiceLinks,
+        ?string $overrideKey = null,
+        ?int $overrideId = null,
+        ?float $overrideAmount = null,
+    ): ?float {
+        if ($billLinks === null && $invoiceLinks === null) {
+            return null;
+        }
+
+        $billLinks = is_array($billLinks) ? $billLinks : [];
+        $invoiceLinks = is_array($invoiceLinks) ? $invoiceLinks : [];
+
+        if ($billLinks === [] && $invoiceLinks === []) {
+            return null;
+        }
+
+        $sum = 0.0;
+        $hasDocument = false;
+
+        foreach (['bill_id' => $billLinks, 'invoice_id' => $invoiceLinks] as $idKey => $links) {
+            foreach ($links as $link) {
+                if (! is_array($link)) {
+                    continue;
+                }
+
+                $id = (int) ($link[$idKey] ?? 0);
+
+                if (! $id) {
+                    continue;
+                }
+
+                $hasDocument = true;
+
+                if ($overrideKey === $idKey && $overrideId === $id && $overrideAmount !== null) {
+                    $sum += $overrideAmount;
+
+                    continue;
+                }
+
+                $sum += (float) ($link['amount_paid'] ?? 0);
+            }
+        }
+
+        if (! $hasDocument) {
+            return null;
+        }
+
+        return round($sum, 2);
+    }
+
     protected static function billRemainingBalanceSql(): string
     {
-        return 'bills.total_amount - COALESCE((
+        $linked = 'COALESCE((
                 SELECT SUM(bt.amount_paid)
                 FROM bill_transaction bt
                 WHERE bt.bill_id = bills.id
             ), 0)';
+        $recorded = 'COALESCE(bills.paid_amount, 0)';
+
+        return "bills.total_amount - CASE WHEN {$recorded} > {$linked} THEN {$recorded} ELSE {$linked} END";
+    }
+
+    protected static function invoiceRemainingBalanceSql(): string
+    {
+        $linked = 'COALESCE((
+                SELECT SUM(it.amount_paid)
+                FROM invoice_transaction it
+                WHERE it.invoice_id = invoices.id
+            ), 0)';
+        $recorded = 'COALESCE(invoices.paid_amount, 0)';
+
+        return "invoices.total_amount - CASE WHEN {$recorded} > {$linked} THEN {$recorded} ELSE {$linked} END";
     }
 
     protected static function applyAvailableBillForTransactionScope(Builder $query, ?int $transactionId): void
@@ -1475,11 +1648,7 @@ class TransactionResource extends Resource
     protected static function applyAvailableInvoiceForTransactionScope(Builder $query, ?int $transactionId): void
     {
         $query->where(function (Builder $q) use ($transactionId) {
-            $q->whereRaw('invoices.total_amount - COALESCE((
-                SELECT SUM(it.amount_paid)
-                FROM invoice_transaction it
-                WHERE it.invoice_id = invoices.id
-            ), 0) >= 0.01');
+            $q->whereRaw(static::invoiceRemainingBalanceSql().' >= 0.01');
 
             if ($transactionId) {
                 $q->orWhereHas('transactions', fn (Builder $t) => $t->where('transactions.id', $transactionId));

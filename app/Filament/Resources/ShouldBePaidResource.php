@@ -2,31 +2,34 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\ShouldBePaidResource\Pages;
 use App\Filament\Resources\BillResource\Pages\EditBill;
-use App\Filament\Resources\TransactionResource;
+use App\Filament\Resources\ShouldBePaidResource\Pages;
 use App\Models\Bill;
-use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Components;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Grouping\Group;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class ShouldBePaidResource extends Resource
 {
     protected static ?string $model = Bill::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
+
     protected static ?string $navigationGroup = 'Finance';
+
     protected static ?int $navigationSort = 4; // After Invoices (3), before Transactions (5)
+
     protected static ?string $navigationLabel = 'Payables';
+
     protected static ?string $modelLabel = 'Payable';
+
     protected static ?string $pluralModelLabel = 'Payables';
 
     public const STATE_ALL_UNPAID = 'all_unpaid';
@@ -136,7 +139,7 @@ class ShouldBePaidResource extends Resource
             ])
             ->defaultGroup('provider.name')
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
-                'provider', 'branch', 'file.providerBranch.provider', 'file.invoices', 'file.patient'
+                'provider', 'branch', 'file.providerBranch.provider', 'file.invoices', 'file.patient',
             ]))
             ->defaultSort('due_date', 'asc')
             ->columns([
@@ -211,20 +214,21 @@ class ShouldBePaidResource extends Resource
                             ->using(function ($query) {
                                 return $query->sum(DB::raw('total_amount - paid_amount'));
                             })
-                            ->formatStateUsing(fn ($state) => '€' . number_format($state, 2))
+                            ->formatStateUsing(fn ($state) => '€'.number_format($state, 2))
                     ),
                 Tables\Columns\TextColumn::make('file.status')->label('File Status')->searchable()->sortable(query: function (Builder $query, string $direction): Builder {
-                        return $query
-                            ->join('files', 'bills.file_id', '=', 'files.id')
-                            ->orderBy('files.status', $direction);
-                    }),
+                    return $query
+                        ->join('files', 'bills.file_id', '=', 'files.id')
+                        ->orderBy('files.status', $direction);
+                }),
                 Tables\Columns\BadgeColumn::make('bk_status')
                     ->label('BK Status')
                     ->state(function (Bill $record): string {
                         $firstInvoice = $record->file?->invoices?->first();
-                        if (!$firstInvoice) {
+                        if (! $firstInvoice) {
                             return 'BK Not Received';
                         }
+
                         return $firstInvoice->status;
                     })
                     ->colors([
@@ -303,7 +307,7 @@ class ShouldBePaidResource extends Resource
                             'type' => 'Outflow',
                             'related_type' => $firstBill->branch_id ? 'Branch' : 'Provider',
                             'related_id' => $firstBill->branch_id ?? $firstBill->provider_id,
-                            'amount' => $records->sum(fn (Bill $bill) => $bill->total_amount - $bill->paid_amount),
+                            'amount' => $records->sum(fn (Bill $bill) => $bill->amountStillUnpaid()),
                             'date' => now()->format('Y-m-d'),
                             'bill_ids' => $records->pluck('id')->implode(','),
                             'status' => 'Draft',
@@ -333,4 +337,4 @@ class ShouldBePaidResource extends Resource
             'edit' => EditBill::route('/{record}/edit'),
         ];
     }
-} 
+}

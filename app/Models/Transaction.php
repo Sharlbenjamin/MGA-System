@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use App\Services\TransactionDocumentationStatsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Log;
-use App\Services\TransactionDocumentationStatsService;
 
 class Transaction extends Model
 {
@@ -120,12 +120,9 @@ class Transaction extends Model
         ]);
     }
 
-
-
     public static function boot()
     {
         parent::boot();
-
 
         static::updated(function ($transaction) {
             try {
@@ -140,9 +137,9 @@ class Transaction extends Model
                     $transaction->bankAccount->calculateBalance();
                 }
             } catch (\Exception $e) {
-                Log::error('Error in transaction updated event: ' . $e->getMessage(), [
+                Log::error('Error in transaction updated event: '.$e->getMessage(), [
                     'transaction_id' => $transaction->id,
-                    'bank_account_id' => $transaction->bank_account_id
+                    'bank_account_id' => $transaction->bank_account_id,
                 ]);
             }
 
@@ -161,7 +158,7 @@ class Transaction extends Model
                     $transaction->clearProviderNeedsPaymentFlag();
                 }
             } catch (\Exception $e) {
-                Log::error('Error clearing provider needs_payment on transaction update: ' . $e->getMessage(), [
+                Log::error('Error clearing provider needs_payment on transaction update: '.$e->getMessage(), [
                     'transaction_id' => $transaction->id,
                     'related_type' => $transaction->related_type,
                     'related_id' => $transaction->related_id,
@@ -179,9 +176,9 @@ class Transaction extends Model
                     $transaction->bankAccount->calculateBalance();
                 }
             } catch (\Exception $e) {
-                Log::error('Error in transaction created event: ' . $e->getMessage(), [
+                Log::error('Error in transaction created event: '.$e->getMessage(), [
                     'transaction_id' => $transaction->id,
-                    'bank_account_id' => $transaction->bank_account_id
+                    'bank_account_id' => $transaction->bank_account_id,
                 ]);
             }
 
@@ -190,14 +187,13 @@ class Transaction extends Model
                     $transaction->clearProviderNeedsPaymentFlag();
                 }
             } catch (\Exception $e) {
-                Log::error('Error clearing provider needs_payment on transaction create: ' . $e->getMessage(), [
+                Log::error('Error clearing provider needs_payment on transaction create: '.$e->getMessage(), [
                     'transaction_id' => $transaction->id,
                     'related_type' => $transaction->related_type,
                     'related_id' => $transaction->related_id,
                 ]);
             }
         });
-
 
         static::deleting(function (Transaction $transaction) {
             try {
@@ -221,10 +217,10 @@ class Transaction extends Model
                     static::$billIdsToRecalculateAfterDelete[$transaction->id] = $billIds;
                 }
             } catch (\Exception $e) {
-                Log::error('Error in transaction deleting event: ' . $e->getMessage(), [
+                Log::error('Error in transaction deleting event: '.$e->getMessage(), [
                     'transaction_id' => $transaction->id,
                     'related_type' => $transaction->related_type,
-                    'related_id' => $transaction->related_id
+                    'related_id' => $transaction->related_id,
                 ]);
             }
 
@@ -254,7 +250,7 @@ class Transaction extends Model
                     $bill->recalculatePaidAmountFromTransactions();
                 }
             } catch (\Exception $e) {
-                Log::error('Error recalculating documents after transaction delete: ' . $e->getMessage(), [
+                Log::error('Error recalculating documents after transaction delete: '.$e->getMessage(), [
                     'transaction_id' => $transaction->id,
                     'invoice_ids' => $invoiceIds,
                     'bill_ids' => $billIds,
@@ -403,7 +399,7 @@ class Transaction extends Model
         }
 
         // If status is not used on this record, treat it as issued.
-        if (!$this->status) {
+        if (! $this->status) {
             return true;
         }
 
@@ -432,7 +428,7 @@ class Transaction extends Model
             $invoice = Invoice::find($invoiceId);
             if ($invoice) {
                 // Check if the invoice is already attached
-                if (!$this->invoices()->where('invoice_id', $invoice->id)->exists()) {
+                if (! $this->invoices()->where('invoice_id', $invoice->id)->exists()) {
                     $this->invoices()->attach($invoice->id, [
                         'amount_paid' => min($invoice->remainingBalance(), (float) $invoice->total_amount),
                     ]);
@@ -450,7 +446,7 @@ class Transaction extends Model
     {
         // Update the pivot table
         $this->invoices()->updateExistingPivot($invoice->id, [
-            'amount_paid' => $amount
+            'amount_paid' => $amount,
         ]);
 
         $invoice->recalculatePaidAmountFromTransactions();
@@ -462,10 +458,9 @@ class Transaction extends Model
             $bill = Bill::find($billId);
             if ($bill) {
                 // Check if the bill is already attached
-                if (!$this->bills()->where('bill_id', $bill->id)->exists()) {
-                    // Attach with the full bill amount as paid_amount
+                if (! $this->bills()->where('bill_id', $bill->id)->exists()) {
                     $this->bills()->attach($bill->id, [
-                        'amount_paid' => $bill->total_amount
+                        'amount_paid' => $bill->amountStillUnpaid(),
                     ]);
 
                     $bill->recalculatePaidAmountFromTransactions();
@@ -483,13 +478,12 @@ class Transaction extends Model
             $bill = Bill::find($billId);
             if ($bill) {
                 // Check if the bill is already attached
-                if (!$this->bills()->where('bill_id', $bill->id)->exists()) {
-                    // Attach with the remaining amount as paid_amount (not the full amount)
-                    $remainingAmount = $bill->total_amount - $bill->paid_amount;
+                if (! $this->bills()->where('bill_id', $bill->id)->exists()) {
+                    $remainingAmount = $bill->amountStillUnpaid();
                     $this->bills()->attach($bill->id, [
-                        'amount_paid' => $remainingAmount
+                        'amount_paid' => $remainingAmount,
                     ]);
-                    
+
                     // Don't update the bill status - keep it as is
                 }
             }
@@ -554,22 +548,22 @@ class Transaction extends Model
      */
     public function getAttachmentDisplayText(): string
     {
-        if (!$this->attachment_path) {
+        if (! $this->attachment_path) {
             return 'No Document';
         }
-        
+
         if ($this->isGoogleDriveAttachment()) {
             return 'View Google Drive Document';
         }
-        
+
         if (str_starts_with($this->attachment_path, 'http')) {
             return 'View Document Link';
         }
-        
+
         if ($this->isLocalStorageFile()) {
-            return 'View Document: ' . basename($this->attachment_path);
+            return 'View Document: '.basename($this->attachment_path);
         }
-        
+
         return 'View Document';
     }
 
@@ -586,7 +580,7 @@ class Transaction extends Model
             $url = $this->attachment_path;
 
             if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
-                $url = 'https://' . ltrim($url, '/');
+                $url = 'https://'.ltrim($url, '/');
             }
 
             return $url;
@@ -594,7 +588,7 @@ class Transaction extends Model
 
         if ($this->isLocalStorageFile()
             && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->attachment_path)) {
-            return asset('storage/' . $this->attachment_path);
+            return asset('storage/'.$this->attachment_path);
         }
 
         return null;
@@ -605,7 +599,7 @@ class Transaction extends Model
      */
     public function getGoogleDriveFileId(): ?string
     {
-        if (!$this->isGoogleDriveAttachment()) {
+        if (! $this->isGoogleDriveAttachment()) {
             return null;
         }
 
@@ -649,9 +643,8 @@ class Transaction extends Model
 
     /**
      * Generate a signed URL for the transaction document
-     * 
-     * @param int $expirationMinutes Expiration time in minutes (default: 60)
-     * @return string|null
+     *
+     * @param  int  $expirationMinutes  Expiration time in minutes (default: 60)
      */
     public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
     {
@@ -661,15 +654,14 @@ class Transaction extends Model
 
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'transaction',
-            'id' => $this->id
+            'id' => $this->id,
         ]);
     }
 
     /**
      * Generate a signed URL for document metadata
-     * 
-     * @param int $expirationMinutes Expiration time in minutes (default: 60)
-     * @return string|null
+     *
+     * @param  int  $expirationMinutes  Expiration time in minutes (default: 60)
      */
     public function getDocumentMetadataSignedUrl(int $expirationMinutes = 60): ?string
     {
@@ -679,7 +671,7 @@ class Transaction extends Model
 
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'transaction',
-            'id' => $this->id
+            'id' => $this->id,
         ]);
     }
 }

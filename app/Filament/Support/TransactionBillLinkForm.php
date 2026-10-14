@@ -46,7 +46,7 @@ class TransactionBillLinkForm
 
                 return $options;
             })
-            ->getOptionLabelUsing(function ($value) use ($transaction): ?string {
+            ->getOptionLabelUsing(function ($value): ?string {
                 if (! $value) {
                     return null;
                 }
@@ -55,7 +55,7 @@ class TransactionBillLinkForm
 
                 return $bill ? TransactionResource::formatBillOptionLabel($bill) : null;
             })
-            ->afterStateUpdated(function (?string $state, callable $set) use ($transaction): void {
+            ->afterStateUpdated(function (?string $state, callable $set): void {
                 if (! $state) {
                     return;
                 }
@@ -63,14 +63,30 @@ class TransactionBillLinkForm
                 $bill = Bill::find((int) $state);
 
                 if ($bill) {
-                    $set('amount_paid', self::defaultPaidAmountForBill($bill, $transaction));
+                    $set('amount_paid', $bill->amountStillUnpaid());
                 }
             });
     }
 
     public static function defaultPaidAmountForBill(Bill $bill, Transaction $transaction): float
     {
-        return round(min($bill->remainingBalance(), (float) $bill->total_amount), 2);
+        return $bill->amountStillUnpaid();
+    }
+
+    public static function balanceLabel(?Bill $bill): string
+    {
+        if (! $bill) {
+            return '—';
+        }
+
+        $unpaid = $bill->amountStillUnpaid();
+        $total = (float) $bill->total_amount;
+
+        if (round($unpaid, 2) < round($total, 2)) {
+            return '€'.number_format($unpaid, 2).' unpaid of €'.number_format($total, 2);
+        }
+
+        return '€'.number_format($total, 2);
     }
 
     public static function clampPaidAmountForBillOnTransaction(
@@ -86,7 +102,12 @@ class TransactionBillLinkForm
         $totalPaid = (float) DB::table('bill_transaction')
             ->where('bill_id', $bill->id)
             ->sum('amount_paid');
-        $maxAllowed = round((float) $bill->total_amount - ($totalPaid - $currentPivot), 2);
+        $paidElsewhere = max(
+            0,
+            (float) ($bill->paid_amount ?? 0) - $currentPivot,
+            $totalPaid - $currentPivot,
+        );
+        $maxAllowed = round((float) $bill->total_amount - $paidElsewhere, 2);
 
         return min($paid, max(0, $maxAllowed));
     }
@@ -105,18 +126,10 @@ class TransactionBillLinkForm
                 ->step('0.01')
                 ->prefix('€')
                 ->required()
-                ->default(0),
+                ->helperText('Filled with the unpaid amount. Edit it to pay less.'),
             Forms\Components\Placeholder::make('bill_total_display')
-                ->label('Bill total')
-                ->content(function (Get $get): string {
-                    $bill = Bill::find((int) $get('bill_id'));
-
-                    if (! $bill) {
-                        return '—';
-                    }
-
-                    return '€'.number_format((float) $bill->total_amount, 2);
-                }),
+                ->label('Unpaid')
+                ->content(fn (Get $get): string => self::balanceLabel(Bill::find((int) $get('bill_id')))),
         ];
     }
 
@@ -130,8 +143,8 @@ class TransactionBillLinkForm
                 ->label('Bill')
                 ->content($bill->name),
             Forms\Components\Placeholder::make('bill_total')
-                ->label('Bill total')
-                ->content('€'.number_format((float) $bill->total_amount, 2)),
+                ->label('Unpaid')
+                ->content(self::balanceLabel($bill)),
             Forms\Components\TextInput::make('amount_paid')
                 ->label('Paid amount on this transaction')
                 ->numeric()
@@ -192,16 +205,26 @@ class TransactionBillLinkForm
 
                     return $bill ? TransactionResource::formatBillOptionLabel($bill) : null;
                 })
-                ->afterStateUpdated(function (?string $state, callable $set): void {
-                    if (! $state) {
-                        return;
+                ->afterStateUpdated(function (?string $state, callable $set, Get $get): void {
+                    $unpaid = null;
+
+                    if ($state) {
+                        $bill = Bill::find((int) $state);
+
+                        if ($bill) {
+                            $unpaid = $bill->amountStillUnpaid();
+                            $set('amount_paid', $unpaid);
+                        }
                     }
 
-                    $bill = Bill::find((int) $state);
-
-                    if ($bill) {
-                        $set('amount_paid', min($bill->remainingBalance(), (float) $bill->total_amount));
-                    }
+                    TransactionResource::pushCreateTransactionAmount(
+                        $set,
+                        $get,
+                        fromRepeaterItem: true,
+                        overrideKey: 'bill_id',
+                        overrideId: (int) $state,
+                        overrideAmount: $unpaid,
+                    );
                 }),
             Forms\Components\TextInput::make('amount_paid')
                 ->label('Paid amount')
@@ -210,18 +233,32 @@ class TransactionBillLinkForm
                 ->step('0.01')
                 ->prefix('€')
                 ->required()
-                ->default(0),
-            Forms\Components\Placeholder::make('bill_total_display')
-                ->label('Bill total')
-                ->content(function (Get $get): string {
-                    $bill = Bill::find((int) $get('bill_id'));
-
-                    if (! $bill) {
-                        return '—';
+                ->live(onBlur: true)
+                ->helperText('Filled with the unpaid amount. Edit it to pay less.')
+                ->afterStateUpdated(function ($state, callable $set, Get $get): void {
+                    TransactionResource::pushCreateTransactionAmount(
+                        $set,
+                        $get,
+                        fromRepeaterItem: true,
+                        overrideKey: 'bill_id',
+                        overrideId: (int) ($get('bill_id') ?? 0),
+                        overrideAmount: ($state === null || $state === '') ? null : (float) $state,
+                    );
+                })
+                ->afterStateHydrated(function (Forms\Components\TextInput $component, $state, Get $get): void {
+                    if (filled($state) && (float) $state > 0) {
+                        return;
                     }
 
-                    return '€'.number_format((float) $bill->total_amount, 2);
+                    $bill = Bill::find((int) ($get('bill_id') ?? 0));
+
+                    if ($bill) {
+                        $component->state($bill->amountStillUnpaid());
+                    }
                 }),
+            Forms\Components\Placeholder::make('bill_total_display')
+                ->label('Unpaid')
+                ->content(fn (Get $get): string => self::balanceLabel(Bill::find((int) $get('bill_id')))),
         ];
     }
 

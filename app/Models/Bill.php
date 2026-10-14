@@ -254,6 +254,24 @@ class Bill extends Model
         return max(0, round((float) $this->total_amount - $this->totalPaidFromTransactions(), 2));
     }
 
+    /**
+     * Amount still owed. A partial payment may be stored on the bill, on linked
+     * transactions, or on both — the higher of those is already paid.
+     */
+    public function amountStillUnpaid(): float
+    {
+        return static::unpaidFromAmounts(
+            (float) $this->total_amount,
+            (float) ($this->paid_amount ?? 0),
+            $this->totalPaidFromTransactions(),
+        );
+    }
+
+    public static function unpaidFromAmounts(float $total, float $recordedPaid, float $linkedPaid): float
+    {
+        return max(0, round($total - max($recordedPaid, $linkedPaid), 2));
+    }
+
     public function recalculatePaidAmountFromTransactions(): void
     {
         if (! $this->exists) {

@@ -61,7 +61,7 @@ class TransactionInvoiceLinkForm
                 return TransactionResource::invoiceOptionLabel((int) $value, $clientId ?: null, $transaction->id)
                     ?? Invoice::query()->whereKey($value)->value('name');
             })
-            ->afterStateUpdated(function (?string $state, callable $set) use ($transaction): void {
+            ->afterStateUpdated(function (?string $state, callable $set): void {
                 if (! $state) {
                     return;
                 }
@@ -69,16 +69,30 @@ class TransactionInvoiceLinkForm
                 $invoice = Invoice::find((int) $state);
 
                 if ($invoice) {
-                    $set('amount_paid', self::defaultPaidAmountForInvoice($invoice, $transaction));
+                    $set('amount_paid', $invoice->amountStillUnpaid());
                 }
             });
     }
 
     public static function defaultPaidAmountForInvoice(Invoice $invoice, Transaction $transaction): float
     {
-        $remaining = $invoice->remainingBalance();
+        return $invoice->amountStillUnpaid();
+    }
 
-        return round(min($remaining, (float) $invoice->total_amount), 2);
+    public static function balanceLabel(?Invoice $invoice): string
+    {
+        if (! $invoice) {
+            return '—';
+        }
+
+        $unpaid = $invoice->amountStillUnpaid();
+        $total = (float) $invoice->total_amount;
+
+        if (round($unpaid, 2) < round($total, 2)) {
+            return '€'.number_format($unpaid, 2).' unpaid of €'.number_format($total, 2);
+        }
+
+        return '€'.number_format($total, 2);
     }
 
     public static function clampPaidAmountForInvoiceOnTransaction(
@@ -94,7 +108,12 @@ class TransactionInvoiceLinkForm
         $totalPaid = (float) DB::table('invoice_transaction')
             ->where('invoice_id', $invoice->id)
             ->sum('amount_paid');
-        $maxAllowed = round((float) $invoice->total_amount - ($totalPaid - $currentPivot), 2);
+        $paidElsewhere = max(
+            0,
+            (float) ($invoice->paid_amount ?? 0) - $currentPivot,
+            $totalPaid - $currentPivot,
+        );
+        $maxAllowed = round((float) $invoice->total_amount - $paidElsewhere, 2);
 
         return min($paid, max(0, $maxAllowed));
     }
@@ -113,18 +132,10 @@ class TransactionInvoiceLinkForm
                 ->step('0.01')
                 ->prefix('€')
                 ->required()
-                ->default(0),
+                ->helperText('Filled with the unpaid amount. Edit it to pay less.'),
             Forms\Components\Placeholder::make('invoice_total_display')
-                ->label('Invoice total')
-                ->content(function (Get $get): string {
-                    $invoice = Invoice::find((int) $get('invoice_id'));
-
-                    if (! $invoice) {
-                        return '—';
-                    }
-
-                    return '€'.number_format((float) $invoice->total_amount, 2);
-                }),
+                ->label('Unpaid')
+                ->content(fn (Get $get): string => self::balanceLabel(Invoice::find((int) $get('invoice_id')))),
         ];
     }
 
@@ -138,8 +149,8 @@ class TransactionInvoiceLinkForm
                 ->label('Invoice')
                 ->content($invoice->name),
             Forms\Components\Placeholder::make('invoice_total')
-                ->label('Invoice total')
-                ->content('€'.number_format((float) $invoice->total_amount, 2)),
+                ->label('Unpaid')
+                ->content(self::balanceLabel($invoice)),
             Forms\Components\TextInput::make('amount_paid')
                 ->label('Paid amount on this transaction')
                 ->numeric()
@@ -200,16 +211,26 @@ class TransactionInvoiceLinkForm
                     return TransactionResource::invoiceOptionLabel((int) $value, $clientId ?: null)
                         ?? Invoice::query()->whereKey($value)->value('name');
                 })
-                ->afterStateUpdated(function (?string $state, callable $set): void {
-                    if (! $state) {
-                        return;
+                ->afterStateUpdated(function (?string $state, callable $set, Get $get): void {
+                    $unpaid = null;
+
+                    if ($state) {
+                        $invoice = Invoice::find((int) $state);
+
+                        if ($invoice) {
+                            $unpaid = $invoice->amountStillUnpaid();
+                            $set('amount_paid', $unpaid);
+                        }
                     }
 
-                    $invoice = Invoice::find((int) $state);
-
-                    if ($invoice) {
-                        $set('amount_paid', min($invoice->remainingBalance(), (float) $invoice->total_amount));
-                    }
+                    TransactionResource::pushCreateTransactionAmount(
+                        $set,
+                        $get,
+                        fromRepeaterItem: true,
+                        overrideKey: 'invoice_id',
+                        overrideId: (int) $state,
+                        overrideAmount: $unpaid,
+                    );
                 }),
             Forms\Components\TextInput::make('amount_paid')
                 ->label('Paid amount')
@@ -218,18 +239,32 @@ class TransactionInvoiceLinkForm
                 ->step('0.01')
                 ->prefix('€')
                 ->required()
-                ->default(0),
-            Forms\Components\Placeholder::make('invoice_total_display')
-                ->label('Invoice total')
-                ->content(function (Get $get): string {
-                    $invoice = Invoice::find((int) $get('invoice_id'));
-
-                    if (! $invoice) {
-                        return '—';
+                ->live(onBlur: true)
+                ->helperText('Filled with the unpaid amount. Edit it to pay less.')
+                ->afterStateUpdated(function ($state, callable $set, Get $get): void {
+                    TransactionResource::pushCreateTransactionAmount(
+                        $set,
+                        $get,
+                        fromRepeaterItem: true,
+                        overrideKey: 'invoice_id',
+                        overrideId: (int) ($get('invoice_id') ?? 0),
+                        overrideAmount: ($state === null || $state === '') ? null : (float) $state,
+                    );
+                })
+                ->afterStateHydrated(function (Forms\Components\TextInput $component, $state, Get $get): void {
+                    if (filled($state) && (float) $state > 0) {
+                        return;
                     }
 
-                    return '€'.number_format((float) $invoice->total_amount, 2);
+                    $invoice = Invoice::find((int) ($get('invoice_id') ?? 0));
+
+                    if ($invoice) {
+                        $component->state($invoice->amountStillUnpaid());
+                    }
                 }),
+            Forms\Components\Placeholder::make('invoice_total_display')
+                ->label('Unpaid')
+                ->content(fn (Get $get): string => self::balanceLabel(Invoice::find((int) $get('invoice_id')))),
         ];
     }
 

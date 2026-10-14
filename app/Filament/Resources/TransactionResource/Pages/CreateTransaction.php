@@ -6,6 +6,8 @@ use App\Filament\Resources\BankAccountResource;
 use App\Filament\Resources\TransactionResource;
 use App\Filament\Support\TransactionBillLinkForm;
 use App\Filament\Support\TransactionInvoiceLinkForm;
+use App\Models\Bill;
+use App\Models\Invoice;
 use App\Services\TransactionDocumentationService;
 use App\Services\TransactionDocumentationStatsService;
 use App\Services\TransactionSettlementService;
@@ -198,9 +200,13 @@ class CreateTransaction extends CreateRecord
                 continue;
             }
 
+            $rawAmount = $link['amount_paid'] ?? null;
+
             $normalized[] = [
                 'bill_id' => $billId,
-                'amount_paid' => (float) ($link['amount_paid'] ?? 0),
+                'amount_paid' => ($rawAmount === null || $rawAmount === '')
+                    ? (float) (Bill::query()->find($billId)?->amountStillUnpaid() ?? 0)
+                    : (float) $rawAmount,
             ];
         }
 
@@ -222,9 +228,13 @@ class CreateTransaction extends CreateRecord
                 continue;
             }
 
+            $rawAmount = $link['amount_paid'] ?? null;
+
             $normalized[] = [
                 'invoice_id' => $invoiceId,
-                'amount_paid' => (float) ($link['amount_paid'] ?? 0),
+                'amount_paid' => ($rawAmount === null || $rawAmount === '')
+                    ? (float) (Invoice::query()->find($invoiceId)?->amountStillUnpaid() ?? 0)
+                    : (float) $rawAmount,
             ];
         }
 
@@ -240,12 +250,18 @@ class CreateTransaction extends CreateRecord
         $billId = request()->integer('bill_id');
 
         if ($billId && collect($links)->doesntContain('bill_id', $billId)) {
-            $links[] = ['bill_id' => $billId, 'amount_paid' => 0];
+            $links[] = [
+                'bill_id' => $billId,
+                'amount_paid' => (float) (Bill::query()->find($billId)?->amountStillUnpaid() ?? 0),
+            ];
         }
 
         if ($links === [] && request()->get('bill_ids')) {
             foreach (array_filter(array_map('intval', explode(',', (string) request()->get('bill_ids')))) as $id) {
-                $links[] = ['bill_id' => $id, 'amount_paid' => 0];
+                $links[] = [
+                    'bill_id' => $id,
+                    'amount_paid' => (float) (Bill::query()->find($id)?->amountStillUnpaid() ?? 0),
+                ];
             }
         }
 
@@ -261,7 +277,10 @@ class CreateTransaction extends CreateRecord
         $invoiceId = request()->integer('invoice_id');
 
         if ($invoiceId && collect($links)->doesntContain('invoice_id', $invoiceId)) {
-            $links[] = ['invoice_id' => $invoiceId, 'amount_paid' => 0];
+            $links[] = [
+                'invoice_id' => $invoiceId,
+                'amount_paid' => (float) (Invoice::query()->find($invoiceId)?->amountStillUnpaid() ?? 0),
+            ];
         }
 
         return $links;

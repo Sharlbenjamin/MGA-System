@@ -2,21 +2,18 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToOneThrough;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Traits\LogsActivity;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class Invoice extends Model
 {
     use LogsActivity;
+
     protected $fillable = [
         'name',
         'file_id',
@@ -60,10 +57,10 @@ class Invoice extends Model
 
         static::creating(function ($invoice) {
             // Generate the invoice number
-            if (!$invoice->name) {
+            if (! $invoice->name) {
                 $invoice->name = static::generateInvoiceNumber($invoice);
             }
-            if (!$invoice->invoice_date) {
+            if (! $invoice->invoice_date) {
                 $invoice->invoice_date = $invoice->file?->service_date ?? now();
             }
             if (! $invoice->bank_account_id) {
@@ -83,10 +80,9 @@ class Invoice extends Model
                 $invoice->checkStatus();
             }
 
-            if($invoice->isDirty('status') && $invoice->status === 'Posted')
-            {
+            if ($invoice->isDirty('status') && $invoice->status === 'Posted') {
                 // Generate payment link if not provided
-                if (!$invoice->payment_link) {
+                if (! $invoice->payment_link) {
                     $invoice->generatePaymentLink();
                 }
             }
@@ -101,22 +97,23 @@ class Invoice extends Model
         $clientInitials = optional($invoice->patient->client)->initials ?? 'XX';
 
         // Get the latest invoice number and increment
-        $latestInvoice = static::where('name', 'like', $prefix . $clientInitials . '-%')
-        ->orderByRaw('CAST(SUBSTRING(name, -3) AS UNSIGNED) DESC')
-        ->first();
+        $latestInvoice = static::where('name', 'like', $prefix.$clientInitials.'-%')
+            ->orderByRaw('CAST(SUBSTRING(name, -3) AS UNSIGNED) DESC')
+            ->first();
 
         $number = $latestInvoice
-        ? (int)substr($latestInvoice->name, -3) + 1
+        ? (int) substr($latestInvoice->name, -3) + 1
         : 1;
 
-        return $prefix . $clientInitials . '-' . str_pad($number, 3, '0', STR_PAD_LEFT);
+        return $prefix.$clientInitials.'-'.str_pad($number, 3, '0', STR_PAD_LEFT);
     }
 
     // relations      relations      relations       relations        relations        relations
 
     public function getActivityReference(): ?string
     {
-        $ref = $this->file?->mga_reference ?? $this->patient?->name ?? 'Invoice #' . $this->id;
+        $ref = $this->file?->mga_reference ?? $this->patient?->name ?? 'Invoice #'.$this->id;
+
         return "{$this->name} ({$ref})";
     }
 
@@ -152,7 +149,6 @@ class Invoice extends Model
         return $this->hasMany(InvoiceItem::class);
     }
 
-
     public function transactions()
     {
         return $this->belongsToMany(Transaction::class, 'invoice_transaction')
@@ -176,6 +172,10 @@ class Invoice extends Model
 
     public function totalPaidFromTransactions(): float
     {
+        if (! $this->exists) {
+            return 0.0;
+        }
+
         return (float) DB::table('invoice_transaction')
             ->where('invoice_id', $this->id)
             ->sum('amount_paid');
@@ -186,6 +186,19 @@ class Invoice extends Model
         $remaining = (float) $this->total_amount - $this->totalPaidFromTransactions();
 
         return max(0, round($remaining, 2));
+    }
+
+    /**
+     * Amount still owed. A partial payment may be stored on the invoice, on linked
+     * transactions, or on both — the higher of those is already paid.
+     */
+    public function amountStillUnpaid(): float
+    {
+        return Bill::unpaidFromAmounts(
+            (float) $this->total_amount,
+            (float) ($this->paid_amount ?? 0),
+            $this->totalPaidFromTransactions(),
+        );
     }
 
     public function recalculatePaidAmountFromTransactions(): void
@@ -244,11 +257,11 @@ class Invoice extends Model
 
     public function checkStatus()
     {
-        if($this->paid_amount < $this->total_amount && $this->paid_amount > 0) {
+        if ($this->paid_amount < $this->total_amount && $this->paid_amount > 0) {
             $this->markAsPartial();
-        }elseif ($this->paid_amount == $this->total_amount) {
+        } elseif ($this->paid_amount == $this->total_amount) {
             $this->markAsPaid();
-        }elseif ($this->paid_amount == 0) {
+        } elseif ($this->paid_amount == 0) {
             $this->markAsUnpaid();
         }
     }
@@ -302,12 +315,12 @@ class Invoice extends Model
         $this->save();
     }
 
-
     public function getIsOverdueAttribute(): bool
     {
         if ($this->status === 'Paid') {
             return false;
         }
+
         return $this->due_date->isPast();
     }
 
@@ -319,7 +332,7 @@ class Invoice extends Model
 
         // Create a simple price with just the total amount
         $price = $stripe->prices->create([
-            'unit_amount' => (int)($this->total_amount * 100),
+            'unit_amount' => (int) ($this->total_amount * 100),
             'currency' => 'eur',
             'product_data' => [
                 'name' => "Invoice {$this->name}",
@@ -335,7 +348,7 @@ class Invoice extends Model
             'after_completion' => [
                 'type' => 'redirect',
                 'redirect' => [
-                    'url' => config('app.url') . '/payment/success',
+                    'url' => config('app.url').'/payment/success',
                 ],
             ],
         ]);
@@ -366,37 +379,35 @@ class Invoice extends Model
 
     /**
      * Generate a signed URL for the invoice document
-     * 
-     * @param int $expirationMinutes Expiration time in minutes (default: 60)
-     * @return string|null
+     *
+     * @param  int  $expirationMinutes  Expiration time in minutes (default: 60)
      */
     public function getDocumentSignedUrl(int $expirationMinutes = 60): ?string
     {
-        if (!$this->hasLocalDocument()) {
+        if (! $this->hasLocalDocument()) {
             return null;
         }
 
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.serve', now()->addMinutes($expirationMinutes), [
             'type' => 'invoice',
-            'id' => $this->id
+            'id' => $this->id,
         ]);
     }
 
     /**
      * Generate a signed URL for document metadata
-     * 
-     * @param int $expirationMinutes Expiration time in minutes (default: 60)
-     * @return string|null
+     *
+     * @param  int  $expirationMinutes  Expiration time in minutes (default: 60)
      */
     public function getDocumentMetadataSignedUrl(int $expirationMinutes = 60): ?string
     {
-        if (!$this->hasLocalDocument()) {
+        if (! $this->hasLocalDocument()) {
             return null;
         }
 
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('docs.metadata', now()->addMinutes($expirationMinutes), [
             'type' => 'invoice',
-            'id' => $this->id
+            'id' => $this->id,
         ]);
     }
 }
