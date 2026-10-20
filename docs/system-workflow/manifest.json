@@ -465,5 +465,8 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/bill-extract.blade.php": "610bab38b2bea19d44dbb33513364b9e070598f8ad3a9a6ceb25a5c2040974b7",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_10_120000_change_clients_status_to_string.php": "61eca984243a197c304bf607e4e67c0e7613f78df2315bfb4d392ed5487504df",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_10_150000_add_linkedin_url_to_clients_table.php": "4682d9ea883794471e5f7bba78b107f1cdb3063455b925fac1ca315066d17e5f",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_20_190600_allow_searching_provider_status.php": "02ce54eb0c9f489c68dffe6a1a463ea2652e785ddd32c5c0a93dcf05a80e4722"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_20_190600_allow_searching_provider_status.php": "02ce54eb0c9f489c68dffe6a1a463ea2652e785ddd32c5c0a93dcf05a80e4722",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/CoverageArea.php": "472075929ea485f8d2716c0f324ec97f41c5926be97af2db8d8339ec028289f5",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Services\/CoverageAreaQuery.php": "fcdf435cb7267b2a7b19c0eedc5ca2714fd5c4218cdbadcbdf4a93d6ad070a7d",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_20_191500_add_coverage_area_lookup_indexes.php": "23e3137e0b2dfc825b870375a9dd50fe6f6115629cb40510f64504fa4d5efa6b"
 }
