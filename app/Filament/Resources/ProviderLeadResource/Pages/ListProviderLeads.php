@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\ProviderLeadResource\Pages;
 
 use App\Filament\Resources\ProviderLeadResource;
-use App\Filament\Resources\ProviderLeadResource\Widgets\LeadStatusOverviewWidget;
 use App\Filament\Resources\ProviderLeadResource\Widgets\PotentialProviderLeadsByCountryWidget;
 use App\Filament\Resources\ProviderLeadResource\Widgets\ProviderStatusOverviewWidget;
 use Filament\Actions;
@@ -78,7 +77,6 @@ class ListProviderLeads extends ListRecords
     {
         return [
             ProviderStatusOverviewWidget::class,
-            LeadStatusOverviewWidget::class,
             PotentialProviderLeadsByCountryWidget::class,
         ];
     }
