@@ -507,10 +507,15 @@ class ProviderLeadResource extends Resource
                         'Black List' => 'Black List',
                     ])
                     ->multiple()
-                    ->query(function (Builder $query, array $data): Builder {
+                    ->query(function (Builder $query, array $data, $livewire): Builder {
                         $selected = array_values(array_filter((array) ($data['values'] ?? [])));
 
                         if ($selected === []) {
+                            // Contacted-this-week is an activity view across provider statuses.
+                            if (data_get($livewire, 'tableFilters.contacted_this_week.isActive')) {
+                                return $query;
+                            }
+
                             $selected = ['Potential'];
                         }
 
@@ -570,15 +575,42 @@ class ProviderLeadResource extends Resource
 
                         return $query;
                     }),
-                Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
+                Filter::make('needs_action')
+                    ->label('Needs Action')
+                    ->toggle()
+                    ->query(function (Builder $query, array $data) use ($ActionStatuses): Builder {
+                        if (! ($data['isActive'] ?? false)) {
+                            return $query;
+                        }
+
+                        return $query->whereIn('provider_leads.status', $ActionStatuses);
+                    }),
                 Filter::make('past_due')
                     ->label('Past due')
+                    ->toggle()
                     ->query(function (Builder $query, array $data): Builder {
                         if (! ($data['isActive'] ?? false)) {
                             return $query;
                         }
 
                         return $query->whereDate('provider_leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
+                    }),
+                Filter::make('contacted_this_week')
+                    ->label('Contacted this week')
+                    ->toggle()
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (! ($data['isActive'] ?? false)) {
+                            return $query;
+                        }
+
+                        $startOfWeek = Carbon::now()->startOfWeek()->toDateString();
+                        $endOfWeek = Carbon::now()->endOfWeek()->toDateString();
+
+                        return $query->whereHas('interactions', function (Builder $interactionQuery) use ($startOfWeek, $endOfWeek): void {
+                            $interactionQuery
+                                ->whereDate('interactions.interaction_date', '>=', $startOfWeek)
+                                ->whereDate('interactions.interaction_date', '<=', $endOfWeek);
+                        });
                     }),
                 SelectFilter::make('follow_up')
                     ->label('Follow-up')

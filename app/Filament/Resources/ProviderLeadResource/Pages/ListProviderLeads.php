@@ -3,9 +3,7 @@
 namespace App\Filament\Resources\ProviderLeadResource\Pages;
 
 use App\Filament\Resources\ProviderLeadResource;
-use App\Filament\Resources\ProviderLeadResource\Widgets\NeedsALookWidget;
-use App\Filament\Resources\ProviderLeadResource\Widgets\PotentialProviderLeadsByCountryWidget;
-use App\Filament\Resources\ProviderLeadResource\Widgets\ProviderStatusOverviewWidget;
+use App\Filament\Resources\ProviderLeadResource\Widgets\ProviderLeadsOverviewWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Facades\FilamentView;
@@ -77,9 +75,7 @@ class ListProviderLeads extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            NeedsALookWidget::class,
-            ProviderStatusOverviewWidget::class,
-            PotentialProviderLeadsByCountryWidget::class,
+            ProviderLeadsOverviewWidget::class,
         ];
     }
 }
