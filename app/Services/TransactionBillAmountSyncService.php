@@ -56,6 +56,14 @@ class TransactionBillAmountSyncService
                 ),
             ]);
         }
+
+        foreach ($this->resolveNewBillTotals($transaction, $newTotal) as $total) {
+            if ($total <= 0) {
+                throw ValidationException::withMessages([
+                    'new_total' => 'This change would reduce a linked bill total to zero or below.',
+                ]);
+            }
+        }
     }
 
     /**
@@ -133,6 +141,8 @@ class TransactionBillAmountSyncService
         });
 
         $transaction = $transaction->fresh(['bills']);
+
+        $transaction->bankAccount?->calculateBalance();
 
         app(TransactionSettlementService::class)->syncAfterPivotChange($transaction);
 

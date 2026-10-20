@@ -7,6 +7,7 @@ use App\Filament\Resources\TransactionResource\RelationManager\BillRelationManag
 use App\Filament\Resources\TransactionResource\RelationManager\InvoiceRelationManager;
 use App\Filament\Support\BillTable;
 use App\Filament\Support\TransactionBillLinkForm;
+use App\Filament\Support\TransactionChangeAmountAction;
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\TransactionInvoiceLinkForm;
 use App\Models\BankAccount;
@@ -1069,6 +1070,7 @@ class TransactionResource extends Resource
                 TransactionDocumentationForm::makeSkipTableAction(),
                 TransactionDocumentationForm::makeUndoSkipTableAction(),
                 Tables\Actions\ViewAction::make(),
+                TransactionChangeAmountAction::makeTableAction(),
                 Action::make('viewTrxInPdf')
                     ->label('Trx In PDF')
                     ->icon('heroicon-o-document-text')

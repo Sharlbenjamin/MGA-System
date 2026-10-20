@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\TransactionChangeAmountAction;
 use App\Filament\Support\TransactionSendProofAction;
 use App\Models\BankAccount;
 use App\Models\Transaction;
@@ -24,6 +25,7 @@ class ViewTransaction extends ViewRecord
         return [
             Actions\EditAction::make()
                 ->label('Edit Trx'),
+            TransactionChangeAmountAction::makeHeaderAction(),
             Action::make('viewTrxInPdf')
                 ->label('View Trx In PDF')
                 ->icon('heroicon-o-document-text')

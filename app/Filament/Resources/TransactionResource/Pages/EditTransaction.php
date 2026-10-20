@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TransactionResource\Pages;
 
 use App\Filament\Resources\TransactionResource;
+use App\Filament\Support\TransactionChangeAmountAction;
 use App\Filament\Support\TransactionDocumentationForm;
 use App\Filament\Support\TransactionEditPageRefresh;
 use App\Filament\Support\TransactionSendProofAction;
@@ -163,6 +164,7 @@ class EditTransaction extends EditRecord
                 Actions\ViewAction::make()
                     ->label('View Trx')
                     ->icon('heroicon-o-eye'),
+                TransactionChangeAmountAction::makeHeaderAction(),
                 TransactionDocumentationForm::makeHeaderAction(),
                 TransactionDocumentationForm::makeSkipHeaderAction(),
                 TransactionDocumentationForm::makeUndoSkipHeaderAction(),
