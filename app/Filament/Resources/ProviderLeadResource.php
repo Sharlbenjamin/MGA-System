@@ -298,6 +298,7 @@ class ProviderLeadResource extends Resource
                                 'Fake Case sent' => 'Fake Case sent',
                                 'Cancel Case' => 'Cancel Case',
                                 'Cancel Case sent' => 'Cancel Case sent',
+                                'Error' => 'Error',
                             ])
                             ->required(),
 
@@ -338,40 +339,34 @@ class ProviderLeadResource extends Resource
                     ->sortable()
                     ->searchable()
                     ->wrap()
-                    ->extraCellAttributes(self::compactColumnCell(11))
                     ->description(fn (ProviderLead $record) => $record->created_at?->format('d-m-Y H:i')),
                 TextColumn::make('email')
                     ->label('Lead Email')
                     ->sortable()
                     ->searchable()
-                    ->wrap()
-                    ->extraCellAttributes(self::compactColumnCell(12)),
+                    ->wrap(),
                 TextColumn::make('provider.name')
                     ->label('Provider')
                     ->sortable()
                     ->searchable()
                     ->wrap()
-                    ->extraCellAttributes(self::compactColumnCell(11))
                     ->url(fn (ProviderLead $record): ?string => $record->provider ? ProviderResource::getUrl('overview', ['record' => $record->provider]) : null)
                     ->description(fn (ProviderLead $record) => $record->assignedUser?->name),
                 TextColumn::make('city.name')
                     ->label('City')
                     ->sortable()
                     ->searchable()
-                    ->wrap()
-                    ->extraCellAttributes(self::compactColumnCell(7)),
+                    ->wrap(),
                 TextColumn::make('service_types')
                     ->label('Service Types')
                     ->badge()
                     ->wrap()
-                    ->extraCellAttributes(self::compactColumnCell(9))
                     ->formatStateUsing(fn ($state) => is_string($state) ? $state : implode(', ', (array) $state)),
 
                 TextColumn::make('communication_method')
                     ->label('Contact Method')
                     ->sortable()
-                    ->wrap()
-                    ->extraCellAttributes(self::compactColumnCell(7)),
+                    ->wrap(),
 
                 TextColumn::make('status')
                     ->colors([
@@ -390,17 +385,16 @@ class ProviderLeadResource extends Resource
                         'amber' => 'Presentation sent',
                         'teal' => 'Contract',
                         'emerald' => 'Contract sent',
+                        'danger' => 'Error',
                     ])
                     ->sortable()
-                    ->wrap()
-                    ->extraCellAttributes(self::compactColumnCell(8)),
+                    ->wrap(),
 
                 TextColumn::make('last_contact_date')
                     ->label('Follow-up')
                     ->badge()
                     ->sortable()
                     ->wrap()
-                    ->extraCellAttributes(self::compactColumnCell(8))
                     ->formatStateUsing(fn ($state): string => LeadResource::followUpCountdownLabel($state))
                     ->color(fn ($state): string => LeadResource::followUpCountdownColor($state)),
 
@@ -468,6 +462,28 @@ class ProviderLeadResource extends Resource
                     })
                     ->deselectRecordsAfterCompletion(),
 
+                BulkAction::make('updateAssignedUser')
+                    ->label('Update Assigned User')
+                    ->icon('heroicon-o-user')
+                    ->color('info')
+                    ->form([
+                        Select::make('assigned_user_id')
+                            ->label('Assigned User')
+                            ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                    ])
+                    ->action(function (SupportCollection $records, array $data): void {
+                        $records->each->update(['assigned_user_id' => $data['assigned_user_id']]);
+
+                        Notification::make()
+                            ->title('Assigned user updated')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
+
                 Tables\Actions\DeleteBulkAction::make(),
                 BulkAction::make('send_tailored_mail')->label('Send Tailored Mail')
                     ->form([
@@ -518,7 +534,18 @@ class ProviderLeadResource extends Resource
                             'Fake Case sent' => 'Fake Case sent',
                             'Cancel Case' => 'Cancel Case',
                             'Cancel Case sent' => 'Cancel Case sent',
-                        ])->label('Filter by Status')->attribute('status'),
+                            'Error' => 'Error',
+                        ])
+                        ->label('Filter by Status')
+                        ->query(function (Builder $query, array $data): Builder {
+                            $selected = array_values(array_filter((array) ($data['values'] ?? [])));
+
+                            if ($selected === []) {
+                                return $query->whereRaw('LOWER(provider_leads.status) != ?', ['error']);
+                            }
+
+                            return $query->whereIn('provider_leads.status', $selected);
+                        }),
                 Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
                 Filter::make('past_due')
                     ->label('Past due')
@@ -732,6 +759,7 @@ class ProviderLeadResource extends Resource
                             'Fake Case sent' => 'Fake Case sent',
                             'Cancel Case' => 'Cancel Case',
                             'Cancel Case sent' => 'Cancel Case sent',
+                            'Error' => 'Error',
                         ])
                         ->required()
                         ->preload()
@@ -747,16 +775,6 @@ class ProviderLeadResource extends Resource
             Textarea::make('comment')
                 ->label('Comment')
                 ->rows(3),
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected static function compactColumnCell(int $rem): array
-    {
-        return [
-            'style' => "width: {$rem}rem; max-width: {$rem}rem; white-space: normal; overflow-wrap: anywhere;",
         ];
     }
 

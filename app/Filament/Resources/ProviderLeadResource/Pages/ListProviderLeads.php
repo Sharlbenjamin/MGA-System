@@ -20,20 +20,32 @@ class ListProviderLeads extends ListRecords
             fn (): string => <<<'HTML'
                 <style>
                     .fi-resource-provider-leads table.fi-ta-table {
-                        width: max-content !important;
+                        width: 100% !important;
+                        max-width: 100%;
+                        table-layout: fixed;
+                    }
+
+                    .fi-resource-provider-leads .fi-ta-table :is(th, td),
+                    .fi-resource-provider-leads .fi-ta-table .whitespace-nowrap {
+                        white-space: normal !important;
+                        overflow-wrap: anywhere;
                     }
 
                     .fi-resource-provider-leads .fi-ta-text .w-max,
                     .fi-resource-provider-leads .fi-ta-text .max-w-max {
                         width: auto;
                         max-width: 100%;
-                        white-space: normal;
                     }
 
                     .fi-resource-provider-leads .fi-badge {
                         height: auto;
-                        white-space: normal;
+                        max-width: 100%;
                         text-align: start;
+                    }
+
+                    .fi-resource-provider-leads .fi-ta-actions-header-cell,
+                    .fi-resource-provider-leads .fi-ta-actions-cell {
+                        width: 8.5rem;
                     }
                 </style>
             HTML,

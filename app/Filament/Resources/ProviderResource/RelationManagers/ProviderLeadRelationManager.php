@@ -87,6 +87,7 @@ class ProviderLeadRelationManager extends RelationManager
                     'Fake Case sent' => 'Fake Case Sent',
                     'Cancel Case' => 'Cancel Case',
                     'Cancel Case sent' => 'Cancel Case Sent',
+                    'Error' => 'Error',
                 ])
                 ->required(),
             DatePicker::make('last_contact_date')->label('Last Contact Date')->date('d-m-Y')->nullable(),

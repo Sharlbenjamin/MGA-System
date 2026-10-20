@@ -62,6 +62,7 @@ class PotentialProviderLeadsByCountryWidget extends BaseWidget
     protected function baseQuery(array $countryKeys, string $providerStatus = 'Active'): Builder
     {
         return ProviderLead::query()
+            ->whereRaw('LOWER(provider_leads.status) != ?', ['error'])
             ->whereHas('provider', function (Builder $query) use ($countryKeys, $providerStatus) {
                 $query
                     ->where('status', $providerStatus)

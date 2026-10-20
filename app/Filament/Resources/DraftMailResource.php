@@ -51,6 +51,7 @@ class DraftMailResource extends Resource
                 'Fake Case sent' => 'Fake Case sent',
                 'Cancel Case' => 'Cancel Case',
                 'Cancel Case sent' => 'Cancel Case sent',
+                'Error' => 'Error',
             ];
         } elseif ($type === 'File') {
             $defaultStatuses = [
@@ -140,6 +141,7 @@ public static function form(Form $form): Form
         'Fake Case sent' => 'Fake Case sent',
         'Cancel Case' => 'Cancel Case',
         'Cancel Case sent' => 'Cancel Case sent',
+        'Error' => 'Error',
     ];
 
     $fileStatuses = [
