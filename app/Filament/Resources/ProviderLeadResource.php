@@ -2,46 +2,42 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\LeadResource;
-use App\Filament\Resources\ProviderResource;
 use App\Filament\Resources\ProviderLeadResource\Pages;
 use App\Filament\Resources\ProviderLeadResource\RelationManagers\InteractionsRelationManager;
-use App\Models\ProviderLead;
+use App\Mail\CustomLeadEmail;
 use App\Models\City;
-use App\Models\ServiceType;
-use App\Models\Provider;
 use App\Models\Country;
+use App\Models\DraftMail;
+use App\Models\Provider;
+use App\Models\ProviderLead;
+use App\Models\ServiceType;
+use App\Models\User;
+use Carbon\Carbon;
 use Filament\Forms;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Select;
+use Filament\Forms\ComponentContainer;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkAction;
-use Illuminate\Support\Facades\Mail;
-use App\Models\DraftMail;
-use Carbon\Carbon;
-use App\Mail\CustomLeadEmail;
-use App\Models\Interaction;
-use App\Models\User;
-use Filament\Forms\ComponentContainer;
-use Filament\Notifications\Notification;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ProviderLeadResource extends Resource
 {
@@ -75,7 +71,7 @@ class ProviderLeadResource extends Resource
                             ->options(Provider::pluck('name', 'id'))
                             ->searchable()
                             ->reactive()
-                            ->visible(fn (Get $get) => !$get('create_new_provider'))
+                            ->visible(fn (Get $get) => ! $get('create_new_provider'))
                             ->afterStateUpdated(function (Set $set, Get $get) {
                                 $provider = Provider::find($get('provider_id'));
                                 if ($provider) {
@@ -245,14 +241,15 @@ class ProviderLeadResource extends Resource
                             ->options(function (Get $get) {
                                 $providerId = $get('provider_id');
                                 $countryId = $get('new_provider_country_id');
-                                
+
                                 if ($providerId) {
                                     $provider = Provider::find($providerId);
+
                                     return $provider ? City::where('country_id', $provider->country_id)->pluck('name', 'id') : [];
                                 } elseif ($countryId) {
                                     return City::where('country_id', $countryId)->pluck('name', 'id');
                                 }
-                                
+
                                 return [];
                             })
                             ->searchable()
@@ -323,14 +320,12 @@ class ProviderLeadResource extends Resource
     public static function table(Tables\Table $table): Tables\Table
     {
         $ActionStatuses = ['Pending information', 'Step one', 'Reminder', 'Discount', 'Step two', 'Presentation', 'Contract', 'Fake Case', 'Cancel Case'];
+
         return $table
-        ->query(
-            ProviderLead::query()
-                ->with(['provider', 'assignedUser'])
-                ->whereHas('provider', function ($query) {
-                    $query->where('status', 'Potential');
-                })
-        )
+            ->query(
+                ProviderLead::query()
+                    ->with(['provider', 'assignedUser'])
+            )
             ->defaultSort(fn (Builder $query): Builder => $query
                 ->orderByRaw('provider_leads.last_contact_date IS NULL')
                 ->orderBy('provider_leads.last_contact_date'))
@@ -499,16 +494,37 @@ class ProviderLeadResource extends Resource
                             ProviderLead::sendTailoredMail([$lead->email], $subject, $body);
                         }
 
-                    })
+                    }),
             ])
             ->filters([
+                SelectFilter::make('provider_status')
+                    ->label('Provider Status')
+                    ->options([
+                        'Potential' => 'Potential',
+                        'Searching' => 'Searching',
+                        'Active' => 'Active',
+                        'Hold' => 'Hold',
+                        'Black List' => 'Black List',
+                    ])
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $selected = array_values(array_filter((array) ($data['values'] ?? [])));
+
+                        if ($selected === []) {
+                            $selected = ['Potential'];
+                        }
+
+                        return $query->whereHas(
+                            'provider',
+                            fn (Builder $providerQuery) => $providerQuery->whereIn('status', $selected),
+                        );
+                    }),
                 SelectFilter::make('provider')
                     ->label('Filter by Provider')
                     ->relationship(
                         'provider',
                         'name',
                         fn (Builder $query) => $query
-                            ->where('status', 'Potential')
                             ->whereHas('leads')
                             ->orderBy('name'),
                     )
@@ -517,36 +533,43 @@ class ProviderLeadResource extends Resource
                     ->preload()
                     ->native(false),
                 SelectFilter::make('status')->multiple()
-                        ->options([
-                            'Pending information' => 'Pending information',
-                            'Step one' => 'Step one',
-                            'Step one sent' => 'Step one sent',
-                            'Reminder' => 'Reminder',
-                            'Reminder sent' => 'Reminder sent',
-                            'Discount' => 'Discount',
-                            'Discount sent' => 'Discount sent',
-                            'Step two' => 'Step two',
-                            'Step two sent' => 'Step two sent',
-                            'Presentation' => 'Presentation',
-                            'Presentation sent' => 'Presentation sent',
-                            'Contract' => 'Contract',
-                            'Contract sent' => 'Contract sent',
-                            'Fake Case' => 'Fake Case',
-                            'Fake Case sent' => 'Fake Case sent',
-                            'Cancel Case' => 'Cancel Case',
-                            'Cancel Case sent' => 'Cancel Case sent',
-                            'Error' => 'Error',
-                        ])
-                        ->label('Filter by Status')
-                        ->query(function (Builder $query, array $data): Builder {
-                            $selected = array_values(array_filter((array) ($data['values'] ?? [])));
+                    ->options([
+                        'Pending information' => 'Pending information',
+                        'Step one' => 'Step one',
+                        'Step one sent' => 'Step one sent',
+                        'Reminder' => 'Reminder',
+                        'Reminder sent' => 'Reminder sent',
+                        'Discount' => 'Discount',
+                        'Discount sent' => 'Discount sent',
+                        'Step two' => 'Step two',
+                        'Step two sent' => 'Step two sent',
+                        'Presentation' => 'Presentation',
+                        'Presentation sent' => 'Presentation sent',
+                        'Contract' => 'Contract',
+                        'Contract sent' => 'Contract sent',
+                        'Fake Case' => 'Fake Case',
+                        'Fake Case sent' => 'Fake Case sent',
+                        'Cancel Case' => 'Cancel Case',
+                        'Cancel Case sent' => 'Cancel Case sent',
+                        'Error' => 'Error',
+                    ])
+                    ->label('Filter by Status')
+                    ->query(function (Builder $query, array $data, $livewire): Builder {
+                        $selected = array_values(array_filter((array) ($data['values'] ?? [])));
 
-                            if ($selected === []) {
-                                return $query->whereRaw('LOWER(provider_leads.status) != ?', ['error']);
-                            }
-
+                        if ($selected !== []) {
                             return $query->whereIn('provider_leads.status', $selected);
-                        }),
+                        }
+
+                        $providerStatuses = array_values(array_filter((array) data_get($livewire, 'tableFilters.provider_status.values', [])));
+                        $onlyPotential = $providerStatuses === [] || $providerStatuses === ['Potential'];
+
+                        if ($onlyPotential) {
+                            return $query->whereRaw('LOWER(provider_leads.status) != ?', ['error']);
+                        }
+
+                        return $query;
+                    }),
                 Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
                 Filter::make('past_due')
                     ->label('Past due')
@@ -617,10 +640,10 @@ class ProviderLeadResource extends Resource
                         );
                     }),
                 SelectFilter::make('city_id')
-                ->label('Filter by City')
-                ->options(City::whereHas('country', fn ($q) => $q->whereIn('id', [179, 73, 201, 119, 94, 156]))->pluck('name', 'id'))
-                ->preload()
-                ->multiple(),
+                    ->label('Filter by City')
+                    ->options(City::whereHas('country', fn ($q) => $q->whereIn('id', [179, 73, 201, 119, 94, 156]))->pluck('name', 'id'))
+                    ->preload()
+                    ->multiple(),
                 SelectFilter::make('communication_method')
                     ->label('Filter by Contact Method')
                     ->options([
@@ -797,8 +820,9 @@ class ProviderLeadResource extends Resource
                 ->where('status', $providerLead->status)
                 ->first();
 
-            if (!$draftMail) {
+            if (! $draftMail) {
                 Notification::make()->title('Email Not Sent')->body("Draft Mail for step '{$providerLead->status}' not found.")->danger()->send();
+
                 continue; // Skip if no matching draft email is found
             }
 
@@ -828,8 +852,8 @@ class ProviderLeadResource extends Resource
                     'interaction_date' => Carbon::now(),
                 ]);
             } catch (\Exception $e) {
-                Notification::make()->title('Email Sending Failed')->body("Email sending failed for {$providerLead->email}: " . $e->getMessage())->danger()->send();
-                Log::error("Email sending failed for {$providerLead->email}: " . $e->getMessage());
+                Notification::make()->title('Email Sending Failed')->body("Email sending failed for {$providerLead->email}: ".$e->getMessage())->danger()->send();
+                Log::error("Email sending failed for {$providerLead->email}: ".$e->getMessage());
             }
         }
     }

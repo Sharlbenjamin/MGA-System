@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\ProviderLeadResource\Pages;
 
 use App\Filament\Resources\ProviderLeadResource;
+use App\Filament\Resources\ProviderLeadResource\Widgets\LeadStatusOverviewWidget;
 use App\Filament\Resources\ProviderLeadResource\Widgets\PotentialProviderLeadsByCountryWidget;
+use App\Filament\Resources\ProviderLeadResource\Widgets\ProviderStatusOverviewWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Facades\FilamentView;
@@ -75,6 +77,8 @@ class ListProviderLeads extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
+            ProviderStatusOverviewWidget::class,
+            LeadStatusOverviewWidget::class,
             PotentialProviderLeadsByCountryWidget::class,
         ];
     }
