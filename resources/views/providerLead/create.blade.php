@@ -232,6 +232,7 @@
                                 <option value="Email">Email</option>
                                 <option value="WhatsApp">WhatsApp</option>
                                 <option value="Phone">Phone</option>
+                                <option value="Linked In">Linked In</option>
                             </select>
                         </div>
                     </div>

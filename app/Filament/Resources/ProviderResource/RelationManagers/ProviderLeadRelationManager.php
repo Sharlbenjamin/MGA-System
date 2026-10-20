@@ -64,6 +64,7 @@ class ProviderLeadRelationManager extends RelationManager
                     'Email' => 'Email',
                     'WhatsApp' => 'WhatsApp',
                     'Phone' => 'Phone',
+                    'Linked In' => 'Linked In',
                 ])->required(),
 
             Select::make('status')

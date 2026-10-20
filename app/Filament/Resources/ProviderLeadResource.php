@@ -273,6 +273,7 @@ class ProviderLeadResource extends Resource
                                 'Email' => 'Email',
                                 'WhatsApp' => 'WhatsApp',
                                 'Phone' => 'Phone',
+                                'Linked In' => 'Linked In',
                             ])
                             ->required(),
 
@@ -420,11 +421,45 @@ class ProviderLeadResource extends Resource
                             'Cancel Case sent' => 'Cancel Case sent',
                         ])->label('Filter by Status')->attribute('status'),
                 Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
+                SelectFilter::make('country_id')
+                    ->label('Filter by Country')
+                    ->options(
+                        Country::query()
+                            ->whereHas('providers', fn (Builder $query) => $query
+                                ->where('status', 'Potential')
+                                ->whereHas('leads'))
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $countryIds = array_values(array_filter((array) ($data['values'] ?? [])));
+
+                        if ($countryIds === []) {
+                            return $query;
+                        }
+
+                        return $query->whereHas(
+                            'provider',
+                            fn (Builder $providerQuery) => $providerQuery->whereIn('country_id', $countryIds),
+                        );
+                    }),
                 SelectFilter::make('city_id')
                 ->label('Filter by City')
                 ->options(City::whereHas('country', fn ($q) => $q->whereIn('id', [179, 73, 201, 119, 94, 156]))->pluck('name', 'id'))
                 ->preload()
                 ->multiple(),
+                SelectFilter::make('communication_method')
+                    ->label('Filter by Contact Method')
+                    ->options([
+                        'Email' => 'Email',
+                        'WhatsApp' => 'WhatsApp',
+                        'Phone' => 'Phone',
+                        'Linked In' => 'Linked In',
+                    ])
+                    ->multiple(),
                 SelectFilter::make('assigned_user_id')
                     ->label('Filter by Assigned User')
                     ->options(User::query()->orderBy('name')->pluck('name', 'id'))
