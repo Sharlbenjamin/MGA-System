@@ -125,6 +125,7 @@ class ProviderLeadResource extends Resource
                                         'Active' => 'Active',
                                         'Hold' => 'Hold',
                                         'Potential' => 'Potential',
+                                        'Searching' => 'Searching',
                                         'Black list' => 'Black List',
                                     ])
                                     ->required(fn (Get $get) => $get('create_new_provider'))

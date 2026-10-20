@@ -90,4 +90,23 @@ class ProviderLead extends Model
         self::whereIn('email', $cc)->update(['last_contact_date' => Carbon::now()]);
         Notification::make()->title('success')->body('Emails sent successfully!');
     }
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::saved(function (ProviderLead $lead): void {
+            $lead->provider?->syncStatusFromLeads();
+
+            $previousProviderId = $lead->getOriginal('provider_id');
+
+            if ($previousProviderId && (int) $previousProviderId !== (int) $lead->provider_id) {
+                Provider::query()->find($previousProviderId)?->syncStatusFromLeads();
+            }
+        });
+
+        static::deleted(function (ProviderLead $lead): void {
+            Provider::query()->find($lead->provider_id)?->syncStatusFromLeads();
+        });
+    }
 }

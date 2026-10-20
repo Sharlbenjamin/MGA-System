@@ -106,6 +106,7 @@
                                     <option value="Active">Active</option>
                                     <option value="Hold">Hold</option>
                                     <option value="Potential">Potential</option>
+                                    <option value="Searching">Searching</option>
                                     <option value="Black list">Black List</option>
                                 </select>
                             </div>

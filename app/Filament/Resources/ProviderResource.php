@@ -47,6 +47,7 @@ class ProviderResource extends Resource
                 'Active' => 'Active',
                 'Hold' => 'Hold',
                 'Potential' => 'Potential',
+                'Searching' => 'Searching',
                 'Black List' => 'Black List',
             ])->required()->live(),
             Select::make('assigned_user_id')
@@ -111,6 +112,7 @@ public static function table(Tables\Table $table): Tables\Table
                     'success' => 'Active',
                     'warning' => 'Hold',
                     'info' => 'Potential',
+                    'gray' => 'Searching',
                     'red' => 'Black List',
                 ])
                 ->sortable(),
@@ -133,6 +135,7 @@ public static function table(Tables\Table $table): Tables\Table
                         'Active' => 'Active',
                         'Hold' => 'Hold',
                         'Potential' => 'Potential',
+                        'Searching' => 'Searching',
                         'Black List' => 'Black List',
                     ])->label('Filter by Status')->attribute('status'),
             Filter::make('my_providers')

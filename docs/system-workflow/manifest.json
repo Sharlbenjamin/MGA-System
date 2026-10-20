@@ -36,9 +36,9 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Patient.php": "d48d82779920e109ad805cba1a27b4158d8ea2142f2612a26e242b37f00a5d69",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Prescription.php": "b3eebde26f140e7e9a04d5c87f858357cc1414666bbb7e7d23966b8f1a8a6744",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/PriceList.php": "aaf46dddcc14f1b439f53a6901499a424ec72ea57879577bdfc324a918320209",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Provider.php": "05154251bb94caa384f1e4afbc52d111e523f56bb0ef7c0f8b26392bb10b2df5",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Provider.php": "d335043c77a5924e47065a07ea323eefd03dccd82cced7206342050693fff654",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/ProviderBranch.php": "0e6799dff5f96244c7a2276f6447b98cd852064456dd31eef1d3b0c45b730d52",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/ProviderLead.php": "7e982ec19c4e7430df3795b01ffd864a5830d3f6ad678adeaa661eea2a4f31e9",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/ProviderLead.php": "97f0a4ce8a005ed5fdb5fea59b14984e2525259107db473d4b3cafe50520ac48",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Province.php": "0c7535657daf46d7cca7439bcf3056ab4174faf507563fa52fa7e155b68931b9",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/Salary.php": "38a0bca58f98a0cda5c468ef25755f6107e8e4195bc2fbae67e71eafe98bd094",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/app\/Models\/ServiceType.php": "0c12fb5f2d396013b83ecebbabab9405a1b2add7a51e52871a576c58e86b9a30",
@@ -447,7 +447,7 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/providerBranch\/edit.blade.php": "9ed0a944f6fceac0d391303f4f5ebea9b8ccbc26c6388403b52d73a241857c4b",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/providerBranch\/index.blade.php": "7bf1e9a8c30dff879ada43631a75603a7a3975596b416e4ccfffc7b075a127a6",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/providerBranch\/show.blade.php": "acb9c06efcc95f46705d9ba4ebde346e84a28a298d6ce57a3b0697707d24a9d6",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/providerLead\/create.blade.php": "da3970e3faabdf39dd1f4ad0da315ef0cdf6eb8e9c84b59e4fb940f8d2108a26",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/providerLead\/create.blade.php": "0859e4baa67646f236ca0504e6dbda6137bb7ddb6e4874f34ad40ee6f34a1617",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/providerLead\/edit.blade.php": "b6957212bc01bf14a285d6c52e743048cc48f1cb60bbc0f999979f0d14cf7e28",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/providerLead\/index.blade.php": "bb5e6cc21f92880c2c0184e03c64ac35913f6ef998779392f268c16dcc42bfa5",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/providerLead\/show.blade.php": "9945f9b5cba5ade8e68e020e204d2bc3089e329201513a6e571d7570af367ab9",
@@ -464,5 +464,6 @@
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_03_100000_add_application_fields_to_employees_table.php": "c70d357fc1181e46d6d4d16dd060b932be7f97d22dc9a87c250f0efcd6be4a4a",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/resources\/views\/pdf\/bill-extract.blade.php": "610bab38b2bea19d44dbb33513364b9e070598f8ad3a9a6ceb25a5c2040974b7",
     "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_10_120000_change_clients_status_to_string.php": "61eca984243a197c304bf607e4e67c0e7613f78df2315bfb4d392ed5487504df",
-    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_10_150000_add_linkedin_url_to_clients_table.php": "4682d9ea883794471e5f7bba78b107f1cdb3063455b925fac1ca315066d17e5f"
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_10_150000_add_linkedin_url_to_clients_table.php": "4682d9ea883794471e5f7bba78b107f1cdb3063455b925fac1ca315066d17e5f",
+    "\/Users\/sharlbenjamen\/Desktop\/All Apps\/mga-system\/database\/migrations\/2026_10_20_190600_allow_searching_provider_status.php": "02ce54eb0c9f489c68dffe6a1a463ea2652e785ddd32c5c0a93dcf05a80e4722"
 }

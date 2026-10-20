@@ -111,6 +111,7 @@ class ProviderBranchResource extends Resource
                                         'Active' => 'Active',
                                         'Hold' => 'Hold',
                                         'Potential' => 'Potential',
+                                        'Searching' => 'Searching',
                                         'Black List' => 'Black List',
                                     ])
                                     ->visible(fn (Get $get) => $get('create_new_provider'))

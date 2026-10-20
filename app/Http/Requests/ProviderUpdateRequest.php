@@ -21,7 +21,7 @@ class ProviderUpdateRequest extends FormRequest
     {
         return [
             'country' => ['required', 'string', 'max:255'],
-            'status' => ['required', 'in:Active,Hold,Potential,Black'],
+            'status' => ['required', 'in:Active,Hold,Potential,Searching,Black'],
             'type' => ['required', 'in:Doctor,Hospital,Clinic,Dental,Agency'],
             'name' => ['required', 'string', 'max:255', 'unique:providers,name'],
             'payment_due' => ['nullable', 'integer'],

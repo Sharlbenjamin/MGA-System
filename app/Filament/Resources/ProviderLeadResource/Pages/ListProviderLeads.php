@@ -25,10 +25,27 @@ class ListProviderLeads extends ListRecords
                         table-layout: fixed;
                     }
 
-                    .fi-resource-provider-leads .fi-ta-table :is(th, td),
-                    .fi-resource-provider-leads .fi-ta-table .whitespace-nowrap {
+                    .fi-resource-provider-leads .fi-ta-header-cell,
+                    .fi-resource-provider-leads .fi-ta-cell:not(.fi-ta-selection-cell):not(.fi-ta-actions-cell) {
                         white-space: normal !important;
                         overflow-wrap: anywhere;
+                    }
+
+                    .fi-resource-provider-leads .fi-ta-selection-cell {
+                        width: 3.25rem !important;
+                        min-width: 3.25rem !important;
+                        white-space: nowrap !important;
+                    }
+
+                    .fi-resource-provider-leads .fi-ta-actions-header-cell,
+                    .fi-resource-provider-leads .fi-ta-actions-cell {
+                        width: 14.5rem !important;
+                        min-width: 14.5rem !important;
+                        white-space: nowrap !important;
+                    }
+
+                    .fi-resource-provider-leads .fi-ta-actions-cell .whitespace-nowrap {
+                        white-space: nowrap !important;
                     }
 
                     .fi-resource-provider-leads .fi-ta-text .w-max,
@@ -41,11 +58,6 @@ class ListProviderLeads extends ListRecords
                         height: auto;
                         max-width: 100%;
                         text-align: start;
-                    }
-
-                    .fi-resource-provider-leads .fi-ta-actions-header-cell,
-                    .fi-resource-provider-leads .fi-ta-actions-cell {
-                        width: 8.5rem;
                     }
                 </style>
             HTML,

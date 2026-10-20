@@ -53,6 +53,34 @@ class Provider extends Model
     {
         return $this->hasMany(ProviderLead::class, 'provider_id');
     }
+
+    /**
+     * Searching when every lead is Error.
+     * Potential when a Searching provider still has a lead that is not Error.
+     * Active, Hold, and Black List stay unchanged.
+     */
+    public function syncStatusFromLeads(): void
+    {
+        if (! in_array($this->status, ['Potential', 'Searching'], true)) {
+            return;
+        }
+
+        if (! $this->leads()->exists()) {
+            return;
+        }
+
+        $hasOpenLead = $this->leads()
+            ->whereRaw('LOWER(provider_leads.status) != ?', ['error'])
+            ->exists();
+
+        $status = $hasOpenLead ? 'Potential' : 'Searching';
+
+        if ($this->status === $status) {
+            return;
+        }
+
+        $this->update(['status' => $status]);
+    }
     public function latestLead()
     {
         return $this->hasOne(ProviderLead::class)->latestOfMany('last_contact_date');

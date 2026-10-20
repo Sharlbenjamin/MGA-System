@@ -44,7 +44,7 @@ class ProviderLeadStoreRequest extends FormRequest
             $rules['new_provider_name'] = ['required', 'string', 'max:255', 'unique:providers,name'];
             $rules['new_provider_type'] = ['required', 'in:Doctor,Hospital,Clinic,Dental,Agency'];
             $rules['new_provider_country'] = ['required', 'integer', 'exists:countries,id'];
-            $rules['new_provider_status'] = ['required', 'in:Active,Hold,Potential,Black list'];
+            $rules['new_provider_status'] = ['required', 'in:Active,Hold,Potential,Searching,Black list'];
             $rules['new_provider_email'] = ['nullable', 'email', 'max:255', 'unique:providers,email'];
             $rules['new_provider_phone'] = ['nullable', 'string', 'max:255'];
             $rules['new_provider_payment_due'] = ['nullable', 'integer', 'min:0'];
