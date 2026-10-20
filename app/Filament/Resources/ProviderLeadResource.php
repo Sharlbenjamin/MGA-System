@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\LeadResource;
 use App\Filament\Resources\ProviderResource;
 use App\Filament\Resources\ProviderLeadResource\Pages;
 use App\Filament\Resources\ProviderLeadResource\RelationManagers\InteractionsRelationManager;
@@ -328,26 +329,49 @@ class ProviderLeadResource extends Resource
                     $query->where('status', 'Potential');
                 })
         )
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderByRaw('provider_leads.last_contact_date IS NULL')
+                ->orderBy('provider_leads.last_contact_date'))
             ->columns([
                 TextColumn::make('name')
                     ->label('Lead Name')
                     ->sortable()
                     ->searchable()
+                    ->wrap()
+                    ->extraCellAttributes(self::compactColumnCell(11))
                     ->description(fn (ProviderLead $record) => $record->created_at?->format('d-m-Y H:i')),
-                TextColumn::make('email')->label('Lead Email')->sortable()->searchable(),
+                TextColumn::make('email')
+                    ->label('Lead Email')
+                    ->sortable()
+                    ->searchable()
+                    ->wrap()
+                    ->extraCellAttributes(self::compactColumnCell(12)),
                 TextColumn::make('provider.name')
                     ->label('Provider')
                     ->sortable()
                     ->searchable()
+                    ->wrap()
+                    ->extraCellAttributes(self::compactColumnCell(11))
                     ->url(fn (ProviderLead $record): ?string => $record->provider ? ProviderResource::getUrl('overview', ['record' => $record->provider]) : null)
                     ->description(fn (ProviderLead $record) => $record->assignedUser?->name),
-                TextColumn::make('city.name')->label('City')->sortable()->searchable(),
+                TextColumn::make('city.name')
+                    ->label('City')
+                    ->sortable()
+                    ->searchable()
+                    ->wrap()
+                    ->extraCellAttributes(self::compactColumnCell(7)),
                 TextColumn::make('service_types')
                     ->label('Service Types')
                     ->badge()
+                    ->wrap()
+                    ->extraCellAttributes(self::compactColumnCell(9))
                     ->formatStateUsing(fn ($state) => is_string($state) ? $state : implode(', ', (array) $state)),
 
-                TextColumn::make('communication_method')->label('Contact Method')->sortable(),
+                TextColumn::make('communication_method')
+                    ->label('Contact Method')
+                    ->sortable()
+                    ->wrap()
+                    ->extraCellAttributes(self::compactColumnCell(7)),
 
                 TextColumn::make('status')
                     ->colors([
@@ -367,11 +391,51 @@ class ProviderLeadResource extends Resource
                         'teal' => 'Contract',
                         'emerald' => 'Contract sent',
                     ])
-                    ->sortable(),
+                    ->sortable()
+                    ->wrap()
+                    ->extraCellAttributes(self::compactColumnCell(8)),
 
-                TextColumn::make('last_contact_date')->label('Last Contact')->date('d-m-Y')->sortable(),
+                TextColumn::make('last_contact_date')
+                    ->label('Follow-up')
+                    ->badge()
+                    ->sortable()
+                    ->wrap()
+                    ->extraCellAttributes(self::compactColumnCell(8))
+                    ->formatStateUsing(fn ($state): string => LeadResource::followUpCountdownLabel($state))
+                    ->color(fn ($state): string => LeadResource::followUpCountdownColor($state)),
 
             ])->actions([
+                Action::make('editLead')
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('gray')
+                    ->modalHeading('Edit lead')
+                    ->modalSubmitActionLabel('Save')
+                    ->modalWidth('2xl')
+                    ->authorize(fn (ProviderLead $record): bool => auth()->user()?->can('update', $record) ?? false)
+                    ->fillForm(fn (ProviderLead $record): array => [
+                        'provider_id' => $record->provider_id,
+                        'name' => $record->name,
+                        'type' => $record->type,
+                        'email' => $record->email,
+                        'phone' => $record->phone,
+                        'city_id' => $record->city_id,
+                        'service_types' => $record->service_types,
+                        'communication_method' => $record->communication_method,
+                        'status' => $record->status,
+                        'assigned_user_id' => $record->assigned_user_id,
+                        'last_contact_date' => $record->last_contact_date?->toDateString(),
+                        'comment' => $record->comment,
+                    ])
+                    ->form(fn (ProviderLead $record): array => self::editableLeadForm($record))
+                    ->action(function (ProviderLead $record, array $data): void {
+                        $record->update($data);
+
+                        Notification::make()
+                            ->title('Lead updated')
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('sendEmail')->label('Email')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->color('success')
                     ->action(fn (ProviderLead $record) => static::processProviderEmails(collect([$record]))),
             ])
@@ -382,6 +446,27 @@ class ProviderLeadResource extends Resource
                     ->requiresConfirmation()
                     ->color('success')
                     ->action(fn (SupportCollection $records) => static::processProviderEmails($records)),
+
+                BulkAction::make('updateStatus')
+                    ->label('Update Status')
+                    ->icon('heroicon-o-arrow-down-on-square-stack')
+                    ->color('info')
+                    ->form([
+                        Select::make('status')
+                            ->label('New Status')
+                            ->options(DraftMailResource::getAvailableStatuses('Provider'))
+                            ->required()
+                            ->searchable(),
+                    ])
+                    ->action(function (SupportCollection $records, array $data): void {
+                        $records->each->update(['status' => $data['status']]);
+
+                        Notification::make()
+                            ->title('Status updated')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
 
                 Tables\Actions\DeleteBulkAction::make(),
                 BulkAction::make('send_tailored_mail')->label('Send Tailored Mail')
@@ -400,6 +485,20 @@ class ProviderLeadResource extends Resource
                     })
             ])
             ->filters([
+                SelectFilter::make('provider')
+                    ->label('Filter by Provider')
+                    ->relationship(
+                        'provider',
+                        'name',
+                        fn (Builder $query) => $query
+                            ->where('status', 'Potential')
+                            ->whereHas('leads')
+                            ->orderBy('name'),
+                    )
+                    ->searchable()
+                    ->multiple()
+                    ->preload()
+                    ->native(false),
                 SelectFilter::make('status')->multiple()
                         ->options([
                             'Pending information' => 'Pending information',
@@ -421,6 +520,49 @@ class ProviderLeadResource extends Resource
                             'Cancel Case sent' => 'Cancel Case sent',
                         ])->label('Filter by Status')->attribute('status'),
                 Filter::make('needs_action')->label('Needs Action')->query(fn ($query, $data) => $data ? $query->whereIn('status', $ActionStatuses) : $query),
+                Filter::make('past_due')
+                    ->label('Past due')
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (! ($data['isActive'] ?? false)) {
+                            return $query;
+                        }
+
+                        return $query->whereDate('provider_leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
+                    }),
+                SelectFilter::make('follow_up')
+                    ->label('Follow-up')
+                    ->options([
+                        'overdue' => 'Past due',
+                        'due_today' => 'Due today',
+                        'remaining' => 'Days remaining',
+                        'no_date' => 'No contact date',
+                    ])
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $selected = array_values(array_filter((array) ($data['values'] ?? [])));
+
+                        if ($selected === []) {
+                            return $query;
+                        }
+
+                        $dueOn = Carbon::today()->subWeek()->toDateString();
+
+                        return $query->where(function (Builder $query) use ($selected, $dueOn): void {
+                            foreach ($selected as $value) {
+                                $query->orWhere(function (Builder $query) use ($value, $dueOn): void {
+                                    if ($value === 'overdue') {
+                                        $query->whereDate('provider_leads.last_contact_date', '<', $dueOn);
+                                    } elseif ($value === 'due_today') {
+                                        $query->whereDate('provider_leads.last_contact_date', '=', $dueOn);
+                                    } elseif ($value === 'remaining') {
+                                        $query->whereDate('provider_leads.last_contact_date', '>', $dueOn);
+                                    } elseif ($value === 'no_date') {
+                                        $query->whereNull('provider_leads.last_contact_date');
+                                    }
+                                });
+                            }
+                        });
+                    }),
                 SelectFilter::make('country_id')
                     ->label('Filter by Country')
                     ->options(
@@ -484,6 +626,138 @@ class ProviderLeadResource extends Resource
                             );
                     }),
             ]);
+    }
+
+    /**
+     * @return array<int, \Filament\Forms\Components\Component>
+     */
+    public static function editableLeadForm(ProviderLead $record): array
+    {
+        return [
+            Select::make('provider_id')
+                ->label('Provider')
+                ->options(fn (): array => Provider::query()
+                    ->where('status', 'Potential')
+                    ->orderBy('name')
+                    ->pluck('name', 'id')
+                    ->all())
+                ->searchable()
+                ->preload()
+                ->required()
+                ->live()
+                ->afterStateUpdated(fn (Set $set) => $set('city_id', null)),
+            Grid::make(2)
+                ->schema([
+                    TextInput::make('name')
+                        ->label('Lead Name')
+                        ->required()
+                        ->maxLength(255)
+                        ->unique('provider_leads', 'name', ignorable: $record),
+                    Select::make('type')
+                        ->label('Lead Type')
+                        ->options([
+                            'Doctor' => 'Doctor',
+                            'Clinic' => 'Clinic',
+                            'Hospital' => 'Hospital',
+                            'Dental' => 'Dental',
+                        ])
+                        ->required(),
+                    TextInput::make('email')
+                        ->label('Email')
+                        ->email()
+                        ->nullable()
+                        ->unique('provider_leads', 'email', ignorable: $record),
+                    TextInput::make('phone')
+                        ->label('Phone')
+                        ->tel()
+                        ->maxLength(20)
+                        ->rules(['nullable', 'regex:/^[0-9+\-\s()]*$/'])
+                        ->validationMessages([
+                            'regex' => 'Phone number may only contain digits, spaces, +, -, and parentheses.',
+                        ]),
+                    Select::make('city_id')
+                        ->label('City')
+                        ->options(function (Get $get) {
+                            $provider = Provider::find($get('provider_id'));
+
+                            if ($provider === null) {
+                                return [];
+                            }
+
+                            return City::query()
+                                ->where('country_id', $provider->country_id)
+                                ->orderBy('name')
+                                ->pluck('name', 'id');
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                    Select::make('service_types')
+                        ->label('Service Types')
+                        ->options(ServiceType::query()->orderBy('name')->pluck('name', 'name'))
+                        ->multiple()
+                        ->preload()
+                        ->searchable()
+                        ->formatStateUsing(fn ($state) => is_string($state) ? explode(',', $state) : ($state ?? []))
+                        ->dehydrateStateUsing(fn ($state) => is_array($state) ? implode(',', $state) : $state)
+                        ->required(),
+                    Select::make('communication_method')
+                        ->label('Contact Method')
+                        ->options([
+                            'Email' => 'Email',
+                            'WhatsApp' => 'WhatsApp',
+                            'Phone' => 'Phone',
+                            'Linked In' => 'Linked In',
+                        ])
+                        ->preload()
+                        ->searchable()
+                        ->required(),
+                    Select::make('status')
+                        ->label('Status')
+                        ->options([
+                            'Pending information' => 'Pending Information',
+                            'Step one' => 'Step One',
+                            'Step one sent' => 'Step One Sent',
+                            'Reminder' => 'Reminder',
+                            'Reminder sent' => 'Reminder Sent',
+                            'Discount' => 'Discount',
+                            'Discount sent' => 'Discount Sent',
+                            'Step two' => 'Step Two',
+                            'Step two sent' => 'Step Two Sent',
+                            'Presentation' => 'Presentation',
+                            'Presentation sent' => 'Presentation Sent',
+                            'Contract' => 'Contract',
+                            'Contract sent' => 'Contract Sent',
+                            'Fake Case' => 'Fake Case',
+                            'Fake Case sent' => 'Fake Case sent',
+                            'Cancel Case' => 'Cancel Case',
+                            'Cancel Case sent' => 'Cancel Case sent',
+                        ])
+                        ->required()
+                        ->preload()
+                        ->searchable(),
+                    Select::make('assigned_user_id')
+                        ->label('Assigned User')
+                        ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
+                        ->searchable()
+                        ->preload(),
+                    DatePicker::make('last_contact_date')
+                        ->label('Last Contact Date'),
+                ]),
+            Textarea::make('comment')
+                ->label('Comment')
+                ->rows(3),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected static function compactColumnCell(int $rem): array
+    {
+        return [
+            'style' => "width: {$rem}rem; max-width: {$rem}rem; white-space: normal; overflow-wrap: anywhere;",
+        ];
     }
 
     public static function processProviderEmails(SupportCollection $providerLeads)
