@@ -428,6 +428,8 @@ class ProviderLeadResource extends Resource
                     }),
                 Action::make('sendEmail')->label('Email')->icon('heroicon-o-paper-airplane')->requiresConfirmation()->color('success')
                     ->action(fn (ProviderLead $record) => static::processProviderEmails(collect([$record]))),
+                self::logInteractionAction('Phone', 'heroicon-o-phone', 'info'),
+                self::logInteractionAction('Linked In', 'heroicon-o-link', 'primary'),
             ])
             ->bulkActions([
                 BulkAction::make('sendEmailBulk')
@@ -511,8 +513,11 @@ class ProviderLeadResource extends Resource
                         $selected = array_values(array_filter((array) ($data['values'] ?? [])));
 
                         if ($selected === []) {
-                            // Contacted-this-week is an activity view across provider statuses.
-                            if (data_get($livewire, 'tableFilters.contacted_this_week.isActive')) {
+                            // Activity views span provider statuses.
+                            if (
+                                data_get($livewire, 'tableFilters.contacted_this_week.isActive')
+                                || data_get($livewire, 'tableFilters.contacted_this_month.isActive')
+                            ) {
                                 return $query;
                             }
 
@@ -612,6 +617,23 @@ class ProviderLeadResource extends Resource
                                 ->whereDate('interactions.interaction_date', '<=', $endOfWeek);
                         });
                     }),
+                Filter::make('contacted_this_month')
+                    ->label('Contacted this month')
+                    ->toggle()
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (! ($data['isActive'] ?? false)) {
+                            return $query;
+                        }
+
+                        $startOfMonth = Carbon::now()->startOfMonth()->toDateString();
+                        $endOfMonth = Carbon::now()->endOfMonth()->toDateString();
+
+                        return $query->whereHas('interactions', function (Builder $interactionQuery) use ($startOfMonth, $endOfMonth): void {
+                            $interactionQuery
+                                ->whereDate('interactions.interaction_date', '>=', $startOfMonth)
+                                ->whereDate('interactions.interaction_date', '<=', $endOfMonth);
+                        });
+                    }),
                 SelectFilter::make('follow_up')
                     ->label('Follow-up')
                     ->options([
@@ -709,6 +731,82 @@ class ProviderLeadResource extends Resource
                             );
                     }),
             ]);
+    }
+
+    public static function logInteractionAction(string $method, string $icon, string $color): Action
+    {
+        return Action::make('log'.str_replace(' ', '', $method).'Interaction')
+            ->label($method)
+            ->icon($icon)
+            ->color($color)
+            ->modalHeading(fn (ProviderLead $record): string => $method.' interaction — '.$record->name)
+            ->modalSubmitActionLabel('Save interaction')
+            ->modalWidth('lg')
+            ->authorize(fn (ProviderLead $record): bool => auth()->user()?->can('update', $record) ?? false)
+            ->fillForm(fn (ProviderLead $record): array => [
+                'status' => $record->status,
+                'interaction_date' => now()->toDateString(),
+                'positive' => false,
+            ])
+            ->form([
+                Select::make('status')
+                    ->label('Status at contact')
+                    ->options([
+                        'Pending information' => 'Pending information',
+                        'Step one' => 'Step one',
+                        'Step one sent' => 'Step one sent',
+                        'Reminder' => 'Reminder',
+                        'Reminder sent' => 'Reminder sent',
+                        'Discount' => 'Discount',
+                        'Discount sent' => 'Discount sent',
+                        'Step two' => 'Step two',
+                        'Step two sent' => 'Step two sent',
+                        'Presentation' => 'Presentation',
+                        'Presentation sent' => 'Presentation sent',
+                        'Contract' => 'Contract',
+                        'Contract sent' => 'Contract sent',
+                        'Fake Case' => 'Fake Case',
+                        'Fake Case sent' => 'Fake Case sent',
+                        'Cancel Case' => 'Cancel Case',
+                        'Cancel Case sent' => 'Cancel Case sent',
+                        'Error' => 'Error',
+                    ])
+                    ->required()
+                    ->searchable(),
+                Textarea::make('content')
+                    ->label('Notes')
+                    ->rows(3)
+                    ->nullable(),
+                Toggle::make('positive')
+                    ->label('Positive interaction')
+                    ->inline(false),
+                DatePicker::make('interaction_date')
+                    ->label('Interaction date')
+                    ->required()
+                    ->default(now()),
+            ])
+            ->action(function (ProviderLead $record, array $data) use ($method): void {
+                $interactionDate = Carbon::parse($data['interaction_date']);
+
+                $record->interactions()->create([
+                    'user_id' => Auth::id(),
+                    'provider_lead_id' => $record->id,
+                    'method' => $method,
+                    'status' => $data['status'],
+                    'content' => $data['content'] ?? null,
+                    'positive' => (bool) ($data['positive'] ?? false),
+                    'interaction_date' => $interactionDate,
+                ]);
+
+                $record->update([
+                    'last_contact_date' => $interactionDate->toDateString(),
+                ]);
+
+                Notification::make()
+                    ->title($method.' interaction saved')
+                    ->success()
+                    ->send();
+            });
     }
 
     /**

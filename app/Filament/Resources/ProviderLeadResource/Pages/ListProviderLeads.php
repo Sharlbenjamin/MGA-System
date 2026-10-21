@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProviderLeadResource\Pages;
 
 use App\Filament\Resources\ProviderLeadResource;
+use App\Filament\Resources\ProviderLeadResource\Widgets\MonthlyInteractionsByCountryWidget;
 use App\Filament\Resources\ProviderLeadResource\Widgets\ProviderLeadsOverviewWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
@@ -39,8 +40,8 @@ class ListProviderLeads extends ListRecords
 
                     .fi-resource-provider-leads .fi-ta-actions-header-cell,
                     .fi-resource-provider-leads .fi-ta-actions-cell {
-                        width: 14.5rem !important;
-                        min-width: 14.5rem !important;
+                        width: 22rem !important;
+                        min-width: 22rem !important;
                         white-space: nowrap !important;
                     }
 
@@ -76,6 +77,7 @@ class ListProviderLeads extends ListRecords
     {
         return [
             ProviderLeadsOverviewWidget::class,
+            MonthlyInteractionsByCountryWidget::class,
         ];
     }
 }

@@ -36,6 +36,7 @@ class InteractionResource extends Resource
                         'Email' => 'Email',
                         'Phone' => 'Phone',
                         'WhatsApp' => 'WhatsApp',
+                        'Linked In' => 'Linked In',
                     ])->required(),
                 Select::make('status')->label('Status at Contact')
                     ->options([
@@ -79,6 +80,7 @@ class InteractionResource extends Resource
                         'Email' => 'Email',
                         'Phone' => 'Phone',
                         'WhatsApp' => 'WhatsApp',
+                        'Linked In' => 'Linked In',
                     ]),
 
                 Tables\Filters\SelectFilter::make('positive')
