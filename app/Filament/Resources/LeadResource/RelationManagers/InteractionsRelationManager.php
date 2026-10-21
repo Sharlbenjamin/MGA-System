@@ -28,6 +28,7 @@ class InteractionsRelationManager extends RelationManager
                         'Email' => 'Email',
                         'Phone' => 'Phone',
                         'WhatsApp' => 'WhatsApp',
+                        'Linked In' => 'Linked In',
                     ])->required(),
                 Select::make('user_id')->label('User')->options(User::pluck('name', 'id'))->default(Auth::id()),
                 Select::make('status')->label('Status at Contact')
