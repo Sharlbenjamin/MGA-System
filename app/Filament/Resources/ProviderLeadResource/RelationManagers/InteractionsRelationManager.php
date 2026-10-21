@@ -30,6 +30,7 @@ class InteractionsRelationManager extends RelationManager
                         'Email' => 'Email',
                         'Phone' => 'Phone',
                         'WhatsApp' => 'WhatsApp',
+                        'Linked In' => 'Linked In',
                     ])
                     ->required(),
 
