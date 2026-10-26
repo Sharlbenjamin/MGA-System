@@ -6,15 +6,20 @@ on:
   pull_request:
     branches: [ main ]
 
+# Default GITHUB_TOKEN is read-only. contents:write is required to push
+# generated docs; pull-requests:write is required to comment on PRs.
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   update-docs:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
 
     - name: Setup PHP
@@ -25,7 +30,7 @@ jobs:
         coverage: none
 
     - name: Install Composer dependencies
-      run: composer install --no-dev --optimize-autoloader
+      run: composer install --no-dev --optimize-autoloader --no-interaction
 
     - name: Generate System Workflow Documentation
       run: php artisan system:generate-workflow
@@ -40,10 +45,10 @@ jobs:
         fi
 
     - name: Commit and push changes
-      if: steps.check-changes.outputs.changes == 'true'
+      if: github.event_name == 'push' && steps.check-changes.outputs.changes == 'true'
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
         git add docs/system-workflow/
         git commit -m "docs: auto-update system workflow documentation [skip ci]"
         git push
@@ -57,5 +62,5 @@ jobs:
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
-            body: '📄 System workflow documentation has been automatically updated based on code changes.'
+            body: '📄 System workflow documentation would change based on this PR. It will be auto-updated when this branch is merged.'
           })
