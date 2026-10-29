@@ -34,6 +34,8 @@
 Cloudways panel equivalent: **Cron → every minute →**  
 `cd /home/master/applications/eeyfxyvxmv/public_html && /usr/bin/php8.3 artisan schedule:run >> /dev/null 2>&1`
 
+**Verified 2026-10-29:** `master_mgexgxgevm` **user crontab lines do not execute** on this server (temporary heartbeat file never updated over 2+ minutes). Use **Cloudways → Application → Cron Job Management** for staging, not SSH `crontab -e` alone.
+
 ## Migrations applied on staging (mobile push only)
 
 - `2026_10_28_160000_create_mobile_push_tokens_table`
