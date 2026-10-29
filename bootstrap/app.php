@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -36,7 +37,10 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($e instanceof ValidationException) {
                 return null;
             }
-            // Policy/auth must return 403 JSON, not 500
+            if ($e instanceof AuthenticationException) {
+                return response()->json(['message' => $e->getMessage() ?: 'Unauthenticated.'], 401);
+            }
+            // Policy must return 403 JSON, not 500
             if ($e instanceof AuthorizationException) {
                 return response()->json(['message' => $e->getMessage() ?: 'Forbidden'], 403);
             }
