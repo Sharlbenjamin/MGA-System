@@ -20,27 +20,39 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+PHP_BIN="${PHP_BIN:-php}"
+if [[ -x "../.cw/bin/php" ]]; then
+  PHP_BIN="../.cw/bin/php"
+elif command -v php8.3 >/dev/null 2>&1; then
+  PHP_BIN="php8.3"
+fi
+
 composer install --no-dev --optimize-autoloader --no-interaction
 
 if [[ -f package.json ]]; then
-  npm ci
+  if [[ -f package-lock.json ]]; then
+    npm ci --no-audit --no-fund
+  else
+    echo "No package-lock.json — running npm install (commit a lockfile for reproducible releases)."
+    npm install --no-audit --no-fund
+  fi
   npm run build
 fi
 
-php artisan storage:link || true
-php artisan migrate:status
+"$PHP_BIN" artisan storage:link || true
+"$PHP_BIN" artisan migrate:status
 if [[ "$MIGRATE" -eq 1 ]]; then
-  php artisan migrate --force
+  "$PHP_BIN" artisan migrate --force
 else
   echo "Skipping migrate --force. Re-run with --migrate after reviewing the status above."
 fi
 
-php artisan optimize:clear
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan filament:cache-components || true
-php artisan queue:restart || true
+"$PHP_BIN" artisan optimize:clear
+"$PHP_BIN" artisan config:cache
+"$PHP_BIN" artisan route:cache
+"$PHP_BIN" artisan view:cache
+"$PHP_BIN" artisan filament:cache-components || true
+"$PHP_BIN" artisan queue:restart || true
 
-php artisan --version
+"$PHP_BIN" artisan --version
 echo "Release commands finished."
