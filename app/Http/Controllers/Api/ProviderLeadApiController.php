@@ -15,7 +15,7 @@ class ProviderLeadApiController extends Controller
     {
         $this->authorize('viewAny', ProviderLead::class);
 
-        $query = ProviderLead::query()->with(['provider', 'city']);
+        $query = ProviderLead::query()->with(['provider', 'city', 'assignedUser:id,name']);
 
         if ($request->filled('search')) {
             $term = $request->input('search');
@@ -56,7 +56,7 @@ class ProviderLeadApiController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $lead = ProviderLead::with(['provider', 'city'])->find($id);
+        $lead = ProviderLead::with(['provider', 'city', 'assignedUser:id,name'])->find($id);
         if (!$lead) {
             return response()->json(['message' => 'Provider lead not found'], 404);
         }
@@ -67,9 +67,11 @@ class ProviderLeadApiController extends Controller
     public function store(StoreProviderLeadRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $data['assigned_user_id'] = $request->user()?->id;
+        if (empty($data['assigned_user_id'])) {
+            $data['assigned_user_id'] = $request->user()?->id;
+        }
         $lead = ProviderLead::create($data);
-        return response()->json($lead->load(['provider', 'city']), 201);
+        return response()->json($lead->load(['provider', 'city', 'assignedUser:id,name']), 201);
     }
 
     public function update(UpdateProviderLeadRequest $request, int $id): JsonResponse
@@ -79,7 +81,7 @@ class ProviderLeadApiController extends Controller
             return response()->json(['message' => 'Provider lead not found'], 404);
         }
         $lead->update($request->validated());
-        return response()->json($lead->fresh(['provider', 'city']));
+        return response()->json($lead->fresh(['provider', 'city', 'assignedUser:id,name']));
     }
 
     public function destroy(int $id): JsonResponse

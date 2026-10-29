@@ -17,12 +17,18 @@ class StoreProviderRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:Doctor,Hospital,Clinic,Dental,Agency'],
             'country_id' => ['required', 'integer', 'exists:countries,id'],
-            'status' => ['required', 'string', 'in:Active,Hold,Potential,Black list'],
+            'status' => ['required', 'string', 'in:Active,Hold,Potential,Searching,Black List,Black list'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'payment_due' => ['nullable', 'integer', 'min:0'],
             'payment_method' => ['nullable', 'string', 'in:Online Link,Bank Transfer,AEAT'],
+            'needs_payment' => ['nullable', 'boolean'],
             'comment' => ['nullable', 'string'],
+            'request_comment' => ['nullable', 'string'],
+            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'gop_contact_id' => ['nullable', 'exists:contacts,id'],
+            'operation_contact_id' => ['nullable', 'exists:contacts,id'],
+            'financial_contact_id' => ['nullable', 'exists:contacts,id'],
         ];
     }
 }

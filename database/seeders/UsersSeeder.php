@@ -2,11 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class UsersSeeder extends Seeder
 {
@@ -17,11 +15,11 @@ class UsersSeeder extends Seeder
     {
         User::create([
             'id' => 1,
-            'name' => 'sharlhany',
-            'email' => 'sharlhany@gmail.com',
-            'password' => Hash::make('Sharl@1234'),
-            'smtp_username' => 'c.benjamin@medguarda.com',
-            'smtp_password' => 'omgythxfewapbiit'
+            'name' => env('SEED_ADMIN_NAME', 'Admin'),
+            'email' => env('SEED_ADMIN_EMAIL', 'admin@example.com'),
+            'password' => Hash::make(env('SEED_ADMIN_PASSWORD', 'password')),
+            'smtp_username' => env('SEED_ADMIN_SMTP_USERNAME'),
+            'smtp_password' => env('SEED_ADMIN_SMTP_PASSWORD'),
         ]);
     }
 }

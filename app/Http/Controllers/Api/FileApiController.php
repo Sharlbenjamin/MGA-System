@@ -8,24 +8,69 @@ use App\Http\Requests\Api\FileRequestAppointmentRequest;
 use App\Http\Requests\Api\IndexRequest;
 use App\Http\Requests\Api\StoreFileRequest;
 use App\Http\Requests\Api\UpdateFileRequest;
+use App\Models\Comment;
 use App\Models\File;
+use App\Models\Gop;
+use App\Models\Task;
 use App\Services\CaseAssignmentService;
+use App\Services\FileCaseStatusOverviewService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FileApiController extends Controller
 {
-    public function index(IndexRequest $request): JsonResponse
+    public function overview(FileCaseStatusOverviewService $overview): JsonResponse
     {
         $this->authorize('viewAny', File::class);
 
-        $query = File::query()->with([
-            'patient.client',
-            'country',
-            'city',
-            'serviceType',
-            'providerBranch',
-            'currentAssignment.user:id,name',
-        ]);
+        return response()->json(['widgets' => $overview->widgets()]);
+    }
+
+    public function index(IndexRequest $request, FileCaseStatusOverviewService $overview): JsonResponse
+    {
+        $this->authorize('viewAny', File::class);
+
+        $mobile = $request->boolean('mobile');
+        $fileTable = (new File())->getTable();
+
+        if ($mobile) {
+            $query = File::query()->select($fileTable.'.*')->with([
+                'patient:id,name,client_id',
+                'patient.client:id,company_name',
+                'country:id,name,nicename',
+                'serviceType:id,name',
+                'providerBranch:id,branch_name',
+                'currentAssignment.user:id,name',
+            ]);
+        } else {
+            $query = File::query()->select($fileTable.'.*')->with([
+                'patient.client',
+                'country',
+                'city',
+                'serviceType',
+                'providerBranch.provider',
+                'currentAssignment.user:id,name',
+                'bills:id,file_id,total_amount,status,bill_document_path,bill_google_link',
+            ])->addSelect([
+                'last_comment' => Comment::select('content')
+                    ->whereColumn('comments.file_id', $fileTable.'.id')
+                    ->orderByDesc('created_at')
+                    ->limit(1),
+                'first_gop_in_amount' => Gop::select('amount')
+                    ->whereColumn('gops.file_id', $fileTable.'.id')
+                    ->where('type', 'In')
+                    ->orderBy('id')
+                    ->limit(1),
+                'first_gop_in_has_doc' => DB::raw("COALESCE((SELECT CASE WHEN g2.document_path IS NOT NULL AND g2.document_path != '' THEN 1 ELSE 0 END FROM gops g2 WHERE g2.file_id = {$fileTable}.id AND g2.type = 'In' ORDER BY g2.id ASC LIMIT 1), 0)"),
+            ]);
+        }
+
+        $overview->applyIndexFilters($query, $request->all());
+
+        if ($mobile && ! $request->filled('status') && ! $this->requestHasStatuses($request) && ! $request->filled('search')) {
+            $query->whereIn('status', FileCaseStatusOverviewService::OPENED_STATUSES);
+        }
 
         if ($request->filled('search')) {
             $term = $request->input('search');
@@ -58,17 +103,36 @@ class FileApiController extends Controller
             $query->whereHas('patient', fn ($q) => $q->where('client_id', $request->input('client_id')));
         }
 
-        $sort = $request->sortColumn();
+        $sort = $request->filled('sort') ? $request->sortColumn() : 'created_at';
         $dir = $request->sortDirection();
         $allowedSorts = ['id', 'mga_reference', 'created_at', 'updated_at', 'service_date'];
-        if (!in_array($sort, $allowedSorts)) {
-            $sort = 'id';
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'created_at';
         }
         $query->orderBy($sort, $dir);
 
         $paginator = $query->paginate($request->perPage())->withQueryString();
+        $paginator->getCollection()->transform(function (File $file) {
+            $file->setAttribute(
+                'assigned_name',
+                $file->currentAssignment?->user?->name
+                    ?? $file->current_assignment?->user?->name
+            );
+
+            return $file;
+        });
 
         return response()->json($paginator);
+    }
+
+    protected function requestHasStatuses(IndexRequest $request): bool
+    {
+        $statuses = $request->input('statuses');
+        if (! is_array($statuses)) {
+            return false;
+        }
+
+        return array_values(array_filter($statuses, fn ($status) => is_string($status) && $status !== '')) !== [];
     }
 
     /**
@@ -300,5 +364,80 @@ class FileApiController extends Controller
             return response()->json(['message' => 'File not found'], 404);
         }
         return response()->json($file->activityLogs()->with('user:id,name')->latest()->get());
+    }
+
+    public function nextReference(Request $request): JsonResponse
+    {
+        $this->authorize('create', File::class);
+        $patientId = $request->input('patient_id');
+        $clientId = $request->input('client_id');
+
+        if ($patientId) {
+            $reference = File::generateMGAReference($patientId, 'patient');
+        } elseif ($clientId) {
+            $reference = File::generateMGAReference($clientId, 'client');
+        } else {
+            return response()->json(['message' => 'patient_id or client_id is required'], 422);
+        }
+
+        return response()->json(['mga_reference' => $reference]);
+    }
+
+    public function storeComment(Request $request, int $fileId): JsonResponse
+    {
+        $file = File::find($fileId);
+        if (! $file) {
+            return response()->json(['message' => 'File not found'], 404);
+        }
+        $this->authorize('update', $file);
+        $data = $request->validate([
+            'content' => ['required', 'string', 'max:5000'],
+        ]);
+        $comment = $file->comments()->create([
+            'user_id' => $request->user()->id,
+            'content' => $data['content'],
+        ]);
+
+        return response()->json($comment->load('user:id,name'), 201);
+    }
+
+    public function storeTask(Request $request, int $fileId): JsonResponse
+    {
+        $file = File::find($fileId);
+        if (! $file) {
+            return response()->json(['message' => 'File not found'], 404);
+        }
+        $this->authorize('update', $file);
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'department' => ['required', 'string', 'in:Operation,Financial,Network,Network Providers'],
+            'due_date' => ['nullable', 'date'],
+        ]);
+        $task = $file->tasks()->create([
+            ...$data,
+            'is_done' => false,
+        ]);
+
+        return response()->json($task->load('user:id,name'), 201);
+    }
+
+    public function toggleTask(Request $request, int $fileId, int $taskId): JsonResponse
+    {
+        $file = File::find($fileId);
+        if (! $file) {
+            return response()->json(['message' => 'File not found'], 404);
+        }
+        $this->authorize('update', $file);
+        $task = Task::where('file_id', $file->id)->find($taskId);
+        if (! $task) {
+            return response()->json(['message' => 'Task not found'], 404);
+        }
+        $task->is_done = ! $task->is_done;
+        $task->done_by = $task->is_done ? $request->user()->id : null;
+        $task->save();
+
+        return response()->json($task->fresh(['user:id,name', 'doneBy:id,name']));
     }
 }

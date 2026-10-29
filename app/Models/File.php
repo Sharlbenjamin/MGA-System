@@ -21,6 +21,7 @@ use App\Services\GoogleMeetService;
 use App\Services\GoogleDriveFolderService;
 use App\Services\DistanceCalculationService;
 use App\Services\CommunicationLinkingService;
+use App\Services\OpsAlertService;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use App\Traits\LogsActivity;
@@ -368,6 +369,14 @@ class File extends Model
         });
 
         static::created(function ($file) {
+            try {
+                app(OpsAlertService::class)->fileCreated($file);
+            } catch (\Throwable $e) {
+                Log::warning('Ops alert failed for new file', [
+                    'file_id' => $file->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
             app(GoogleDriveFolderService::class)->generateGoogleDriveFolder($file);
             try {
                 app(CommunicationLinkingService::class)->linkForFile($file);
@@ -380,6 +389,21 @@ class File extends Model
         });
 
         static::updated(function ($file) {
+            if ($file->wasChanged('status') && in_array($file->status, ['Assisted', 'Sent'], true)) {
+                try {
+                    if ($file->status === 'Assisted') {
+                        app(OpsAlertService::class)->fileAssisted($file);
+                    } else {
+                        app(OpsAlertService::class)->fileSent($file);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Ops alert failed for file status', [
+                        'file_id' => $file->id,
+                        'status' => $file->status,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
             if ($file->isDirty('status')) {
                 if (!$file->mga_reference) {
                     return;

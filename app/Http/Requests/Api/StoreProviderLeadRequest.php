@@ -25,6 +25,7 @@ class StoreProviderLeadRequest extends FormRequest
             'communication_method' => ['nullable', 'string', 'max:50'],
             'last_contact_date' => ['nullable', 'date'],
             'comment' => ['nullable', 'string'],
+            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 }

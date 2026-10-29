@@ -19,12 +19,18 @@ class UpdateProviderRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'type' => ['sometimes', 'string', 'in:Doctor,Hospital,Clinic,Dental,Agency'],
             'country_id' => ['sometimes', 'integer', 'exists:countries,id'],
-            'status' => ['sometimes', 'string', 'in:Active,Hold,Potential,Black list'],
+            'status' => ['sometimes', 'string', 'in:Active,Hold,Potential,Searching,Black List,Black list'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'payment_due' => ['nullable', 'integer', 'min:0'],
             'payment_method' => ['nullable', 'string', 'in:Online Link,Bank Transfer,AEAT'],
+            'needs_payment' => ['sometimes', 'boolean'],
             'comment' => ['nullable', 'string'],
+            'request_comment' => ['nullable', 'string'],
+            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'gop_contact_id' => ['nullable', 'exists:contacts,id'],
+            'operation_contact_id' => ['nullable', 'exists:contacts,id'],
+            'financial_contact_id' => ['nullable', 'exists:contacts,id'],
         ];
     }
 }

@@ -180,4 +180,29 @@ class Provider extends Model
     {
         return $this->transactions()->latest()->first()?->amount;
     }
+
+    protected static function booted(): void
+    {
+        static::created(function (Provider $provider) {
+            if (strcasecmp((string) $provider->status, 'Active') !== 0) {
+                return;
+            }
+            try {
+                app(\App\Services\OpsAlertService::class)->providerActive($provider, true);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Provider active alert failed', ['error' => $e->getMessage()]);
+            }
+        });
+
+        static::updated(function (Provider $provider) {
+            if (! $provider->wasChanged('status') || strcasecmp((string) $provider->status, 'Active') !== 0) {
+                return;
+            }
+            try {
+                app(\App\Services\OpsAlertService::class)->providerActive($provider, false);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Provider active alert failed', ['error' => $e->getMessage()]);
+            }
+        });
+    }
 }

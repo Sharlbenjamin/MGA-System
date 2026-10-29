@@ -19,8 +19,10 @@ class ProviderApiController extends Controller
 
         if ($request->filled('search')) {
             $term = $request->input('search');
-            $query->where('name', 'like', "%{$term}%")
-                ->orWhere('email', 'like', "%{$term}%");
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                    ->orWhere('email', 'like', "%{$term}%");
+            });
         }
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));

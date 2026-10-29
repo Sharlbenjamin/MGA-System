@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Services\OpsAlertService;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class Invoice extends Model
@@ -84,6 +86,18 @@ class Invoice extends Model
                 // Generate payment link if not provided
                 if (! $invoice->payment_link) {
                     $invoice->generatePaymentLink();
+                }
+            }
+
+            if ($invoice->wasChanged('status') && $invoice->status === 'Sent') {
+                try {
+                    app(OpsAlertService::class)->invoiceSent($invoice);
+                } catch (\Throwable $e) {
+                    Log::warning('Ops alert failed for sent invoice', [
+                        'invoice_id' => $invoice->id,
+                        'file_id' => $invoice->file_id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         });

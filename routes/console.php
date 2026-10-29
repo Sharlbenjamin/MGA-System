@@ -16,3 +16,5 @@ Schedule::command('clean:temp-zips --older-than=24')->dailyAt('02:00');
 // - full poll less frequently for deep body/attachment mirroring
 Schedule::command('communications:sync-headers --limit=200')->everyTwoMinutes();
 Schedule::command('communications:poll --limit=50')->everyTenMinutes();
+
+Schedule::command('push:process-expo-receipts')->everyMinute();

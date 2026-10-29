@@ -9,7 +9,10 @@
 /vendor
 .env
 .env.backup
+.env.local
+.env.staging
 .env.production
+.env.*.local
 .phpactor.json
 .phpunit.result.cache
 Homestead.json
@@ -17,6 +20,14 @@ Homestead.yaml
 npm-debug.log
 yarn-error.log
 /auth.json
+/storage/app/google-calendar/credentials.json
+google-services.json
+GoogleService-Info.plist
+*.p8
+*.p12
+*.jks
+*.mobileprovision
+.DS_Store
 /.fleet
 /.idea
 /.nova
@@ -24,4 +35,5 @@ yarn-error.log
 /.zed
 NEXT Push.md
 Lets SSH.md
+docs/deployment/Lets-SSH.local.md
 composer.phar

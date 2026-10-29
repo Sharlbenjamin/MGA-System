@@ -99,6 +99,57 @@ class Lead extends Model
         return (int) round(($index / max($last, 1)) * 100);
     }
 
+    public static function followUpDaysRemaining(mixed $lastContactDate): ?int
+    {
+        if ($lastContactDate === null || $lastContactDate === '') {
+            return null;
+        }
+
+        $dueDate = Carbon::parse($lastContactDate)->startOfDay()->addWeek();
+
+        return (int) round(Carbon::today()->diffInDays($dueDate, false));
+    }
+
+    public static function followUpCountdownLabel(mixed $lastContactDate): string
+    {
+        $days = self::followUpDaysRemaining($lastContactDate);
+
+        if ($days === null) {
+            return 'No contact date';
+        }
+
+        if ($days === 0) {
+            return 'Due today';
+        }
+
+        if ($days > 0) {
+            return $days === 1 ? '1 day remaining' : "{$days} days remaining";
+        }
+
+        $past = abs($days);
+
+        return $past === 1 ? '1 day past' : "{$past} days past";
+    }
+
+    public static function followUpCountdownColor(mixed $lastContactDate): string
+    {
+        $days = self::followUpDaysRemaining($lastContactDate);
+
+        if ($days === null) {
+            return 'gray';
+        }
+
+        if ($days < 0) {
+            return 'danger';
+        }
+
+        if ($days <= 2) {
+            return 'warning';
+        }
+
+        return 'success';
+    }
+
     public function displayName(): string
     {
         $name = trim((string) ($this->first_name ?: ''));

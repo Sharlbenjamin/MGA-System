@@ -568,4 +568,29 @@ class Client extends Model
     {
         return $this->mainLead()?->status;
     }
+
+    protected static function booted(): void
+    {
+        static::created(function (Client $client) {
+            if (self::normalizeStatus($client->status) !== 'active') {
+                return;
+            }
+            try {
+                app(\App\Services\OpsAlertService::class)->clientActive($client, true);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Client active alert failed', ['error' => $e->getMessage()]);
+            }
+        });
+
+        static::updated(function (Client $client) {
+            if (! $client->wasChanged('status') || self::normalizeStatus($client->status) !== 'active') {
+                return;
+            }
+            try {
+                app(\App\Services\OpsAlertService::class)->clientActive($client, false);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Client active alert failed', ['error' => $e->getMessage()]);
+            }
+        });
+    }
 }

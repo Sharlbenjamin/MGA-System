@@ -3,10 +3,9 @@
 namespace App\Filament\Resources\LeadResource\Widgets;
 
 use App\Filament\Resources\LeadResource;
-use Carbon\Carbon;
+use App\Services\LeadOverviewService;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Database\Eloquent\Builder;
 
 class ClientLeadsOverviewWidget extends BaseWidget
 {
@@ -23,107 +22,42 @@ class ClientLeadsOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $crmLeads = LeadResource::crmLeadsQuery();
-        $actionStatuses = ['Introduction', 'Reminder', 'Presentation', 'Price List', 'Contract'];
-        $interestedPastDue = (clone $crmLeads)
-            ->forClientStatuses(['Interested'])
-            ->whereDate('leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
+        return array_map(function (array $widget) {
+            $stat = Stat::make($widget['label'], $widget['count'])
+                ->description($widget['description'])
+                ->descriptionIcon($widget['icon'])
+                ->color($widget['color']);
 
-        return [
-            $this->pipelineStat('Leads', (clone $crmLeads)->count(), 'Client leads'),
-            $this->leadStat(
-                'Needs Action',
-                (clone $crmLeads)->whereIn('leads.status', $actionStatuses)->count(),
-                'Still need a follow-up',
-                'warning',
-                'heroicon-m-bolt',
-                ['needs_action' => ['isActive' => true]],
-            ),
-            $this->clientStatusStat('Searching', 'danger', 'heroicon-m-magnifying-glass'),
-            $this->leadStat(
-                'Interested',
-                (clone $interestedPastDue)->count(),
-                $this->clientCountLabel(clone $interestedPastDue).', past due',
-                'warning',
-                'heroicon-m-hand-raised',
-                [
-                    'client_status' => ['values' => ['Interested']],
-                    'past_due' => ['isActive' => true],
-                ],
-            ),
-            $this->leadStat(
-                'Follow up',
-                $this->pastDueCount(),
-                'Past due',
-                'danger',
-                'heroicon-m-clock',
-                ['past_due' => ['isActive' => true]],
-            ),
-        ];
-    }
+            $tableFilters = $this->tableFiltersFor($widget['extra'] ?? []);
 
-    protected function pastDueCount(): int
-    {
-        return $this->pastDueLeads()->count();
-    }
-
-    protected function pastDueLeads(): Builder
-    {
-        return LeadResource::crmLeadsQuery()
-            ->whereDate('leads.last_contact_date', '<', Carbon::today()->subWeek()->toDateString());
-    }
-
-    protected function pipelineStat(string $label, int $count, string $description): Stat
-    {
-        return Stat::make($label, $count)
-            ->description($description)
-            ->descriptionIcon('heroicon-m-users')
-            ->color('primary')
-            ->url(LeadResource::getUrl('index'));
-    }
-
-    protected function clientStatusStat(string $status, string $color, string $icon): Stat
-    {
-        $query = LeadResource::crmLeadsQuery()->forClientStatuses([$status]);
-        $leads = (clone $query)->count();
-        $clients = $this->distinctClientCount(clone $query);
-
-        return Stat::make($status, $leads)
-            ->description($clients.' '.($clients === 1 ? 'client' : 'clients'))
-            ->descriptionIcon($icon)
-            ->color($color)
-            ->url(LeadResource::getUrl('index', [
-                'tableFilters' => [
-                    'client_status' => [
-                        'values' => [$status],
-                    ],
-                ],
+            return $stat->url(LeadResource::getUrl('index', $tableFilters === [] ? [] : [
+                'tableFilters' => $tableFilters,
             ]));
+        }, app(LeadOverviewService::class)->widgets());
     }
 
     /**
-     * @param  array<string, mixed>  $tableFilters
+     * @param  array<string, string>  $extra
+     * @return array<string, mixed>
      */
-    protected function leadStat(string $label, int $count, string $description, string $color, string $icon, array $tableFilters): Stat
+    protected function tableFiltersFor(array $extra): array
     {
-        return Stat::make($label, $count)
-            ->description($description)
-            ->descriptionIcon($icon)
-            ->color($color)
-            ->url(LeadResource::getUrl('index', [
-                'tableFilters' => $tableFilters,
-            ]));
-    }
+        $filters = [];
 
-    protected function distinctClientCount(Builder $query): int
-    {
-        return (int) $query->distinct()->count('leads.client_id');
-    }
+        if (! empty($extra['needs_action'])) {
+            $filters['needs_action'] = ['isActive' => true];
+        }
 
-    protected function clientCountLabel(Builder $query): string
-    {
-        $clients = $this->distinctClientCount($query);
+        if (! empty($extra['past_due'])) {
+            $filters['past_due'] = ['isActive' => true];
+        }
 
-        return $clients.' '.($clients === 1 ? 'client' : 'clients');
+        if (! empty($extra['client_status'])) {
+            $filters['client_status'] = [
+                'values' => array_map('trim', explode(',', $extra['client_status'])),
+            ];
+        }
+
+        return $filters;
     }
 }

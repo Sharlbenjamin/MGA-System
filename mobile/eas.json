@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://mgastaging.medguarda.com"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "distribution": "store",
+      "credentialsSource": "remote",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://system.medguarda.com",
+        "npm_config_legacy_peer_deps": "true"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6827569213",
+        "appleTeamId": "8976UQMWXB",
+        "language": "en-US",
+        "appName": "MGA",
+        "sku": "medguarda-mga",
+        "bundleIdentifier": "com.medguarda.MGA"
+      }
+    }
+  }
+}

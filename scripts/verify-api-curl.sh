@@ -12,6 +12,21 @@ NC='\033[0m'
 echo "=== API verification for $BASE_URL ==="
 echo ""
 
+# 0) GET /api/health (expect 200 JSON after this infrastructure work is deployed)
+echo "0) GET /api/health"
+HEALTH=$(curl -sS -o /tmp/api_health.txt -w "%{http_code}" "$BASE_URL/api/health" -H "Accept: application/json" 2>/dev/null || true)
+HEALTH_BODY=$(cat /tmp/api_health.txt 2>/dev/null || true)
+if echo "$HEALTH_BODY" | grep -qi "<html\|javascript is required"; then
+  echo -e "${RED}FAIL: /api/health returned HTML${NC}"
+  exit 1
+fi
+if [[ "$HEALTH" == "200" ]]; then
+  echo -e "${GREEN}OK: /api/health HTTP 200 JSON${NC}"
+else
+  echo "HTTP $HEALTH - /api/health is not deployed yet or is blocked. Body: ${HEALTH_BODY:0:150}"
+fi
+echo ""
+
 # 1) POST /api/login (expect 200 JSON or 422 JSON, never HTML/307)
 echo "1) POST /api/login"
 RES=$(curl -s -o /tmp/api_login_body.txt -w "%{http_code}|%{redirect_url}" -X POST "$BASE_URL/api/login" \
